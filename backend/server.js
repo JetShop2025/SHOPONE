@@ -15,8 +15,8 @@ app.use('/work-orders', workOrdersRoutes);
 app.use('/receive', receiveRoutes);
 app.use('/login', loginRoutes);
 
-const PORT = 5050;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+const PORT = process.env.PORT || 5050;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`);
 });
 

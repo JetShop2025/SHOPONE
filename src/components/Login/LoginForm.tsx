@@ -20,7 +20,11 @@ const LoginForm: React.FC = () => {
       return;
     }
     try {
-      const res = await axios.post<{ success: boolean }>('/login', { username, password });
+      const API_URL = process.env.REACT_APP_API_URL || '';
+      const res = await axios.post<{ success: boolean }>(
+        `${API_URL}/login`,
+        { username, password }
+      );
       if (res.data.success) {
         localStorage.setItem('username', username);
         navigate('/menu', { replace: true });
