@@ -11,7 +11,10 @@ router.post('/', (req, res) => {
     'SELECT * FROM users WHERE username = ? AND password = ?',
     [username, password],
     (err, results) => {
-      if (err) return res.status(500).json({ success: false });
+      if (err) {
+        console.error('Error en consulta SQL:', err); // <-- Agrega este log
+        return res.status(500).json({ success: false, error: err.message });
+      }
       if (results.length > 0) {
         res.json({ success: true });
       } else {
