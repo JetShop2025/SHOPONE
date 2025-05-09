@@ -1,0 +1,8 @@
+body, input, select, textarea, button, table, th, td, label, h1, h2, h3, h4, h5, h6, div, span {
+  font-family: 'Courier New', Courier, monospace !important;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
