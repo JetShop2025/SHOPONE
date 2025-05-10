@@ -5,6 +5,8 @@ const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
 ];
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 function getTrailerOptions(billToCo: string): string[] {
   if (billToCo === "GALGRE") return Array.from({length: 54}, (_, i) => `1-${100+i}`);
   if (billToCo === "JETGRE") return Array.from({length: 16}, (_, i) => `2-${(i+1).toString().padStart(3, '0')}`);
@@ -44,8 +46,8 @@ const ReceiveInventory: React.FC = () => {
   const [showEditForm, setShowEditForm] = useState(false);
 
   useEffect(() => {
-    axios.get('/inventory').then(res => setInventory(res.data as any[]));
-    axios.get('/receive').then(res => setReceives(res.data as any[]));
+    axios.get(`${API_URL}/inventory`).then(res => setInventory(res.data as any[]));
+    axios.get(`${API_URL}/receive`).then(res => setReceives(res.data as any[]));
   }, []);
 
   // Cuando seleccionas SKU, autocompleta los campos relacionados
@@ -90,8 +92,7 @@ const ReceiveInventory: React.FC = () => {
     });
     data.append('usuario', localStorage.getItem('username') || '');
 
-    await axios.post('/receive', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-    setShowForm(false);
+    await axios.post(`${API_URL}/receive`, data, { headers: { 'Content-Type': 'multipart/form-data' } });    setShowForm(false);
     setForm({
       sku: '',
       category: '',
@@ -108,7 +109,7 @@ const ReceiveInventory: React.FC = () => {
       fecha: new Date().toISOString().slice(0, 10),
       estatus: 'EN ESPERA'
     });
-    const res = await axios.get('/receive');
+    const res = await axios.get(`${API_URL}/receive`);
     setReceives(res.data as any[]);
   };
 
@@ -335,14 +336,14 @@ const ReceiveInventory: React.FC = () => {
               return;
             }
             await Promise.all(selectedIds.map(id =>
-              axios.delete(`/receive/${id}`, {
+              axios.delete(`${API_URL}/receive/${id}`, {
                 data: { usuario: localStorage.getItem('username') || '' }
               }as any)
             ));
             setDeletePassword('');
             setSelectedIds([]);
             setShowDeleteForm(false);
-            const res = await axios.get('/receive');
+            const res = await axios.get(`${API_URL}/receive`);
             setReceives(res.data as any[]);
           }}
           style={{ marginBottom: 24, background: '#fffbe6', padding: 24, borderRadius: 8 }}
@@ -382,12 +383,12 @@ const ReceiveInventory: React.FC = () => {
                 data.append(key, value as string);
               }
             });
-            await axios.put(`/receive/${editId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await axios.put(`${API_URL}/receive/${editId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
             setEditId(null);
             setEditForm(null);
             setEditPassword('');
             setShowEditForm(false);
-            const res = await axios.get('/receive');
+            const res = await axios.get(`${API_URL}/receive`);
             setReceives(res.data as any[]);
           }}
           style={{ marginBottom: 24, background: '#fffbe6', padding: 24, borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}
@@ -487,7 +488,7 @@ const ReceiveInventory: React.FC = () => {
             />
             {editForm?.invoice && typeof editForm.invoice === 'string' && (
               <a
-                href={`http://localhost:5050${editForm.invoice}`}
+                href={`${API_URL}${editForm.invoice}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ color: '#1976d2', textDecoration: 'underline', marginTop: 4 }}
@@ -659,7 +660,7 @@ const ReceiveInventory: React.FC = () => {
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
                 {r.invoice ? (
                   <a
-                    href={`http://localhost:5050${r.invoice}`}
+                    href={`${API_URL}${r.invoice}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}

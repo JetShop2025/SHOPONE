@@ -15,6 +15,8 @@ type PartType = {
   [key: string]: string; // <-- Esto permite indexar por string
 };
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const columns = [
   'SKU', 'BAR CODES', 'CATEGORY', 'PART', 'PROVIDER', 'BRAND', 'U/M', 'AREA',
   'RECEIVE', 'SALIDAS W.O.', 'ON HAND', 'IMAGEN', 'PRECIO'
@@ -45,7 +47,7 @@ const InventoryTable: React.FC = () => {
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5050/inventory')
+  axios.get(`${API_URL}/inventory`)
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));
   }, []);
@@ -87,14 +89,14 @@ const InventoryTable: React.FC = () => {
     }
     data.append('usuario', localStorage.getItem('username') || '');
 
-    await axios.post('http://localhost:5050/inventory', data, {
+    await axios.post(`${API_URL}/inventory`, data, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     setShowForm(false);
     setNewPart({ ...emptyPart });
     setCantidad(0);
     setImagenFile(null);
-    const res = await axios.get('http://localhost:5050/inventory');
+    const res = await axios.get(`${API_URL}/inventory`);
     setInventory(res.data as any[]);
   };
 
@@ -306,7 +308,7 @@ const InventoryTable: React.FC = () => {
               const toDelete = selectedIds.map(idx => inventory[idx]);
               for (const part of toDelete) {
                 await axios.request({
-                  url: `http://localhost:5050/inventory/${part.sku}`,
+                  url: `${API_URL}/inventory/${part.sku}`,
                   method: 'DELETE',
                   data: { usuario: localStorage.getItem('username') || '' }
                 });
@@ -423,15 +425,15 @@ const InventoryTable: React.FC = () => {
                   data.append(key, value ?? '');
                 });
                 data.append('imagen', editImagenFile);
-                data.append('usuario', localStorage.getItem('username') || ''); // <--- CORRECTO
-                await axios.put(`http://localhost:5050/inventory/${editPart.sku}`, data, {
-                  headers: { 'Content-Type': 'multipart/form-data' }
+                data.append('usuario', localStorage.getItem('username') || ''); 
+                await axios.put(`${API_URL}/inventory/${editPart.sku}`, data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
                 });
               } else {
-                await axios.put(`http://localhost:5050/inventory/${editPart.sku}`, {
+                await axios.put(`${API_URL}/inventory/${editPart.sku}`, {
                   ...editPart,
                   usuario: localStorage.getItem('username') || ''
-                });
+          });
               }
               setShowEditForm(false);
               setEditStep(null);
@@ -439,7 +441,7 @@ const InventoryTable: React.FC = () => {
               setEditPassword('');
               setEditPart({ ...emptyPart });
               setEditImagenFile(null);
-              const res = await axios.get('http://localhost:5050/inventory');
+              const res = await axios.get(`${API_URL}/inventory`);
               setInventory(res.data as any[]);
             }}
             style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}
@@ -460,7 +462,7 @@ const InventoryTable: React.FC = () => {
             <div style={{ flexBasis: '100%' }}>
               {editPart.imagen ? (
                 <a
-                  href={`http://localhost:5050${editPart.imagen}`}
+                  href={`${API_URL}${editPart.imagen}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', marginRight: 12 }}
@@ -553,7 +555,7 @@ const InventoryTable: React.FC = () => {
             setShowEditForm(false);
             setSelectedIds([]);
             setEditPassword('');
-            const res = await axios.get('http://localhost:5050/inventory');
+            const res = await axios.get(`${API_URL}/inventory`);
             setInventory(res.data as any[]);
           }} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             {/* Aquí los campos para editar, puedes rellenarlos con el estado de la parte seleccionada */}
@@ -661,7 +663,7 @@ const InventoryTable: React.FC = () => {
                 <td style={{ border: '1px solid #b0c4de', padding: 8 }}>
                   {item.imagen ? (
                     <a
-                      href={`http://localhost:5050${item.imagen}`}
+                      href={`${API_URL}${item.imagen}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer' }}
