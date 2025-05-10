@@ -8,6 +8,8 @@ import 'dayjs/locale/es';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
 ];
@@ -84,7 +86,8 @@ const WorkOrdersTable: React.FC = () => {
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5050/work-orders')
+    const API_URL = process.env.REACT_APP_API_URL || '';
+    axios.get(`${API_URL}/work-orders`)
       .then((response: any) => {
         setWorkOrders(response.data);
       })
@@ -94,7 +97,8 @@ const WorkOrdersTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    axios.get('http://localhost:5050/inventory')
+    const API_URL = process.env.REACT_APP_API_URL || '';
+    axios.get(`${API_URL}/inventory`)
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));
   }, []);
@@ -158,19 +162,19 @@ const WorkOrdersTable: React.FC = () => {
 
       // 2. Descuenta del inventario
       if (partesUsadas.length > 0) {
-        await axios.post('http://localhost:5050/inventory/deduct', {
+        await axios.post(`${API_URL}/inventory/deduct`, {
           parts: partesUsadas
         });
       }
 
       // 3. Guarda la orden como ya lo haces
-      const res = await axios.post('http://localhost:5050/work-orders', {
+      const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
         usuario: localStorage.getItem('username') || ''
       });
       const data = res.data as { pdfUrl?: string };
       if (data.pdfUrl) {
-        window.open(`http://localhost:5050${data.pdfUrl}`, '_blank');
+        window.open(`${API_URL}${data.pdfUrl}`, '_blank');
       }
       setShowForm(false);
       setNewWorkOrder({
@@ -190,14 +194,14 @@ const WorkOrdersTable: React.FC = () => {
         totalLabAndParts: '',
         status: '',
       });
-      const updated = await axios.get('http://localhost:5050/work-orders');
+      const updated = await axios.get(`${API_URL}/work-orders`);
       setWorkOrders(updated.data as any[]);
       for (const part of pendingParts) {
         // Si quieres marcar todas como usadas, o filtra según lo que el usuario seleccione
-        await axios.put(`/receive/${part.id}/use`);
+        await axios.put(`${API_URL}/receive/${part.id}/use`);
       }
       for (const partId of selectedPendingParts) {
-        await axios.put(`/receive/${partId}/use`);
+        await axios.put(`${API_URL}/receive/${partId}/use`);
       }
       setSelectedPendingParts([]); // Limpia la selección después de guardar
     } catch (err) {
@@ -212,7 +216,7 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
     try {
-      const res = await axios.get(`/receive?destino_trailer=${trailer}&estatus=PENDIENTE`);
+      const res = await axios.get(`${API_URL}/receive?destino_trailer=${trailer}&estatus=PENDIENTE`);
       setPendingParts(res.data as any[]); // <-- Corrige aquí
     } catch {
       setPendingParts([]);
@@ -535,7 +539,7 @@ const WorkOrdersTable: React.FC = () => {
                   if (window.confirm(`¿Seguro que deseas eliminar las órdenes con IDs: ${selectedIds.join(', ')}?`)) {
                     try {
                       await axios.request({
-                        url: 'http://localhost:5050/work-orders',
+                        url: `${API_URL}/work-orders`,
                         method: 'DELETE',
                         data: { ids: selectedIds, usuario: localStorage.getItem('username') || '' }
                       });
@@ -645,13 +649,13 @@ const WorkOrdersTable: React.FC = () => {
                   onPartChange={handlePartChange}
                   onSubmit={async () => {
                     try {
-                      await axios.put(`http://localhost:5050/work-orders/${editWorkOrder.id}`, {
+                      await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                         ...editWorkOrder,
                         date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
                         parts: editWorkOrder.parts,
                         usuario: localStorage.getItem('username') || ''
                       });
-                      const updated = await axios.get('http://localhost:5050/work-orders');
+                      const updated = await axios.get(`${API_URL}/work-orders`);
                       setWorkOrders(updated.data as any[]);
                       setShowEditForm(false);
                       setEditWorkOrder(null);
