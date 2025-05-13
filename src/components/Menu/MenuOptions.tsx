@@ -71,6 +71,24 @@ const MenuOptions: React.FC = () => {
       >
         Órdenes de Trabajo
       </button>
+      <button
+        style={{
+          width: '100%',
+          padding: '16px 0',
+          marginBottom: 18,
+          background: '#1976d2',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          fontWeight: 700,
+          fontSize: 18,
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+        }}
+        onClick={() => navigate('/trailas')}
+      >
+        Control de Trailas
+      </button>
       <div style={{
         display: 'flex',
         flexDirection: 'column',
