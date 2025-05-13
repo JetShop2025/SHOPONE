@@ -1,11 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
+
+// ¡Pon esto antes de cualquier app.use de rutas!
+app.use(cors({
+  origin: ['https://shopone-1.onrender.com', 'http://localhost:3000'],
+  credentials: true
+}));
+
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
 
 app.use('/trailas', trailasRoutes);
-app.use(cors());
 app.use('/pdfs', express.static(__dirname + '/pdfs'));
 // Rutas
 const inventoryRoutes = require('./routes/inventory');
