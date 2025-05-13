@@ -6,6 +6,7 @@ import WorkOrdersTable from './components/WorkOrders/WorkOrdersTable';
 import InventoryList from './components/Inventory/index';
 import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
+import TrailasTable from './components/Trailers/TrailasTable';  
 
 const App: React.FC = () => {
   return (
@@ -24,6 +25,7 @@ const App: React.FC = () => {
           <Route path="/work-orders" element={<PrivateRoute><WorkOrdersTable /></PrivateRoute>} />
           <Route path="/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
           <Route path="/audit" element={<PrivateRoute><AuditLogTable /></PrivateRoute>} />
+          <Route path="/trailas" element={<PrivateRoute><TrailasTable /></PrivateRoute>} />
         </Routes>
       </Router>
     </>

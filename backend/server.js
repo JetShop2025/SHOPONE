@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const auditRoutes = require('./routes/audit');
+const trailasRoutes = require('./routes/trailers');
 
+app.use('/trailas', trailasRoutes);
 app.use(cors());
 app.use('/pdfs', express.static(__dirname + '/pdfs'));
 // Rutas
