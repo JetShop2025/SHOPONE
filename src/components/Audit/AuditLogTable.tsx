@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 function renderDetalles(detalles: string) {
   let parsed: any;
   try {
@@ -78,7 +80,7 @@ const AuditLogTable: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
-    axios.get<any[]>('/work-orders/audit-log')
+  axios.get<any[]>(`${API_URL}/audit/audit-log`)
       .then(res => setLogs(res.data))
       .catch(() => setLogs([]));
   }, []);
