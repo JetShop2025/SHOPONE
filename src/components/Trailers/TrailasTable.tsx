@@ -3,6 +3,8 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
+const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE']; // Ajusta según tus clientes
+
 const modalStyle: React.CSSProperties = {
   position: 'fixed',
   top: 0, left: 0, right: 0, bottom: 0,
@@ -24,6 +26,7 @@ const modalContentStyle: React.CSSProperties = {
 
 const TrailasTable: React.FC = () => {
   const [trailas, setTrailas] = useState<any[]>([]);
+  const [expandedCliente, setExpandedCliente] = useState<string | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -50,75 +53,129 @@ const TrailasTable: React.FC = () => {
   }, [selected, showModal]);
 
   // Cambiar estatus con password
-  const handleChangeStatus = async (traila: any) => {
-    const nuevo = traila.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA';
+  const handleChangeStatus = async () => {
+    if (!selected) return;
+    const nuevo = selected.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA';
     const password = prompt('Ingresa el password para cambiar el estatus:');
     if (!password) return;
     try {
-      await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, { estatus: nuevo, password });
-      setTrailas(trailas.map(t => t.nombre === traila.nombre ? { ...t, estatus: nuevo } : t));
-      if (selected && selected.nombre === traila.nombre) setSelected({ ...traila, estatus: nuevo });
+      await axios.put(`${API_URL}/trailas/${selected.nombre}/estatus`, { estatus: nuevo, password });
+      setTrailas(trailas.map(t => t.nombre === selected.nombre ? { ...t, estatus: nuevo } : t));
+      setSelected({ ...selected, estatus: nuevo });
       alert('Estatus actualizado');
     } catch (err: any) {
       alert(err.response?.data || 'Error al actualizar estatus');
     }
   };
 
+  // Agrupa trailas por cliente (asume que el nombre inicia con el número de cliente)
+  const trailasPorCliente = (cliente: string) =>
+    trailas.filter(t => t.nombre.startsWith(cliente[0] + '-'));
+
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
       <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Control de Trailas</h1>
-      <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
-        <thead>
-          <tr style={{ background: '#1976d2', color: '#fff' }}>
-            <th>Nombre</th>
-            <th>Estatus</th>
-            <th>Cambiar Estatus</th>
-            <th>Ver Historial</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trailas.map(traila => (
-            <tr key={traila.nombre}>
-              <td>{traila.nombre}</td>
-              <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
-                {traila.estatus}
-              </td>
-              <td>
-                <button
-                  style={{
-                    background: traila.estatus === 'RENTADA' ? '#388e3c' : '#d32f2f',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '6px 18px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => handleChangeStatus(traila)}
-                >
-                  Marcar como {traila.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA'}
-                </button>
-              </td>
-              <td>
-                <button
-                  style={{
-                    background: '#1976d2',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '6px 18px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => { setSelected(traila); setShowModal(true); }}
-                >
-                  Ver Work Orders
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {clientes.map(cliente => (
+        <div key={cliente} style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              background: '#1976d2',
+              color: '#fff',
+              padding: '12px 20px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: 20
+            }}
+            onClick={() => setExpandedCliente(expandedCliente === cliente ? null : cliente)}
+          >
+            {cliente} {expandedCliente === cliente ? '▲' : '▼'}
+          </div>
+          {expandedCliente === cliente && (
+            <table style={{ width: '100%', background: '#fff', borderRadius: 12, marginTop: 8, marginBottom: 8 }}>
+              <thead>
+                <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
+                  <th>Nombre</th>
+                  <th>Estatus</th>
+                  <th>Seleccionar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trailasPorCliente(cliente).map(traila => (
+                  <tr key={traila.nombre} style={{ background: selected?.nombre === traila.nombre ? '#e3f2fd' : undefined }}>
+                    <td>{traila.nombre}</td>
+                    <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
+                      {traila.estatus}
+                    </td>
+                    <td>
+                      <button
+                        style={{
+                          background: '#1976d2',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          padding: '6px 18px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setSelected(traila)}
+                      >
+                        Seleccionar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ))}
+
+      {selected && (
+        <div style={{ marginTop: 24, background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
+          <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22 }}>
+            Tráila seleccionada: {selected.nombre}
+          </h2>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Estatus actual:</strong>{' '}
+            <span style={{ color: selected.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
+              {selected.estatus}
+            </span>
+          </div>
+          <button
+            onClick={handleChangeStatus}
+            style={{
+              background: selected.estatus === 'RENTADA' ? '#388e3c' : '#d32f2f',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '10px 28px',
+              fontWeight: 700,
+              fontSize: 18,
+              marginBottom: 16,
+              cursor: 'pointer'
+            }}
+          >
+            Marcar como {selected.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA'}
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              background: '#1976d2',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '10px 28px',
+              fontWeight: 700,
+              fontSize: 18,
+              marginLeft: 16,
+              cursor: 'pointer'
+            }}
+          >
+            Ver Historial de Work Orders
+          </button>
+        </div>
+      )}
 
       {showModal && selected && (
         <div style={modalStyle} onClick={() => setShowModal(false)}>
