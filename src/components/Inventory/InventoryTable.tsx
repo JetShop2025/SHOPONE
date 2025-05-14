@@ -47,9 +47,15 @@ const InventoryTable: React.FC = () => {
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
 
   useEffect(() => {
-  axios.get(`${API_URL}/inventory`)
-      .then(res => setInventory(res.data as any[]))
-      .catch(() => setInventory([]));
+    let isMounted = true;
+    const fetchData = () => {
+      axios.get(`${API_URL}/inventory`)
+        .then(res => { if (isMounted) setInventory(res.data as any[]); })
+        .catch(() => { if (isMounted) setInventory([]); });
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 4000); // cada 4 segundos
+    return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
   // Actualiza barCodes automáticamente cuando cambia el SKU

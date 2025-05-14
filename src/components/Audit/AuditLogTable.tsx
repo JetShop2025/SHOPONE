@@ -80,9 +80,15 @@ const AuditLogTable: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
-  axios.get<any[]>(`${API_URL}/audit/audit-log`)
-      .then(res => setLogs(res.data))
-      .catch(() => setLogs([]));
+    let isMounted = true;
+    const fetchData = () => {
+      axios.get<any[]>(`${API_URL}/audit/audit-log`)
+        .then(res => { if (isMounted) setLogs(res.data); })
+        .catch(() => { if (isMounted) setLogs([]); });
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 4000); // cada 4 segundos
+    return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
   return (
