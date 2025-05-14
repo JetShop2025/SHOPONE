@@ -40,9 +40,15 @@ const TrailasTable: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    axios.get<any[]>(`${API_URL}/trailas`)
-      .then(res => setTrailas(res.data))
-      .catch(() => setTrailas([]));
+    let isMounted = true;
+    const fetchData = () => {
+      axios.get<any[]>(`${API_URL}/trailas`)
+        .then(res => { if (isMounted) setTrailas(res.data); })
+        .catch(() => { if (isMounted) setTrailas([]); });
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 4000); // cada 4 segundos
+    return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -105,31 +111,21 @@ const TrailasTable: React.FC = () => {
                 <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
                   <th>Nombre</th>
                   <th>Estatus</th>
-                  <th>Seleccionar</th>
                 </tr>
               </thead>
               <tbody>
                 {trailasPorCliente(cliente).map(traila => (
-                  <tr key={traila.nombre} style={{ background: selected?.nombre === traila.nombre ? '#e3f2fd' : undefined }}>
+                  <tr
+                    key={traila.nombre}
+                    style={{
+                      background: selected?.nombre === traila.nombre ? '#e3f2fd' : undefined,
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setSelected(traila)}
+                  >
                     <td>{traila.nombre}</td>
                     <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
                       {traila.estatus}
-                    </td>
-                    <td>
-                      <button
-                        style={{
-                          background: '#1976d2',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 6,
-                          padding: '6px 18px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setSelected(traila)}
-                      >
-                        Seleccionar
-                      </button>
                     </td>
                   </tr>
                 ))}
