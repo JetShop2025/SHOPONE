@@ -24,6 +24,14 @@ const modalContentStyle: React.CSSProperties = {
   boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
 };
 
+const clientePrefijos: Record<string, string> = {
+  GALGRE: '1-',
+  JETGRE: '2-',
+  PRIGRE: '3-',
+  RAN100: '4-',
+  GABGRE: '5-'
+};
+
 const TrailasTable: React.FC = () => {
   const [trailas, setTrailas] = useState<any[]>([]);
   const [expandedCliente, setExpandedCliente] = useState<string | null>(null);
@@ -70,7 +78,7 @@ const TrailasTable: React.FC = () => {
 
   // Agrupa trailas por cliente (asume que el nombre inicia con el número de cliente)
   const trailasPorCliente = (cliente: string) =>
-    trailas.filter(t => t.nombre.startsWith(cliente[0] + '-'));
+    trailas.filter(t => t.nombre.startsWith(clientePrefijos[cliente]));
 
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
