@@ -94,6 +94,27 @@ const TrailasTable: React.FC = () => {
           }}>
             {estatus || 'No registrado'}
           </span>
+          <button
+            style={{
+              marginLeft: 16,
+              background: estatus === 'RENTADA' ? '#388e3c' : '#d32f2f',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '6px 18px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+            onClick={async () => {
+              const nuevo = estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA';
+              await axios.put(`${API_URL}/trailas/${trailer}/estatus`, { estatus: nuevo });
+              setEstatus(nuevo);
+              // Opcional: actualiza la lista de trailas
+              setTrailas(trailas.map(t => t.nombre === trailer ? { ...t, estatus: nuevo } : t));
+            }}
+          >
+            Marcar como {estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA'}
+          </button>
         </div>
       )}
       {trailer && (
@@ -109,9 +130,8 @@ const TrailasTable: React.FC = () => {
                 <tr style={{ background: '#1976d2', color: '#fff' }}>
                   <th>ID</th>
                   <th>Fecha</th>
-                  <th>Mecánico</th>
-                  <th>Descripción</th>
                   <th>Estatus</th>
+                  <th>PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -119,9 +139,17 @@ const TrailasTable: React.FC = () => {
                   <tr key={wo.id}>
                     <td>{wo.id}</td>
                     <td>{wo.date ? wo.date.slice(0, 10) : ''}</td>
-                    <td>{wo.mechanic}</td>
-                    <td>{wo.description}</td>
                     <td>{wo.status}</td>
+                    <td>
+                      <a
+                        href={`${API_URL}/pdfs/${wo.date ? wo.date.slice(5, 7) + '-' + wo.date.slice(8, 10) + '-' + wo.date.slice(0, 4) : ''}_${wo.id}.pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
+                      >
+                        Ver PDF
+                      </a>
+                    </td>
                   </tr>
                 ))}
               </tbody>
