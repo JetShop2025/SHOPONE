@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import logo from '../../assets/logo.png'; // Ajusta la ruta si tu logo está en otro lugar
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -13,32 +16,23 @@ const LoginForm: React.FC = () => {
     localStorage.removeItem('username');
   }, []);
 
-  const handleLogin = async () => {
-    setError('');
-    if (!username || !password) {
-      setError('Por favor ingresa usuario y contraseña.');
-      return;
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+  try {
+    const res = await axios.post<{ success: boolean }>(`${API_URL}/login`, { username, password });
+    if (res.data.success) {
+      localStorage.setItem('username', username);
+      navigate('/menu', { replace: true });
+    } else {
+      setError('Usuario o contraseña incorrectos');
     }
-    try {
-      const API_URL = process.env.REACT_APP_API_URL || '';
-      const res = await axios.post<{ success: boolean }>(
-        `${API_URL}/login`,
-        { username, password }
-      );
-      if (res.data.success) {
-        localStorage.setItem('username', username);
-        navigate('/menu', { replace: true });
-      } else {
-        setError('Credenciales incorrectas');
-      }
-    } catch (err) {
-      setError('Error de conexión o credenciales incorrectas');
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleLogin();
-  };
+  } catch {
+    setError('Error de conexión');
+  }
+  setLoading(false);
+};
 
   return (
     <div
@@ -84,21 +78,19 @@ const LoginForm: React.FC = () => {
         }}>
           Iniciar Sesión
         </h1>
-        <div
-          style={{
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-            alignItems: 'center',
-          }}
-        >
+        <form onSubmit={handleSubmit} style={{
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          alignItems: 'center',
+        }}>
           <input
             type="text"
             placeholder="Usuario"
             value={username}
             onChange={e => setUsername(e.target.value)}
-            onKeyDown={handleKeyDown}
+            required
             style={{
               width: '100%',
               padding: '12px 18px',
@@ -117,7 +109,7 @@ const LoginForm: React.FC = () => {
             placeholder="Contraseña"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            onKeyDown={handleKeyDown}
+            required
             style={{
               width: '100%',
               padding: '12px 18px',
@@ -132,7 +124,8 @@ const LoginForm: React.FC = () => {
             }}
           />
           <button
-            onClick={handleLogin}
+            type="submit"
+            disabled={loading}
             style={{
               width: '100%',
               padding: '14px 0',
@@ -142,18 +135,39 @@ const LoginForm: React.FC = () => {
               borderRadius: 8,
               fontWeight: 700,
               fontSize: 18,
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
             }}
           >
-            Entrar
+            {loading ? 'Cargando...' : 'Entrar'}
           </button>
-        </div>
-        {error && (
-          <div style={{ color: '#d32f2f', marginTop: 18, fontWeight: 600, fontSize: 15, textAlign: 'center' }}>
-            {error}
-          </div>
-        )}
+          {loading && (
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <span className="loader" style={{
+                display: 'inline-block',
+                width: 32,
+                height: 32,
+                border: '4px solid #1976d2',
+                borderTop: '4px solid #fff',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              <style>
+                {`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg);}
+                    100% { transform: rotate(360deg);}
+                  }
+                `}
+              </style>
+            </div>
+          )}
+          {error && (
+            <div style={{ color: '#d32f2f', marginTop: 18, fontWeight: 600, fontSize: 15, textAlign: 'center' }}>
+              {error}
+            </div>
+          )}
+        </form>
       </div>
     </div>
   );
