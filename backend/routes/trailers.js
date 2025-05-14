@@ -21,17 +21,40 @@ router.get('/:nombre/work-orders', (req, res) => {
 });
 
 // Actualizar estatus de una traila
-router.put('/:nombre/estatus', (req, res) => {
+router.put('/:nombre/estatus', async (req, res) => {
   const { nombre } = req.params;
-  const { estatus, password } = req.body;
+  const { estatus, password, cliente, fechaRenta, fechaEntrega } = req.body;
+
   // Cambia '6214' por tu password real o valida contra usuarios
   if (password !== '6214') {
     return res.status(403).send('Password incorrecto');
   }
-  db.query('UPDATE trailers SET estatus = ? WHERE nombre = ?', [estatus, nombre], err => {
-    if (err) return res.status(500).send('Error al actualizar estatus');
-    res.sendStatus(200);
-  });
+
+  // 1. Obtén los datos antes del cambio
+  const [antes] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
+
+  // 2. Realiza el update
+  await db.query(
+    'UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?',
+    [estatus, cliente, fechaRenta, fechaEntrega, nombre]
+  );
+
+  // 3. Obtén los datos después del cambio
+  const [despues] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
+
+  // 4. Inserta en la auditoría
+  await db.query(
+    'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
+    [
+      req.user?.username || 'sistema', // o como obtengas el usuario
+      'MODIFICAR',
+      'trailers',
+      nombre,
+      JSON.stringify({ antes, despues }),
+    ]
+  );
+
+  res.json({ ok: true });
 });
 
 module.exports = router;
