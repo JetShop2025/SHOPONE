@@ -107,9 +107,11 @@ const TrailasTable: React.FC = () => {
             }}
             onClick={async () => {
               const nuevo = estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA';
-              await axios.put(`${API_URL}/trailas/${trailer}/estatus`, { estatus: nuevo });
+              const password = prompt('Ingresa tu contraseña para confirmar el cambio de estatus:');
+              if (!password) return;
+              // Opcional: puedes validar el password con el backend antes de permitir el cambio
+              await axios.put(`${API_URL}/trailas/${trailer}/estatus`, { estatus: nuevo, password });
               setEstatus(nuevo);
-              // Opcional: actualiza la lista de trailas
               setTrailas(trailas.map(t => t.nombre === trailer ? { ...t, estatus: nuevo } : t));
             }}
           >

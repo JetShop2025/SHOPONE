@@ -23,7 +23,11 @@ router.get('/:nombre/work-orders', (req, res) => {
 // Actualizar estatus de una traila
 router.put('/:nombre/estatus', (req, res) => {
   const { nombre } = req.params;
-  const { estatus } = req.body;
+  const { estatus, password } = req.body;
+  // Cambia '6214' por tu password real o valida contra usuarios
+  if (password !== '6214') {
+    return res.status(403).send('Password incorrecto');
+  }
   db.query('UPDATE trailers SET estatus = ? WHERE nombre = ?', [estatus, nombre], err => {
     if (err) return res.status(500).send('Error al actualizar estatus');
     res.sendStatus(200);
