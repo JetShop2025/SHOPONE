@@ -89,6 +89,55 @@ const TrailasTable: React.FC = () => {
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
       <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Control de Trailas</h1>
+      
+      {/* Panel de traila seleccionada en la parte superior */}
+      {selected && (
+        <div style={{ marginBottom: 24, background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
+          <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22 }}>
+            Tráila seleccionada: {selected.nombre}
+          </h2>
+          <div style={{ marginBottom: 16 }}>
+            <strong>Estatus actual:</strong>{' '}
+            <span style={{ color: selected.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
+              {selected.estatus}
+            </span>
+          </div>
+          <button
+            onClick={handleChangeStatus}
+            style={{
+              background: selected.estatus === 'RENTADA' ? '#388e3c' : '#d32f2f',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '10px 28px',
+              fontWeight: 700,
+              fontSize: 18,
+              marginBottom: 16,
+              cursor: 'pointer'
+            }}
+          >
+            Marcar como {selected.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA'}
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              background: '#1976d2',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '10px 28px',
+              fontWeight: 700,
+              fontSize: 18,
+              marginLeft: 16,
+              cursor: 'pointer'
+            }}
+          >
+            Ver Historial de Work Orders
+          </button>
+        </div>
+      )}
+
+      {/* Tablas agrupadas por cliente */}
       {clientes.map(cliente => (
         <div key={cliente} style={{ marginBottom: 16 }}>
           <div
@@ -135,52 +184,7 @@ const TrailasTable: React.FC = () => {
         </div>
       ))}
 
-      {selected && (
-        <div style={{ marginTop: 24, background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
-          <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22 }}>
-            Tráila seleccionada: {selected.nombre}
-          </h2>
-          <div style={{ marginBottom: 16 }}>
-            <strong>Estatus actual:</strong>{' '}
-            <span style={{ color: selected.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
-              {selected.estatus}
-            </span>
-          </div>
-          <button
-            onClick={handleChangeStatus}
-            style={{
-              background: selected.estatus === 'RENTADA' ? '#388e3c' : '#d32f2f',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '10px 28px',
-              fontWeight: 700,
-              fontSize: 18,
-              marginBottom: 16,
-              cursor: 'pointer'
-            }}
-          >
-            Marcar como {selected.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA'}
-          </button>
-          <button
-            onClick={() => setShowModal(true)}
-            style={{
-              background: '#1976d2',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '10px 28px',
-              fontWeight: 700,
-              fontSize: 18,
-              marginLeft: 16,
-              cursor: 'pointer'
-            }}
-          >
-            Ver Historial de Work Orders
-          </button>
-        </div>
-      )}
-
+      {/* Modal flotante para historial de work orders */}
       {showModal && selected && (
         <div style={modalStyle} onClick={() => setShowModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
