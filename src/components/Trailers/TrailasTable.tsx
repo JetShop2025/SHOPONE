@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
-
-const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE']; // Ajusta según tus clientes
-
+const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
 const modalStyle: React.CSSProperties = {
   position: 'fixed',
   top: 0, left: 0, right: 0, bottom: 0,
@@ -18,12 +17,12 @@ const modalContentStyle: React.CSSProperties = {
   background: '#fff',
   borderRadius: 16,
   padding: 32,
-  minWidth: 500,
+  minWidth: 400,
+  maxWidth: 420,
   maxHeight: '80vh',
   overflowY: 'auto',
   boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
 };
-
 const clientePrefijos: Record<string, string> = {
   GALGRE: '1-',
   JETGRE: '2-',
@@ -39,6 +38,13 @@ const TrailasTable: React.FC = () => {
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
 
+  // Para el modal de captura de renta
+  const [showRentModal, setShowRentModal] = useState(false);
+  const [rentCliente, setRentCliente] = useState('');
+  const [rentFechaRenta, setRentFechaRenta] = useState(dayjs().format('YYYY-MM-DD'));
+  const rentFechaEntrega = dayjs(rentFechaRenta).add(1, 'month').format('YYYY-MM-DD');
+  const [rentPassword, setRentPassword] = useState('');
+
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
@@ -47,7 +53,7 @@ const TrailasTable: React.FC = () => {
         .catch(() => { if (isMounted) setTrailas([]); });
     };
     fetchData();
-    const interval = setInterval(fetchData, 4000); // cada 4 segundos
+    const interval = setInterval(fetchData, 4000);
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
@@ -66,23 +72,67 @@ const TrailasTable: React.FC = () => {
     }
   }, [selected, showModal]);
 
-  // Cambiar estatus con password
+  // Cambiar estatus con modal elegante
   const handleChangeStatus = async () => {
     if (!selected) return;
-    const nuevo = selected.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA';
-    const password = prompt('Ingresa el password para cambiar el estatus:');
-    if (!password) return;
+    if (selected.estatus === 'RENTADA') {
+      // Cambiar a DISPONIBLE (solo pide password)
+      const password = prompt('Ingresa el password para cambiar el estatus:');
+      if (!password) return;
+      try {
+        await axios.put(`${API_URL}/trailas/${selected.nombre}/estatus`, {
+          estatus: 'DISPONIBLE',
+          password,
+          cliente: '',
+          fechaRenta: '',
+          fechaEntrega: ''
+        });
+        setTrailas(trailas.map(t =>
+          t.nombre === selected.nombre
+            ? { ...t, estatus: 'DISPONIBLE', cliente: '', fechaRenta: '', fechaEntrega: '' }
+            : t
+        ));
+        setSelected({ ...selected, estatus: 'DISPONIBLE', cliente: '', fechaRenta: '', fechaEntrega: '' });
+        alert('Estatus actualizado');
+      } catch (err: any) {
+        alert(err.response?.data || 'Error al actualizar estatus');
+      }
+    } else {
+      // Cambiar a RENTADA: abre modal elegante
+      setRentCliente(selected.cliente || '');
+      setRentFechaRenta(dayjs().format('YYYY-MM-DD'));
+      setRentPassword('');
+      setShowRentModal(true);
+    }
+  };
+
+  // Confirmar renta desde el modal elegante
+  const handleConfirmRent = async () => {
+    if (!rentPassword) {
+      alert('Debes ingresar el password');
+      return;
+    }
     try {
-      await axios.put(`${API_URL}/trailas/${selected.nombre}/estatus`, { estatus: nuevo, password });
-      setTrailas(trailas.map(t => t.nombre === selected.nombre ? { ...t, estatus: nuevo } : t));
-      setSelected({ ...selected, estatus: nuevo });
+      await axios.put(`${API_URL}/trailas/${selected.nombre}/estatus`, {
+        estatus: 'RENTADA',
+        password: rentPassword,
+        cliente: rentCliente,
+        fechaRenta: rentFechaRenta,
+        fechaEntrega: rentFechaEntrega
+      });
+      setTrailas(trailas.map(t =>
+        t.nombre === selected.nombre
+          ? { ...t, estatus: 'RENTADA', cliente: rentCliente, fechaRenta: rentFechaRenta, fechaEntrega: rentFechaEntrega }
+          : t
+      ));
+      setSelected({ ...selected, estatus: 'RENTADA', cliente: rentCliente, fechaRenta: rentFechaRenta, fechaEntrega: rentFechaEntrega });
+      setShowRentModal(false);
       alert('Estatus actualizado');
     } catch (err: any) {
       alert(err.response?.data || 'Error al actualizar estatus');
     }
   };
 
-  // Agrupa trailas por cliente (asume que el nombre inicia con el número de cliente)
   const trailasPorCliente = (cliente: string) =>
     trailas.filter(t => t.nombre.startsWith(clientePrefijos[cliente]));
 
@@ -137,6 +187,84 @@ const TrailasTable: React.FC = () => {
         </div>
       )}
 
+      {/* Modal elegante para capturar datos de renta */}
+      {showRentModal && (
+        <div style={modalStyle} onClick={() => setShowRentModal(false)}>
+          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 18 }}>Rentar Tráila</h2>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontWeight: 600 }}>Cliente:</label>
+              <input
+                type="text"
+                value={rentCliente}
+                onChange={e => setRentCliente(e.target.value)}
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
+                autoFocus
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontWeight: 600 }}>Fecha de inicio de renta:</label>
+              <input
+                type="date"
+                value={rentFechaRenta}
+                onChange={e => setRentFechaRenta(e.target.value)}
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontWeight: 600 }}>Fecha esperada de entrega:</label>
+              <input
+                type="date"
+                value={rentFechaEntrega}
+                disabled
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4, background: '#eee' }}
+              />
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontWeight: 600 }}>Password:</label>
+              <input
+                type="password"
+                value={rentPassword}
+                onChange={e => setRentPassword(e.target.value)}
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button
+                onClick={handleConfirmRent}
+                style={{
+                  background: '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '10px 28px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: 'pointer'
+                }}
+              >
+                Confirmar Renta
+              </button>
+              <button
+                onClick={() => setShowRentModal(false)}
+                style={{
+                  background: '#fff',
+                  color: '#1976d2',
+                  border: '1.5px solid #1976d2',
+                  borderRadius: 6,
+                  padding: '10px 28px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tablas agrupadas por cliente */}
       {clientes.map(cliente => (
         <div key={cliente} style={{ marginBottom: 16 }}>
@@ -160,24 +288,42 @@ const TrailasTable: React.FC = () => {
                 <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
                   <th>Nombre</th>
                   <th>Estatus</th>
+                  <th>Cliente</th>
+                  <th>Fecha de Renta</th>
+                  <th>Fecha de Entrega</th>
                 </tr>
               </thead>
               <tbody>
-                {trailasPorCliente(cliente).map(traila => (
-                  <tr
-                    key={traila.nombre}
-                    style={{
-                      background: selected?.nombre === traila.nombre ? '#e3f2fd' : undefined,
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => setSelected(traila)}
-                  >
-                    <td>{traila.nombre}</td>
-                    <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
-                      {traila.estatus}
-                    </td>
-                  </tr>
-                ))}
+                {trailasPorCliente(cliente).map(traila => {
+                  // Cálculo de colores para vencidas y por vencer
+                  let rowStyle: React.CSSProperties = {};
+                  if (traila.fechaEntrega) {
+                    const hoy = dayjs();
+                    const entrega = dayjs(traila.fechaEntrega);
+                    const diff = entrega.diff(hoy, 'day');
+                    if (diff < 0) rowStyle.background = '#ffcccc'; // Vencida (rojo claro)
+                    else if (diff <= 3) rowStyle.background = '#fff3cd'; // Por vencer (amarillo claro)
+                  }
+                  return (
+                    <tr
+                      key={traila.nombre}
+                      style={{
+                        ...rowStyle,
+                        background: selected?.nombre === traila.nombre ? '#e3f2fd' : rowStyle.background,
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setSelected(traila)}
+                    >
+                      <td>{traila.nombre}</td>
+                      <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
+                        {traila.estatus}
+                      </td>
+                      <td>{traila.cliente || '-'}</td>
+                      <td>{traila.fechaRenta ? traila.fechaRenta.slice(0, 10) : '-'}</td>
+                      <td>{traila.fechaEntrega ? traila.fechaEntrega.slice(0, 10) : '-'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
