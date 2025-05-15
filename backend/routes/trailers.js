@@ -58,15 +58,33 @@ router.put('/:nombre/estatus', async (req, res) => {
 
   // 3. Guarda en historial de rentas si cambia a RENTADA o DISPONIBLE
   if (estatus === 'RENTADA' || estatus === 'DISPONIBLE') {
-    await db.query(
+    const [rentalResult] = await db.query(
       'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, fecha_entrega, usuario, accion) VALUES (?, ?, ?, ?, ?, ?)',
       [
         nombre,
         cliente,
         fechaRenta,
         fechaEntrega,
-        req.user?.username || 'sistema', // o como obtengas el usuario
+        req.user?.username || 'sistema',
         estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
+      ]
+    );
+
+    // AUDITORÍA DE RENTAS
+    await db.query(
+      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
+      [
+        req.user?.username || 'sistema',
+        estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER',
+        'trailer_rentals',
+        rentalResult.insertId, // ID del registro de renta
+        JSON.stringify({
+          trailer_nombre: nombre,
+          cliente,
+          fecha_renta: fechaRenta,
+          fecha_entrega: fechaEntrega,
+          accion: estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
+        })
       ]
     );
   }

@@ -193,7 +193,20 @@ const TrailasTable: React.FC = () => {
           >
             Ver Historial de Work Orders
           </button>
-          <button onClick={() => fetchRentasHistorial(selected.nombre)}>
+          <button
+            onClick={() => fetchRentasHistorial(selected.nombre)}
+            style={{
+              background: '#1976d2',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '10px 28px',
+              fontWeight: 700,
+              fontSize: 18,
+              marginLeft: 16,
+              cursor: 'pointer'
+            }}
+          >
             Ver Historial de Rentas
           </button>
         </div>
@@ -410,8 +423,8 @@ const TrailasTable: React.FC = () => {
                   {rentasHistorial.map((renta, index) => (
                     <tr key={index}>
                       <td>{renta.cliente}</td>
-                      <td>{renta.fechaRenta}</td>
-                      <td>{renta.fechaEntrega}</td>
+                      <td>{renta.fecha_renta}</td>
+                      <td>{renta.fecha_entrega}</td>
                     </tr>
                   ))}
                 </tbody>
