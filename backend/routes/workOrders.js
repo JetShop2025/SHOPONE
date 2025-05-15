@@ -88,27 +88,31 @@ router.post('/', async (req, res) => {
 
     doc.pipe(stream);
 
+    // --- LOGO EN LA PARTE SUPERIOR DERECHA ---
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, doc.page.width / 2 - 60, 30, { width: 120 });
-      doc.moveDown(3);
+      doc.image(logoPath, doc.page.width - 140, 30, { width: 110 }); // Derecha
     }
+    doc.fontSize(22).font('Helvetica-Bold').text('Orden de Trabajo', 40, 40, { align: 'left' });
+    doc.moveDown(2);
 
-    doc.fontSize(20).text('Orden de Trabajo', { align: 'center' });
-    doc.moveDown();
+    // --- DATOS PRINCIPALES ---
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`ID: ${result.insertId}`, 40, 100);
+    doc.text(`Fecha: ${formattedDate}`, 200, 100);
+    doc.text(`Cliente: ${billToCo}`, 40, 120);
+    doc.text(`Trailer: ${trailer}`, 200, 120);
+    doc.text(`Mecánico: ${mechanic}`, 40, 140);
+    doc.text(`Estatus: ${status}`, 200, 140);
 
-    doc.fontSize(12);
-    doc.text(`ID: ${result.insertId}`, { continued: true }).text(`   Fecha: ${formattedDate}`);
-    doc.text(`Cliente: ${billToCo}`);
-    doc.text(`Trailer: ${trailer}`);
-    doc.text(`Mecánico: ${mechanic}`);
-    doc.text(`Estatus: ${status}`);
-    doc.moveDown();
+    doc.moveDown(2);
 
-    doc.font('Helvetica-Bold').text('Descripción:', { underline: true });
-    doc.font('Helvetica').text(description || 'Sin descripción');
-    doc.moveDown();
+    // --- DESCRIPCIÓN ---
+    doc.font('Helvetica-Bold').text('Descripción:', 40, 170, { underline: true });
+    doc.font('Helvetica').text(description || 'Sin descripción', { width: 500, align: 'left' });
+    doc.moveDown(1.5);
 
+    // --- PARTES ---
     doc.font('Helvetica-Bold').text('Partes:', { underline: true });
     doc.moveDown(0.5);
 
@@ -116,18 +120,28 @@ router.post('/', async (req, res) => {
     if (partsArray.length === 0) {
       doc.font('Helvetica').text('Sin partes registradas');
     } else {
+      // Encabezados de tabla
+      doc.font('Helvetica-Bold').text('No.', 40, doc.y, { continued: true });
+      doc.text('Parte', 70, doc.y, { continued: true });
+      doc.text('Cantidad', 250, doc.y, { continued: true });
+      doc.text('Costo', 350, doc.y);
+      doc.moveDown(0.5);
+
+      // Filas de partes
       partsArray.forEach((p, i) => {
-        doc.font('Helvetica').text(
-          `${i + 1}. Parte: ${p.part || ''} | Cantidad: ${p.qty || ''} | Costo: ${p.cost || ''}`
-        );
+        doc.font('Helvetica').text(`${i + 1}`, 40, doc.y, { continued: true });
+        doc.text(`${p.part || ''}`, 70, doc.y, { continued: true });
+        doc.text(`${p.qty || ''}`, 250, doc.y, { continued: true });
+        doc.text(`${p.cost || ''}`, 350, doc.y);
       });
     }
-    doc.moveDown();
+    doc.moveDown(2);
 
-    doc.font('Helvetica-Bold').text(`Total HRS: `, { continued: true });
-    doc.font('Helvetica').text(`${totalHrs || ''}`);
-    doc.font('Helvetica-Bold').text(`Total LAB & PRTS: `, { continued: true });
-    doc.font('Helvetica').text(`${totalLabAndParts || ''}`);
+    // --- TOTALES ---
+    doc.font('Helvetica-Bold').text(`Total HRS: `, 40, doc.y, { continued: true });
+    doc.font('Helvetica').text(`${totalHrs || ''}`, doc.x, doc.y, { continued: true });
+    doc.font('Helvetica-Bold').text(`   Total LAB & PRTS: `, doc.x + 20, doc.y, { continued: true });
+    doc.font('Helvetica').text(`${totalLabAndParts || ''}`, doc.x, doc.y);
 
     doc.end();
     // --- FIN DEL BLOQUE COMPLETO DE GENERACIÓN DEL PDF ---
