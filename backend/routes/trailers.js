@@ -24,6 +24,19 @@ router.get('/:nombre/work-orders', async (req, res) => {
   }
 });
 
+router.get('/:nombre/historial-rentas', async (req, res) => {
+  const { nombre } = req.params;
+  try {
+    const [results] = await db.query(
+      'SELECT * FROM trailer_rentals WHERE trailer_nombre = ? ORDER BY fecha_registro DESC',
+      [nombre]
+    );
+    res.json(results);
+  } catch (err) {
+    res.status(500).send('Error al obtener el historial');
+  }
+});
+
 // Actualizar estatus de una traila
 router.put('/:nombre/estatus', async (req, res) => {
   const { nombre } = req.params;
@@ -42,6 +55,21 @@ router.put('/:nombre/estatus', async (req, res) => {
     'UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?',
     [estatus, cliente, fechaRenta, fechaEntrega, nombre]
   );
+
+  // 3. Guarda en historial de rentas si cambia a RENTADA o DISPONIBLE
+  if (estatus === 'RENTADA' || estatus === 'DISPONIBLE') {
+    await db.query(
+      'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, fecha_entrega, usuario, accion) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        nombre,
+        cliente,
+        fechaRenta,
+        fechaEntrega,
+        req.user?.username || 'sistema', // o como obtengas el usuario
+        estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
+      ]
+    );
+  }
 
   // 3. Obtén los datos después del cambio
   const [despues] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);

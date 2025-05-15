@@ -45,6 +45,9 @@ const TrailasTable: React.FC = () => {
   const rentFechaEntrega = dayjs(rentFechaRenta).add(1, 'month').format('YYYY-MM-DD');
   const [rentPassword, setRentPassword] = useState('');
 
+  const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
+  const [showRentasModal, setShowRentasModal] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
@@ -133,6 +136,12 @@ const TrailasTable: React.FC = () => {
     }
   };
 
+  const fetchRentasHistorial = async (nombre: string) => {
+    const res = await axios.get(`${API_URL}/trailas/${nombre}/historial-rentas`);
+    setRentasHistorial(res.data as any[]);
+    setShowRentasModal(true);
+  };
+
   const trailasPorCliente = (cliente: string) =>
     trailas.filter(t => t.nombre.startsWith(clientePrefijos[cliente]));
 
@@ -183,6 +192,9 @@ const TrailasTable: React.FC = () => {
             }}
           >
             Ver Historial de Work Orders
+          </button>
+          <button onClick={() => fetchRentasHistorial(selected.nombre)}>
+            Ver Historial de Rentas
           </button>
         </div>
       )}
@@ -366,6 +378,40 @@ const TrailasTable: React.FC = () => {
                           Ver PDF
                         </a>
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal flotante para historial de rentas */}
+      {showRentasModal && (
+        <div style={modalStyle} onClick={() => setShowRentasModal(false)}>
+          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+            <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, marginBottom: 10 }}>
+              Historial de Rentas para {selected?.nombre}
+            </h2>
+            <button onClick={() => setShowRentasModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Cerrar</button>
+            {rentasHistorial.length === 0 ? (
+              <div style={{ color: '#888', fontStyle: 'italic' }}>No hay historial de rentas para esta traila.</div>
+            ) : (
+              <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
+                <thead>
+                  <tr style={{ background: '#1976d2', color: '#fff' }}>
+                    <th>Cliente</th>
+                    <th>Fecha de Renta</th>
+                    <th>Fecha de Entrega</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rentasHistorial.map((renta, index) => (
+                    <tr key={index}>
+                      <td>{renta.cliente}</td>
+                      <td>{renta.fechaRenta}</td>
+                      <td>{renta.fechaEntrega}</td>
                     </tr>
                   ))}
                 </tbody>
