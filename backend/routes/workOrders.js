@@ -88,9 +88,49 @@ router.post('/', async (req, res) => {
 
     doc.pipe(stream);
 
-    // ... (todo el código de generación de PDF igual que tienes) ...
+    const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, doc.page.width / 2 - 60, 30, { width: 120 });
+      doc.moveDown(3);
+    }
+
+    doc.fontSize(20).text('Orden de Trabajo', { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(12);
+    doc.text(`ID: ${result.insertId}`, { continued: true }).text(`   Fecha: ${formattedDate}`);
+    doc.text(`Cliente: ${billToCo}`);
+    doc.text(`Trailer: ${trailer}`);
+    doc.text(`Mecánico: ${mechanic}`);
+    doc.text(`Estatus: ${status}`);
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text('Descripción:', { underline: true });
+    doc.font('Helvetica').text(description || 'Sin descripción');
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text('Partes:', { underline: true });
+    doc.moveDown(0.5);
+
+    const partsArray = Array.isArray(parts) ? parts : [];
+    if (partsArray.length === 0) {
+      doc.font('Helvetica').text('Sin partes registradas');
+    } else {
+      partsArray.forEach((p, i) => {
+        doc.font('Helvetica').text(
+          `${i + 1}. Parte: ${p.part || ''} | Cantidad: ${p.qty || ''} | Costo: ${p.cost || ''}`
+        );
+      });
+    }
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text(`Total HRS: `, { continued: true });
+    doc.font('Helvetica').text(`${totalHrs || ''}`);
+    doc.font('Helvetica-Bold').text(`Total LAB & PRTS: `, { continued: true });
+    doc.font('Helvetica').text(`${totalLabAndParts || ''}`);
 
     doc.end();
+    // --- FIN DEL BLOQUE COMPLETO DE GENERACIÓN DEL PDF ---
 
     stream.on('finish', async () => {
       await logAccion(usuario, 'CREAR', 'work_orders', result.insertId, JSON.stringify(req.body));
