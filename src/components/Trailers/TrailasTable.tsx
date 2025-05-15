@@ -423,8 +423,8 @@ const TrailasTable: React.FC = () => {
                   {rentasHistorial.map((renta, index) => (
                     <tr key={index}>
                       <td>{renta.cliente}</td>
-                      <td>{renta.fecha_renta}</td>
-                      <td>{renta.fecha_entrega}</td>
+                      <td>{renta.fecha_renta ? dayjs(renta.fecha_renta).format('DD/MM/YYYY') : '-'}</td>
+                      <td>{renta.fecha_entrega ? dayjs(renta.fecha_entrega).format('DD/MM/YYYY') : '-'}</td>
                     </tr>
                   ))}
                 </tbody>

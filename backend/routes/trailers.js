@@ -63,8 +63,8 @@ router.put('/:nombre/estatus', async (req, res) => {
       [
         nombre,
         cliente,
-        fechaRenta,
-        fechaEntrega,
+        fechaRenta || null,
+        fechaEntrega || null,
         req.user?.username || 'sistema',
         estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
       ]
