@@ -91,54 +91,71 @@ router.post('/', async (req, res) => {
     // --- LOGO EN LA PARTE SUPERIOR DERECHA ---
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, doc.page.width - 140, 30, { width: 110 }); // Derecha
+      doc.image(logoPath, doc.page.width - 150, 30, { width: 110 });
     }
+
+    // --- TÍTULO ---
     doc.fontSize(22).font('Helvetica-Bold').text('Orden de Trabajo', 40, 40, { align: 'left' });
-    doc.moveDown(2);
+    doc.moveDown(1.5);
+
+    // --- LÍNEA DE SEPARACIÓN ---
+    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#1976d2').lineWidth(2).stroke();
+    doc.moveDown(1);
 
     // --- DATOS PRINCIPALES ---
     doc.fontSize(12).font('Helvetica');
-    doc.text(`ID: ${result.insertId}`, 40, 100);
-    doc.text(`Fecha: ${formattedDate}`, 200, 100);
-    doc.text(`Cliente: ${billToCo}`, 40, 120);
-    doc.text(`Trailer: ${trailer}`, 200, 120);
-    doc.text(`Mecánico: ${mechanic}`, 40, 140);
-    doc.text(`Estatus: ${status}`, 200, 140);
+    doc.text(`ID: ${result.insertId}`, 40, doc.y, { continued: true });
+    doc.text(`   Fecha: ${formattedDate}`, doc.x, doc.y);
+    doc.text(`Cliente: ${billToCo}`, 40, doc.y, { continued: true });
+    doc.text(`   Trailer: ${trailer}`, doc.x, doc.y);
+    doc.text(`Mecánico: ${mechanic}`, 40, doc.y, { continued: true });
+    doc.text(`   Estatus: ${status}`, doc.x, doc.y);
+    doc.moveDown(1);
 
-    doc.moveDown(2);
+    // --- LÍNEA DE SEPARACIÓN ---
+    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#b0c4de').lineWidth(1).stroke();
+    doc.moveDown(1);
 
     // --- DESCRIPCIÓN ---
-    doc.font('Helvetica-Bold').text('Descripción:', 40, 170, { underline: true });
-    doc.font('Helvetica').text(description || 'Sin descripción', { width: 500, align: 'left' });
-    doc.moveDown(1.5);
+    doc.font('Helvetica-Bold').text('Descripción:', 40, doc.y, { underline: true });
+    doc.font('Helvetica').text(description || 'Sin descripción', { width: doc.page.width - 80, align: 'left' });
+    doc.moveDown(1);
 
-    // --- PARTES ---
-    doc.font('Helvetica-Bold').text('Partes:', { underline: true });
+    // --- PARTES (TABLA) ---
+    doc.font('Helvetica-Bold').text('Partes:', 40, doc.y, { underline: true });
     doc.moveDown(0.5);
 
     const partsArray = Array.isArray(parts) ? parts : [];
     if (partsArray.length === 0) {
-      doc.font('Helvetica').text('Sin partes registradas');
+      doc.font('Helvetica').text('Sin partes registradas', 40, doc.y);
     } else {
       // Encabezados de tabla
-      doc.font('Helvetica-Bold').text('No.', 40, doc.y, { continued: true });
-      doc.text('Parte', 70, doc.y, { continued: true });
-      doc.text('Cantidad', 250, doc.y, { continued: true });
-      doc.text('Costo', 350, doc.y);
-      doc.moveDown(0.5);
+      const tableTop = doc.y + 5;
+      const col1 = 40, col2 = 80, col3 = 320, col4 = 400, col5 = 480;
+      doc.rect(col1, tableTop, doc.page.width - 80, 22).fill('#e3f2fd').stroke();
+      doc.fillColor('#1976d2').font('Helvetica-Bold').fontSize(12);
+      doc.text('No.', col2, tableTop + 6, { width: 30, align: 'center' });
+      doc.text('Parte', col3, tableTop + 6, { width: 80, align: 'center' });
+      doc.text('Cantidad', col4, tableTop + 6, { width: 60, align: 'center' });
+      doc.text('Costo', col5, tableTop + 6, { width: 60, align: 'center' });
+      doc.fillColor('#333').font('Helvetica').fontSize(11);
 
-      // Filas de partes
+      let y = tableTop + 22;
       partsArray.forEach((p, i) => {
-        doc.font('Helvetica').text(`${i + 1}`, 40, doc.y, { continued: true });
-        doc.text(`${p.part || ''}`, 70, doc.y, { continued: true });
-        doc.text(`${p.qty || ''}`, 250, doc.y, { continued: true });
-        doc.text(`${p.cost || ''}`, 350, doc.y);
+        doc.rect(col1, y, doc.page.width - 80, 20).strokeColor('#e3eaf2').lineWidth(0.5).stroke();
+        doc.text(`${i + 1}`, col2, y + 5, { width: 30, align: 'center' });
+        doc.text(`${p.part || ''}`, col3, y + 5, { width: 80, align: 'center' });
+        doc.text(`${p.qty || ''}`, col4, y + 5, { width: 60, align: 'center' });
+        doc.text(`${p.cost || ''}`, col5, y + 5, { width: 60, align: 'center' });
+        y += 20;
       });
+      doc.y = y + 10;
     }
-    doc.moveDown(2);
+
+    doc.moveDown(1.5);
 
     // --- TOTALES ---
-    doc.font('Helvetica-Bold').text(`Total HRS: `, 40, doc.y, { continued: true });
+    doc.font('Helvetica-Bold').fontSize(12).text(`Total HRS: `, 40, doc.y, { continued: true });
     doc.font('Helvetica').text(`${totalHrs || ''}`, doc.x, doc.y, { continued: true });
     doc.font('Helvetica-Bold').text(`   Total LAB & PRTS: `, doc.x + 20, doc.y, { continued: true });
     doc.font('Helvetica').text(`${totalLabAndParts || ''}`, doc.x, doc.y);
