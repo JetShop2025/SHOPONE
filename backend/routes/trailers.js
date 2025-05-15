@@ -50,10 +50,13 @@ router.put('/:nombre/estatus', async (req, res) => {
   // 1. Obtén los datos antes del cambio
   const [antes] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
 
+  const fechaRentaDB = fechaRenta === '' ? null : fechaRenta;
+  const fechaEntregaDB = fechaEntrega === '' ? null : fechaEntrega;
+
   // 2. Realiza el update
   await db.query(
     'UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?',
-    [estatus, cliente, fechaRenta, fechaEntrega, nombre]
+    [estatus, cliente, fechaRentaDB, fechaEntregaDB, nombre]
   );
 
   // 3. Guarda en historial de rentas si cambia a RENTADA o DISPONIBLE
@@ -63,8 +66,8 @@ router.put('/:nombre/estatus', async (req, res) => {
       [
         nombre,
         cliente,
-        fechaRenta || null,
-        fechaEntrega || null,
+        fechaRentaDB,
+        fechaEntregaDB,
         req.user?.username || 'sistema',
         estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
       ]
