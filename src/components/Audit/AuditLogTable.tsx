@@ -11,46 +11,46 @@ function renderDetalles(detalles: string) {
     return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{detalles}</pre>;
   }
 
-  if (parsed.antes && parsed.despues) {
-    const keys = Array.from(new Set([...Object.keys(parsed.antes), ...Object.keys(parsed.despues)]));
+  // Si el formato es { campo: { antes, despues }, ... }
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    !Array.isArray(parsed) &&
+    Object.values(parsed).every(
+      (v: any) => v && typeof v === 'object' && 'antes' in v && 'despues' in v
+    )
+  ) {
+    const keys = Object.keys(parsed);
     return (
       <table style={{
-        fontSize: 13,
-        borderCollapse: 'separate',
-        borderSpacing: 0,
-        minWidth: 280,
+        fontSize: 14,
+        borderCollapse: 'collapse',
+        minWidth: 260,
         background: '#f9fafc',
         borderRadius: 8,
         overflow: 'hidden',
-        boxShadow: '0 1px 6px rgba(25,118,210,0.07)'
+        boxShadow: '0 1px 6px rgba(25,118,210,0.07)',
+        margin: 0
       }}>
         <thead>
           <tr style={{ background: '#1976d2', color: '#fff' }}>
-            <th style={{ padding: 6, borderRight: '1px solid #e3eaf2', borderTopLeftRadius: 8 }}>Campo</th>
-            <th style={{ padding: 6, borderRight: '1px solid #e3eaf2' }}>Antes</th>
-            <th style={{ padding: 6, borderTopRightRadius: 8 }}>Después</th>
+            <th style={{ padding: 7, borderRight: '1px solid #e3eaf2', borderTopLeftRadius: 8 }}>Campo</th>
+            <th style={{ padding: 7, borderRight: '1px solid #e3eaf2' }}>Antes</th>
+            <th style={{ padding: 7, borderTopRightRadius: 8 }}>Después</th>
           </tr>
         </thead>
         <tbody>
           {keys.map(key => {
-            const antes = parsed.antes[key];
-            const despues = parsed.despues[key];
-            const changed =
-              typeof antes === 'object' && typeof despues === 'object'
-                ? JSON.stringify(antes) !== JSON.stringify(despues)
-                : antes !== despues;
+            const { antes, despues } = parsed[key];
+            const changed = antes !== despues;
             return (
-              <tr key={key} style={changed ? { background: '#fff8e1' } : {}}>
-                <td style={{ borderRight: '1px solid #e3eaf2', padding: 5, fontWeight: changed ? 600 : 400 }}>{key}</td>
-                <td style={{ borderRight: '1px solid #e3eaf2', padding: 5, color: changed ? '#d32f2f' : '#333' }}>
-                  {typeof antes === 'object' && antes !== null
-                    ? <pre style={{ margin: 0, fontSize: 12, background: '#f5f5f5', borderRadius: 4, padding: 4 }}>{JSON.stringify(antes, null, 2)}</pre>
-                    : String(antes ?? '')}
+              <tr key={key}>
+                <td style={{ borderRight: '1px solid #e3eaf2', padding: 6, fontWeight: 600 }}>{key}</td>
+                <td style={{ borderRight: '1px solid #e3eaf2', padding: 6, color: '#d32f2f', background: changed ? '#fff8e1' : undefined }}>
+                  {String(antes ?? '')}
                 </td>
-                <td style={{ padding: 5, color: changed ? '#388e3c' : '#333' }}>
-                  {typeof despues === 'object' && despues !== null
-                    ? <pre style={{ margin: 0, fontSize: 12, background: '#f5f5f5', borderRadius: 4, padding: 4 }}>{JSON.stringify(despues, null, 2)}</pre>
-                    : String(despues ?? '')}
+                <td style={{ padding: 6, color: changed ? '#388e3c' : '#333', fontWeight: changed ? 700 : 400, background: changed ? '#e8f5e9' : undefined }}>
+                  {String(despues ?? '')}
                 </td>
               </tr>
             );

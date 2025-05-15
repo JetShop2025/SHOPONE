@@ -263,6 +263,26 @@ const WorkOrdersTable: React.FC = () => {
     // eslint-disable-next-line
   }, [selectedPendingParts, pendingParts, showForm]);
 
+  const modalStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.25)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  };
+  const modalContentStyle: React.CSSProperties = {
+    background: '#fff',
+    borderRadius: 16,
+    padding: 32,
+    minWidth: 400,
+    maxWidth: 520,
+    maxHeight: '80vh',
+    overflowY: 'auto',
+    boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
+  };
+
   return (
     <>
       <style>
@@ -443,13 +463,8 @@ const WorkOrdersTable: React.FC = () => {
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
         {showForm && (
-          <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 32 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
-                {workOrders.length > 0 && (
-                  <>ID sugerido: {Math.max(...workOrders.map(wo => wo.id)) + 1}</>
-                )}
-              </div>
+          <div style={modalStyle} onClick={() => setShowForm(false)}>
+            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
               <WorkOrderForm
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
@@ -462,218 +477,185 @@ const WorkOrdersTable: React.FC = () => {
                 inventory={inventory}
               />
             </div>
-            {pendingParts.length > 0 && (
-              <div
-                style={{
-                  minWidth: 340,
-                  background: 'linear-gradient(120deg, #e3f2fd 60%, #fffbe6 100%)',
-                  border: '1.5px solid #1976d2',
-                  borderRadius: 12,
-                  padding: 20,
-                  boxShadow: '0 2px 12px rgba(25,118,210,0.08)',
-                  fontSize: 15,
-                }}
-              >
-                <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 10, fontSize: 17, letterSpacing: 1 }}>
-                  <span style={{ marginRight: 8, fontSize: 18 }}>🛒</span>
-                  Partes pendientes para esta traila
-                </div>
-                <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
-                  {pendingParts.map(part => (
-                    <li key={part.id} style={{ marginBottom: 8, lineHeight: 1.5 }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedPendingParts.includes(part.id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedPendingParts(prev => [...prev, part.id]);
-                          } else {
-                            setSelectedPendingParts(prev => prev.filter(id => id !== part.id));
-                          }
-                        }}
-                        style={{ marginRight: 8 }}
-                      />
-                      <span style={{ fontWeight: 600, color: '#333' }}>{part.part}</span>
-                      <span style={{ color: '#888', marginLeft: 6 }}>(SKU: {part.sku})</span>
-                      <span style={{ background: '#1976d2', color: '#fff', borderRadius: 6, padding: '2px 10px', marginLeft: 10, fontWeight: 700, fontSize: 14 }}>
-                        {part.qty}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
 
         {/* --- FORMULARIO ELIMINAR ORDENES --- */}
         {showDeleteForm && (
-          <div style={{
-            marginBottom: 24,
-            border: '1px solid #d32f2f',
-            background: '#fffbe6',
-            borderRadius: 8,
-            padding: 24,
-            maxWidth: 600,
-            boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
-          }}>
-            <h2 style={{ color: '#d32f2f', marginBottom: 12 }}>Eliminar Órdenes Seleccionadas</h2>
-            <div style={{ marginBottom: 12 }}>
-              Selecciona las órdenes que deseas eliminar usando los checkboxes de la tabla.
-            </div>
-            <label style={{ fontWeight: 600 }}>
-              Password:
-              <input
-                type="password"
-                placeholder="Password"
-                value={deletePassword}
-                onChange={e => setDeletePassword(e.target.value)}
-                style={{ width: 120, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #d32f2f', padding: 4 }}
-              />
-            </label>
-            <div style={{ marginTop: 16 }}>
-              <button
-                className="wo-btn danger"
-                disabled={deletePassword !== '6214' || selectedIds.length === 0}
-                onClick={async () => {
-                  if (window.confirm(`¿Seguro que deseas eliminar las órdenes con IDs: ${selectedIds.join(', ')}?`)) {
-                    try {
-                      await axios.request({
-                        url: `${API_URL}/work-orders`,
-                        method: 'DELETE',
-                        data: { ids: selectedIds, usuario: localStorage.getItem('username') || '' }
-                      });
-                      setWorkOrders(workOrders.filter(order => !selectedIds.includes(order.id)));
-                      setSelectedIds([]);
+          <div style={modalStyle} onClick={() => setShowDeleteForm(false)}>
+            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+              <div style={{
+                marginBottom: 24,
+                border: '1px solid #d32f2f',
+                background: '#fffbe6',
+                borderRadius: 8,
+                padding: 24,
+                maxWidth: 600,
+                boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
+              }}>
+                <h2 style={{ color: '#d32f2f', marginBottom: 12 }}>Eliminar Órdenes Seleccionadas</h2>
+                <div style={{ marginBottom: 12 }}>
+                  Selecciona las órdenes que deseas eliminar usando los checkboxes de la tabla.
+                </div>
+                <label style={{ fontWeight: 600 }}>
+                  Password:
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={deletePassword}
+                    onChange={e => setDeletePassword(e.target.value)}
+                    style={{ width: 120, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #d32f2f', padding: 4 }}
+                  />
+                </label>
+                <div style={{ marginTop: 16 }}>
+                  <button
+                    className="wo-btn danger"
+                    disabled={deletePassword !== '6214' || selectedIds.length === 0}
+                    onClick={async () => {
+                      if (window.confirm(`¿Seguro que deseas eliminar las órdenes con IDs: ${selectedIds.join(', ')}?`)) {
+                        try {
+                          await axios.request({
+                            url: `${API_URL}/work-orders`,
+                            method: 'DELETE',
+                            data: { ids: selectedIds, usuario: localStorage.getItem('username') || '' }
+                          });
+                          setWorkOrders(workOrders.filter(order => !selectedIds.includes(order.id)));
+                          setSelectedIds([]);
+                          setShowDeleteForm(false);
+                          setMultiDeleteEnabled(false);
+                          setDeletePassword('');
+                          alert('Órdenes eliminadas correctamente');
+                        } catch {
+                          alert('Error al eliminar las órdenes');
+                        }
+                      }
+                    }}
+                  >
+                    Eliminar seleccionados
+                  </button>
+                  <button
+                    className="wo-btn secondary"
+                    style={{ marginLeft: 8 }}
+                    onClick={() => {
                       setShowDeleteForm(false);
                       setMultiDeleteEnabled(false);
+                      setSelectedIds([]);
                       setDeletePassword('');
-                      alert('Órdenes eliminadas correctamente');
-                    } catch {
-                      alert('Error al eliminar las órdenes');
-                    }
-                  }
-                }}
-              >
-                Eliminar seleccionados
-              </button>
-              <button
-                className="wo-btn secondary"
-                style={{ marginLeft: 8 }}
-                onClick={() => {
-                  setShowDeleteForm(false);
-                  setMultiDeleteEnabled(false);
-                  setSelectedIds([]);
-                  setDeletePassword('');
-                }}
-              >
-                Cancelar
-              </button>
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
         {showEditForm && (
-          <div style={{
-            marginBottom: 24,
-            border: '1px solid orange',
-            background: '#fffbe6',
-            borderRadius: 8,
-            padding: 24,
-            maxWidth: 700,
-            boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
-          }}>
-            <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Editar Orden de Trabajo</h2>
-            {!editWorkOrder ? (
-              <>
-                <label style={{ fontWeight: 600 }}>
-                  ID:
-                  <input
-                    type="number"
-                    placeholder="ID a editar"
-                    value={editId}
-                    onChange={e => setEditId(e.target.value)}
-                    style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
-                  />
-                </label>
-                <label style={{ fontWeight: 600, marginLeft: 16 }}>
-                  Password:
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={editPassword}
-                    onChange={e => setEditPassword(e.target.value)}
-                    style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
-                  />
-                </label>
-                <button
-                  className="wo-btn secondary"
-                  style={{ marginLeft: 8 }}
-                  onClick={() => {
-                    if (editPassword !== '6214') {
-                      setEditError('Contraseña incorrecta');
-                      return;
-                    }
-                    const found = workOrders.find(wo => wo.id === Number(editId));
-                    if (found) {
-                      setEditWorkOrder({
-                        ...found,
-                        date: found.date ? found.date.slice(0, 10) : ''
-                      });
-                      setEditError('');
-                    } else {
-                      setEditError('No se encontró una orden con ese ID.');
-                    }
-                  }}
-                >
-                  Cargar
-                </button>
-                <button
-                  className="wo-btn secondary"
-                  style={{ marginLeft: 8 }}
-                  onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); }}
-                >
-                  Cancelar
-                </button>
-                {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
-              </>
-            ) : (
-              <>
-                <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
-                  ID de la orden: {editWorkOrder.id}
-                </div>
-                <WorkOrderForm
-                  workOrder={editWorkOrder}
-                  onChange={handleWorkOrderChange}
-                  onPartChange={handlePartChange}
-                  onSubmit={async () => {
-                    try {
-                      await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
-                        ...editWorkOrder,
-                        date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
-                        parts: editWorkOrder.parts,
-                        usuario: localStorage.getItem('username') || ''
-                      });
-                      const updated = await axios.get(`${API_URL}/work-orders`);
-                      setWorkOrders(updated.data as any[]);
-                      setShowEditForm(false);
-                      setEditWorkOrder(null);
-                      setEditId('');
-                      setEditError('');
-                      alert('Orden actualizada correctamente.');
-                    } catch (err) {
-                      alert('Error al actualizar la orden.');
-                    }
-                  }}
-                  onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}
-                  title="Editar Orden de Trabajo"
-                  billToCoOptions={billToCoOptions}
-                  getTrailerOptions={getTrailerOptions}
-                  inventory={inventory}
-                />
-              </>
-            )}
+          <div style={modalStyle} onClick={() => setShowEditForm(false)}>
+            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+              <div style={{
+                marginBottom: 24,
+                border: '1px solid orange',
+                background: '#fffbe6',
+                borderRadius: 8,
+                padding: 24,
+                maxWidth: 700,
+                boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
+              }}>
+                <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Editar Orden de Trabajo</h2>
+                {!editWorkOrder ? (
+                  <>
+                    <label style={{ fontWeight: 600 }}>
+                      ID:
+                      <input
+                        type="number"
+                        placeholder="ID a editar"
+                        value={editId}
+                        onChange={e => setEditId(e.target.value)}
+                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
+                      />
+                    </label>
+                    <label style={{ fontWeight: 600, marginLeft: 16 }}>
+                      Password:
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={editPassword}
+                        onChange={e => setEditPassword(e.target.value)}
+                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
+                      />
+                    </label>
+                    <button
+                      className="wo-btn secondary"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => {
+                        if (editPassword !== '6214') {
+                          setEditError('Contraseña incorrecta');
+                          return;
+                        }
+                        const found = workOrders.find(wo => wo.id === Number(editId));
+                        if (found) {
+                          setEditWorkOrder({
+                            ...found,
+                            date: found.date ? found.date.slice(0, 10) : ''
+                          });
+                          setEditError('');
+                        } else {
+                          setEditError('No se encontró una orden con ese ID.');
+                        }
+                      }}
+                    >
+                      Cargar
+                    </button>
+                    <button
+                      className="wo-btn secondary"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); }}
+                    >
+                      Cancelar
+                    </button>
+                    {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
+                      ID de la orden: {editWorkOrder.id}
+                    </div>
+                    <WorkOrderForm
+                      workOrder={editWorkOrder}
+                      onChange={handleWorkOrderChange}
+                      onPartChange={handlePartChange}
+                      onSubmit={async () => {
+                        try {
+                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
+                            ...editWorkOrder,
+                            date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
+                            parts: editWorkOrder.parts,
+                            usuario: localStorage.getItem('username') || ''
+                          });
+                          const updated = await axios.get(`${API_URL}/work-orders`);
+                          setWorkOrders(updated.data as any[]);
+                          setShowEditForm(false);
+                          setEditWorkOrder(null);
+                          setEditId('');
+                          setEditError('');
+                          alert('Orden actualizada correctamente.');
+                        } catch (err) {
+                          alert('Error al actualizar la orden.');
+                        }
+                      }}
+                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}
+                      title="Editar Orden de Trabajo"
+                      billToCoOptions={billToCoOptions}
+                      getTrailerOptions={getTrailerOptions}
+                      inventory={inventory}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
