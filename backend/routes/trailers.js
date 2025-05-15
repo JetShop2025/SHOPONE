@@ -39,8 +39,8 @@ router.get('/:nombre/historial-rentas', async (req, res) => {
 
 // Actualizar estatus de una traila
 router.put('/:nombre/estatus', async (req, res) => {
+  const { estatus, password, cliente, fechaRenta, fechaEntrega, usuario } = req.body;
   const { nombre } = req.params;
-  const { estatus, password, cliente, fechaRenta, fechaEntrega } = req.body;
 
   // Cambia '6214' por tu password real o valida contra usuarios
   if (password !== '6214') {
@@ -48,7 +48,8 @@ router.put('/:nombre/estatus', async (req, res) => {
   }
 
   // 1. Obtén los datos antes del cambio
-  const [antes] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
+  const [antesArr] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
+  const antes = antesArr[0];
 
   const fechaRentaDB = fechaRenta === '' ? null : fechaRenta;
   const fechaEntregaDB = fechaEntrega === '' ? null : fechaEntrega;
@@ -92,20 +93,31 @@ router.put('/:nombre/estatus', async (req, res) => {
     );
   }
 
-  // 3. Obtén los datos después del cambio
-  const [despues] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
+  // 2. Obtén los datos después del cambio
+  const [despuesArr] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
+  const despues = despuesArr[0];
 
-  // 4. Inserta en la auditoría
-  await db.query(
-    'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
-    [
-      req.user?.username || 'sistema', // o como obtengas el usuario
-      'MODIFICAR',
-      'trailers',
-      nombre,
-      JSON.stringify({ antes, despues }),
-    ]
-  );
+  // 3. Detecta solo los campos que cambiaron
+  const cambios = {};
+  ['estatus', 'cliente', 'fechaRenta', 'fechaEntrega'].forEach(key => {
+    if ((antes[key] ?? null) !== (despues[key] ?? null)) {
+      cambios[key] = { antes: antes[key], despues: despues[key] };
+    }
+  });
+
+  // 4. Inserta en la auditoría solo si hubo cambios
+  if (Object.keys(cambios).length > 0) {
+    await db.query(
+      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
+      [
+        usuario || 'sistema',
+        'MODIFICAR',
+        'trailers',
+        nombre,
+        JSON.stringify(cambios)
+      ]
+    );
+  }
 
   res.json({ ok: true });
 });

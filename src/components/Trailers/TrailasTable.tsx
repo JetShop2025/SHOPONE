@@ -88,7 +88,8 @@ const TrailasTable: React.FC = () => {
           password,
           cliente: '',
           fechaRenta: null,
-          fechaEntrega: null
+          fechaEntrega: null,
+          usuario: localStorage.getItem('username') || ''
         });
         setTrailas(trailas.map(t =>
           t.nombre === selected.nombre
