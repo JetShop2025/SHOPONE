@@ -3,15 +3,14 @@ const db = require('../db');
 const router = express.Router();
 
 // Obtener logs de auditoría
-router.get('/audit-log', (req, res) => {
-  db.query('SELECT * FROM audit_log ORDER BY fecha DESC', (err, results) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send('Error al obtener el log de auditoría');
-    } else {
-      res.json(results);
-    }
-  });
+router.get('/audit-log', async (req, res) => {
+  try {
+    const [results] = await db.query('SELECT * FROM audit_log ORDER BY fecha DESC');
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al obtener el log de auditoría');
+  }
 });
 
 module.exports = router;

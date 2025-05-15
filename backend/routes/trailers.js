@@ -5,19 +5,23 @@ const router = express.Router();
 router.use(express.json());
 
 // Obtener todas las trailas
-router.get('/', (req, res) => {
-  db.query('SELECT * FROM trailers', (err, results) => {
-    if (err) return res.status(500).send('Error al obtener trailas');
+router.get('/', async (req, res) => {
+  try {
+    const [results] = await db.query('SELECT * FROM trailers');
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).send('Error');
+  }
 });
 
-router.get('/:nombre/work-orders', (req, res) => {
+router.get('/:nombre/work-orders', async (req, res) => {
   const { nombre } = req.params;
-  db.query('SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?', [nombre], (err, results) => {
-    if (err) return res.status(500).send('Error');
+  try {
+    const [results] = await db.query('SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?', [nombre]);
     res.json(results[0]);
-  });
+  } catch (err) {
+    res.status(500).send('Error');
+  }
 });
 
 // Actualizar estatus de una traila
