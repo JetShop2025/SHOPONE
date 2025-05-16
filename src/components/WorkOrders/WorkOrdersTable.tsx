@@ -342,6 +342,19 @@ const WorkOrdersTable: React.FC = () => {
     // eslint-disable-next-line
   }, [selectedPendingParts, pendingParts, showForm]);
 
+  // Calcula el total cada vez que cambian las partes o las horas
+  useEffect(() => {
+    if (showForm) {
+      const totalHrs = parseFloat(newWorkOrder.totalHrs) || 0;
+      const partsCost = newWorkOrder.parts.reduce((sum, p) => sum + (parseFloat(p.cost) || 0), 0);
+      const totalLabAndParts = (totalHrs * 60) + partsCost;
+      setNewWorkOrder(prev => ({
+        ...prev,
+        totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
+      }));
+    }
+  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm]);
+
   const handleEdit = () => {
     if (selectedRow === null) return;
     const pwd = window.prompt('Enter password to edit:');
