@@ -9,6 +9,7 @@ dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
 const API_URL = process.env.REACT_APP_API_URL || '';
+const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
@@ -36,6 +37,52 @@ const STATUS_OPTIONS = [
   "APPROVED",
   "FINISHED"
 ];
+
+const buttonBase = {
+  padding: '10px 28px',
+  borderRadius: 6,
+  fontWeight: 600,
+  fontSize: 16,
+  cursor: 'pointer',
+  boxShadow: '0 2px 8px rgba(25,118,210,0.10)',
+  border: 'none',
+  marginRight: 8,
+};
+
+const primaryBtn = {
+  ...buttonBase,
+  background: '#1976d2',
+  color: '#fff',
+};
+
+const dangerBtn = {
+  ...buttonBase,
+  background: '#d32f2f',
+  color: '#fff',
+};
+
+const secondaryBtn = {
+  ...buttonBase,
+  background: '#fff',
+  color: '#1976d2',
+  border: '1px solid #1976d2',
+};
+
+const mainTitleStyle = {
+  color: '#1976d2',
+  fontWeight: 800,
+  fontSize: 32,
+  marginBottom: 24,
+  letterSpacing: 2,
+  fontFamily: 'Segoe UI, Arial, sans-serif',
+};
+
+const sectionTitleStyle = {
+  color: '#1976d2',
+  fontWeight: 700,
+  fontSize: 22,
+  marginBottom: 16,
+};
 
 const WorkOrdersTable: React.FC = () => {
   const [pendingParts, setPendingParts] = useState<any[]>([]);
@@ -263,6 +310,46 @@ const WorkOrdersTable: React.FC = () => {
     // eslint-disable-next-line
   }, [selectedPendingParts, pendingParts, showForm]);
 
+  const handleEdit = () => {
+    if (selectedRow === null) return;
+    const pwd = window.prompt('Enter password to edit:');
+    if (pwd === '6214') {
+      const found = workOrders.find(wo => wo.id === selectedRow);
+      if (found) {
+        setEditWorkOrder({
+          ...found,
+          date: found.date ? found.date.slice(0, 10) : ''
+        });
+        setShowEditForm(true);
+      }
+    } else if (pwd !== null) {
+      alert('Incorrect password');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (selectedRow === null) return;
+    const pwd = window.prompt('Enter password to delete:');
+    if (pwd === '6214') {
+      if (window.confirm('Are you sure you want to delete this order?')) {
+        try {
+          await axios.request({
+            url: `${API_URL}/work-orders/${selectedRow}`,
+            method: 'DELETE',
+            data: { usuario: localStorage.getItem('username') || '' }
+          });
+          setWorkOrders(workOrders.filter(order => order.id !== selectedRow));
+          setSelectedRow(null);
+          alert('Order deleted successfully');
+        } catch {
+          alert('Error deleting order');
+        }
+      }
+    } else if (pwd !== null) {
+      alert('Incorrect password');
+    }
+  };
+
   const modalStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -321,12 +408,12 @@ const WorkOrdersTable: React.FC = () => {
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(25,118,210,0.07);
-            font-size: 12px; /* MÁS CHICA LA LETRA */
+            font-size: 12px;
           }
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
-            padding: 4px 3px; /* MÁS CHICO EL PADDING */
-            font-size: 12px;  /* MÁS CHICA LA LETRA */
+            padding: 4px 3px;
+            font-size: 12px;
             max-width: 120px;
             word-break: break-word;
             white-space: pre-line;
@@ -343,20 +430,20 @@ const WorkOrdersTable: React.FC = () => {
           }
           /* Colores por estatus */
           .wo-row-approved {
-            background: #43a047 !important;
+            background: #43a047 !important; /* Verde fuerte */
             color: #fff !important;
           }
           .wo-row-finished {
-            background: #ffe082 !important;
+            background: #ffd600 !important; /* Amarillo fuerte */
             color: #333 !important;
           }
-          .wo-row-processing {
-            background: #1976d2 !important;
-            color: #fff !important;
-          }
-          .wo-row-pre {
-            background: #fff !important;
+          .wo-row-processing, .wo-row-pre {
+            background: #fff !important; /* Blanco */
             color: #1976d2 !important;
+          }
+          .wo-row-selected {
+            outline: 2px solid #1976d2 !important;
+            box-shadow: 0 0 0 2px #1976d233;
           }
         `}
       </style>
@@ -405,18 +492,25 @@ const WorkOrdersTable: React.FC = () => {
 
         {/* --- BOTONES ARRIBA --- */}
         <div style={{ margin: '24px 0 16px 0' }}>
-          <button className="wo-btn" onClick={() => setShowForm(true)}>NEW W.O</button>
+          <button className="wo-btn" style={primaryBtn} onClick={() => setShowForm(true)}>
+            NEW W.O
+          </button>
           <button
-            className="wo-btn danger"
-            style={{ marginLeft: 8 }}
-            onClick={() => {
-              setShowDeleteForm(true);
-              setMultiDeleteEnabled(true);
-            }}
+            className="wo-btn"
+            style={dangerBtn}
+            disabled={selectedRow === null}
+            onClick={handleDelete}
           >
             Delete
           </button>
-          <button className="wo-btn secondary" style={{ marginLeft: 8 }} onClick={() => setShowEditForm(true)}>Edit</button>
+          <button
+            className="wo-btn"
+            style={secondaryBtn}
+            disabled={selectedRow === null}
+            onClick={handleEdit}
+          >
+            Edit
+          </button>
         </div>
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
@@ -434,77 +528,6 @@ const WorkOrdersTable: React.FC = () => {
                 getTrailerOptions={getTrailerOptions}
                 inventory={inventory}
               />
-            </div>
-          </div>
-        )}
-
-        {/* --- FORMULARIO ELIMINAR ORDENES --- */}
-        {showDeleteForm && (
-          <div style={modalStyle} onClick={() => setShowDeleteForm(false)}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-              <div style={{
-                marginBottom: 24,
-                border: '1px solid #d32f2f',
-                background: '#fffbe6',
-                borderRadius: 8,
-                padding: 24,
-                maxWidth: 600,
-                boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
-              }}>
-                <h2 style={{ color: '#d32f2f', marginBottom: 12 }}>Delete Selected Orders</h2>
-                <div style={{ marginBottom: 12 }}>
-                  Select the orders you want to delete using the table checkboxes.
-                </div>
-                <label style={{ fontWeight: 600 }}>
-                  Password:
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={deletePassword}
-                    onChange={e => setDeletePassword(e.target.value)}
-                    style={{ width: 120, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #d32f2f', padding: 4 }}
-                  />
-                </label>
-                <div style={{ marginTop: 16 }}>
-                  <button
-                    className="wo-btn danger"
-                    disabled={deletePassword !== '6214' || selectedIds.length === 0}
-                    onClick={async () => {
-                      if (window.confirm(`Are you sure you want to delete the orders with IDs: ${selectedIds.join(', ')}?`)) {
-                        try {
-                          await axios.request({
-                            url: `${API_URL}/work-orders`,
-                            method: 'DELETE',
-                            data: { ids: selectedIds, usuario: localStorage.getItem('username') || '' }
-                          });
-                          setWorkOrders(workOrders.filter(order => !selectedIds.includes(order.id)));
-                          setSelectedIds([]);
-                          setShowDeleteForm(false);
-                          setMultiDeleteEnabled(false);
-                          setDeletePassword('');
-                          alert('Orders deleted successfully');
-                        } catch {
-                          alert('Error deleting orders');
-                        }
-                      }
-                    }}
-                  >
-                    Delete Selected
-                  </button>
-                  <button
-                    className="wo-btn secondary"
-                    style={{ marginLeft: 8 }}
-                    onClick={() => {
-                      setShowDeleteForm(false);
-                      setMultiDeleteEnabled(false);
-                      setSelectedIds([]);
-                      setDeletePassword('');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -622,20 +645,7 @@ const WorkOrdersTable: React.FC = () => {
           <table className="wo-table">
             <thead>
               <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length}
-                    disabled={!multiDeleteEnabled}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedIds(filteredOrders.map(order => order.id));
-                      } else {
-                        setSelectedIds([]);
-                      }
-                    }}
-                  />
-                </th>
+  
                 <th>ID</th>
                 <th>Bill To Co</th>
                 <th>Trailer</th>
@@ -665,25 +675,11 @@ const WorkOrdersTable: React.FC = () => {
                 return (
                   <tr
                     key={index}
-                    className={rowClass}
-                    style={{
-                      fontWeight: 600
-                    }}
+                    className={`${rowClass} ${selectedRow === order.id ? 'wo-row-selected' : ''}`}
+                    style={{ fontWeight: 600, cursor: 'pointer' }}
+                    onClick={() => setSelectedRow(order.id)}
                   >
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(order.id)}
-                        disabled={!multiDeleteEnabled}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedIds(prev => [...prev, order.id]);
-                          } else {
-                            setSelectedIds(prev => prev.filter(id => id !== order.id));
-                          }
-                        }}
-                      />
-                    </td>
+
                     <td>{order.id}</td>
                     <td>{order.billToCo}</td>
                     <td>{order.trailer}</td>
