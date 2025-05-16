@@ -12,11 +12,13 @@ interface WorkOrderFormProps {
   inventory: any[];
   trailersWithPendingParts?: string[];
   pendingParts?: any[];
-  onAddPendingPart?: (part: any) => void;
+  pendingPartsQty?: { [id: number]: string };
+  setPendingPartsQty?: React.Dispatch<React.SetStateAction<{ [id: number]: string }>>;
+  onAddPendingPart?: (part: any, qty: string) => void;
 }
 
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
-  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, onAddPendingPart
+  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart
 }) => (
   <div
     style={{
@@ -182,7 +184,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   cursor: 'pointer'
                 }}
                 title="Click to add to WO"
-                onClick={() => onAddPendingPart && onAddPendingPart(part)}
+                onClick={() => onAddPendingPart && onAddPendingPart(part, part.qty)}
               >
                 {part.sku} - {part.item} ({part.qty} pcs)
               </div>

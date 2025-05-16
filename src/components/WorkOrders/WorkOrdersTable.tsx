@@ -132,6 +132,7 @@ const WorkOrdersTable: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
+  const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
 
   useEffect(() => {
     const API_URL = process.env.REACT_APP_API_URL || '';
@@ -559,11 +560,40 @@ const WorkOrdersTable: React.FC = () => {
                 getTrailerOptions={getTrailerOptions}
                 inventory={inventory}
                 trailersWithPendingParts={trailersWithPendingParts}
+                pendingParts={pendingParts}
+                pendingPartsQty={pendingPartsQty}
+                setPendingPartsQty={setPendingPartsQty}
+                onAddPendingPart={(part, qty) => {
+                  setNewWorkOrder(prev => {
+                    const emptyIdx = prev.parts.findIndex(p => !p.part);
+                    const cantidad = qty || part.qty?.toString() || '1';
+                    if (emptyIdx !== -1) {
+                      const newParts = [...prev.parts];
+                      newParts[emptyIdx] = {
+                        part: part.sku,
+                        qty: cantidad,
+                        cost: part.costTax?.toString() || ''
+                      };
+                      return { ...prev, parts: newParts };
+                    } else {
+                      return {
+                        ...prev,
+                        parts: [
+                          ...prev.parts,
+                          {
+                            part: part.sku,
+                            qty: cantidad,
+                            cost: part.costTax?.toString() || ''
+                          }
+                        ]
+                      };
+                    }
+                  });
+                }}
               />
             </div>
           </div>
         )}
-
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
         {showEditForm && (
           <div style={modalStyle} onClick={() => setShowEditForm(false)}>
