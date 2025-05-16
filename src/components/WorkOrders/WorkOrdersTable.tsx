@@ -171,6 +171,16 @@ const WorkOrdersTable: React.FC = () => {
     }
   }, [showForm]);
 
+  useEffect(() => {
+    if (showForm && newWorkOrder.trailer) {
+      axios.get(`${API_URL}/receive?destino_trailer=${newWorkOrder.trailer}&estatus=PENDING`)
+        .then(res => setPendingParts(res.data as any[]))
+        .catch(() => setPendingParts([]));
+    } else {
+      setPendingParts([]);
+    }
+  }, [showForm, newWorkOrder.trailer]);
+
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
     const { start, end } = getWeekRange(selectedWeek);

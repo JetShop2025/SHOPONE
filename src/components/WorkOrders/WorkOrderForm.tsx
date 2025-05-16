@@ -11,10 +11,12 @@ interface WorkOrderFormProps {
   getTrailerOptions: (billToCo: string) => string[];
   inventory: any[];
   trailersWithPendingParts?: string[];
+  pendingParts?: any[];
+  onAddPendingPart?: (part: any) => void;
 }
 
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
-  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts
+  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, onAddPendingPart
 }) => (
   <div
     style={{
@@ -165,6 +167,32 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           ))}
         </div>
       </div>
+      {pendingParts && pendingParts.length > 0 && (
+        <div style={{ margin: '12px 0', background: '#fffbe6', border: '1px solid #ffd600', borderRadius: 6, padding: 12 }}>
+          <strong>Pending Parts for this trailer:</strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {pendingParts.map((part, idx) => (
+              <div
+                key={idx}
+                style={{
+                  border: '1px solid #1976d2',
+                  borderRadius: 4,
+                  padding: '6px 12px',
+                  background: '#e3f2fd',
+                  cursor: 'pointer'
+                }}
+                title="Click to add to WO"
+                onClick={() => onAddPendingPart && onAddPendingPart(part)}
+              >
+                {part.sku} - {part.item} ({part.qty} pcs)
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: '#1976d2', marginTop: 4 }}>
+            Click a part to add it to the WO parts list.
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
         <label style={{ flex: 1 }}>
           Total HRS<span style={{ color: 'red' }}>*</span>
