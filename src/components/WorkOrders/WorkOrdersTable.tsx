@@ -9,7 +9,6 @@ dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
 const API_URL = process.env.REACT_APP_API_URL || '';
-const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
@@ -85,6 +84,7 @@ const sectionTitleStyle = {
 };
 
 const WorkOrdersTable: React.FC = () => {
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [pendingParts, setPendingParts] = useState<any[]>([]);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editId, setEditId] = useState('');
