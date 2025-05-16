@@ -47,6 +47,38 @@ const modalContentStyle: React.CSSProperties = {
   boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
 };
 
+const inputStyle: React.CSSProperties = {
+  flex: '1 1 120px',
+  padding: '10px 12px',
+  borderRadius: 6,
+  border: '1.5px solid #1976d2',
+  fontSize: 15,
+  marginBottom: 8,
+  background: '#f5faff',
+  boxSizing: 'border-box'
+};
+const primaryBtn: React.CSSProperties = {
+  background: '#1976d2',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 6,
+  padding: '10px 28px',
+  fontWeight: 600,
+  fontSize: 16,
+  cursor: 'pointer',
+  boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+};
+const secondaryBtn: React.CSSProperties = {
+  background: '#fff',
+  color: '#1976d2',
+  border: '1.5px solid #1976d2',
+  borderRadius: 6,
+  padding: '10px 28px',
+  fontWeight: 600,
+  fontSize: 16,
+  cursor: 'pointer'
+};
+
 const InventoryTable: React.FC = () => {
   const [inventory, setInventory] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -162,18 +194,7 @@ const InventoryTable: React.FC = () => {
       <div style={{ marginBottom: 24 }}>
         <button
           onClick={() => setShowForm(true)}
-          style={{
-            background: '#1976d2',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            padding: '10px 28px',
-            fontWeight: 600,
-            fontSize: 16,
-            marginBottom: 24,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
-          }}
+          style={primaryBtn}
         >
           Add Part
         </button>
@@ -202,18 +223,7 @@ const InventoryTable: React.FC = () => {
             setEditPassword('');
             setEditError('');
           }}
-          style={{
-            background: '#fff',
-            color: '#1976d2',
-            border: '1px solid #1976d2',
-            borderRadius: 6,
-            padding: '10px 28px',
-            fontWeight: 600,
-            fontSize: 16,
-            marginLeft: 8,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
-          }}
+          style={secondaryBtn}
         >
           Edit
         </button>
@@ -223,33 +233,24 @@ const InventoryTable: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Add New Part</h3>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              <input name="sku" value={newPart.sku} onChange={handleChange} placeholder="SKU" required style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Codes" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="category" value={newPart.category} onChange={handleChange} placeholder="Category" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="part" value={newPart.part} onChange={handleChange} placeholder="Part Name" required style={{ flex: '2 1 200px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="provider" value={newPart.provider} onChange={handleChange} placeholder="Provider" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="brand" value={newPart.brand} onChange={handleChange} placeholder="Brand" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="um" value={newPart.um} onChange={handleChange} placeholder="Unit" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="area" value={newPart.area} onChange={handleChange} placeholder="Area" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="cantidad" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} placeholder="Quantity" type="number" required style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="sku" value={newPart.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
+              <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Codes" style={inputStyle} />
+              <input name="category" value={newPart.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
+              <input name="part" value={newPart.part} onChange={handleChange} placeholder="Part Name" required style={inputStyle} />
+              <input name="provider" value={newPart.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
+              <input name="brand" value={newPart.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
+              <input name="um" value={newPart.um} onChange={handleChange} placeholder="Unit" style={inputStyle} />
+              <input name="area" value={newPart.area} onChange={handleChange} placeholder="Area" style={inputStyle} />
+              <input name="cantidad" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} placeholder="Quantity" type="number" required style={inputStyle} />
               <input
                 type="password"
                 placeholder="Password"
                 value={addPassword}
                 onChange={e => setAddPassword(e.target.value)}
-                style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }}
+                style={inputStyle}
               />
               {addError && <span style={{ color: 'red', width: '100%' }}>{addError}</span>}
-              <button type="button" onClick={() => document.getElementById('imagenInput')?.click()} style={{
-                background: '#fff',
-                color: '#1976d2',
-                border: '1px solid #1976d2',
-                borderRadius: 6,
-                padding: '8px 18px',
-                fontWeight: 600,
-                fontSize: 15,
-                cursor: 'pointer'
-              }}>
+              <button type="button" onClick={() => document.getElementById('imagenInput')?.click()} style={secondaryBtn}>
                 Upload Image
               </button>
               <input
@@ -262,28 +263,8 @@ const InventoryTable: React.FC = () => {
               />
               {imagenFile && <span style={{ color: '#1976d2', fontWeight: 500 }}>Selected image: {imagenFile.name}</span>}
               <div style={{ flexBasis: '100%', height: 0 }} />
-              <button type="submit" style={{
-                background: '#1976d2',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                padding: '10px 28px',
-                fontWeight: 600,
-                fontSize: 16,
-                marginRight: 8,
-                cursor: 'pointer'
-              }}>Add Part</button>
-              <button type="button" onClick={() => setShowForm(false)} style={{
-                background: '#fff',
-                color: '#1976d2',
-                border: '1px solid #1976d2',
-                borderRadius: 6,
-                padding: '10px 28px',
-                fontWeight: 600,
-                fontSize: 16,
-                cursor: 'pointer',
-                marginTop: 12
-              }}>Cancel</button>
+              <button type="submit" style={primaryBtn}>Add Part</button>
+              <button type="button" onClick={() => setShowForm(false)} style={secondaryBtn}>Cancel</button>
             </form>
           </div>
         </div>

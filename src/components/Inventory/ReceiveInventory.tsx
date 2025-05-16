@@ -244,9 +244,40 @@ const ReceiveInventory: React.FC = () => {
       {showForm && (
         <div style={modalStyle} onClick={() => setShowForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            {/* ...formulario de agregar... */}
-            {/* (sin cambios aquí) */}
-            {/* ... */}
+            <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
+              <h2 style={{
+                color: '#1976d2',
+                fontWeight: 800,
+                fontSize: 26,
+                marginBottom: 20,
+                letterSpacing: 1
+              }}>Add Receipt</h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
+                <input name="category" value={form.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
+                <input name="item" value={form.item} onChange={handleChange} placeholder="Item" style={inputStyle} />
+                <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
+                <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
+                <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} />
+                <select name="billToCo" value={form.billToCo} onChange={handleChange} required style={inputStyle}>
+                  <option value="">Bill To Co</option>
+                  {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+                <select name="destino_trailer" value={form.destino_trailer} onChange={handleChange} style={inputStyle}>
+                  <option value="">Destination Trailer</option>
+                  {getTrailerOptions(form.billToCo).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+                <input type="file" onChange={handleFile} style={{ marginBottom: 8 }} />
+                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} />
+                <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} />
+                <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} />
+                <input name="fecha" value={form.fecha} onChange={handleChange} type="date" required style={inputStyle} />
+              </div>
+              <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
+                <button type="submit" style={primaryBtn}>Save</button>
+                <button type="button" onClick={() => setShowForm(false)} style={secondaryBtn}>Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -255,9 +286,47 @@ const ReceiveInventory: React.FC = () => {
       {showEditForm && (
         <div style={modalStyle} onClick={() => setShowEditForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            {/* ...formulario de editar... */}
-            {/* (sin cambios aquí) */}
-            {/* ... */}
+            {editForm && (
+              <form onSubmit={async e => {
+                e.preventDefault();
+                await axios.put(`${API_URL}/receive/${editForm.id}`, { ...editForm, usuario: localStorage.getItem('username') || '' });
+                setShowEditForm(false);
+                const res = await axios.get(`${API_URL}/receive`);
+                setReceives(res.data as any[]);
+              }} style={{ maxWidth: 520 }}>
+                <h2 style={{
+                  color: '#1976d2',
+                  fontWeight: 800,
+                  fontSize: 26,
+                  marginBottom: 20,
+                  letterSpacing: 1
+                }}>Edit Receipt</h2>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                  <input name="sku" value={editForm.sku} onChange={e => setEditForm({ ...editForm, sku: e.target.value })} placeholder="SKU" required style={inputStyle} />
+                  <input name="category" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} placeholder="Category" style={inputStyle} />
+                  <input name="item" value={editForm.item} onChange={e => setEditForm({ ...editForm, item: e.target.value })} placeholder="Item" style={inputStyle} />
+                  <input name="provider" value={editForm.provider} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
+                  <input name="brand" value={editForm.brand} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
+                  <input name="um" value={editForm.um} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
+                  <select name="billToCo" value={editForm.billToCo} onChange={e => setEditForm({ ...editForm, billToCo: e.target.value })} required style={inputStyle}>
+                    <option value="">Bill To Co</option>
+                    {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                  <select name="destino_trailer" value={editForm.destino_trailer} onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })} style={inputStyle}>
+                    <option value="">Destination Trailer</option>
+                    {getTrailerOptions(editForm.billToCo).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                  <input name="qty" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
+                  <input name="costTax" value={editForm.costTax} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
+                  <input name="totalPOClassic" value={editForm.totalPOClassic} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
+                  <input name="fecha" value={editForm.fecha} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} type="date" required style={inputStyle} />
+                </div>
+                <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
+                  <button type="submit" style={primaryBtn}>Save</button>
+                  <button type="button" onClick={() => setShowEditForm(false)} style={secondaryBtn}>Cancel</button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -342,6 +411,39 @@ const ReceiveInventory: React.FC = () => {
       </table>
     </div>
   );
+};
+
+// Agrega estos estilos arriba del componente o en tu archivo:
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: 6,
+  border: '1.5px solid #1976d2',
+  fontSize: 15,
+  marginBottom: 8,
+  background: '#f5faff',
+  boxSizing: 'border-box'
+};
+const primaryBtn: React.CSSProperties = {
+  background: '#1976d2',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 6,
+  padding: '10px 28px',
+  fontWeight: 600,
+  fontSize: 16,
+  cursor: 'pointer',
+  boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+};
+const secondaryBtn: React.CSSProperties = {
+  background: '#fff',
+  color: '#1976d2',
+  border: '1.5px solid #1976d2',
+  borderRadius: 6,
+  padding: '10px 28px',
+  fontWeight: 600,
+  fontSize: 16,
+  cursor: 'pointer'
 };
 
 export default ReceiveInventory;
