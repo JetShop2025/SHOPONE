@@ -131,6 +131,7 @@ const WorkOrdersTable: React.FC = () => {
   const [inventory, setInventory] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
+  const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
 
   useEffect(() => {
     const API_URL = process.env.REACT_APP_API_URL || '';
@@ -149,6 +150,26 @@ const WorkOrdersTable: React.FC = () => {
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));
   }, []);
+
+  useEffect(() => {
+    // Solo cargar una vez al abrir el formulario
+    if (showForm) {
+      axios.get(`${API_URL}/receive?estatus=PENDING`)
+        .then(res => {
+          // Cast explícito para TypeScript
+          const receives = res.data as { destino_trailer?: string }[];
+          const trailers = Array.from(
+            new Set(
+              receives
+                .map(r => r.destino_trailer)
+                .filter((t): t is string => !!t)
+            )
+          );
+          setTrailersWithPendingParts(trailers);
+        })
+        .catch(() => setTrailersWithPendingParts([]));
+    }
+  }, [showForm]);
 
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
@@ -263,7 +284,7 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
     try {
-      const res = await axios.get(`${API_URL}/receive?destino_trailer=${trailer}&estatus=PENDIENTE`);
+      const res = await axios.get(`${API_URL}/receive?destino_trailer=${trailer}&estatus=PENDING`);
       setPendingParts(res.data as any[]); // <-- Corrige aquí
     } catch {
       setPendingParts([]);
@@ -527,6 +548,7 @@ const WorkOrdersTable: React.FC = () => {
                 billToCoOptions={billToCoOptions}
                 getTrailerOptions={getTrailerOptions}
                 inventory={inventory}
+                trailersWithPendingParts={trailersWithPendingParts}
               />
             </div>
           </div>

@@ -10,10 +10,11 @@ interface WorkOrderFormProps {
   billToCoOptions: string[];
   getTrailerOptions: (billToCo: string) => string[];
   inventory: any[];
+  trailersWithPendingParts?: string[];
 }
 
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
-  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory
+  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts
 }) => (
   <div
     style={{
@@ -42,7 +43,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             onChange={onChange}
             style={{ width: '100%', marginTop: 4 }}
           >
-            <option value="">Select...</option>
+            <option value="">Selecciona...</option>
             {billToCoOptions.map(opt => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -60,9 +61,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   onChange={onChange}
                   style={{ width: '100%', marginTop: 4 }}
                 >
-                  <option value="">Select...</option>
+                  <option value="">Selecciona...</option>
                   {trailerOpts.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
+                    <option key={opt} value={opt}>
+                      {opt}
+                      {trailersWithPendingParts && trailersWithPendingParts.includes(opt) ? '  • Pending Parts' : ''}
+                    </option>
                   ))}
                 </select>
               );
@@ -105,10 +109,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       </div>
       <div style={{ marginTop: 16 }}>
         <label style={{ width: '100%' }}>
-          Description<span style={{ color: 'red' }}>*</span>
+          Descripción<span style={{ color: 'red' }}>*</span>
           <textarea
             name="description"
-            placeholder="Description*"
+            placeholder="Descripción*"
             value={workOrder.description}
             onChange={onChange}
             rows={3}
@@ -117,22 +121,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </label>
       </div>
       <div style={{ marginTop: 16 }}>
-        <strong>Parts</strong>
+        <strong>Partes</strong>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {workOrder.parts.map((part: any, index: number) => (
             <div key={index} style={{ border: '1px solid #ccc', borderRadius: 4, padding: 8, minWidth: 180 }}>
               <label>
                 PRT{index + 1}
                 <input
-                  list="inventory-parts"
+                  list="partes-inventario"
                   value={part.part}
                   onChange={e => onPartChange(index, 'part', e.target.value)}
-                  placeholder="Part (SKU or name)"
+                  placeholder="Parte (SKU o nombre)"
                 />
-                <datalist id="inventory-parts">
+                <datalist id="partes-inventario">
                   {inventory.map(item => (
                     <option key={item.sku} value={item.sku}>
-                      {item.part} ({item.sku}) - {item.onHand} available
+                      {item.part} ({item.sku}) - {item.onHand} disponibles
                     </option>
                   ))}
                 </datalist>
@@ -141,17 +145,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 Qty
                 <input
                   type="text"
-                  placeholder="Qty"
+                  placeholder="Cantidad"
                   value={part.qty}
                   onChange={e => onPartChange(index, 'qty', e.target.value)}
                   style={{ width: '100%', marginTop: 4 }}
                 />
               </label>
               <label>
-                Cost
+                Costo
                 <input
                   type="text"
-                  placeholder="Cost"
+                  placeholder="Costo"
                   value={part.cost}
                   onChange={e => onPartChange(index, 'cost', e.target.value)}
                   style={{ width: '100%', marginTop: 4 }}
