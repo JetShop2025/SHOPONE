@@ -321,84 +321,42 @@ const WorkOrdersTable: React.FC = () => {
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(25,118,210,0.07);
+            font-size: 12px; /* MÁS CHICA LA LETRA */
           }
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
-            padding: 8px 6px;
-            font-size: 14px;
+            padding: 4px 3px; /* MÁS CHICO EL PADDING */
+            font-size: 12px;  /* MÁS CHICA LA LETRA */
+            max-width: 120px;
+            word-break: break-word;
+            white-space: pre-line;
           }
           .wo-table th {
             background: #1976d2;
             color: #fff;
             font-weight: 700;
-            font-size: 15px;
+            font-size: 13px;
             border-bottom: 2px solid #1565c0;
           }
           .wo-table tr:last-child td {
             border-bottom: 1px solid #d0d7e2;
           }
-          .wo-title {
-            color: #1976d2;
-            font-weight: 800;
-            letter-spacing: 2px;
-            font-size: 36px;
-            margin-bottom: 24px;
-            display: flex;
-            align-items: center;
+          /* Colores por estatus */
+          .wo-row-approved {
+            background: #43a047 !important;
+            color: #fff !important;
           }
-          .wo-title-icon {
-            display: inline-block;
-            background: #1976d2;
-            color: #fff;
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            text-align: center;
-            line-height: 48px;
-            margin-right: 16px;
-            font-size: 28px;
-            font-weight: 900;
-            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+          .wo-row-finished {
+            background: #ffe082 !important;
+            color: #333 !important;
           }
-          .wo-btn {
-            background: #1976d2;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 10px 28px;
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 24px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(25,118,210,0.10);
-            transition: background 0.2s, color 0.2s;
+          .wo-row-processing {
+            background: #1976d2 !important;
+            color: #fff !important;
           }
-          .wo-btn.secondary {
-            background: #fff;
-            color: #1976d2;
-            border: 1px solid #1976d2;
-          }
-          .wo-btn.danger {
-            background: #fff;
-            color: #d32f2f;
-            border: 1px solid #d32f2f;
-          }
-          .wo-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
-          }
-          .wo-filter-label {
-            font-weight: 600;
-            color: #1976d2;
-          }
-          .wo-filter-input {
-            border: 1px solid #b0c4de;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 15px;
-            margin-left: 8px;
+          .wo-row-pre {
+            background: #fff !important;
+            color: #1976d2 !important;
           }
         `}
       </style>
@@ -698,19 +656,17 @@ const WorkOrdersTable: React.FC = () => {
             </thead>
             <tbody>
               {filteredOrders.map((order, index) => {
-                // Define el color de fondo según el estatus
-                let bgColor = '#fff';
-                if (order.status === 'APPROVED') bgColor = '#43a047'; // verde fuerte
-                else if (order.status === 'FINISHED') bgColor = '#ffe082'; // amarillo fuerte
-                else if (order.status === 'PRE W.O') bgColor = '#fff'; // blanco
+                let rowClass = '';
+                if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
+                else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
+                else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
+                else if (order.status === 'PRE W.O') rowClass = 'wo-row-pre';
 
                 return (
                   <tr
                     key={index}
+                    className={rowClass}
                     style={{
-                      background: bgColor,
-                      borderBottom: '1px solid #e3eaf2',
-                      color: order.status === 'APPROVED' ? '#fff' : order.status === 'FINISHED' ? '#333' : '#1976d2',
                       fontWeight: 600
                     }}
                   >
@@ -733,7 +689,7 @@ const WorkOrdersTable: React.FC = () => {
                     <td>{order.trailer}</td>
                     <td>{order.mechanic}</td>
                     <td>{order.date?.slice(0, 10)}</td>
-                    <td style={{ minWidth: 300, maxWidth: 500, whiteSpace: 'pre-wrap' }}>{order.description}</td>
+                    <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
                     {[0,1,2,3,4].map(i => (
                       <React.Fragment key={i}>
                         <td>{order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}</td>
