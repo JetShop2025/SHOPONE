@@ -148,18 +148,18 @@ const TrailasTable: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
-      <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Control de Trailas</h1>
-      
-      {/* Panel de traila seleccionada en la parte superior */}
+      <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Trailer Control</h1>
+
+      {/* Selected trailer panel */}
       {selected && (
         <div style={{ marginBottom: 24, background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
           <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22 }}>
-            Tráila seleccionada: {selected.nombre}
+            Selected Trailer: {selected.nombre}
           </h2>
           <div style={{ marginBottom: 16 }}>
-            <strong>Estatus actual:</strong>{' '}
+            <strong>Current Status:</strong>{' '}
             <span style={{ color: selected.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
-              {selected.estatus}
+              {selected.estatus === 'RENTADA' ? 'RENTED' : 'AVAILABLE'}
             </span>
           </div>
           <button
@@ -176,7 +176,7 @@ const TrailasTable: React.FC = () => {
               cursor: 'pointer'
             }}
           >
-            Marcar como {selected.estatus === 'RENTADA' ? 'DISPONIBLE' : 'RENTADA'}
+            Mark as {selected.estatus === 'RENTADA' ? 'AVAILABLE' : 'RENTED'}
           </button>
           <button
             onClick={() => setShowModal(true)}
@@ -192,7 +192,7 @@ const TrailasTable: React.FC = () => {
               cursor: 'pointer'
             }}
           >
-            Ver Historial de Work Orders
+            View Work Order History
           </button>
           <button
             onClick={() => fetchRentasHistorial(selected.nombre)}
@@ -208,7 +208,7 @@ const TrailasTable: React.FC = () => {
               cursor: 'pointer'
             }}
           >
-            Ver Historial de Rentas
+            View Rental History
           </button>
         </div>
       )}
@@ -217,9 +217,9 @@ const TrailasTable: React.FC = () => {
       {showRentModal && (
         <div style={modalStyle} onClick={() => setShowRentModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 18 }}>Rentar Tráila</h2>
+            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 18 }}>Rent Trailer</h2>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Cliente:</label>
+              <label style={{ fontWeight: 600 }}>Customer:</label>
               <input
                 type="text"
                 value={rentCliente}
@@ -229,7 +229,7 @@ const TrailasTable: React.FC = () => {
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Fecha de inicio de renta:</label>
+              <label style={{ fontWeight: 600 }}>Rental Start Date:</label>
               <input
                 type="date"
                 value={rentFechaRenta}
@@ -238,7 +238,7 @@ const TrailasTable: React.FC = () => {
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Fecha esperada de entrega:</label>
+              <label style={{ fontWeight: 600 }}>Expected Delivery Date:</label>
               <input
                 type="date"
                 value={rentFechaEntrega}
@@ -269,7 +269,7 @@ const TrailasTable: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                Confirmar Renta
+                Confirm Rent
               </button>
               <button
                 onClick={() => setShowRentModal(false)}
@@ -284,7 +284,7 @@ const TrailasTable: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                Cancelar
+                Cancel
               </button>
             </div>
           </div>
@@ -312,11 +312,11 @@ const TrailasTable: React.FC = () => {
             <table style={{ width: '100%', background: '#fff', borderRadius: 12, marginTop: 8, marginBottom: 8 }}>
               <thead>
                 <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
-                  <th>Nombre</th>
-                  <th>Estatus</th>
-                  <th>Cliente</th>
-                  <th>Fecha de Renta</th>
-                  <th>Fecha de Entrega</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Customer</th>
+                  <th>Rental Date</th>
+                  <th>Delivery Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -356,23 +356,23 @@ const TrailasTable: React.FC = () => {
         </div>
       ))}
 
-      {/* Modal flotante para historial de work orders */}
+      {/* Modal for work order history */}
       {showModal && selected && (
         <div style={modalStyle} onClick={() => setShowModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, marginBottom: 10 }}>
-              Historial de Work Orders para {selected.nombre}
+              Work Order History for {selected.nombre}
             </h2>
-            <button onClick={() => setShowModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Cerrar</button>
+            <button onClick={() => setShowModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Close</button>
             {workOrders.length === 0 ? (
-              <div style={{ color: '#888', fontStyle: 'italic' }}>No hay work orders para esta traila.</div>
+              <div style={{ color: '#888', fontStyle: 'italic' }}>No work orders for this trailer.</div>
             ) : (
               <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
                 <thead>
                   <tr style={{ background: '#1976d2', color: '#fff' }}>
                     <th>ID</th>
-                    <th>Fecha</th>
-                    <th>Estatus</th>
+                    <th>Date</th>
+                    <th>Status</th>
                     <th>PDF</th>
                   </tr>
                 </thead>
@@ -389,7 +389,7 @@ const TrailasTable: React.FC = () => {
                           rel="noopener noreferrer"
                           style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
                         >
-                          Ver PDF
+                          View PDF
                         </a>
                       </td>
                     </tr>
@@ -401,31 +401,31 @@ const TrailasTable: React.FC = () => {
         </div>
       )}
 
-      {/* Modal flotante para historial de rentas */}
+      {/* Modal for rental history */}
       {showRentasModal && (
         <div style={modalStyle} onClick={() => setShowRentasModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, marginBottom: 10 }}>
-              Historial de Rentas para {selected?.nombre}
+              Rental History for {selected?.nombre}
             </h2>
-            <button onClick={() => setShowRentasModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Cerrar</button>
+            <button onClick={() => setShowRentasModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Close</button>
             {rentasHistorial.length === 0 ? (
-              <div style={{ color: '#888', fontStyle: 'italic' }}>No hay historial de rentas para esta traila.</div>
+              <div style={{ color: '#888', fontStyle: 'italic' }}>No rental history for this trailer.</div>
             ) : (
               <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
                 <thead>
                   <tr style={{ background: '#1976d2', color: '#fff' }}>
-                    <th>Cliente</th>
-                    <th>Fecha de Renta</th>
-                    <th>Fecha de Entrega</th>
+                    <th>Customer</th>
+                    <th>Rental Date</th>
+                    <th>Delivery Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rentasHistorial.map((renta, index) => (
                     <tr key={index}>
                       <td>{renta.cliente}</td>
-                      <td>{renta.fecha_renta ? dayjs(renta.fecha_renta).format('DD/MM/YYYY') : '-'}</td>
-                      <td>{renta.fecha_entrega ? dayjs(renta.fecha_entrega).format('DD/MM/YYYY') : '-'}</td>
+                      <td>{renta.fecha_renta ? dayjs(renta.fecha_renta).format('MM/DD/YYYY') : '-'}</td>
+                      <td>{renta.fecha_entrega ? dayjs(renta.fecha_entrega).format('MM/DD/YYYY') : '-'}</td>
                     </tr>
                   ))}
                 </tbody>

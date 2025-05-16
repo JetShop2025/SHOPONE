@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const [results] = await db.query('SELECT * FROM trailers');
     res.json(results);
   } catch (err) {
-    res.status(500).send('Error');
+    res.status(500).send('ERROR');
   }
 });
 
@@ -20,7 +20,7 @@ router.get('/:nombre/work-orders', async (req, res) => {
     const [results] = await db.query('SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?', [nombre]);
     res.json(results[0]);
   } catch (err) {
-    res.status(500).send('Error');
+    res.status(500).send('ERROR');
   }
 });
 
@@ -33,7 +33,7 @@ router.get('/:nombre/historial-rentas', async (req, res) => {
     );
     res.json(results);
   } catch (err) {
-    res.status(500).send('Error al obtener el historial');
+    res.status(500).send('ERROR FETCHING RENTAL HISTORY');
   }
 });
 
@@ -44,7 +44,7 @@ router.put('/:nombre/estatus', async (req, res) => {
 
   // Cambia '6214' por tu password real o valida contra usuarios
   if (password !== '6214') {
-    return res.status(403).send('Password incorrecto');
+    return res.status(403).send('INCORRECT PASSWORD');
   }
 
   // 1. Obtén los datos antes del cambio
@@ -69,25 +69,25 @@ router.put('/:nombre/estatus', async (req, res) => {
         cliente,
         fechaRentaDB,
         fechaEntregaDB,
-        req.user?.username || 'sistema',
-        estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
+        req.user?.username || 'system',
+        estatus === 'RENTADA' ? 'RENT' : 'RETURN'
       ]
     );
 
-    // AUDITORÍA DE RENTAS
+    // AUDIT LOG FOR RENTALS
     await db.query(
       'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
       [
-        req.user?.username || 'sistema',
-        estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER',
+        req.user?.username || 'system',
+        estatus === 'RENTADA' ? 'RENT' : 'RETURN',
         'trailer_rentals',
-        rentalResult.insertId, // ID del registro de renta
+        rentalResult.insertId,
         JSON.stringify({
           trailer_nombre: nombre,
           cliente,
           fecha_renta: fechaRenta,
           fecha_entrega: fechaEntrega,
-          accion: estatus === 'RENTADA' ? 'RENTAR' : 'DEVOLVER'
+          accion: estatus === 'RENTADA' ? 'RENT' : 'RETURN'
         })
       ]
     );
@@ -110,8 +110,8 @@ router.put('/:nombre/estatus', async (req, res) => {
     await db.query(
       'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
       [
-        usuario || 'sistema',
-        'MODIFICAR',
+        usuario || 'system',
+        'UPDATE',
         'trailers',
         nombre,
         JSON.stringify(cambios)

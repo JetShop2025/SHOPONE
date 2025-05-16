@@ -26,10 +26,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       localStorage.setItem('username', username);
       navigate('/menu', { replace: true });
     } else {
-      setError('Usuario o contraseña incorrectos');
+      setError('INCORRECT USERNAME OR PASSWORD');
     }
   } catch {
-    setError('Error de conexión');
+    setError('CONNECTION ERROR');
   }
   setLoading(false);
 };
@@ -76,7 +76,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           fontFamily: 'Segoe UI, Arial, sans-serif',
           textAlign: 'center'
         }}>
-          Iniciar Sesión
+          Login
         </h1>
         <form onSubmit={handleSubmit} style={{
           width: '100%',
@@ -87,7 +87,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         }}>
           <input
             type="text"
-            placeholder="Usuario"
+            placeholder="Username"
             value={username}
             onChange={e => setUsername(e.target.value)}
             required
@@ -106,7 +106,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           />
           <input
             type="password"
-            placeholder="Contraseña"
+            placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
@@ -139,7 +139,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
             }}
           >
-            {loading ? 'Cargando...' : 'Entrar'}
+            {loading ? 'Loading...' : 'Login'}
           </button>
           {loading && (
             <div style={{ textAlign: 'center', marginTop: 16 }}>
@@ -164,7 +164,11 @@ const handleSubmit = async (e: React.FormEvent) => {
           )}
           {error && (
             <div style={{ color: '#d32f2f', marginTop: 18, fontWeight: 600, fontSize: 15, textAlign: 'center' }}>
-              {error}
+              {error === 'INCORRECT USERNAME OR PASSWORD'
+                ? 'Incorrect username or password'
+                : error === 'CONNECTION ERROR'
+                ? 'Connection error'
+                : error}
             </div>
           )}
         </form>

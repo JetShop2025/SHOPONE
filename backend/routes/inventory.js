@@ -29,11 +29,11 @@ router.post('/', upload.single('imagen'), async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [sku, barCodes, category, part, provider, brand, um, area, cantidad, imagen]
     );
-    await logAccion(usuario, 'CREAR', 'inventory', sku, JSON.stringify(req.body));
+    await logAccion(usuario, 'CREATE', 'inventory', sku, JSON.stringify(req.body));
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al agregar la parte');
+    res.status(500).send('ERROR ADDING PART TO INVENTORY');
   }
 });
 
@@ -49,11 +49,11 @@ router.post('/deduct', express.json(), async (req, res) => {
           [part.sku]
         );
         if (results.length === 0) {
-          errorMsg = `La parte "${part.sku}" no existe en inventario.`;
+          errorMsg = `The part "${part.sku}" does not exist in inventory.`;
           return res.status(400).json({ error: errorMsg });
         }
         if (results[0].onHand < Number(part.qty)) {
-          errorMsg = `No hay suficiente inventario para la parte "${part.sku}".`;
+          errorMsg = `Not enough inventory for part "${part.sku}".`;
           return res.status(400).json({ error: errorMsg });
         }
       }
@@ -66,12 +66,12 @@ router.post('/deduct', express.json(), async (req, res) => {
            WHERE sku = ?`,
           [Number(part.qty), Number(part.qty), part.sku]
         );
-        await logAccion(usuario, 'DESCONTAR', 'inventory', part.sku, JSON.stringify(part));
+        await logAccion(usuario, 'DEDUCT', 'inventory', part.sku, JSON.stringify(part));
       }
     }
     res.sendStatus(200);
   } catch (err) {
-    res.status(500).send('Error al validar inventario');
+    res.status(500).send('ERROR VALIDATING INVENTORY');
   }
 });
 
@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
     const [results] = await db.query('SELECT * FROM inventory');
     res.json(results);
   } catch (err) {
-    res.status(500).send('Error al obtener el inventario');
+    res.status(500).send('ERROR FETCHING INVENTORY');
   }
 });
 
@@ -92,13 +92,13 @@ router.delete('/:sku', async (req, res) => {
   try {
     const [results] = await db.query('SELECT * FROM inventory WHERE sku = ?', [sku]);
     if (!results || results.length === 0) {
-      return res.status(404).send('Parte no encontrada');
+      return res.status(404).send('PART NOT FOUND');
     }
     const oldData = results[0];
     await db.query('DELETE FROM inventory WHERE sku = ?', [sku]);
     await logAccion(
       usuario,
-      'ELIMINAR',
+      'DELETE',
       'inventory',
       sku,
       JSON.stringify({
@@ -113,9 +113,9 @@ router.delete('/:sku', async (req, res) => {
         precio: oldData.precio
       })
     );
-    res.status(200).send('Parte eliminada exitosamente');
+    res.status(200).send('PART DELETED SUCCESSFULLY');
   } catch (err) {
-    res.status(500).send('Error al eliminar la parte');
+    res.status(500).send('ERROR DELETING PART');
   }
 });
 
@@ -130,7 +130,7 @@ router.put('/:sku', upload.single('imagen'), async (req, res) => {
     // 1. Consulta el estado anterior
     const [oldResults] = await db.query('SELECT * FROM inventory WHERE sku = ?', [sku]);
     if (!oldResults || oldResults.length === 0) {
-      return res.status(404).send('Parte no encontrada');
+      return res.status(404).send('PART NOT FOUND');
     }
     const oldData = oldResults[0];
 
@@ -147,11 +147,11 @@ router.put('/:sku', upload.single('imagen'), async (req, res) => {
     );
     // 3. Guarda en detalles el antes y después
     const { usuario, ...rest } = req.body;
-    await logAccion(usuario, 'MODIFICAR', 'inventory', sku, JSON.stringify({ antes: oldData, despues: rest }));
-    res.status(200).send('Parte actualizada exitosamente');
+    await logAccion(usuario, 'UPDATE', 'inventory', sku, JSON.stringify({ before: oldData, after: rest }));
+    res.status(200).send('PART UPDATED SUCCESSFULLY');
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al actualizar la parte');
+    res.status(500).send('ERROR UPDATING PART');
   }
 });
 

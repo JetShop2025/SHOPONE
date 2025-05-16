@@ -14,11 +14,11 @@ async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
       [usuario, accion, tabla, registro_id, detalles]
     );
   } catch (err) {
-    console.error('Error al insertar en audit_log:', err);
+    console.error('Error inserting into audit_log:', err);
   }
 }
 
-// Agregar recepción
+// Add receipt
 router.post('/', upload.single('invoice'), async (req, res) => {
   const {
     sku, category, item, provider, brand, um,
@@ -30,22 +30,22 @@ router.post('/', upload.single('invoice'), async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO receives
         (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, estatus)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
       [
         sku, category, item, provider, brand, um,
         destino_trailer, invoice, qty, costTax, totalPOClassic
       ]
     );
     const { usuario: user, ...rest } = req.body;
-    await logAccion(user, 'CREAR', 'receives', result.insertId, JSON.stringify(rest));
+    await logAccion(user, 'CREATE', 'receives', result.insertId, JSON.stringify(rest));
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al agregar recepción');
+    res.status(500).send('Error adding receipt');
   }
 });
 
-// Obtener recepciones (puedes filtrar por trailer y estatus)
+// Get receipts (you can filter by trailer and status)
 router.get('/', async (req, res) => {
   const { destino_trailer, estatus } = req.query;
   let sql = `
@@ -67,15 +67,15 @@ router.get('/', async (req, res) => {
     const [results] = await db.query(sql, params);
     res.json(results);
   } catch (err) {
-    res.status(500).send('Error al obtener recepciones');
+    res.status(500).send('Error fetching receipts');
   }
 });
 
-// Marcar como USADO
+// Mark as USED
 router.put('/:id/use', async (req, res) => {
   try {
     await db.query(
-      'UPDATE receives SET estatus = "USADO" WHERE id = ?',
+      'UPDATE receives SET estatus = "USED" WHERE id = ?',
       [req.params.id]
     );
     res.sendStatus(200);
@@ -84,7 +84,7 @@ router.put('/:id/use', async (req, res) => {
   }
 });
 
-// Modificar recepción
+// Update receipt
 router.put('/:id', upload.single('invoice'), async (req, res) => {
   const { id } = req.params;
   const fields = req.body;
@@ -94,7 +94,7 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
   try {
     const [oldResults] = await db.query('SELECT * FROM receives WHERE id = ?', [id]);
     if (!oldResults || oldResults.length === 0) {
-      return res.status(404).send('Recepción no encontrada');
+      return res.status(404).send('Receipt not found');
     }
     const oldData = oldResults[0];
 
@@ -109,51 +109,51 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
     );
 
     const { usuario: user, ...rest } = fields;
-    const despues = { ...rest };
-    delete despues.usuario;
+    const after = { ...rest };
+    delete after.usuario;
 
-    // Compara solo los campos que realmente cambiaron
-    const cambios = {};
-    Object.keys(despues).forEach(key => {
+    // Only compare changed fields
+    const changes = {};
+    Object.keys(after).forEach(key => {
       if (
-        String(oldData[key] ?? '') !== String(despues[key] ?? '')
+        String(oldData[key] ?? '') !== String(after[key] ?? '')
       ) {
-        cambios[key] = { antes: oldData[key], despues: despues[key] };
+        changes[key] = { before: oldData[key], after: after[key] };
       }
     });
 
     await logAccion(
       usuario,
-      'MODIFICAR',
+      'UPDATE',
       'receives',
       id,
-      Object.keys(cambios).length > 0
+      Object.keys(changes).length > 0
         ? JSON.stringify({
-            antes: Object.fromEntries(Object.entries(oldData).filter(([k]) => cambios[k])),
-            despues: Object.fromEntries(Object.entries(despues).filter(([k]) => cambios[k]))
+            before: Object.fromEntries(Object.entries(oldData).filter(([k]) => changes[k])),
+            after: Object.fromEntries(Object.entries(after).filter(([k]) => changes[k]))
           })
-        : 'Sin cambios reales'
+        : 'No real changes'
     );
-    res.status(200).send('Recepción actualizada exitosamente');
+    res.status(200).send('Receipt updated successfully');
   } catch (err) {
-    res.status(500).send('Error al actualizar la recepción');
+    res.status(500).send('Error updating receipt');
   }
 });
 
-// Eliminar recepción
+// Delete receipt
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   const { usuario } = req.body;
   try {
     const [results] = await db.query('SELECT * FROM receives WHERE id = ?', [id]);
     if (!results || results.length === 0) {
-      return res.status(404).send('Recepción no encontrada');
+      return res.status(404).send('Receipt not found');
     }
     const oldData = results[0];
     await db.query('DELETE FROM receives WHERE id = ?', [id]);
     await logAccion(
       usuario,
-      'ELIMINAR',
+      'DELETE',
       'receives',
       id,
       JSON.stringify({
@@ -166,9 +166,9 @@ router.delete('/:id', async (req, res) => {
         estatus: oldData.estatus
       })
     );
-    res.status(200).send('Recepción eliminada exitosamente');
+    res.status(200).send('Receipt deleted successfully');
   } catch (err) {
-    res.status(500).send('Error al eliminar la recepción');
+    res.status(500).send('Error deleting receipt');
   }
 });
 

@@ -42,7 +42,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             onChange={onChange}
             style={{ width: '100%', marginTop: 4 }}
           >
-            <option value="">Selecciona...</option>
+            <option value="">Select...</option>
             {billToCoOptions.map(opt => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -60,7 +60,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   onChange={onChange}
                   style={{ width: '100%', marginTop: 4 }}
                 >
-                  <option value="">Selecciona...</option>
+                  <option value="">Select...</option>
                   {trailerOpts.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
@@ -105,10 +105,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       </div>
       <div style={{ marginTop: 16 }}>
         <label style={{ width: '100%' }}>
-          Descripción<span style={{ color: 'red' }}>*</span>
+          Description<span style={{ color: 'red' }}>*</span>
           <textarea
             name="description"
-            placeholder="Descripción*"
+            placeholder="Description*"
             value={workOrder.description}
             onChange={onChange}
             rows={3}
@@ -117,22 +117,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </label>
       </div>
       <div style={{ marginTop: 16 }}>
-        <strong>Partes</strong>
+        <strong>Parts</strong>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
           {workOrder.parts.map((part: any, index: number) => (
             <div key={index} style={{ border: '1px solid #ccc', borderRadius: 4, padding: 8, minWidth: 180 }}>
               <label>
                 PRT{index + 1}
                 <input
-                  list="partes-inventario"
+                  list="inventory-parts"
                   value={part.part}
                   onChange={e => onPartChange(index, 'part', e.target.value)}
-                  placeholder="Parte (SKU o nombre)"
+                  placeholder="Part (SKU or name)"
                 />
-                <datalist id="partes-inventario">
+                <datalist id="inventory-parts">
                   {inventory.map(item => (
                     <option key={item.sku} value={item.sku}>
-                      {item.part} ({item.sku}) - {item.onHand} disponibles
+                      {item.part} ({item.sku}) - {item.onHand} available
                     </option>
                   ))}
                 </datalist>
@@ -141,17 +141,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 Qty
                 <input
                   type="text"
-                  placeholder="Cantidad"
+                  placeholder="Qty"
                   value={part.qty}
                   onChange={e => onPartChange(index, 'qty', e.target.value)}
                   style={{ width: '100%', marginTop: 4 }}
                 />
               </label>
               <label>
-                Costo
+                Cost
                 <input
                   type="text"
-                  placeholder="Costo"
+                  placeholder="Cost"
                   value={part.cost}
                   onChange={e => onPartChange(index, 'cost', e.target.value)}
                   style={{ width: '100%', marginTop: 4 }}
@@ -185,7 +185,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           />
         </label>
         <label style={{ flex: 1 }}>
-          Estatus<span style={{ color: 'red' }}>*</span>
+          Status<span style={{ color: 'red' }}>*</span>
           <select
             name="status"
             value={workOrder.status}
@@ -193,17 +193,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             style={{ width: '100%', marginTop: 4 }}
             required
           >
-            <option value="">Selecciona...</option>
+            <option value="">Select...</option>
             <option value="PRE W.O">PRE W.O</option>
-            <option value="PROCESANDO">PROCESANDO</option>
-            <option value="APROBADA">APROBADA</option>
-            <option value="FINALIZADA">FINALIZADA</option>
+            <option value="PROCESSING">PROCESSING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="FINISHED">FINISHED</option>
           </select>
         </label>
       </div>
       <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
-        <button type="submit" style={{ background: '#1976d2', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: 4 }}>Guardar</button>
-        <button type="button" onClick={onCancel} style={{ background: '#fff', color: '#1976d2', border: '1px solid #1976d2', padding: '8px 20px', borderRadius: 4 }}>Cancelar</button>
+        <button type="submit" style={{ background: '#1976d2', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: 4 }}>Save</button>
+        <button type="button" onClick={onCancel} style={{ background: '#fff', color: '#1976d2', border: '1px solid #1976d2', padding: '8px 20px', borderRadius: 4 }}>Cancel</button>
       </div>
     </form>
   </div>

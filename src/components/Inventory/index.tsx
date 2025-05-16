@@ -33,7 +33,7 @@ const Inventory: React.FC = () => {
           marginBottom: 32
         }}
       >
-        Inventario
+        INVENTORY
       </h1>
       <div style={{ marginBottom: 24 }}>
         <button

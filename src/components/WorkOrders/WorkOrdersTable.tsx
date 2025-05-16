@@ -32,9 +32,9 @@ function getWeekRange(weekStr: string) {
 
 const STATUS_OPTIONS = [
   "PRE W.O",
-  "PROCESANDO",
-  "APROBADA",
-  "FINALIZADA"
+  "PROCESSING",
+  "APPROVED",
+  "FINISHED"
 ];
 
 const WorkOrdersTable: React.FC = () => {
@@ -421,7 +421,7 @@ const WorkOrdersTable: React.FC = () => {
         {/* FILTROS DERECHA */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, marginTop: -16 }}>
           <label className="wo-filter-label" style={{ marginBottom: 6 }}>
-            Filtrar por semana:&nbsp;
+            Filter by week:&nbsp;
             <input
               type="week"
               value={selectedWeek}
@@ -430,14 +430,14 @@ const WorkOrdersTable: React.FC = () => {
             />
           </label>
           <label className="wo-filter-label">
-            Filtrar por estatus:&nbsp;
+            Filter by status:&nbsp;
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
               className="wo-filter-input"
               style={{ minWidth: 160 }}
             >
-              <option value="">Todos</option>
+              <option value="">All</option>
               {STATUS_OPTIONS.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
@@ -456,9 +456,9 @@ const WorkOrdersTable: React.FC = () => {
               setMultiDeleteEnabled(true);
             }}
           >
-            Eliminar
+            Delete
           </button>
-          <button className="wo-btn secondary" style={{ marginLeft: 8 }} onClick={() => setShowEditForm(true)}>Modificar</button>
+          <button className="wo-btn secondary" style={{ marginLeft: 8 }} onClick={() => setShowEditForm(true)}>Edit</button>
         </div>
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
@@ -471,7 +471,7 @@ const WorkOrdersTable: React.FC = () => {
                 onPartChange={handlePartChange}
                 onSubmit={() => handleAddWorkOrder(newWorkOrder)}
                 onCancel={() => setShowForm(false)}
-                title="Nueva Orden de Trabajo"
+                title="New Work Order"
                 billToCoOptions={billToCoOptions}
                 getTrailerOptions={getTrailerOptions}
                 inventory={inventory}
@@ -493,9 +493,9 @@ const WorkOrdersTable: React.FC = () => {
                 maxWidth: 600,
                 boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
               }}>
-                <h2 style={{ color: '#d32f2f', marginBottom: 12 }}>Eliminar Órdenes Seleccionadas</h2>
+                <h2 style={{ color: '#d32f2f', marginBottom: 12 }}>Delete Selected Orders</h2>
                 <div style={{ marginBottom: 12 }}>
-                  Selecciona las órdenes que deseas eliminar usando los checkboxes de la tabla.
+                  Select the orders you want to delete using the table checkboxes.
                 </div>
                 <label style={{ fontWeight: 600 }}>
                   Password:
@@ -512,7 +512,7 @@ const WorkOrdersTable: React.FC = () => {
                     className="wo-btn danger"
                     disabled={deletePassword !== '6214' || selectedIds.length === 0}
                     onClick={async () => {
-                      if (window.confirm(`¿Seguro que deseas eliminar las órdenes con IDs: ${selectedIds.join(', ')}?`)) {
+                      if (window.confirm(`Are you sure you want to delete the orders with IDs: ${selectedIds.join(', ')}?`)) {
                         try {
                           await axios.request({
                             url: `${API_URL}/work-orders`,
@@ -524,14 +524,14 @@ const WorkOrdersTable: React.FC = () => {
                           setShowDeleteForm(false);
                           setMultiDeleteEnabled(false);
                           setDeletePassword('');
-                          alert('Órdenes eliminadas correctamente');
+                          alert('Orders deleted successfully');
                         } catch {
-                          alert('Error al eliminar las órdenes');
+                          alert('Error deleting orders');
                         }
                       }
                     }}
                   >
-                    Eliminar seleccionados
+                    Delete Selected
                   </button>
                   <button
                     className="wo-btn secondary"
@@ -543,7 +543,7 @@ const WorkOrdersTable: React.FC = () => {
                       setDeletePassword('');
                     }}
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -564,14 +564,14 @@ const WorkOrdersTable: React.FC = () => {
                 maxWidth: 700,
                 boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
               }}>
-                <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Editar Orden de Trabajo</h2>
+                <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>
                 {!editWorkOrder ? (
                   <>
                     <label style={{ fontWeight: 600 }}>
                       ID:
                       <input
                         type="number"
-                        placeholder="ID a editar"
+                        placeholder="ID to edit"
                         value={editId}
                         onChange={e => setEditId(e.target.value)}
                         style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
@@ -592,7 +592,7 @@ const WorkOrdersTable: React.FC = () => {
                       style={{ marginLeft: 8 }}
                       onClick={() => {
                         if (editPassword !== '6214') {
-                          setEditError('Contraseña incorrecta');
+                          setEditError('Incorrect password');
                           return;
                         }
                         const found = workOrders.find(wo => wo.id === Number(editId));
@@ -603,25 +603,25 @@ const WorkOrdersTable: React.FC = () => {
                           });
                           setEditError('');
                         } else {
-                          setEditError('No se encontró una orden con ese ID.');
+                          setEditError('No order found with that ID.');
                         }
                       }}
                     >
-                      Cargar
+                      Load
                     </button>
                     <button
                       className="wo-btn secondary"
                       style={{ marginLeft: 8 }}
                       onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); }}
                     >
-                      Cancelar
+                      Cancel
                     </button>
                     {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
                   </>
                 ) : (
                   <>
                     <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
-                      ID de la orden: {editWorkOrder.id}
+                      Order ID: {editWorkOrder.id}
                     </div>
                     <WorkOrderForm
                       workOrder={editWorkOrder}
@@ -641,13 +641,13 @@ const WorkOrdersTable: React.FC = () => {
                           setEditWorkOrder(null);
                           setEditId('');
                           setEditError('');
-                          alert('Orden actualizada correctamente.');
+                          alert('Order updated successfully.');
                         } catch (err) {
-                          alert('Error al actualizar la orden.');
+                          alert('Error updating order.');
                         }
                       }}
                       onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}
-                      title="Editar Orden de Trabajo"
+                      title="Edit Work Order"
                       billToCoOptions={billToCoOptions}
                       getTrailerOptions={getTrailerOptions}
                       inventory={inventory}
@@ -693,15 +693,15 @@ const WorkOrdersTable: React.FC = () => {
                 ))}
                 <th>Total HRS</th>
                 <th>Total LAB & PRTS</th>
-                <th>Estatus</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.map((order, index) => {
                 // Define el color de fondo según el estatus
                 let bgColor = '#fff';
-                if (order.status === 'APROBADA') bgColor = '#43a047'; // verde fuerte
-                else if (order.status === 'FINALIZADA') bgColor = '#ffe082'; // amarillo fuerte
+                if (order.status === 'APPROVED') bgColor = '#43a047'; // verde fuerte
+                else if (order.status === 'FINISHED') bgColor = '#ffe082'; // amarillo fuerte
                 else if (order.status === 'PRE W.O') bgColor = '#fff'; // blanco
 
                 return (
@@ -710,7 +710,7 @@ const WorkOrdersTable: React.FC = () => {
                     style={{
                       background: bgColor,
                       borderBottom: '1px solid #e3eaf2',
-                      color: order.status === 'APROBADA' ? '#fff' : order.status === 'FINALIZADA' ? '#333' : '#1976d2',
+                      color: order.status === 'APPROVED' ? '#fff' : order.status === 'FINISHED' ? '#333' : '#1976d2',
                       fontWeight: 600
                     }}
                   >

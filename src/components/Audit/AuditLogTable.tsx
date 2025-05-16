@@ -34,9 +34,9 @@ function renderDetalles(detalles: string) {
       }}>
         <thead>
           <tr style={{ background: '#1976d2', color: '#fff' }}>
-            <th style={{ padding: 7, borderRight: '1px solid #e3eaf2', borderTopLeftRadius: 8 }}>Campo</th>
-            <th style={{ padding: 7, borderRight: '1px solid #e3eaf2' }}>Antes</th>
-            <th style={{ padding: 7, borderTopRightRadius: 8 }}>Después</th>
+            <th style={{ padding: 7, borderRight: '1px solid #e3eaf2', borderTopLeftRadius: 8 }}>FIELD</th>
+            <th style={{ padding: 7, borderRight: '1px solid #e3eaf2' }}>BEFORE</th>
+            <th style={{ padding: 7, borderTopRightRadius: 8 }}>AFTER</th>
           </tr>
         </thead>
         <tbody>
@@ -93,7 +93,7 @@ const AuditLogTable: React.FC = () => {
 
   return (
     <div style={{ padding: 32, background: '#f5faff', borderRadius: 16, maxWidth: 1200, margin: '32px auto', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
-      <h1 style={{ color: '#1976d2', fontFamily: 'Segoe UI, Arial, sans-serif', fontWeight: 800, fontSize: 28, marginBottom: 24 }}>Movimientos del Sistema</h1>
+      <h1 style={{ color: '#1976d2', fontFamily: 'Segoe UI, Arial, sans-serif', fontWeight: 800, fontSize: 28, marginBottom: 24 }}>SYSTEM MOVEMENTS</h1>
       <table style={{
         width: '100%',
         borderCollapse: 'separate',
@@ -106,12 +106,12 @@ const AuditLogTable: React.FC = () => {
         <thead>
           <tr style={{ background: '#1976d2', color: '#fff' }}>
             <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>ID</th>
-            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>Usuario</th>
-            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>Acción</th>
-            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>Tabla</th>
-            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>ID Registro</th>
-            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>Fecha</th>
-            <th style={{ padding: 10 }}>Detalles</th>
+            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>USER</th>
+            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>ACTION</th>
+            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>TABLE</th>
+            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>RECORD ID</th>
+            <th style={{ padding: 10, borderRight: '1px solid #e3eaf2' }}>DATE</th>
+            <th style={{ padding: 10 }}>DETAILS</th>
           </tr>
         </thead>
         <tbody>

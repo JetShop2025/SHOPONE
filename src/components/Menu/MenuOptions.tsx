@@ -15,7 +15,7 @@ const MenuOptions: React.FC = () => {
       setError('');
       navigate('/audit');
     } else {
-      setError('Contraseña incorrecta');
+      setError('WRONG PASSWORD');
     }
   };
 
@@ -37,7 +37,7 @@ const MenuOptions: React.FC = () => {
         alt="Logo"
         style={{ width: 120, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px rgba(25,118,210,0.10)' }}
       />
-      <h1 style={{ color: '#1976d2', fontWeight: 800, marginBottom: 32, letterSpacing: 2 }}>Menú Principal</h1>
+      <h1 style={{ color: '#1976d2', fontWeight: 800, marginBottom: 32, letterSpacing: 2 }}>MAIN MENU</h1>
       <button
         style={{
           width: '100%',
@@ -54,7 +54,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => navigate('/inventory')}
       >
-        Inventario
+        INVENTORY
       </button>
       <button
         style={{
@@ -72,7 +72,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => navigate('/work-orders')}
       >
-        Órdenes de Trabajo
+        WORK ORDERS
       </button>
       <button
         style={{
@@ -90,7 +90,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => navigate('/trailas')}
       >
-        Control de Trailas
+        TRAILER CONTROL
       </button>
       <button
         style={{
@@ -108,7 +108,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => { setShowAuditModal(true); setError(''); setAuditPassword(''); }}
       >
-        Auditoría
+        AUDIT
       </button>
 
       {/* Modal para password de auditoría */}
@@ -125,12 +125,12 @@ const MenuOptions: React.FC = () => {
           }}
             onClick={e => e.stopPropagation()}
           >
-            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 16 }}>Acceso a Auditoría</h2>
+            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 16 }}>Audit Access</h2>
             <input
               type="password"
               value={auditPassword}
               onChange={e => setAuditPassword(e.target.value)}
-              placeholder="Contraseña"
+              placeholder="Password"
               style={{
                 padding: '12px 18px',
                 borderRadius: 8,
@@ -159,7 +159,7 @@ const MenuOptions: React.FC = () => {
                 }}
                 onClick={handleAuditAccess}
               >
-                Entrar
+                Enter
               </button>
               <button
                 style={{
@@ -174,7 +174,7 @@ const MenuOptions: React.FC = () => {
                 }}
                 onClick={() => setShowAuditModal(false)}
               >
-                Cancelar
+                Cancel
               </button>
             </div>
             {error && <div style={{ color: '#d32f2f', marginTop: 10 }}>{error}</div>}

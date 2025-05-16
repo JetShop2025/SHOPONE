@@ -9,7 +9,7 @@ router.get('/audit-log', async (req, res) => {
     res.json(results);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al obtener el log de auditoría');
+    res.status(500).send('ERROR FETCHING AUDIT LOG');
   }
 });
 

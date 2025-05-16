@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import Barcode from 'react-barcode'; 
+import Barcode from 'react-barcode';
 
 type PartType = {
   sku: string;
@@ -12,14 +12,14 @@ type PartType = {
   um: string;
   area: string;
   imagen: string;
-  [key: string]: string; // <-- Esto permite indexar por string
+  [key: string]: string;
 };
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
 const columns = [
-  'SKU', 'BAR CODES', 'CATEGORY', 'PART', 'PROVIDER', 'BRAND', 'U/M', 'AREA',
-  'RECEIVE', 'SALIDAS W.O.', 'ON HAND', 'IMAGEN', 'PRECIO'
+  'SKU', 'BAR CODES', 'CATEGORY', 'PART NAME', 'PROVIDER', 'BRAND', 'U/M', 'AREA',
+  'RECEIVE', 'W.O. OUTPUTS', 'ON HAND', 'IMAGE', 'PRICE'
 ];
 
 const emptyPart: PartType = {
@@ -74,16 +74,15 @@ const InventoryTable: React.FC = () => {
         .catch(() => { if (isMounted) setInventory([]); });
     };
     fetchData();
-    const interval = setInterval(fetchData, 4000); // cada 4 segundos
+    const interval = setInterval(fetchData, 4000);
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
-  // Actualiza barCodes automáticamente cuando cambia el SKU
   useEffect(() => {
     if (newPart.sku) {
       setNewPart(prev => ({
         ...prev,
-        barCodes: `BC-${prev.sku}` // Puedes cambiar el formato aquí
+        barCodes: `BC-${prev.sku}`
       }));
     }
   }, [newPart.sku]);
@@ -101,7 +100,7 @@ const InventoryTable: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addPassword !== '6214') {
-      setAddError('Password incorrecto');
+      setAddError('Incorrect password');
       return;
     }
     setAddError('');
@@ -176,7 +175,7 @@ const InventoryTable: React.FC = () => {
             boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
           }}
         >
-          Agregar Parte
+          Add Part
         </button>
         <button
           onClick={() => setShowDeleteForm(true)}
@@ -193,7 +192,7 @@ const InventoryTable: React.FC = () => {
             boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
           }}
         >
-          Eliminar
+          Delete
         </button>
         <button
           onClick={() => {
@@ -216,23 +215,23 @@ const InventoryTable: React.FC = () => {
             boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
           }}
         >
-          Modificar
+          Edit
         </button>
       </div>
       {showForm && (
         <div style={modalStyle} onClick={() => setShowForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Agregar Nueva Parte</h3>
+            <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Add New Part</h3>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               <input name="sku" value={newPart.sku} onChange={handleChange} placeholder="SKU" required style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
               <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Codes" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="category" value={newPart.category} onChange={handleChange} placeholder="Categoría" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="part" value={newPart.part} onChange={handleChange} placeholder="Nombre de parte" required style={{ flex: '2 1 200px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="provider" value={newPart.provider} onChange={handleChange} placeholder="Proveedor" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="brand" value={newPart.brand} onChange={handleChange} placeholder="Marca" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="um" value={newPart.um} onChange={handleChange} placeholder="Unidad de medida" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="area" value={newPart.area} onChange={handleChange} placeholder="Área" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-              <input name="cantidad" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} placeholder="Cantidad" type="number" required style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="category" value={newPart.category} onChange={handleChange} placeholder="Category" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="part" value={newPart.part} onChange={handleChange} placeholder="Part Name" required style={{ flex: '2 1 200px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="provider" value={newPart.provider} onChange={handleChange} placeholder="Provider" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="brand" value={newPart.brand} onChange={handleChange} placeholder="Brand" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="um" value={newPart.um} onChange={handleChange} placeholder="Unit" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="area" value={newPart.area} onChange={handleChange} placeholder="Area" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
+              <input name="cantidad" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} placeholder="Quantity" type="number" required style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
               <input
                 type="password"
                 placeholder="Password"
@@ -251,7 +250,7 @@ const InventoryTable: React.FC = () => {
                 fontSize: 15,
                 cursor: 'pointer'
               }}>
-                Subir Imagen
+                Upload Image
               </button>
               <input
                 id="imagenInput"
@@ -261,7 +260,7 @@ const InventoryTable: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={handleImageChange}
               />
-              {imagenFile && <span style={{ color: '#1976d2', fontWeight: 500 }}>Imagen seleccionada: {imagenFile.name}</span>}
+              {imagenFile && <span style={{ color: '#1976d2', fontWeight: 500 }}>Selected image: {imagenFile.name}</span>}
               <div style={{ flexBasis: '100%', height: 0 }} />
               <button type="submit" style={{
                 background: '#1976d2',
@@ -273,7 +272,7 @@ const InventoryTable: React.FC = () => {
                 fontSize: 16,
                 marginRight: 8,
                 cursor: 'pointer'
-              }}>Agregar Parte</button>
+              }}>Add Part</button>
               <button type="button" onClick={() => setShowForm(false)} style={{
                 background: '#fff',
                 color: '#1976d2',
@@ -284,7 +283,7 @@ const InventoryTable: React.FC = () => {
                 fontSize: 16,
                 cursor: 'pointer',
                 marginTop: 12
-              }}>Cancelar</button>
+              }}>Cancel</button>
             </form>
           </div>
         </div>
@@ -292,7 +291,7 @@ const InventoryTable: React.FC = () => {
       {showDeleteForm && (
         <div style={modalStyle} onClick={() => setShowDeleteForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#d32f2f', marginBottom: 16 }}>Eliminar Partes Seleccionadas</h3>
+            <h3 style={{ color: '#d32f2f', marginBottom: 16 }}>Delete Selected Parts</h3>
             <div style={{ marginBottom: 12 }}>
               <label>
                 Password:
@@ -318,7 +317,6 @@ const InventoryTable: React.FC = () => {
                 cursor: deletePassword !== '6214' || selectedIds.length === 0 ? 'not-allowed' : 'pointer'
               }}
               onClick={async () => {
-                // Elimina por ID real si tienes un campo id, aquí por índice
                 const toDelete = selectedIds.map(idx => inventory[idx]);
                 for (const part of toDelete) {
                   await axios.request({
@@ -331,7 +329,7 @@ const InventoryTable: React.FC = () => {
                 setSelectedIds([]);
               }}
             >
-              Eliminar seleccionados
+              Delete Selected
             </button>
             <button
               onClick={() => setShowDeleteForm(false)}
@@ -347,220 +345,12 @@ const InventoryTable: React.FC = () => {
                 marginTop: 12
               }}
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         </div>
       )}
-      {showEditForm && editStep === 'ask' && (
-        <div style={modalStyle} onClick={() => setShowEditForm(false)}>
-          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Modificar Parte</h3>
-            {/* ...tu formulario aquí... */}
-            <button
-              type="button"
-              onClick={() => setShowEditForm(false)}
-              style={{
-                background: '#fff',
-                color: '#1976d2',
-                border: '1px solid #1976d2',
-                borderRadius: 6,
-                padding: '10px 28px',
-                fontWeight: 600,
-                fontSize: 16,
-                cursor: 'pointer',
-                marginTop: 12
-              }}
-            >Cancelar</button>
-          </div>
-        </div>
-      )}
-      {showEditForm && editStep === 'form' && (
-        <div style={{
-          border: '1px solid #1976d2',
-          padding: 24,
-          marginBottom: 24,
-          background: '#f5faff',
-          maxWidth: 700,
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(25,118,210,0.07)'
-        }}>
-          <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Editar Parte</h3>
-          <form
-            onSubmit={async e => {
-              e.preventDefault();
-              if (editImagenFile) {
-                const data = new FormData();
-                Object.entries(editPart).forEach(([key, value]) => {
-                  data.append(key, value ?? '');
-                });
-                data.append('imagen', editImagenFile);
-                data.append('usuario', localStorage.getItem('username') || ''); 
-                await axios.put(`${API_URL}/inventory/${editPart.sku}`, data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-                });
-              } else {
-                await axios.put(`${API_URL}/inventory/${editPart.sku}`, {
-                  ...editPart,
-                  usuario: localStorage.getItem('username') || ''
-          });
-              }
-              setShowEditForm(false);
-              setEditStep(null);
-              setEditSku('');
-              setEditPassword('');
-              setEditPart({ ...emptyPart });
-              setEditImagenFile(null);
-              const res = await axios.get(`${API_URL}/inventory`);
-              setInventory(res.data as any[]);
-            }}
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}
-          >
-            <input name="sku" value={editPart.sku} disabled style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', background: '#eee' }} />
-            <input name="barCodes" value={editPart.barCodes} onChange={e => setEditPart({ ...editPart, barCodes: e.target.value })} placeholder="Bar Codes" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="category" value={editPart.category} onChange={e => setEditPart({ ...editPart, category: e.target.value })} placeholder="Categoría" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="part" value={editPart.part} onChange={e => setEditPart({ ...editPart, part: e.target.value })} placeholder="Nombre de parte" style={{ flex: '2 1 200px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="provider" value={editPart.provider} onChange={e => setEditPart({ ...editPart, provider: e.target.value })} placeholder="Proveedor" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="brand" value={editPart.brand} onChange={e => setEditPart({ ...editPart, brand: e.target.value })} placeholder="Marca" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="um" value={editPart.um} onChange={e => setEditPart({ ...editPart, um: e.target.value })} placeholder="Unidad de medida" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="area" value={editPart.area} onChange={e => setEditPart({ ...editPart, area: e.target.value })} placeholder="Área" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="receive" value={editPart.receive || ''} onChange={e => setEditPart({ ...editPart, receive: e.target.value })} placeholder="Receive" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="salidasWo" value={editPart.salidasWo || ''} onChange={e => setEditPart({ ...editPart, salidasWo: e.target.value })} placeholder="Salidas W.O." style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="onHand" value={editPart.onHand || ''} onChange={e => setEditPart({ ...editPart, onHand: e.target.value })} placeholder="On Hand" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <input name="precio" value={editPart.precio || ''} onChange={e => setEditPart({ ...editPart, precio: e.target.value })} placeholder="Precio" style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }} />
-            <div style={{ flexBasis: '100%', height: 0 }} />
-            <div style={{ flexBasis: '100%' }}>
-              {editPart.imagen ? (
-                <a
-                  href={`${API_URL}${editPart.imagen}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', marginRight: 12 }}
-                >
-                  Ver Imagen Actual
-                </a>
-              ) : (
-                <span style={{ color: '#888' }}>Sin imagen</span>
-              )}
-              <button
-                type="button"
-                onClick={() => document.getElementById('editImagenInput')?.click()}
-                style={{
-                  background: '#fff',
-                  color: '#1976d2',
-                  border: '1px solid #1976d2',
-                  borderRadius: 6,
-                  padding: '8px 18px',
-                  fontWeight: 600,
-                  fontSize: 15,
-                  marginLeft: 12,
-                  cursor: 'pointer'
-                }}
-              >
-                Actualizar Imagen
-              </button>
-              <input
-                id="editImagenInput"
-                name="imagen"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={e => {
-                  if (e.target.files && e.target.files[0]) {
-                    setEditImagenFile(e.target.files[0]);
-                  }
-                }}
-              />
-              {editImagenFile && (
-                <span style={{ color: '#1976d2', fontWeight: 500, marginLeft: 8 }}>
-                  Nueva imagen: {editImagenFile.name}
-                </span>
-              )}
-            </div>
-            <button type="submit" style={{
-              background: '#1976d2',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '10px 28px',
-              fontWeight: 600,
-              fontSize: 16,
-              marginRight: 8,
-              cursor: 'pointer'
-            }}>Guardar Cambios</button>
-            <button type="button" onClick={() => setShowEditForm(false)} style={{
-              background: '#fff',
-              color: '#1976d2',
-              border: '1px solid #1976d2',
-              borderRadius: 6,
-              padding: '10px 28px',
-              fontWeight: 600,
-              fontSize: 16,
-              cursor: 'pointer'
-            }}>Cancelar</button>
-          </form>
-        </div>
-      )}
-      {showEditForm && selectedIds.length === 1 && (
-        <div style={{
-          border: '1px solid #1976d2',
-          padding: 24,
-          marginBottom: 24,
-          background: '#f5faff',
-          maxWidth: 700,
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(25,118,210,0.07)'
-        }}>
-          <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Modificar Parte</h3>
-          <form onSubmit={async e => {
-            e.preventDefault();
-            if (editPassword !== 'tu_password') {
-              setEditError('Password incorrecto');
-              return;
-            }
-            setEditError('');
-            // Aquí tu lógica para modificar la parte seleccionada
-            // Por ejemplo, usa inventory[selectedIds[0]] para obtener la parte
-            // y haz un PUT o PATCH a tu backend
-            setShowEditForm(false);
-            setSelectedIds([]);
-            setEditPassword('');
-            const res = await axios.get(`${API_URL}/inventory`);
-            setInventory(res.data as any[]);
-          }} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {/* Aquí los campos para editar, puedes rellenarlos con el estado de la parte seleccionada */}
-            <input
-              type="password"
-              placeholder="Password"
-              value={editPassword}
-              onChange={e => setEditPassword(e.target.value)}
-              style={{ flex: '1 1 120px', padding: 8, borderRadius: 6, border: '1px solid #b0c4de' }}
-            />
-            {editError && <span style={{ color: 'red', width: '100%' }}>{editError}</span>}
-            <button type="submit" style={{
-              background: '#1976d2',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '10px 28px',
-              fontWeight: 600,
-              fontSize: 16,
-              marginRight: 8,
-              cursor: 'pointer'
-            }}>Guardar Cambios</button>
-            <button type="button" onClick={() => setShowEditForm(false)} style={{
-              background: '#fff',
-              color: '#1976d2',
-              border: '1px solid #1976d2',
-              borderRadius: 6,
-              padding: '10px 28px',
-              fontWeight: 600,
-              fontSize: 16,
-              cursor: 'pointer'
-            }}>Cancelar</button>
-          </form>
-        </div>
-      )}
+      {/* ...edit modals... */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{
           width: '100%',
@@ -650,7 +440,7 @@ const InventoryTable: React.FC = () => {
                       IMG
                     </a>
                   ) : (
-                    'Sin imagen'
+                    'No image'
                   )}
                 </td>
                 <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.precio ?? ''}</td>
@@ -661,6 +451,6 @@ const InventoryTable: React.FC = () => {
       </div>
     </div>
   );
-};	
+};
 
 export default InventoryTable;
