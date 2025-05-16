@@ -63,6 +63,7 @@ const ReceiveInventory: React.FC = () => {
   const [showDeleteForm, setShowDeleteForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
   useEffect(() => {
     axios.get(`${API_URL}/inventory`).then(res => setInventory(res.data as any[]));
@@ -196,6 +197,41 @@ const ReceiveInventory: React.FC = () => {
             boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
           }}
           onClick={() => setShowEditForm(!showEditForm)}
+        >
+          Edit
+        </button>
+        <button
+          style={{
+            background: '#d32f2f',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            padding: '10px 28px',
+            fontWeight: 600,
+            fontSize: 16,
+            marginRight: 8,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
+          }}
+          disabled={selectedRow === null}
+          onClick={handleDelete}
+        >
+          Delete
+        </button>
+        <button
+          style={{
+            background: '#fff',
+            color: '#1976d2',
+            border: '1px solid #1976d2',
+            borderRadius: 6,
+            padding: '10px 28px',
+            fontWeight: 600,
+            fontSize: 16,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+          }}
+          disabled={selectedRow === null}
+          onClick={handleEdit}
         >
           Edit
         </button>
@@ -658,9 +694,11 @@ const ReceiveInventory: React.FC = () => {
             <tr
               key={r.id}
               style={{
-                background: idx % 2 === 0 ? '#f9fafd' : '#fff',
+                background: selectedRow === r.id ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
                 borderBottom: '1px solid #e3eaf2',
+                cursor: 'pointer'
               }}
+              onClick={() => setSelectedRow(r.id)}
             >
               {showDeleteForm && (
                 <td style={{ textAlign: 'center' }}>
