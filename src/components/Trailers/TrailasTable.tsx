@@ -99,7 +99,7 @@ const TrailasTable: React.FC = () => {
         setSelected({ ...selected, estatus: 'DISPONIBLE', cliente: '', fechaRenta: '', fechaEntrega: '' });
         alert('Estatus actualizado');
       } catch (err: any) {
-        alert(err.response?.data || 'Error al actualizar estatus');
+        alert(err.response?.data?.error || 'Error al actualizar estatus');
       }
     } else {
       // Cambiar a RENTADA: abre modal elegante

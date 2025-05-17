@@ -56,6 +56,9 @@ router.post('/deduct', express.json(), async (req, res) => {
           errorMsg = `Not enough inventory for part "${part.sku}".`;
           return res.status(400).json({ error: errorMsg });
         }
+        if (results[0].onHand < part.qty) {
+          return res.status(400).json({ error: `No hay suficiente inventario para el SKU ${part.sku}` });
+        }
       }
     }
     for (const part of parts) {

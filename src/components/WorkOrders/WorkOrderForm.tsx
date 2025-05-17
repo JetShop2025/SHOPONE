@@ -161,7 +161,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 <label>
                   Qty
                   <input
-                    type="text"
+                    type="number"
                     placeholder="Cantidad"
                     value={part.qty}
                     onChange={e => handlePartChange(index, 'qty', e.target.value)}

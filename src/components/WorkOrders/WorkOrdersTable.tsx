@@ -233,7 +233,7 @@ const WorkOrdersTable: React.FC = () => {
     try {
       // 1. Prepara las partes a descontar
       const partesUsadas = datosOrden.parts
-        .filter((p: any) => p.part && p.qty && !isNaN(Number(p.qty)))
+        .filter((p: any) => p.part && p.qty && !isNaN(Number(p.qty)) && Number(p.qty) > 0)
         .map((p: any) => ({
           sku: p.part,
           qty: Number(p.qty)
@@ -242,7 +242,8 @@ const WorkOrdersTable: React.FC = () => {
       // 2. Descuenta del inventario
       if (partesUsadas.length > 0) {
         await axios.post(`${API_URL}/inventory/deduct`, {
-          parts: partesUsadas
+          parts: partesUsadas,
+          usuario: localStorage.getItem('username') || ''
         });
       }
 
@@ -283,8 +284,12 @@ const WorkOrdersTable: React.FC = () => {
         await axios.put(`${API_URL}/receive/${partId}/use`);
       }
       setSelectedPendingParts([]); // Limpia la selección después de guardar
-    } catch (err) {
-      // Manejo de error
+    } catch (err: any) {
+      if (err.response && err.response.data && err.response.data.error) {
+        alert('Error: ' + err.response.data.error);
+      } else {
+        alert('Error al guardar la orden');
+      }
     }
   };
 
