@@ -258,7 +258,18 @@ const InventoryTable: React.FC = () => {
       <div style={{ marginBottom: 24 }}>
         <button onClick={() => setShowForm(true)} style={primaryBtn}>Add Part</button>
         <button
-          onClick={() => setShowDeleteForm(true)}
+          onClick={async () => {
+            if (selectedIdx !== null) {
+              const pwd = window.prompt('Enter password to delete:');
+              if (pwd === '6214') {
+                setShowDeleteForm(true);
+              } else if (pwd !== null) {
+                alert('Incorrect password');
+              }
+            } else {
+              alert('Selecciona una parte para eliminar');
+            }
+          }}
           style={{
             background: '#fff',
             color: '#d32f2f',
@@ -273,12 +284,17 @@ const InventoryTable: React.FC = () => {
           }}
         >Delete</button>
         <button
-          onClick={() => {
+          onClick={async () => {
             if (selectedIdx !== null) {
-              setEditPart({ ...inventory[selectedIdx] });
-              setShowEditForm(true);
-              setEditPassword('');
-              setEditError('');
+              const pwd = window.prompt('Enter password to edit:');
+              if (pwd === '6214') {
+                setEditPart({ ...inventory[selectedIdx] });
+                setShowEditForm(true);
+                setEditPassword('');
+                setEditError('');
+              } else if (pwd !== null) {
+                alert('Incorrect password');
+              }
             } else {
               alert('Selecciona una parte para editar');
             }
@@ -439,15 +455,6 @@ const InventoryTable: React.FC = () => {
         }}>
           <thead>
             <tr>
-              <th style={{
-                padding: 8,
-                whiteSpace: 'pre-line',
-                wordBreak: 'break-word',
-                textAlign: 'center'
-              }}>
-                {/* Selector para editar/eliminar */}
-                Select
-              </th>
               {columns.map(col => (
                 <th key={col} style={{
                   border: '1px solid #1976d2',
@@ -465,14 +472,14 @@ const InventoryTable: React.FC = () => {
           </thead>
           <tbody>
             {inventory.map((item, idx) => (
-              <tr key={idx}>
-                <td style={{ textAlign: 'center', padding: 8 }}>
-                  <input
-                    type="radio"
-                    checked={selectedIdx === idx}
-                    onChange={() => setSelectedIdx(idx)}
-                  />
-                </td>
+              <tr
+                key={idx}
+                style={{
+                  background: selectedIdx === idx ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
+                  cursor: 'pointer'
+                }}
+                onClick={() => setSelectedIdx(idx)}
+              >
                 <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.sku}</td>
                 <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
                   {item.barCodes && <Barcode value={item.barCodes.toString()} width={2} height={40} fontSize={14} />}
