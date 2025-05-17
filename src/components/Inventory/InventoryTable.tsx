@@ -12,7 +12,8 @@ type PartType = {
   um: string;
   area: string;
   imagen: string;
-  [key: string]: string;
+  precio?: string;
+  [key: string]: string | undefined;
 };
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -24,7 +25,7 @@ const columns = [
 
 const emptyPart: PartType = {
   sku: '', barCodes: '', category: '', part: '', provider: '', brand: '', um: '',
-  area: '', imagen: ''
+  area: '', imagen: '', precio: ''
 };
 
 const modalStyle: React.CSSProperties = {
@@ -46,7 +47,6 @@ const modalContentStyle: React.CSSProperties = {
   overflowY: 'auto',
   boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
 };
-
 const inputStyle: React.CSSProperties = {
   flex: '1 1 120px',
   padding: '10px 12px',
@@ -89,15 +89,14 @@ const InventoryTable: React.FC = () => {
   const [addError, setAddError] = useState('');
   const [showDeleteForm, setShowDeleteForm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editPassword, setEditPassword] = useState('');
   const [editError, setEditError] = useState('');
-  const [editStep, setEditStep] = useState<'ask' | 'form' | null>(null);
-  const [editSku, setEditSku] = useState('');
   const [editPart, setEditPart] = useState<PartType>({ ...emptyPart });
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
 
+  // Fetch inventory
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
@@ -110,6 +109,7 @@ const InventoryTable: React.FC = () => {
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
+  // Barcode auto
   useEffect(() => {
     if (newPart.sku) {
       setNewPart(prev => ({
@@ -119,17 +119,8 @@ const InventoryTable: React.FC = () => {
     }
   }, [newPart.sku]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPart({ ...newPart, [e.target.name]: e.target.value });
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImagenFile(e.target.files[0]);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Add Part
+  const handleAddPart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addPassword !== '6214') {
       setAddError('Incorrect password');
@@ -138,7 +129,7 @@ const InventoryTable: React.FC = () => {
     setAddError('');
     const data = new FormData();
     Object.entries(newPart).forEach(([key, value]) => {
-      data.append(key, value);
+      data.append(key, value || '');
     });
     data.append('cantidad', cantidad.toString());
     if (imagenFile) {
@@ -146,15 +137,88 @@ const InventoryTable: React.FC = () => {
     }
     data.append('usuario', localStorage.getItem('username') || '');
 
-    await axios.post(`${API_URL}/inventory`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    try {
+      await axios.post(`${API_URL}/inventory`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setShowForm(false);
+      setNewPart({ ...emptyPart });
+      setCantidad(0);
+      setImagenFile(null);
+      const res = await axios.get(`${API_URL}/inventory`);
+      setInventory(res.data as any[]);
+    } catch (err: any) {
+      setAddError(err.response?.data?.error || 'Error adding part');
+    }
+  };
+
+  // Delete Part
+  const handleDeletePart = async () => {
+    if (deletePassword !== '6214' || selectedIdx === null) return;
+    const part = inventory[selectedIdx];
+    try {
+      await axios.request({
+        url: `${API_URL}/inventory/${part.sku}`,
+        method: 'DELETE',
+        data: { usuario: localStorage.getItem('username') || '' }
+      });
+      setShowDeleteForm(false);
+      setSelectedIdx(null);
+      const res = await axios.get(`${API_URL}/inventory`);
+      setInventory(res.data as any[]);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error deleting part');
+    }
+  };
+
+  // Edit Part
+  const handleEditPart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editPassword !== '6214') {
+      setEditError('Incorrect password');
+      return;
+    }
+    setEditError('');
+    const data = new FormData();
+    Object.entries(editPart).forEach(([key, value]) => {
+      data.append(key, value || '');
     });
-    setShowForm(false);
-    setNewPart({ ...emptyPart });
-    setCantidad(0);
-    setImagenFile(null);
-    const res = await axios.get(`${API_URL}/inventory`);
-    setInventory(res.data as any[]);
+    if (editImagenFile) {
+      data.append('imagen', editImagenFile);
+    }
+    data.append('usuario', localStorage.getItem('username') || '');
+
+    try {
+      await axios.put(`${API_URL}/inventory/${editPart.sku}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setShowEditForm(false);
+      setEditPart({ ...emptyPart });
+      setEditImagenFile(null);
+      setSelectedIdx(null);
+      const res = await axios.get(`${API_URL}/inventory`);
+      setInventory(res.data as any[]);
+    } catch (err: any) {
+      setEditError(err.response?.data?.error || 'Error editing part');
+    }
+  };
+
+  // Handlers
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPart({ ...newPart, [e.target.name]: e.target.value });
+  };
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImagenFile(e.target.files[0]);
+    }
+  };
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditPart({ ...editPart, [e.target.name]: e.target.value });
+  };
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setEditImagenFile(e.target.files[0]);
+    }
   };
 
   return (
@@ -192,12 +256,7 @@ const InventoryTable: React.FC = () => {
         Inventory
       </h1>
       <div style={{ marginBottom: 24 }}>
-        <button
-          onClick={() => setShowForm(true)}
-          style={primaryBtn}
-        >
-          Add Part
-        </button>
+        <button onClick={() => setShowForm(true)} style={primaryBtn}>Add Part</button>
         <button
           onClick={() => setShowDeleteForm(true)}
           style={{
@@ -212,27 +271,28 @@ const InventoryTable: React.FC = () => {
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(211,47,47,0.10)'
           }}
-        >
-          Delete
-        </button>
+        >Delete</button>
         <button
           onClick={() => {
-            setShowEditForm(true);
-            setEditStep('ask');
-            setEditSku('');
-            setEditPassword('');
-            setEditError('');
+            if (selectedIdx !== null) {
+              setEditPart({ ...inventory[selectedIdx] });
+              setShowEditForm(true);
+              setEditPassword('');
+              setEditError('');
+            } else {
+              alert('Selecciona una parte para editar');
+            }
           }}
           style={secondaryBtn}
-        >
-          Edit
-        </button>
+        >Edit</button>
       </div>
+
+      {/* Add Part Modal */}
       {showForm && (
         <div style={modalStyle} onClick={() => setShowForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Add New Part</h3>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <form onSubmit={handleAddPart} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               <input name="sku" value={newPart.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
               <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Codes" style={inputStyle} />
               <input name="category" value={newPart.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
@@ -241,6 +301,7 @@ const InventoryTable: React.FC = () => {
               <input name="brand" value={newPart.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
               <input name="um" value={newPart.um} onChange={handleChange} placeholder="Unit" style={inputStyle} />
               <input name="area" value={newPart.area} onChange={handleChange} placeholder="Area" style={inputStyle} />
+              <input name="precio" value={newPart.precio || ''} onChange={handleChange} placeholder="Price" type="number" style={inputStyle} />
               <input name="cantidad" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} placeholder="Quantity" type="number" required style={inputStyle} />
               <input
                 type="password"
@@ -269,10 +330,12 @@ const InventoryTable: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Modal */}
       {showDeleteForm && (
         <div style={modalStyle} onClick={() => setShowDeleteForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#d32f2f', marginBottom: 16 }}>Delete Selected Parts</h3>
+            <h3 style={{ color: '#d32f2f', marginBottom: 16 }}>Delete Part</h3>
             <div style={{ marginBottom: 12 }}>
               <label>
                 Password:
@@ -285,7 +348,7 @@ const InventoryTable: React.FC = () => {
               </label>
             </div>
             <button
-              disabled={deletePassword !== '6214' || selectedIds.length === 0}
+              disabled={deletePassword !== '6214' || selectedIdx === null}
               style={{
                 background: '#d32f2f',
                 color: '#fff',
@@ -295,20 +358,9 @@ const InventoryTable: React.FC = () => {
                 fontWeight: 600,
                 fontSize: 16,
                 marginRight: 8,
-                cursor: deletePassword !== '6214' || selectedIds.length === 0 ? 'not-allowed' : 'pointer'
+                cursor: deletePassword !== '6214' || selectedIdx === null ? 'not-allowed' : 'pointer'
               }}
-              onClick={async () => {
-                const toDelete = selectedIds.map(idx => inventory[idx]);
-                for (const part of toDelete) {
-                  await axios.request({
-                    url: `${API_URL}/inventory/${part.sku}`,
-                    method: 'DELETE',
-                    data: { usuario: localStorage.getItem('username') || '' }
-                  });
-                }
-                setShowDeleteForm(false);
-                setSelectedIds([]);
-              }}
+              onClick={handleDeletePart}
             >
               Delete Selected
             </button>
@@ -331,7 +383,50 @@ const InventoryTable: React.FC = () => {
           </div>
         </div>
       )}
-      {/* ...edit modals... */}
+
+      {/* Edit Modal */}
+      {showEditForm && (
+        <div style={modalStyle} onClick={() => setShowEditForm(false)}>
+          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Edit Part</h3>
+            <form onSubmit={handleEditPart} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              <input name="sku" value={editPart.sku} onChange={handleEditChange} placeholder="SKU" required style={inputStyle} disabled />
+              <input name="barCodes" value={editPart.barCodes} onChange={handleEditChange} placeholder="Bar Codes" style={inputStyle} />
+              <input name="category" value={editPart.category} onChange={handleEditChange} placeholder="Category" style={inputStyle} />
+              <input name="part" value={editPart.part} onChange={handleEditChange} placeholder="Part Name" required style={inputStyle} />
+              <input name="provider" value={editPart.provider} onChange={handleEditChange} placeholder="Provider" style={inputStyle} />
+              <input name="brand" value={editPart.brand} onChange={handleEditChange} placeholder="Brand" style={inputStyle} />
+              <input name="um" value={editPart.um} onChange={handleEditChange} placeholder="Unit" style={inputStyle} />
+              <input name="area" value={editPart.area} onChange={handleEditChange} placeholder="Area" style={inputStyle} />
+              <input name="precio" value={editPart.precio || ''} onChange={handleEditChange} placeholder="Price" type="number" style={inputStyle} />
+              <input
+                type="password"
+                placeholder="Password"
+                value={editPassword}
+                onChange={e => setEditPassword(e.target.value)}
+                style={inputStyle}
+              />
+              {editError && <span style={{ color: 'red', width: '100%' }}>{editError}</span>}
+              <button type="button" onClick={() => document.getElementById('editImagenInput')?.click()} style={secondaryBtn}>
+                Upload Image
+              </button>
+              <input
+                id="editImagenInput"
+                name="imagen"
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleEditImageChange}
+              />
+              {editImagenFile && <span style={{ color: '#1976d2', fontWeight: 500 }}>Selected image: {editImagenFile.name}</span>}
+              <div style={{ flexBasis: '100%', height: 0 }} />
+              <button type="submit" style={primaryBtn}>Save Changes</button>
+              <button type="button" onClick={() => setShowEditForm(false)} style={secondaryBtn}>Cancel</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div style={{ overflowX: 'auto' }}>
         <table style={{
           width: '100%',
@@ -344,26 +439,15 @@ const InventoryTable: React.FC = () => {
         }}>
           <thead>
             <tr>
-              {showDeleteForm && (
-                <th style={{
-                  padding: 8,
-                  whiteSpace: 'pre-line',
-                  wordBreak: 'break-word',
-                  textAlign: 'center'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length === inventory.length && inventory.length > 0}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedIds(inventory.map((_, idx) => idx));
-                      } else {
-                        setSelectedIds([]);
-                      }
-                    }}
-                  />
-                </th>
-              )}
+              <th style={{
+                padding: 8,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+                textAlign: 'center'
+              }}>
+                {/* Selector para editar/eliminar */}
+                Select
+              </th>
               {columns.map(col => (
                 <th key={col} style={{
                   border: '1px solid #1976d2',
@@ -382,35 +466,27 @@ const InventoryTable: React.FC = () => {
           <tbody>
             {inventory.map((item, idx) => (
               <tr key={idx}>
-                {showDeleteForm && (
-                  <td style={{ textAlign: 'center', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(idx)}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setSelectedIds([...selectedIds, idx]);
-                        } else {
-                          setSelectedIds(selectedIds.filter(id => id !== idx));
-                        }
-                      }}
-                    />
-                  </td>
-                )}
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.sku}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>
+                <td style={{ textAlign: 'center', padding: 8 }}>
+                  <input
+                    type="radio"
+                    checked={selectedIdx === idx}
+                    onChange={() => setSelectedIdx(idx)}
+                  />
+                </td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.sku}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
                   {item.barCodes && <Barcode value={item.barCodes.toString()} width={2} height={40} fontSize={14} />}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.category}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.part}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.provider}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.brand}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.um}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.area}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.receive ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.salidasWo ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.onHand ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.category}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.part}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.provider}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.brand}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.um}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.area}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.receive ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.salidasWo ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.onHand ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
                   {item.imagen ? (
                     <a
                       href={`${API_URL}${item.imagen}`}
@@ -424,7 +500,7 @@ const InventoryTable: React.FC = () => {
                     'No image'
                   )}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, whiteSpace: 'pre-line', wordBreak: 'break-word', textAlign: 'center' }}>{item.precio ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.precio ?? ''}</td>
               </tr>
             ))}
           </tbody>
