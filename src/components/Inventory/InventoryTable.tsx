@@ -174,27 +174,14 @@ const InventoryTable: React.FC = () => {
   // Edit Part
   const handleEditPart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editPassword !== '6214') {
-      setEditError('Incorrect password');
-      return;
-    }
     setEditError('');
-    const data = new FormData();
-    Object.entries(editPart).forEach(([key, value]) => {
-      data.append(key, value || '');
-    });
-    if (editImagenFile) {
-      data.append('imagen', editImagenFile);
-    }
-    data.append('usuario', localStorage.getItem('username') || '');
-
     try {
-      await axios.put(`${API_URL}/inventory/${editPart.sku}`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      await axios.put(`${API_URL}/inventory/${editPart.sku}`, {
+        ...editPart,
+        usuario: localStorage.getItem('username') || ''
       });
       setShowEditForm(false);
       setEditPart({ ...emptyPart });
-      setEditImagenFile(null);
       setSelectedIdx(null);
       const res = await axios.get(`${API_URL}/inventory`);
       setInventory(res.data as any[]);
@@ -416,25 +403,13 @@ const InventoryTable: React.FC = () => {
               <input name="area" value={editPart.area} onChange={handleEditChange} placeholder="Area" style={inputStyle} />
               <input name="precio" value={editPart.precio || ''} onChange={handleEditChange} placeholder="Price" type="number" style={inputStyle} />
               <input
-                type="password"
-                placeholder="Password"
-                value={editPassword}
-                onChange={e => setEditPassword(e.target.value)}
+                name="imagen"
+                value={editPart.imagen || ''}
+                onChange={handleEditChange}
+                placeholder="Image Link (OneDrive, etc.)"
                 style={inputStyle}
               />
               {editError && <span style={{ color: 'red', width: '100%' }}>{editError}</span>}
-              <button type="button" onClick={() => document.getElementById('editImagenInput')?.click()} style={secondaryBtn}>
-                Upload Image
-              </button>
-              <input
-                id="editImagenInput"
-                name="imagen"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleEditImageChange}
-              />
-              {editImagenFile && <span style={{ color: '#1976d2', fontWeight: 500 }}>Selected image: {editImagenFile.name}</span>}
               <div style={{ flexBasis: '100%', height: 0 }} />
               <button type="submit" style={primaryBtn}>Save Changes</button>
               <button type="button" onClick={() => setShowEditForm(false)} style={secondaryBtn}>Cancel</button>
@@ -496,7 +471,7 @@ const InventoryTable: React.FC = () => {
                 <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
                   {item.imagen ? (
                     <a
-                      href={`${API_URL}${item.imagen}`}
+                      href={item.imagen}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer' }}
