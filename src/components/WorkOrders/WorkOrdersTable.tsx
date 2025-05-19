@@ -252,7 +252,23 @@ const WorkOrdersTable: React.FC = () => {
         ...datosOrden,
         usuario: localStorage.getItem('username') || ''
       });
-      const data = res.data as { pdfUrl?: string };
+      const data = res.data as { id: number, pdfUrl?: string };
+      const newWorkOrderId = data.id;
+
+      // REGISTRA PARTES USADAS EN work_order_parts
+      for (const part of datosOrden.parts) {
+        if (part.part && part.qty) {
+          await axios.post(`${API_URL}/work-order-parts`, {
+            work_order_id: newWorkOrderId,
+            sku: part.part,
+            part_name: inventory.find(i => i.sku === part.part)?.part || '',
+            qty_used: part.qty,
+            cost: part.cost,
+            usuario: localStorage.getItem('username') || ''
+          });
+        }
+      }
+
       if (data.pdfUrl) {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank');
       }

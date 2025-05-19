@@ -48,6 +48,10 @@ const TrailasTable: React.FC = () => {
   const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
   const [showRentasModal, setShowRentasModal] = useState(false);
 
+  const [showPartsModal, setShowPartsModal] = useState(false);
+  const [selectedWO, setSelectedWO] = useState<number | null>(null);
+  const [woParts, setWoParts] = useState<any[]>([]);
+
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
@@ -74,6 +78,14 @@ const TrailasTable: React.FC = () => {
       setWorkOrders([]);
     }
   }, [selected, showModal]);
+
+  useEffect(() => {
+    if (showPartsModal && selectedWO) {
+      axios.get(`${API_URL}/work-order-parts/${selectedWO}`)
+        .then(res => setWoParts(res.data as any[]))
+        .catch(() => setWoParts([]));
+    }
+  }, [showPartsModal, selectedWO]);
 
   // Cambiar estatus con modal elegante
   const handleChangeStatus = async () => {
@@ -374,6 +386,7 @@ const TrailasTable: React.FC = () => {
                     <th>Date</th>
                     <th>Status</th>
                     <th>PDF</th>
+                    <th>Parts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -391,6 +404,18 @@ const TrailasTable: React.FC = () => {
                         >
                           View PDF
                         </a>
+                      </td>
+                      <td>
+                        <button
+                          style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            setSelectedWO(wo.id);
+                            setShowPartsModal(true);
+                          }}
+                        >
+                          Ver partes
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -431,6 +456,58 @@ const TrailasTable: React.FC = () => {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal for parts used in work order */}
+      {showPartsModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 12, padding: 24, minWidth: 400, maxWidth: 600, boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
+          }}>
+            <h2 style={{ color: '#1976d2', marginBottom: 16 }}>Partes usadas en WO #{selectedWO}</h2>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Nombre</th>
+                  <th>Cantidad</th>
+                  <th>Costo</th>
+                  <th>Link OneDrive</th>
+                  <th>Usuario</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {woParts.map((p, idx) => (
+                  <tr key={idx}>
+                    <td>{p.sku}</td>
+                    <td>{p.part_name}</td>
+                    <td>{p.qty_used}</td>
+                    <td>{p.cost}</td>
+                    <td>
+                      {p.invoiceLink ? (
+                        <a href={p.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
+                          Ver
+                        </a>
+                      ) : '—'}
+                    </td>
+                    <td>{p.usuario}</td>
+                    <td>{p.fecha?.slice(0, 16).replace('T', ' ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              style={{ marginTop: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 18px', cursor: 'pointer' }}
+              onClick={() => setShowPartsModal(false)}
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}

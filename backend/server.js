@@ -22,11 +22,13 @@ const inventoryRoutes = require('./routes/inventory');
 const workOrdersRoutes = require('./routes/workOrders');
 const receiveRoutes = require('./routes/receive');
 const loginRoutes = require('./routes/login');
+const workOrderPartsRoutes = require('./routes/workOrderParts');
 
 app.use('/inventory', inventoryRoutes);
 app.use('/work-orders', workOrdersRoutes);
 app.use('/receive', receiveRoutes);
 app.use('/login', loginRoutes);
+app.use('/work-order-parts', workOrderPartsRoutes);
 
 app.use('/audit', auditRoutes);
 
