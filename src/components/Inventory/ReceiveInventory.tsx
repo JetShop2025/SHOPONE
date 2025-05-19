@@ -49,7 +49,7 @@ const ReceiveInventory: React.FC = () => {
     um: '',
     billToCo: '',
     destino_trailer: '',
-    invoice: null as File | null,
+    invoiceLink: '',
     qty: '',
     costTax: '',
     totalPOClassic: '',
@@ -98,17 +98,23 @@ const ReceiveInventory: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === 'invoice' && value) {
-        data.append('invoice', value as File);
-      } else if (key !== 'invoice' && value !== null) {
-        data.append(key, value as string);
-      }
-    });
-    data.append('usuario', localStorage.getItem('username') || '');
 
-    await axios.post(`${API_URL}/receive`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+    // Calcula el nuevo precio con 10% extra
+    const newPrice = form.costTax ? (Number(form.costTax) * 1.1).toFixed(2) : '';
+
+    // Guarda el recibo
+    const data = { ...form, usuario: localStorage.getItem('username') || '' };
+    // Envía el recibo
+    await axios.post(`${API_URL}/receive`, data);
+
+    // Si hay SKU y nuevo precio, actualiza el precio en inventario
+    if (form.sku && newPrice) {
+      await axios.put(`${API_URL}/inventory/${form.sku}`, {
+        precio: newPrice,
+        usuario: localStorage.getItem('username') || ''
+      });
+    }
+
     setShowForm(false);
     setForm({
       sku: '',
@@ -119,7 +125,7 @@ const ReceiveInventory: React.FC = () => {
       um: '',
       billToCo: '',
       destino_trailer: '',
-      invoice: null,
+      invoiceLink: '',
       qty: '',
       costTax: '',
       totalPOClassic: '',
@@ -255,7 +261,21 @@ const ReceiveInventory: React.FC = () => {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
                 <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
                 <input name="category" value={form.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
-                <input name="item" value={form.item} onChange={handleChange} placeholder="Item" style={inputStyle} />
+                {/* Autocomplete para Item */}
+                <input
+                  name="item"
+                  value={form.item}
+                  onChange={handleChange}
+                  placeholder="Item"
+                  list="items-list"
+                  style={inputStyle}
+                  required
+                />
+                <datalist id="items-list">
+                  {inventory.map((part: any) => (
+                    <option key={part.sku} value={part.part} />
+                  ))}
+                </datalist>
                 <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
                 <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
                 <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} />
@@ -267,7 +287,15 @@ const ReceiveInventory: React.FC = () => {
                   <option value="">Destination Trailer</option>
                   {getTrailerOptions(form.billToCo).map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
-                <input type="file" onChange={handleFile} style={{ marginBottom: 8 }} />
+                {/* Campo para link de OneDrive */}
+                <input
+                  name="invoiceLink"
+                  value={form.invoiceLink || ''}
+                  onChange={handleChange}
+                  placeholder="Invoice Link (OneDrive, etc.)"
+                  style={inputStyle}
+                  required
+                />
                 <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} />
                 <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} />
                 <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} />
@@ -383,9 +411,9 @@ const ReceiveInventory: React.FC = () => {
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.um}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.destino_trailer}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
-                {r.invoice ? (
+                {r.invoiceLink ? (
                   <a
-                    href={`${API_URL}${r.invoice}`}
+                    href={r.invoiceLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
