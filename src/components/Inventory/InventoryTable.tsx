@@ -13,19 +13,20 @@ type PartType = {
   area: string;
   imagen: string;
   precio?: string;
+  cantidad?: string;
   [key: string]: string | undefined;
 };
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
 const columns = [
-  'SKU', 'BAR CODES', 'CATEGORY', 'PART NAME', 'PROVIDER', 'BRAND', 'U/M', 'AREA',
-  'RECEIVE', 'W.O. OUTPUTS', 'ON HAND', 'IMAGE', 'PRICE'
+  'SKU', 'BAR CODE', 'CATEGORY', 'PART NAME', 'PROVIDER', 'BRAND', 'U/M', 'AREA',
+  'RECEIVED', 'WO OUTPUTS', 'ON HAND', 'IMAGE', 'PRICE', 'QUANTITY'
 ];
 
 const emptyPart: PartType = {
   sku: '', barCodes: '', category: '', part: '', provider: '', brand: '', um: '',
-  area: '', imagen: '', precio: ''
+  area: '', imagen: '', precio: '', cantidad: ''
 };
 
 const modalStyle: React.CSSProperties = {
@@ -297,15 +298,41 @@ const InventoryTable: React.FC = () => {
             <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Add New Part</h3>
             <form onSubmit={handleAddPart} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               <input name="sku" value={newPart.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
-              <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Codes" style={inputStyle} />
+              <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Code" style={inputStyle} />
               <input name="category" value={newPart.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
               <input name="part" value={newPart.part} onChange={handleChange} placeholder="Part Name" required style={inputStyle} />
               <input name="provider" value={newPart.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
               <input name="brand" value={newPart.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
               <input name="um" value={newPart.um} onChange={handleChange} placeholder="Unit" style={inputStyle} />
               <input name="area" value={newPart.area} onChange={handleChange} placeholder="Area" style={inputStyle} />
-              <input name="precio" value={newPart.precio || ''} onChange={handleChange} placeholder="Price" type="number" style={inputStyle} />
-              <input name="cantidad" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} placeholder="Quantity" type="number" required style={inputStyle} />
+              <input
+                name="precio"
+                value={newPart.precio || ''}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9.]/g, '');
+                  setNewPart({ ...newPart, precio: val });
+                }}
+                placeholder="Price"
+                type="text"
+                required
+                style={inputStyle}
+              />
+              <input
+                name="cantidad"
+                value={cantidad}
+                onChange={e => setCantidad(Number(e.target.value))}
+                placeholder="Quantity"
+                type="number"
+                required
+                style={inputStyle}
+              />
+              <input
+                name="imagen"
+                value={newPart.imagen || ''}
+                onChange={handleChange}
+                placeholder="Image Link (OneDrive, etc.)"
+                style={inputStyle}
+              />
               <input
                 type="password"
                 placeholder="Password"
@@ -401,7 +428,28 @@ const InventoryTable: React.FC = () => {
               <input name="brand" value={editPart.brand} onChange={handleEditChange} placeholder="Brand" style={inputStyle} />
               <input name="um" value={editPart.um} onChange={handleEditChange} placeholder="Unit" style={inputStyle} />
               <input name="area" value={editPart.area} onChange={handleEditChange} placeholder="Area" style={inputStyle} />
-              <input name="precio" value={editPart.precio || ''} onChange={handleEditChange} placeholder="Price" type="number" style={inputStyle} />
+              <input
+                name="precio"
+                value={editPart.precio !== undefined ? editPart.precio : ''}
+                onChange={e => {
+                  // Permite solo números y formato de moneda
+                  const val = e.target.value.replace(/[^0-9.]/g, '');
+                  setEditPart({ ...editPart, precio: val });
+                }}
+                placeholder="Price"
+                type="text"
+                style={inputStyle}
+              />
+              <input
+                name="cantidad"
+                value={editPart.cantidad !== undefined ? editPart.cantidad : ''}
+                onChange={e => setEditPart({ ...editPart, cantidad: e.target.value.replace(/[^0-9]/g, '') })}
+                placeholder="Quantity"
+                type="number"
+                min={0}
+                required
+                style={inputStyle}
+              />
               <input
                 name="imagen"
                 value={editPart.imagen || ''}
@@ -482,7 +530,12 @@ const InventoryTable: React.FC = () => {
                     'No image'
                   )}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.precio ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
+                  {item.precio ? Number(item.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}
+                </td>
+                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
+                  {item.cantidad ?? '0'}
+                </td>
               </tr>
             ))}
           </tbody>
