@@ -33,8 +33,7 @@ const columns = [
   'WO OUTPUTS',
   'ON HAND',
   'IMAGE LINK',
-  'PRICE (USD)',
-  'QUANTITY'
+  'PRICE (USD)'
 ];
 
 const emptyPart: PartType = {
@@ -145,10 +144,6 @@ const InventoryTable: React.FC = () => {
     Object.entries(newPart).forEach(([key, value]) => {
       data.append(key, value || '');
     });
-    data.append('cantidad', cantidad.toString());
-    if (imagenFile) {
-      data.append('imagen', imagenFile);
-    }
     data.append('usuario', localStorage.getItem('username') || '');
 
     try {
@@ -157,8 +152,6 @@ const InventoryTable: React.FC = () => {
       });
       setShowForm(false);
       setNewPart({ ...emptyPart });
-      setCantidad(0);
-      setImagenFile(null);
       const res = await axios.get(`${API_URL}/inventory`);
       setInventory(res.data as any[]);
     } catch (err: any) {
@@ -331,11 +324,12 @@ const InventoryTable: React.FC = () => {
                 style={inputStyle}
               />
               <input
-                name="cantidad"
-                value={cantidad}
-                onChange={e => setCantidad(Number(e.target.value))}
-                placeholder="Quantity"
+                name="onHand"
+                value={newPart.onHand || ''}
+                onChange={handleChange}
+                placeholder="On Hand"
                 type="number"
+                min={0}
                 required
                 style={inputStyle}
               />
@@ -508,8 +502,20 @@ const InventoryTable: React.FC = () => {
                 onClick={() => setSelectedIdx(idx)}
               >
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120 }}>
-                  {item.barCodes && <Barcode value={item.barCodes.toString()} width={1.5} height={28} fontSize={10} />}
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 90, overflow: 'hidden' }}>
+                  {item.barCodes && (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                      <Barcode
+                        value={item.barCodes.toString()}
+                        width={1}
+                        height={18}
+                        fontSize={8}
+                        margin={0}
+                        displayValue={false} // Oculta el texto debajo del código de barras
+                        background="#fff"
+                      />
+                    </div>
+                  )}
                 </td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.category}</td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 140 }}>{item.part}</td>
@@ -536,9 +542,6 @@ const InventoryTable: React.FC = () => {
                 </td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
                   {item.precio ? Number(item.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}
-                </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 70 }}>
-                  {item.cantidad ?? '0'}
                 </td>
               </tr>
             ))}
