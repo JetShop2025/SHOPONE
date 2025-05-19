@@ -104,13 +104,26 @@ const ReceiveInventory: React.FC = () => {
 
     // Guarda el recibo
     const data = { ...form, usuario: localStorage.getItem('username') || '' };
-    // Envía el recibo
     await axios.post(`${API_URL}/receive`, data);
 
     // Si hay SKU y nuevo precio, actualiza el precio en inventario
     if (form.sku && newPrice) {
       await axios.put(`${API_URL}/inventory/${form.sku}`, {
         precio: newPrice,
+        usuario: localStorage.getItem('username') || ''
+      });
+    }
+
+    // ACTUALIZA onHand SUMANDO LA NUEVA CANTIDAD
+    if (form.sku && form.qty) {
+      const invRes = await axios.get(`${API_URL}/inventory`);
+      const inventoryList = invRes.data as any[]; // <-- Soluciona el error de tipo
+      const part = inventoryList.find((p: any) => p.sku === form.sku);
+      const currentOnHand = part && part.onHand ? Number(part.onHand) : 0;
+      const newOnHand = currentOnHand + Number(form.qty);
+
+      await axios.put(`${API_URL}/inventory/${form.sku}`, {
+        onHand: newOnHand,
         usuario: localStorage.getItem('username') || ''
       });
     }
