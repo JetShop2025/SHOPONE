@@ -12,13 +12,9 @@ router.post('/', async (req, res) => {
       'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario) VALUES (?, ?, ?, ?, ?, ?)',
       [work_order_id, sku, part_name, qty_used, cost, usuario]
     );
-    // Descontar del inventario
-    await db.query(
-      'UPDATE inventory SET onHand = onHand - ? WHERE sku = ?',
-      [qty_used, sku]
-    );
     res.status(200).send('Part registered and inventory updated');
   } catch (err) {
+    console.error('Error in /work-order-parts:', err); // <-- Para depuración
     res.status(500).send('Error registering part');
   }
 });
@@ -33,6 +29,7 @@ router.get('/:work_order_id', async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
+    console.error('Error in GET /work-order-parts/:work_order_id:', err); // <-- Para depuración
     res.status(500).send('Error fetching parts');
   }
 });
