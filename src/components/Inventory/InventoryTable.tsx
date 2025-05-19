@@ -20,8 +20,20 @@ type PartType = {
 const API_URL = process.env.REACT_APP_API_URL || '';
 
 const columns = [
-  'SKU', 'BAR CODE', 'CATEGORY', 'PART NAME', 'PROVIDER', 'BRAND', 'U/M', 'AREA',
-  'RECEIVED', 'WO OUTPUTS', 'ON HAND', 'IMAGE', 'PRICE', 'QUANTITY'
+  'SKU',
+  'BAR CODE',
+  'CATEGORY',
+  'PART NAME',
+  'PROVIDER',
+  'BRAND',
+  'U/M',
+  'AREA',
+  'RECEIVED',
+  'WO OUTPUTS',
+  'ON HAND',
+  'IMAGE LINK',
+  'PRICE (USD)',
+  'QUANTITY'
 ];
 
 const emptyPart: PartType = {
@@ -214,7 +226,7 @@ const InventoryTable: React.FC = () => {
       background: 'linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%)',
       borderRadius: 16,
       boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',
-      maxWidth: 1400,
+      maxWidth: 1800, // Aumenta el ancho máximo para evitar scroll horizontal
       margin: '32px auto',
       padding: 32
     }}>
@@ -341,18 +353,7 @@ const InventoryTable: React.FC = () => {
                 style={inputStyle}
               />
               {addError && <span style={{ color: 'red', width: '100%' }}>{addError}</span>}
-              <button type="button" onClick={() => document.getElementById('imagenInput')?.click()} style={secondaryBtn}>
-                Upload Image
-              </button>
-              <input
-                id="imagenInput"
-                name="imagen"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleImageChange}
-              />
-              {imagenFile && <span style={{ color: '#1976d2', fontWeight: 500 }}>Selected image: {imagenFile.name}</span>}
+              {/* Elimina el botón de Upload Image y el input file */}
               <div style={{ flexBasis: '100%', height: 0 }} />
               <button type="submit" style={primaryBtn}>Add Part</button>
               <button type="button" onClick={() => setShowForm(false)} style={secondaryBtn}>Cancel</button>
@@ -469,7 +470,8 @@ const InventoryTable: React.FC = () => {
       <div style={{ overflowX: 'auto' }}>
         <table style={{
           width: '100%',
-          tableLayout: 'auto',
+          minWidth: 1700, // Asegura que todas las columnas quepan y se vean completas
+          tableLayout: 'fixed', // Hace que las columnas tengan el mismo ancho
           borderCollapse: 'collapse',
           background: '#fff',
           borderRadius: 12,
@@ -481,14 +483,14 @@ const InventoryTable: React.FC = () => {
               {columns.map(col => (
                 <th key={col} style={{
                   border: '1px solid #1976d2',
-                  padding: 8,
+                  padding: 10,
                   background: '#1976d2',
                   color: '#fff',
                   fontWeight: 700,
-                  fontSize: 15,
-                  whiteSpace: 'pre-line',
-                  wordBreak: 'break-word',
-                  textAlign: 'center'
+                  fontSize: 16,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                  letterSpacing: 1
                 }}>{col}</th>
               ))}
             </tr>
