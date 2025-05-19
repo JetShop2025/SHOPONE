@@ -14,6 +14,7 @@ type PartType = {
   imagen: string;
   precio?: string;
   cantidad?: string;
+  onHand?: string;
   [key: string]: string | undefined;
 };
 
@@ -38,7 +39,7 @@ const columns = [
 
 const emptyPart: PartType = {
   sku: '', barCodes: '', category: '', part: '', provider: '', brand: '', um: '',
-  area: '', imagen: '', precio: '', cantidad: ''
+  area: '', imagen: '', precio: '', cantidad: '', onHand: ''
 };
 
 const modalStyle: React.CSSProperties = {
@@ -442,20 +443,20 @@ const InventoryTable: React.FC = () => {
                 style={inputStyle}
               />
               <input
-                name="cantidad"
-                value={editPart.cantidad !== undefined ? editPart.cantidad : ''}
-                onChange={e => setEditPart({ ...editPart, cantidad: e.target.value.replace(/[^0-9]/g, '') })}
-                placeholder="Quantity"
-                type="number"
-                min={0}
-                required
-                style={inputStyle}
-              />
-              <input
                 name="imagen"
                 value={editPart.imagen || ''}
                 onChange={handleEditChange}
                 placeholder="Image Link (OneDrive, etc.)"
+                style={inputStyle}
+              />
+              <input
+                name="onHand"
+                value={editPart.onHand !== undefined ? editPart.onHand : ''}
+                onChange={e => setEditPart({ ...editPart, onHand: e.target.value.replace(/[^0-9]/g, '') })}
+                placeholder="On Hand"
+                type="number"
+                min={0}
+                required
                 style={inputStyle}
               />
               {editError && <span style={{ color: 'red', width: '100%' }}>{editError}</span>}
@@ -483,11 +484,11 @@ const InventoryTable: React.FC = () => {
               {columns.map(col => (
                 <th key={col} style={{
                   border: '1px solid #1976d2',
-                  padding: 10,
+                  padding: 8,
                   background: '#1976d2',
                   color: '#fff',
                   fontWeight: 700,
-                  fontSize: 16,
+                  fontSize: 13, // más pequeño
                   whiteSpace: 'nowrap',
                   textAlign: 'center',
                   letterSpacing: 1
@@ -501,30 +502,31 @@ const InventoryTable: React.FC = () => {
                 key={idx}
                 style={{
                   background: selectedIdx === idx ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontSize: 12 // más pequeño para el contenido
                 }}
                 onClick={() => setSelectedIdx(idx)}
               >
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.sku}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
-                  {item.barCodes && <Barcode value={item.barCodes.toString()} width={2} height={40} fontSize={14} />}
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120 }}>
+                  {item.barCodes && <Barcode value={item.barCodes.toString()} width={1.5} height={28} fontSize={10} />}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.category}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.part}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.provider}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.brand}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.um}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.area}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.receive ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.salidasWo ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>{item.onHand ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.category}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 140 }}>{item.part}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.provider}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 100 }}>{item.brand}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 60 }}>{item.um}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.area}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.receive ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.salidasWo ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.onHand ?? ''}</td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
                   {item.imagen ? (
                     <a
                       href={item.imagen}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer' }}
+                      style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: 12 }}
                     >
                       IMG
                     </a>
@@ -532,10 +534,10 @@ const InventoryTable: React.FC = () => {
                     'No image'
                   )}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
                   {item.precio ? Number(item.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 8, textAlign: 'center' }}>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 70 }}>
                   {item.cantidad ?? '0'}
                 </td>
               </tr>
