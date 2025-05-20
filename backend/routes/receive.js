@@ -19,21 +19,20 @@ async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
 }
 
 // Add receipt
-router.post('/', upload.single('invoice'), async (req, res) => {
+router.post('/', async (req, res) => {
   const {
     sku, category, item, provider, brand, um,
-    destino_trailer, qty, costTax, totalPOClassic, usuario
+    destino_trailer, qty, costTax, totalPOClassic, usuario, invoiceLink
   } = req.body;
-  const invoice = req.file ? `/uploads/${req.file.filename}` : '';
 
   try {
     const [result] = await db.query(
       `INSERT INTO receives
-        (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, estatus)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+        (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, estatus, qty_remaining)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
       [
         sku, category, item, provider, brand, um,
-        destino_trailer, invoice, qty, costTax, totalPOClassic
+        destino_trailer, invoiceLink, qty, costTax, totalPOClassic, qty // invoice = invoiceLink
       ]
     );
     const { usuario: user, ...rest } = req.body;
