@@ -7,14 +7,37 @@ router.use(express.json());
 // Registrar partes usadas
 router.post('/', async (req, res) => {
   const { work_order_id, sku, part_name, qty_used, cost, usuario } = req.body;
+  let qtyToDeduct = Number(qty_used);
+
   try {
-    const [result] = await db.query(
-      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario) VALUES (?, ?, ?, ?, ?, ?)',
-      [work_order_id, sku, part_name, qty_used, cost, usuario]
+    // Busca recibos FIFO con partes disponibles
+    const [receives] = await db.query(
+      'SELECT id, invoice, qty_remaining FROM receive WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
+      [sku]
     );
-    res.status(200).json({ id: result.insertId }); // <-- esto es CLAVE
+
+    for (const receive of receives) {
+      if (qtyToDeduct <= 0) break;
+      const deductQty = Math.min(receive.qty_remaining, qtyToDeduct);
+
+      // Descuenta del recibo
+      await db.query(
+        'UPDATE receive SET qty_remaining = qty_remaining - ? WHERE id = ?',
+        [deductQty, receive.id]
+      );
+
+      // Inserta en work_order_parts con el invoice correcto
+      await db.query(
+        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [work_order_id, sku, part_name, deductQty, cost, usuario, receive.invoice]
+      );
+
+      qtyToDeduct -= deductQty;
+    }
+
+    res.status(200).json({ message: 'Parts registered with FIFO invoices' });
   } catch (err) {
-    console.error('Error in /work-order-parts:', err); // <-- Para depuración
+    console.error('Error in /work-order-parts:', err);
     res.status(500).send('Error registering part');
   }
 });
