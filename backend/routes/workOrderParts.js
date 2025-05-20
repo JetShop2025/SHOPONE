@@ -8,11 +8,11 @@ router.use(express.json());
 router.post('/', async (req, res) => {
   const { work_order_id, sku, part_name, qty_used, cost, usuario } = req.body;
   try {
-    await db.query(
+    const [result] = await db.query(
       'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario) VALUES (?, ?, ?, ?, ?, ?)',
       [work_order_id, sku, part_name, qty_used, cost, usuario]
     );
-    res.status(200).send('Part registered and inventory updated');
+    res.status(200).json({ id: result.insertId }); // <-- esto es CLAVE
   } catch (err) {
     console.error('Error in /work-order-parts:', err); // <-- Para depuración
     res.status(500).send('Error registering part');

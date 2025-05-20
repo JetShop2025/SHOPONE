@@ -167,6 +167,7 @@ router.post('/', async (req, res) => {
       await logAccion(usuario, 'CREATE', 'work_orders', result.insertId, JSON.stringify(req.body));
       res.status(201).json({
         message: 'WORK ORDER CREATED SUCCESSFULLY',
+        id: result.insertId,
         pdfUrl: `/pdfs/${pdfName}`
       });
     });
