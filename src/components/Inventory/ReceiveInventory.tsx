@@ -420,18 +420,17 @@ const ReceiveInventory: React.FC = () => {
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.um}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.destino_trailer}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
-                {r.invoiceLink ? (
+                {r.invoice ? (
                   <a
-                    href={r.invoiceLink}
+                    href={r.invoice}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
+                    style={{ color: '#1976d2', textDecoration: 'underline' }}
                   >
-                    View
+                    {/* Extrae el número de invoice del link */}
+                    {r.invoice.match(/INV-\d+/)?.[0] || 'Ver'}
                   </a>
-                ) : (
-                  <span style={{ color: '#888' }}>No file</span>
-                )}
+                ) : '—'}
               </td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.qty}</td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.costTax}</td>
