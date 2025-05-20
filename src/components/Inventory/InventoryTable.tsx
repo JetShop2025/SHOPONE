@@ -140,16 +140,25 @@ const InventoryTable: React.FC = () => {
       return;
     }
     setAddError('');
-    const data = new FormData();
-    Object.entries(newPart).forEach(([key, value]) => {
-      data.append(key, value || '');
-    });
-    data.append('usuario', localStorage.getItem('username') || '');
+
+    // Prepara los datos con los nombres y tipos correctos
+    const data = {
+      sku: newPart.sku,
+      barCodes: newPart.barCodes,
+      category: newPart.category,
+      part: newPart.part,
+      provider: newPart.provider,
+      brand: newPart.brand,
+      um: newPart.um,
+      area: newPart.area,
+      imagen: newPart.imagen,
+      precio: newPart.precio ? Number(newPart.precio) : 0,
+      onHand: newPart.onHand ? Number(newPart.onHand) : 0,
+      usuario: localStorage.getItem('username') || ''
+    };
 
     try {
-      await axios.post(`${API_URL}/inventory`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await axios.post(`${API_URL}/inventory`, data);
       setShowForm(false);
       setNewPart({ ...emptyPart });
       const res = await axios.get(`${API_URL}/inventory`);
