@@ -19,15 +19,17 @@ async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
 }
 
 // Agregar parte al inventario (con imagen)
-router.post('/', upload.single('imagen'), async (req, res) => {
-  const { sku, barCodes, category, part, provider, brand, um, area, usuario } = req.body;
-  const cantidad = Number(req.body.cantidad) || 0;
-  const imagen = req.file ? `/uploads/${req.file.filename}` : '';
+router.post('/', async (req, res) => {
+  const {
+    sku, barCodes, category, part, provider, brand, um, area,
+    onHand, imagen, precio, usuario
+  } = req.body;
+
   try {
     await db.query(
-      `INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, onHand, imagen)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sku, barCodes, category, part, provider, brand, um, area, cantidad, imagen]
+      `INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, onHand, imagen, precio, usuario)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [sku, barCodes, category, part, provider, brand, um, area, Number(onHand) || 0, imagen || '', Number(precio) || 0, usuario]
     );
     await logAccion(usuario, 'CREATE', 'inventory', sku, JSON.stringify(req.body));
     res.sendStatus(200);

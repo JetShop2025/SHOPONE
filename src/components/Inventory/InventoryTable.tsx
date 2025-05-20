@@ -141,7 +141,7 @@ const InventoryTable: React.FC = () => {
     }
     setAddError('');
 
-    // Prepara los datos con los nombres y tipos correctos
+    // Ajusta los nombres de los campos según tu backend/BD
     const data = {
       sku: newPart.sku,
       barCodes: newPart.barCodes,
@@ -151,9 +151,10 @@ const InventoryTable: React.FC = () => {
       brand: newPart.brand,
       um: newPart.um,
       area: newPart.area,
-      imagen: newPart.imagen,
-      precio: newPart.precio ? Number(newPart.precio) : 0,
+      // Cambia los nombres aquí si tu backend espera otros nombres
       onHand: newPart.onHand ? Number(newPart.onHand) : 0,
+      imagen: newPart.imagen || '', // o imageLink si tu backend espera ese nombre
+      precio: newPart.precio ? Number(newPart.precio) : 0,
       usuario: localStorage.getItem('username') || ''
     };
 
