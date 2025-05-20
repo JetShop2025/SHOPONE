@@ -176,6 +176,16 @@ router.post('/', async (req, res) => {
   }
 });
 
+// backend/routes/workOrders.js
+router.post('/', async (req, res) => {
+  // ... tus campos ...
+  const [result] = await db.query(
+    'INSERT INTO work_orders (...) VALUES (?, ?, ...)',
+    [/* tus valores */]
+  );
+  res.status(200).json({ id: result.insertId }); // <-- esto es clave
+});
+
 // Eliminar orden de trabajo por ID
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
