@@ -62,6 +62,36 @@ router.post('/', async (req, res) => {
   try {
     const [result] = await db.query(query, values);
 
+    // Calcula partes y labor
+    const partsArr = Array.isArray(parts) ? parts : [];
+    const partsTotal = partsArr.reduce((sum, p) => {
+      const val = Number((p.cost || '').toString().replace(/[^0-9.]/g, ''));
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+    const laborTotal = Number(totalHrs) * 60 || 0;
+    const subtotal = partsTotal + laborTotal;
+
+    // Calcula extras
+    let extra = 0;
+    let extraLabels = [];
+    let extraArr = [];
+    const extras = Array.isArray(req.body.extraOptions) ? req.body.extraOptions : [];
+    extras.forEach(opt => {
+      if (opt === '5') {
+        extra += subtotal * 0.05;
+        extraLabels.push('5% Extra');
+        extraArr.push(subtotal * 0.05);
+      } else if (opt === '15shop') {
+        extra += subtotal * 0.15;
+        extraLabels.push('15% Shop Miscellaneous');
+        extraArr.push(subtotal * 0.15);
+      } else if (opt === '15weld') {
+        extra += subtotal * 0.15;
+        extraLabels.push('15% Welding Supplies');
+        extraArr.push(subtotal * 0.15);
+      }
+    });
+
     // Formatea la fecha a MM-DD-YYYY
     const jsDate = new Date(date);
     const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
