@@ -144,11 +144,12 @@ router.post('/', async (req, res) => {
     doc.moveDown(1);
 
     // --- TOTALES ---
-    // Calcula partes, labor y extra igual que en el frontend
+    // Calcula partes, labor y extras igual que en el frontend
     let partsTotal = 0;
     let laborTotal = 0;
     let extra = 0;
-    let extraLabel = '';
+    let extraLabels = [];
+    let extraArr = [];
     try {
       const partsArr = Array.isArray(parts) ? parts : [];
       partsTotal = partsArr.reduce((sum, p) => {
@@ -157,16 +158,24 @@ router.post('/', async (req, res) => {
       }, 0);
       laborTotal = Number(totalHrs) * 60 || 0;
       const subtotal = partsTotal + laborTotal;
-      if (req.body.extraOption === '5') {
-        extra = subtotal * 0.05;
-        extraLabel = '5% Extra';
-      } else if (req.body.extraOption === '15shop') {
-        extra = subtotal * 0.15;
-        extraLabel = '15% Shop Miscellaneous';
-      } else if (req.body.extraOption === '15weld') {
-        extra = subtotal * 0.15;
-        extraLabel = '15% Welding Supplies';
-      }
+
+      // Cambia aquí: soporta varios extras
+      const extras = Array.isArray(req.body.extraOptions) ? req.body.extraOptions : [];
+      extras.forEach(opt => {
+        if (opt === '5') {
+          extra += subtotal * 0.05;
+          extraLabels.push('5% Extra');
+          extraArr.push(subtotal * 0.05);
+        } else if (opt === '15shop') {
+          extra += subtotal * 0.15;
+          extraLabels.push('15% Shop Miscellaneous');
+          extraArr.push(subtotal * 0.15);
+        } else if (opt === '15weld') {
+          extra += subtotal * 0.15;
+          extraLabels.push('15% Welding Supplies');
+          extraArr.push(subtotal * 0.15);
+        }
+      });
     } catch {}
 
     // Formato moneda
