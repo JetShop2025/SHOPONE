@@ -490,9 +490,9 @@ const TrailasTable: React.FC = () => {
                     <td>{p.qty_used}</td>
                     <td>{p.cost}</td>
                     <td>
-                      {p.invoiceLink ? (
+                      {p.invoice ? (
                         <a href={p.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
-                          Ver
+                          {p.invoice}
                         </a>
                       ) : '—'}
                     </td>

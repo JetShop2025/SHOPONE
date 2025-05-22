@@ -28,11 +28,11 @@ router.post('/', async (req, res) => {
   try {
     const [result] = await db.query(
       `INSERT INTO receives
-        (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, estatus, qty_remaining)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
+        (sku, category, item, provider, brand, um, destino_trailer, invoice, invoiceLink, qty, costTax, totalPOClassic, estatus, qty_remaining)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sku, category, item, provider, brand, um,
-        destino_trailer, invoiceLink, qty, costTax, totalPOClassic, qty // invoice = invoiceLink
+        destino_trailer, req.body.invoice, req.body.invoiceLink, qty, costTax, totalPOClassic, 'PENDING', qty // invoice = invoiceLink
       ]
     );
     const { usuario: user, ...rest } = req.body;
@@ -99,11 +99,11 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
 
     await db.query(
       `UPDATE receives SET 
-        sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, qty=?, costTax=?, totalPOClassic=?, estatus=?
+        sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, invoiceLink=?, qty=?, costTax=?, totalPOClassic=?, estatus=?
        WHERE id=?`,
       [
         fields.sku, fields.category, fields.item, fields.provider, fields.brand, fields.um,
-        fields.destino_trailer, invoicePath, fields.qty, fields.costTax, fields.totalPOClassic, fields.estatus, id
+        fields.destino_trailer, invoicePath, fields.invoiceLink, fields.qty, fields.costTax, fields.totalPOClassic, fields.estatus, id
       ]
     );
 

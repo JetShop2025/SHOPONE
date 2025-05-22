@@ -49,6 +49,7 @@ const ReceiveInventory: React.FC = () => {
     um: '',
     billToCo: '',
     destino_trailer: '',
+    invoice: '',
     invoiceLink: '',
     qty: '',
     costTax: '',
@@ -90,12 +91,6 @@ const ReceiveInventory: React.FC = () => {
     }));
   };
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setForm(prev => ({ ...prev, invoice: e.target.files![0] }));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -134,6 +129,7 @@ const ReceiveInventory: React.FC = () => {
       um: '',
       billToCo: '',
       destino_trailer: '',
+      invoice: '',
       invoiceLink: '',
       qty: '',
       costTax: '',
@@ -296,6 +292,15 @@ const ReceiveInventory: React.FC = () => {
                   <option value="">Destination Trailer</option>
                   {getTrailerOptions(form.billToCo).map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
+                {/* Campo para número de invoice */}
+                <input
+                  type="text"
+                  name="invoice"
+                  value={form.invoice}
+                  onChange={handleChange}
+                  placeholder="Número de Invoice"
+                  style={inputStyle}
+                />
                 {/* Campo para link de OneDrive */}
                 <input
                   name="invoiceLink"
@@ -420,17 +425,16 @@ const ReceiveInventory: React.FC = () => {
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.um}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.destino_trailer}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
-                {r.invoice ? (
+                {r.invoice && r.invoiceLink ? (
                   <a
-                    href={r.invoice}
+                    href={r.invoiceLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: '#1976d2', textDecoration: 'underline' }}
                   >
-                    {/* Extrae el número de invoice del link */}
-                    {r.invoice.match(/INV-\d+/)?.[0] || 'Ver'}
+                    {r.invoice}
                   </a>
-                ) : '—'}
+                ) : r.invoice ? r.invoice : '—'}
               </td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.qty}</td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.costTax}</td>

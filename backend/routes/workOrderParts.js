@@ -28,8 +28,8 @@ router.post('/', async (req, res) => {
 
       // Inserta en work_order_parts con el invoice correcto
       await db.query(
-        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, deductQty, cost, usuario, receive.invoice]
+        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoice, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [work_order_id, sku, part_name, deductQty, cost, usuario, receive.invoice, receive.invoiceLink]
       );
 
       qtyToDeduct -= deductQty;
