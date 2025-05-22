@@ -110,111 +110,127 @@ router.post('/', async (req, res) => {
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     const stream = fs.createWriteStream(pdfPath);
-
-    stream.on('error', (err) => {
-      console.error('Error al escribir el PDF:', err);
-      res.status(500).send('Error al generar el PDF');
-    });
-
     doc.pipe(stream);
 
+    // LOGO
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
     if (fs.existsSync(logoPath)) {
-      console.log('Logo encontrado:', logoPath);
-      doc.image(logoPath, 40, 30, { width: 120 });
-    } else {
-      console.log('Logo NO encontrado:', logoPath);
+      doc.image(logoPath, 40, 30, { width: 100 });
     }
 
-    doc.fontSize(22).fillColor('#1976d2').text('INVOICE', 0, 40, { align: 'right' });
-    doc.moveDown(2);
+    // TALLER Y DIRECCIÓN
+    doc.fontSize(9).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+    doc.text('740 EL CAMINO REAL', { align: 'right' });
+    doc.text('GREENFIELD, CA 93927', { align: 'right' });
 
-    // --- DATOS DE LA ORDEN ---
-    doc.fontSize(10).fillColor('#333');
-    doc.text(`Order ID: ${result.insertId}`, { align: 'right' });
-    doc.text(`Date: ${formattedDate}`, { align: 'right' });
-    doc.text(`Bill To: ${billToCo}`, { align: 'right' });
-    doc.text(`Trailer: ${trailer}`, { align: 'right' });
-    doc.moveDown(2);
-
-    // --- TABLA DE PARTES ---
-    doc.fontSize(12).fillColor('#1976d2').text('PARTS', { underline: true });
+    // TÍTULO
+    doc.fontSize(22).fillColor('#222').font('Helvetica-Bold').text('JET SHOP', 0, 90, { align: 'center' });
+    doc.moveDown(0.2);
+    doc.fontSize(14).fillColor('#222').font('Helvetica').text('INVOICE', { align: 'center' });
     doc.moveDown(0.5);
 
-    // Encabezados de tabla
-    const tableTop = doc.y;
-    const col = [40, 70, 170, 350, 410, 470]; // X positions for columns
+    // LÍNEA NEGRA
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).lineWidth(3).strokeColor('#222').stroke();
+    doc.moveDown(1);
 
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text('No.', col[0], tableTop);
-    doc.text('SKU', col[1], tableTop);
-    doc.text('Descripción', col[2], tableTop);
-    doc.text('Qty', col[3], tableTop, { width: 40, align: 'right' });
-    doc.text('Unit', col[4], tableTop, { width: 50, align: 'right' });
-    doc.text('Total', col[5], tableTop, { width: 60, align: 'right' });
+    // CAJAS DE INFORMACIÓN
+    const yInfo = doc.y + 10;
+    doc.fontSize(10).fillColor('#222').font('Helvetica-Bold');
+    doc.rect(40, yInfo, 230, 18).fillAndStroke('#e3e3e3', '#222');
+    doc.rect(330, yInfo, 230, 18).fillAndStroke('#e3e3e3', '#222');
+    doc.fillColor('#222').text('DATE', 45, yInfo + 4);
+    doc.text('INVOICE #', 335, yInfo + 4);
 
-    doc.moveDown(0.5);
-    doc.font('Helvetica').fontSize(10);
+    doc.font('Helvetica').fillColor('#000');
+    doc.rect(40, yInfo + 18, 230, 40).stroke();
+    doc.rect(330, yInfo + 18, 230, 40).stroke();
+    doc.text(formattedDate, 45, yInfo + 24);
+    doc.text(result.insertId, 335, yInfo + 24);
 
-    // ... después de doc.moveDown(0.5);
-    doc.font('Helvetica').fontSize(10);
+    doc.font('Helvetica-Bold').fillColor('#222');
+    doc.rect(40, yInfo + 58, 230, 18).fillAndStroke('#e3e3e3', '#222');
+    doc.rect(330, yInfo + 58, 230, 18).fillAndStroke('#e3e3e3', '#222');
+    doc.fillColor('#222').text('CUSTOMER INFORMATION', 45, yInfo + 62);
+    doc.text('REPAIR ORDER', 335, yInfo + 62);
 
-    // Dibuja fondo y líneas de encabezado
-    doc.rect(col[0] - 2, tableTop - 2, col[5] + 60 - col[0] + 4, 20).fillAndStroke('#e3f2fd', '#1976d2');
-    doc.fillColor('#1976d2').font('Helvetica-Bold').fontSize(10);
-    doc.text('No.', col[0], tableTop);
-    doc.text('SKU', col[1], tableTop);
-    doc.text('Descripción', col[2], tableTop);
-    doc.text('Qty', col[3], tableTop, { width: 40, align: 'right' });
-    doc.text('Unit', col[4], tableTop, { width: 50, align: 'right' });
-    doc.text('Total', col[5], tableTop, { width: 60, align: 'right' });
-    doc.fillColor('#333').font('Helvetica').fontSize(10);
+    doc.font('Helvetica').fillColor('#000');
+    doc.rect(40, yInfo + 76, 230, 40).stroke();
+    doc.rect(330, yInfo + 76, 230, 40).stroke();
+    doc.text(`TRAILER: ${trailer}`, 45, yInfo + 82);
+    doc.text(`${description || ''}`, 335, yInfo + 82);
 
+    doc.moveDown(7);
+
+    // TABLA DE PARTES
+    const tableTop = doc.y + 10;
+    const col = [40, 90, 250, 340, 390, 460, 520]; // Ajusta según ancho de página
+
+    // Encabezado de tabla
+    doc.rect(col[0], tableTop, col[6] - col[0], 20).fillAndStroke('#b3d1f7', '#222');
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#222');
+    doc.text('PART NO', col[0] + 2, tableTop + 5, { width: col[1] - col[0] - 4, align: 'center' });
+    doc.text('DESCRIPTION', col[1] + 2, tableTop + 5, { width: col[2] - col[1] - 4, align: 'center' });
+    doc.text('QTY', col[2] + 2, tableTop + 5, { width: col[3] - col[2] - 4, align: 'center' });
+    doc.text('U/M', col[3] + 2, tableTop + 5, { width: col[4] - col[3] - 4, align: 'center' });
+    doc.text('PRICE', col[4] + 2, tableTop + 5, { width: col[5] - col[4] - 4, align: 'center' });
+    doc.text('TOTAL', col[5] + 2, tableTop + 5, { width: col[6] - col[5] - 4, align: 'center' });
+
+    // Filas de partes
     let y = tableTop + 20;
-    (parts || []).forEach((p, i) => {
-      doc.text(i + 1, col[0], y);
-      doc.text(p.sku || '', col[1], y);
-      doc.text(p.part || '', col[2], y, { width: 170 });
-      doc.text(p.qty || '', col[3], y, { width: 40, align: 'right' });
+    const maxRows = 15;
+    (partsArr.length ? partsArr : Array(maxRows).fill({})).slice(0, maxRows).forEach((p, i) => {
+      doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#b3d1f7').stroke();
+      doc.font('Helvetica').fontSize(10).fillColor('#000');
+      doc.text(p.sku || '-', col[0] + 2, y + 4, { width: col[1] - col[0] - 4, align: 'center' });
+      doc.text(p.part || '-', col[1] + 2, y + 4, { width: col[2] - col[1] - 4, align: 'center' });
+      doc.text(p.qty || '-', col[2] + 2, y + 4, { width: col[3] - col[2] - 4, align: 'center' });
+      doc.text('-', col[3] + 2, y + 4, { width: col[4] - col[3] - 4, align: 'center' }); // U/M
       doc.text(
-        Number(p.unitPrice || p.precio || p.price || p.costTax || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-        col[4], y, { width: 50, align: 'right' }
+        p.unitPrice
+          ? Number(p.unitPrice).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          : '$0.00',
+        col[4] + 2, y + 4, { width: col[5] - col[4] - 4, align: 'center' }
       );
-      const totalPart = Number(p.qty || 0) * Number(p.unitPrice || p.precio || p.price || p.costTax || 0);
       doc.text(
-        totalPart.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-        col[5], y, { width: 60, align: 'right' }
+        p.qty && p.unitPrice
+          ? (Number(p.qty) * Number(p.unitPrice)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          : '$0.00',
+        col[5] + 2, y + 4, { width: col[6] - col[5] - 4, align: 'center' }
       );
-      // Línea separadora
-      doc.moveTo(col[0], y + 14).lineTo(col[5] + 60, y + 14).strokeColor('#e0e0e0').stroke();
       y += 18;
     });
 
+    // Línea final de tabla
+    doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#222', '#222');
+
+    // SUBTOTAL, TAX, TOTAL
+    y += 10;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#222');
+    doc.text('SUBTOTAL:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.font('Helvetica').text(partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+
+    y += 16;
+    doc.font('Helvetica-Bold').text('TAX:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.font('Helvetica').text('$0.00', col[5], y, { width: col[6] - col[5], align: 'center' });
+
+    y += 16;
+    doc.font('Helvetica-Bold').text('TOTAL:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.font('Helvetica').fillColor('#d32f2f').text((partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+
+    // TÉRMINOS Y FIRMAS
     doc.moveDown(2);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
+    doc.font('Helvetica').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
 
-    // --- TOTALES ---
-    const fmt = v => Number(v).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    const rightCol = 410;
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
-    doc.text('Subtotal Parts:', rightCol, y + 10, { width: 120, align: 'right' });
-    doc.font('Helvetica').fillColor('#333').text(fmt(partsTotal), rightCol + 120, y + 10, { width: 80, align: 'right' });
+    doc.moveDown(2);
+    doc.font('Helvetica').fontSize(9).text('I accept this estimate without any changes □', 40, doc.y + 10);
+    doc.text('I accept this estimate with the handwritten changes □', 40, doc.y + 24);
 
-    doc.font('Helvetica-Bold').fillColor('#1976d2').text('Labor (HRS x $60):', rightCol, y + 28, { width: 120, align: 'right' });
-    doc.font('Helvetica').fillColor('#333').text(fmt(laborTotal), rightCol + 120, y + 28, { width: 80, align: 'right' });
-
-    let yTot = y + 46;
-    (extraLabels || []).forEach((label, idx) => {
-      doc.font('Helvetica-Bold').fillColor('#1976d2').text(`${label}:`, rightCol, yTot, { width: 120, align: 'right' });
-      doc.font('Helvetica').fillColor('#333').text(fmt(extraArr[idx]), rightCol + 120, yTot, { width: 80, align: 'right' });
-      yTot += 18;
-    });
-
-    doc.font('Helvetica-Bold').fontSize(13).fillColor('#1976d2');
-    doc.text('TOTAL LAB & PARTS:', rightCol, yTot + 10, { width: 120, align: 'right' });
-    doc.text(fmt(partsTotal + laborTotal + extra), rightCol + 120, yTot + 10, { width: 80, align: 'right' });
+    doc.moveDown(2);
+    doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
+    doc.font('Helvetica-BoldOblique').fontSize(12).fillColor('#222').text('Thanks for your business!', 40, doc.y + 30);
 
     doc.end();
-    // --- FIN DEL BLOQUE COMPLETO DE GENERACIÓN DEL PDF ---
 
     stream.on('finish', async () => {
       await logAccion(usuario, 'CREATE', 'work_orders', result.insertId, JSON.stringify(req.body));
