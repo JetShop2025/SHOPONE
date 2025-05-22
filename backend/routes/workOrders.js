@@ -151,13 +151,24 @@ router.post('/', async (req, res) => {
 
     doc.moveDown(6);
 
-    // TABLA DE PARTES
+    // Centrar tabla en la hoja
+    const tableWidth = 480;
+    const leftMargin = (595.28 - tableWidth) / 2;
+    const col = [
+      leftMargin,                // inicio tabla
+      leftMargin + 40,           // No.
+      leftMargin + 160,          // SKU
+      leftMargin + 280,          // Description
+      leftMargin + 330,          // Qty
+      leftMargin + 400,          // Unit
+      leftMargin + 480           // Total (fin tabla)
+    ];
+
     const tableTop = 190;
-    const col = [40, 80, 200, 320, 370, 440, 520]; // Ajusta según ancho de página
 
     // Encabezado de tabla
+    doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
     doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
     doc.text('Description', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
@@ -169,10 +180,13 @@ router.post('/', async (req, res) => {
     const maxRows = 12;
     (partsArr.length ? partsArr : Array(maxRows).fill({})).slice(0, maxRows).forEach((p, i) => {
       doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
-      doc.font('Helvetica').fontSize(10).fillColor('#222');
+      doc.font('Courier').fontSize(10).fillColor('#222');
       doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
-      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' }); // SKU correcto
-      doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' }); // Descripción correcta
+      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' }); // SKU
+      doc.text(
+        p.part_name || p.description || p.part || '-', // Description
+        col[2], y + 4, { width: col[3] - col[2], align: 'center' }
+      );
       doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
       doc.text(
         p.unitPrice

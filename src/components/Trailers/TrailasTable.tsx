@@ -52,7 +52,8 @@ const TrailasTable: React.FC = () => {
   const [selectedWO, setSelectedWO] = useState<number | null>(null);
   const [woParts, setWoParts] = useState<any[]>([]);
 
-  const [workOrder, setWorkOrder] = useState<any>({ parts: [] });
+  // Determina si hay receives para la traila de la WO seleccionada
+  const [receivesForTrailer, setReceivesForTrailer] = useState<any[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -88,6 +89,16 @@ const TrailasTable: React.FC = () => {
         .catch(() => setWoParts([]));
     }
   }, [showPartsModal, selectedWO]);
+
+  useEffect(() => {
+    if (showPartsModal && selected && selectedWO) {
+      axios.get(`${API_URL}/receive?destino_trailer=${selected.nombre}&estatus=PENDING`)
+        .then(res => setReceivesForTrailer(res.data as any[]))
+        .catch(() => setReceivesForTrailer([]));
+    }
+  }, [showPartsModal, selected, selectedWO]);
+
+  const hasReceivesForTrailer = receivesForTrailer.length > 0;
 
   // Cambiar estatus con modal elegante
   const handleChangeStatus = async () => {
@@ -159,16 +170,6 @@ const TrailasTable: React.FC = () => {
 
   const trailasPorCliente = (cliente: string) =>
     trailas.filter(t => t.nombre.startsWith(clientePrefijos[cliente]));
-
-  const addEmptyPart = () => {
-    setWorkOrder((prev: any) => ({
-      ...prev,
-      parts: [
-        ...prev.parts,
-        { part: '', qty: '', cost: '' }
-      ]
-    }));
-  };
 
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
@@ -502,9 +503,9 @@ const TrailasTable: React.FC = () => {
                     <td>{p.qty_used}</td>
                     <td>{p.cost}</td>
                     <td>
-                      {p.invoice ? (
+                      {p.invoiceLink ? (
                         <a href={p.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
-                          {p.invoice}
+                          Ver
                         </a>
                       ) : '—'}
                     </td>
@@ -512,6 +513,20 @@ const TrailasTable: React.FC = () => {
                     <td>{p.fecha?.slice(0, 16).replace('T', ' ')}</td>
                   </tr>
                 ))}
+                {woParts.length > 0 && !hasReceivesForTrailer && (
+                  <tr>
+                    <td colSpan={7} style={{ color: '#1976d2', textAlign: 'center', fontStyle: 'italic', paddingTop: 8 }}>
+                      Estas partes se tomaron de inventario general (sin compras asociadas a esta traila).
+                    </td>
+                  </tr>
+                )}
+                {woParts.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ color: '#888', textAlign: 'center', fontStyle: 'italic', paddingTop: 8 }}>
+                      No hay partes registradas para esta orden.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
             <button
