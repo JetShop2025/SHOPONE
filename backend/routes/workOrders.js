@@ -122,11 +122,11 @@ router.post('/', async (req, res) => {
       } catch (e) {
         console.error('Error al agregar logo:', e);
       }
-    } else {
-      console.log('Logo NO encontrado');
     }
-    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', 180, 40, { align: 'left' });
-    doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', 180, 70, { align: 'left' });
+
+    // TITULO CENTRADO
+    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', 0, 40, { align: 'center' });
+    doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', { align: 'center' });
 
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
@@ -171,8 +171,8 @@ router.post('/', async (req, res) => {
       doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
       doc.font('Helvetica').fontSize(10).fillColor('#222');
       doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
-      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
-      doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
+      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' }); // SKU correcto
+      doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' }); // Descripción correcta
       doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
       doc.text(
         p.unitPrice
@@ -208,9 +208,10 @@ router.post('/', async (req, res) => {
       doc.font('Helvetica').fillColor('#222').text(extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
     });
 
-    y += 18;
+    // TOTAL LAB & PARTS destacado y separado
+    y += 24;
     doc.font('Helvetica-Bold').fontSize(12).fillColor('#d32f2f');
-    doc.text('TOTAL:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.text('TOTAL LAB & PARTS:', col[4], y, { width: col[5] - col[4], align: 'right' });
     doc.text((partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
 
     // TÉRMINOS Y FIRMAS
