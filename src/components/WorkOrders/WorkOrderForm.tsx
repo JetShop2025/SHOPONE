@@ -24,17 +24,30 @@ const formatCurrency = (value: string | number) => {
   return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
 
+// Convierte a formato $0.00
+const formatCurrencyInput = (value: string | number) => {
+  const num = Number(value.toString().replace(/[^0-9.]/g, ''));
+  if (isNaN(num)) return '';
+  return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+};
+
+// Convierte $0.00 a número simple
+const parseCurrencyInput = (value: string) => {
+  return value.replace(/[^0-9.]/g, '');
+};
+
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart
 }) => {
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
-      // Busca la parte en el inventario
       const found = inventory.find(item => item.sku === value);
-      // Usa el último precio registrado (puede ser price o costTax)
       const cost = found ? (found.precio || found.price || found.costTax || '') : '';
       onPartChange(index, 'part', value);
-      onPartChange(index, 'cost', cost.toString());
+      onPartChange(index, 'cost', cost.toString() ? formatCurrencyInput(cost.toString()) : '');
+    } else if (field === 'cost') {
+      // Formatea el valor mientras se escribe
+      onPartChange(index, 'cost', formatCurrencyInput(parseCurrencyInput(value)));
     } else {
       onPartChange(index, field, value);
     }
@@ -185,9 +198,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'cost', e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
                   />
-                  <span style={{ color: '#1976d2', fontWeight: 600, marginLeft: 4 }}>
-                    {formatCurrency(part.cost)}
-                  </span>
                 </label>
               </div>
             ))}

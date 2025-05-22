@@ -133,6 +133,7 @@ const WorkOrdersTable: React.FC = () => {
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
   const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   useEffect(() => {
     const API_URL = process.env.REACT_APP_API_URL || '';
@@ -436,6 +437,16 @@ const WorkOrdersTable: React.FC = () => {
     boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
   };
 
+  const addEmptyPart = () => {
+    setNewWorkOrder(prev => ({
+      ...prev,
+      parts: [
+        ...prev.parts,
+        { part: '', qty: '', cost: '' }
+      ]
+    }));
+  };
+
   return (
     <>
       <style>
@@ -624,6 +635,7 @@ const WorkOrdersTable: React.FC = () => {
                     }
                   });
                 }}
+                onAddEmptyPart={addEmptyPart}
               />
             </div>
           </div>
@@ -728,6 +740,7 @@ const WorkOrdersTable: React.FC = () => {
                       billToCoOptions={billToCoOptions}
                       getTrailerOptions={getTrailerOptions}
                       inventory={inventory}
+                      onAddEmptyPart={addEmptyPart}
                     />
                   </>
                 )}
@@ -761,41 +774,91 @@ const WorkOrdersTable: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order, index) => {
-                let rowClass = '';
-                if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
-                else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
-                else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
-                else if (order.status === 'PRE W.O') rowClass = 'wo-row-pre';
+  {filteredOrders.map((order, index) => {
+    let rowClass = '';
+    if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
+    else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
+    else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
+    else if (order.status === 'PRE W.O') rowClass = 'wo-row-pre';
 
-                return (
-                  <tr
-                    key={index}
-                    className={`${rowClass} ${selectedRow === order.id ? 'wo-row-selected' : ''}`}
-                    style={{ fontWeight: 600, cursor: 'pointer' }}
-                    onClick={() => setSelectedRow(order.id)}
-                  >
+    const hasMoreParts = order.parts && order.parts.length > 5;
 
-                    <td>{order.id}</td>
-                    <td>{order.billToCo}</td>
-                    <td>{order.trailer}</td>
-                    <td>{order.mechanic}</td>
-                    <td>{order.date?.slice(0, 10)}</td>
-                    <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
-                    {[0,1,2,3,4].map(i => (
-                      <React.Fragment key={i}>
-                        <td>{order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}</td>
-                        <td>{order.parts && order.parts[i] && order.parts[i].qty ? order.parts[i].qty : ''}</td>
-                        <td>{order.parts && order.parts[i] && order.parts[i].cost ? order.parts[i].cost : ''}</td>
-                      </React.Fragment>
-                    ))}
-                    <td>{order.totalHrs}</td>
-                    <td>{order.totalLabAndParts}</td>
-                    <td>{order.status}</td>
+    return (
+      <React.Fragment key={order.id}>
+        <tr
+          className={`${rowClass} ${selectedRow === order.id ? 'wo-row-selected' : ''}`}
+          style={{ fontWeight: 600, cursor: 'pointer' }}
+          onClick={() => setSelectedRow(order.id)}
+        >
+          <td>
+            {hasMoreParts && (
+              <button
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#1976d2',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginRight: 4
+                }}
+                title={expandedRow === order.id ? 'Ocultar partes' : 'Ver todas las partes'}
+                onClick={e => {
+                  e.stopPropagation();
+                  setExpandedRow(expandedRow === order.id ? null : order.id);
+                }}
+              >
+                {expandedRow === order.id ? '▼' : '▶'}
+              </button>
+            )}
+            {order.id}
+          </td>
+          <td>{order.billToCo}</td>
+          <td>{order.trailer}</td>
+          <td>{order.mechanic}</td>
+          <td>{order.date?.slice(0, 10)}</td>
+          <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
+          {[0,1,2,3,4].map(i => (
+            <React.Fragment key={i}>
+              <td>{order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}</td>
+              <td>{order.parts && order.parts[i] && order.parts[i].qty ? order.parts[i].qty : ''}</td>
+              <td>{order.parts && order.parts[i] && order.parts[i].cost ? order.parts[i].cost : ''}</td>
+            </React.Fragment>
+          ))}
+          <td>{order.totalHrs}</td>
+          <td>{order.totalLabAndParts}</td>
+          <td>{order.status}</td>
+        </tr>
+        {expandedRow === order.id && hasMoreParts && (
+          <tr>
+            <td colSpan={16} style={{ background: '#e3f2fd', padding: 12 }}>
+              <strong>Partes adicionales:</strong>
+              <table style={{ width: '100%', marginTop: 8, background: '#fff' }}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>SKU</th>
+                    <th>Cantidad</th>
+                    <th>Costo</th>
                   </tr>
-                );
-              })}
-            </tbody>
+                </thead>
+                <tbody>
+                  {order.parts.slice(5).map((p: any, idx: number) => (
+                    <tr key={idx}>
+                      <td>{idx + 6}</td>
+                      <td>{p.part}</td>
+                      <td>{p.qty}</td>
+                      <td>{p.cost}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  })}
+</tbody>
           </table>
         </div>       
       </div>
