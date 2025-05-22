@@ -78,7 +78,7 @@ router.post('/', async (req, res) => {
       fs.mkdirSync(path.join(__dirname, '..', 'pdfs'));
     }
 
-    const doc = new PDFDocument({ margin: 40 });
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
     const stream = fs.createWriteStream(pdfPath);
 
     stream.on('error', (err) => {
@@ -88,71 +88,60 @@ router.post('/', async (req, res) => {
 
     doc.pipe(stream);
 
-    // --- LOGO EN LA PARTE SUPERIOR DERECHA ---
+    // --- LOGO EN LA PARTE SUPERIOR IZQUIERDA ---
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, doc.page.width - 150, 30, { width: 110 });
+      doc.image(logoPath, 40, 30, { width: 120 });
     }
+    doc.fontSize(22).fillColor('#1976d2').text('INVOICE', 0, 40, { align: 'right' });
+    doc.moveDown(2);
 
-    // --- TÍTULO ---
-    doc.fontSize(22).font('Helvetica-Bold').text('WORK ORDER', 40, 40, { align: 'left' });
-    doc.moveDown(1.5);
+    // --- DATOS DE LA ORDEN ---
+    doc.fontSize(10).fillColor('#333');
+    doc.text(`Order ID: ${result.insertId}`, { align: 'right' });
+    doc.text(`Date: ${formattedDate}`, { align: 'right' });
+    doc.text(`Bill To: ${billToCo}`, { align: 'right' });
+    doc.text(`Trailer: ${trailer}`, { align: 'right' });
+    doc.moveDown(2);
 
-    // --- LÍNEA DE SEPARACIÓN ---
-    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#1976d2').lineWidth(2).stroke();
-    doc.moveDown(1);
-
-    // --- DATOS PRINCIPALES ---
-    doc.fontSize(12).font('Helvetica');
-    doc.text(`ID: ${result.insertId}`, 40, doc.y, { continued: true });
-    doc.text(`   DATE: ${formattedDate}`, doc.x, doc.y);
-    doc.text(`BILL TO CO: ${billToCo}`, 40, doc.y, { continued: true });
-    doc.text(`   Trailer: ${trailer}`, doc.x, doc.y);
-    doc.text(`MECHANIC: ${mechanic}`, 40, doc.y, { continued: true });
-    doc.text(`   STATUS: ${status}`, doc.x, doc.y);
-    doc.moveDown(1);
-
-    // --- LÍNEA DE SEPARACIÓN ---
-    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#b0c4de').lineWidth(1).stroke();
-    doc.moveDown(1);
-
-    // --- DESCRIPCIÓN ---
-    doc.font('Helvetica-Bold').text('DESCRIPTION:', 40, doc.y, { underline: true });
-    doc.font('Helvetica').text(description || 'NO DESCRIPTION', { width: doc.page.width - 80, align: 'left' });
-    doc.moveDown(1);
-
-    // --- PARTES (TABLA) ---
-    doc.font('Helvetica-Bold').text('Parts:', 40, doc.y, { underline: true }); // Antes: 'Partes:'
+    // --- TABLA DE PARTES ---
+    doc.fontSize(12).fillColor('#1976d2').text('PARTS', { underline: true });
     doc.moveDown(0.5);
 
-    const partsArray = Array.isArray(parts) ? parts : [];
-    if (partsArray.length === 0) {
-      doc.font('Helvetica').text('NO PARTS REGISTERED', 40, doc.y); // Antes: 'NO PARTS REGISTRERED'
-    } else {
-      // Encabezados de tabla
-      const tableTop = doc.y + 5;
-      const col1 = 40, col2 = 80, col3 = 320, col4 = 400, col5 = 480;
-      doc.rect(col1, tableTop, doc.page.width - 80, 22).fill('#e3f2fd').stroke();
-      doc.fillColor('#1976d2').font('Helvetica-Bold').fontSize(12);
-      doc.text('No.', col2, tableTop + 6, { width: 30, align: 'center' });
-      doc.text('Part', col3, tableTop + 6, { width: 80, align: 'center' }); // Antes: 'Parte'
-      doc.text('Qty', col4, tableTop + 6, { width: 60, align: 'center' }); // Antes: 'Cantidad'
-      doc.text('Cost', col5, tableTop + 6, { width: 60, align: 'center' }); // Antes: 'Costo'
-      doc.fillColor('#333').font('Helvetica').fontSize(11);
+    // Encabezados de tabla
+    const tableTop = doc.y;
+    const col = [40, 70, 170, 350, 410, 470]; // X positions for columns
 
-      let y = tableTop + 22;
-      partsArray.forEach((p, i) => {
-        doc.rect(col1, y, doc.page.width - 80, 20).strokeColor('#e3eaf2').lineWidth(0.5).stroke();
-        doc.text(`${i + 1}`, col2, y + 5, { width: 30, align: 'center' });
-        doc.text(`${p.part || ''}`, col3, y + 5, { width: 80, align: 'center' });
-        doc.text(`${p.qty || ''}`, col4, y + 5, { width: 60, align: 'center' });
-        doc.text(`${p.cost || ''}`, col5, y + 5, { width: 60, align: 'center' });
-        y += 20;
-      });
-      doc.y = y + 10;
-    }
+    doc.font('Helvetica-Bold').fontSize(10);
+    doc.text('No.', col[0], tableTop);
+    doc.text('SKU', col[1], tableTop);
+    doc.text('Descripción', col[2], tableTop);
+    doc.text('Qty', col[3], tableTop, { width: 40, align: 'right' });
+    doc.text('Unit', col[4], tableTop, { width: 50, align: 'right' });
+    doc.text('Total', col[5], tableTop, { width: 60, align: 'right' });
 
-    doc.moveDown(1.5);
+    doc.moveDown(0.5);
+    doc.font('Helvetica').fontSize(10);
+
+    (parts || []).forEach((p, i) => {
+      const y = doc.y;
+      doc.text(i + 1, col[0], y);
+      doc.text(p.sku || '', col[1], y);
+      doc.text(p.part || '', col[2], y, { width: 170 });
+      doc.text(p.qty || '', col[3], y, { width: 40, align: 'right' });
+      doc.text(
+        Number(p.unitPrice || p.precio || p.price || p.costTax || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+        col[4], y, { width: 50, align: 'right' }
+      );
+      const totalPart = Number(p.qty || 0) * Number(p.unitPrice || p.precio || p.price || p.costTax || 0);
+      doc.text(
+        totalPart.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+        col[5], y, { width: 60, align: 'right' }
+      );
+      doc.moveDown(0.5);
+    });
+
+    doc.moveDown(1);
 
     // --- TOTALES ---
     // Calcula partes, labor y extra igual que en el frontend
@@ -183,19 +172,24 @@ router.post('/', async (req, res) => {
     // Formato moneda
     const fmt = v => Number(v).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-    doc.font('Helvetica-Bold').fontSize(12).text(`TOTAL PARTS: `, 40, doc.y, { continued: true });
-    doc.font('Helvetica').text(fmt(partsTotal), doc.x, doc.y);
+    const rightCol = 410;
+    doc.font('Helvetica-Bold').fontSize(11);
+    doc.text('Subtotal Parts:', rightCol, doc.y, { width: 120, align: 'right' });
+    doc.font('Helvetica').text(fmt(partsTotal), rightCol + 120, doc.y, { width: 80, align: 'right' });
 
-    doc.font('Helvetica-Bold').fontSize(12).text(`LABOR (HRS x $60): `, 40, doc.y + 18, { continued: true });
-    doc.font('Helvetica').text(fmt(laborTotal), doc.x, doc.y + 18);
+    doc.font('Helvetica-Bold').text('Labor (HRS x $60):', rightCol, doc.y + 18, { width: 120, align: 'right' });
+    doc.font('Helvetica').text(fmt(laborTotal), rightCol + 120, doc.y + 18, { width: 80, align: 'right' });
 
-    if (extra > 0) {
-      doc.font('Helvetica-Bold').fontSize(12).text(`${extraLabel}: `, 40, doc.y + 36, { continued: true });
-      doc.font('Helvetica').text(fmt(extra), doc.x, doc.y + 36);
-    }
+    let yTot = doc.y + 36;
+    (extraLabels || []).forEach((label, idx) => {
+      doc.font('Helvetica-Bold').text(`${label}:`, rightCol, yTot, { width: 120, align: 'right' });
+      doc.font('Helvetica').text(fmt(extraArr[idx]), rightCol + 120, yTot, { width: 80, align: 'right' });
+      yTot += 18;
+    });
 
-    doc.font('Helvetica-Bold').fontSize(13).text(`TOTAL LAB & PARTS: `, 40, doc.y + 54, { continued: true });
-    doc.font('Helvetica').text(fmt(partsTotal + laborTotal + extra), doc.x, doc.y + 54);
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#1976d2');
+    doc.text('TOTAL LAB & PARTS:', rightCol, yTot, { width: 120, align: 'right' });
+    doc.text(fmt(partsTotal + laborTotal + extra), rightCol + 120, yTot, { width: 80, align: 'right' });
 
     doc.end();
     // --- FIN DEL BLOQUE COMPLETO DE GENERACIÓN DEL PDF ---

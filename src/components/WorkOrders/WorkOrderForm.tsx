@@ -41,6 +41,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 }) => {
   const [extraOption, setExtraOption] = React.useState('none');
   const [autocomplete, setAutocomplete] = React.useState<{ [k: number]: any[] }>({});
+  const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
 
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
@@ -92,19 +93,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Subtotal
   let subtotal = partsTotal + laborTotal;
 
-  // Extra
-  let extraLabel = '';
+  // Calcula el extra sumando todos los seleccionados
   let extra = 0;
-  if (extraOption === '5') {
-    extra = subtotal * 0.05;
-    extraLabel = '5% Extra';
-  } else if (extraOption === '15shop') {
-    extra = subtotal * 0.15;
-    extraLabel = '15% Shop Miscellaneous';
-  } else if (extraOption === '15weld') {
-    extra = subtotal * 0.15;
-    extraLabel = '15% Welding Supplies';
-  }
+  let extraLabels: string[] = [];
+  extraOptions.forEach(opt => {
+    if (opt === '5') {
+      extra += subtotal * 0.05;
+      extraLabels.push('5% Extra');
+    } else if (opt === '15shop') {
+      extra += subtotal * 0.15;
+      extraLabels.push('15% Shop Miscellaneous');
+    } else if (opt === '15weld') {
+      extra += subtotal * 0.15;
+      extraLabels.push('15% Welding Supplies');
+    }
+  });
 
   // Total final
   const totalLabAndParts = subtotal + extra;
@@ -358,17 +361,54 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </select>
           </label>
           <label style={{ flex: 1 }}>
-            Extra:
-            <select
-              value={extraOption}
-              onChange={e => setExtraOption(e.target.value)}
-              style={{ width: '100%', marginTop: 4 }}
-            >
-              <option value="none">Sin extra</option>
-              <option value="5">+5% General</option>
-              <option value="15shop">+15% Shop Miscellaneous</option>
-              <option value="15weld">+15% Welding Supplies</option>
-            </select>
+            Extras:
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: 4 }}>
+              <label>
+                <input
+                  type="checkbox"
+                  value="5"
+                  checked={extraOptions.includes('5')}
+                  onChange={e => {
+                    setExtraOptions(prev =>
+                      e.target.checked
+                        ? [...prev, '5']
+                        : prev.filter(opt => opt !== '5')
+                    );
+                  }}
+                />
+                +5% General
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  value="15shop"
+                  checked={extraOptions.includes('15shop')}
+                  onChange={e => {
+                    setExtraOptions(prev =>
+                      e.target.checked
+                        ? [...prev, '15shop']
+                        : prev.filter(opt => opt !== '15shop')
+                    );
+                  }}
+                />
+                +15% Shop Miscellaneous
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  value="15weld"
+                  checked={extraOptions.includes('15weld')}
+                  onChange={e => {
+                    setExtraOptions(prev =>
+                      e.target.checked
+                        ? [...prev, '15weld']
+                        : prev.filter(opt => opt !== '15weld')
+                    );
+                  }}
+                />
+                +15% Welding Supplies
+              </label>
+            </div>
           </label>
         </div>
         <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
