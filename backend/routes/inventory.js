@@ -160,15 +160,4 @@ router.put('/:sku', upload.single('imagen'), async (req, res) => {
   }
 });
 
-// --- AGREGAR ESTE ENDPOINT SOLO TEMPORALMENTE ---
-router.get('/add-usuario-column', async (req, res) => {
-  try {
-    await db.query('ALTER TABLE inventory ADD COLUMN usuario VARCHAR(100)');
-    res.send('Columna usuario agregada correctamente');
-  } catch (err) {
-    res.status(500).send('Error agregando columna usuario: ' + err.message);
-  }
-});
-// --- FIN DEL ENDPOINT TEMPORAL ---
-
 module.exports = router;
