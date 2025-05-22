@@ -112,110 +112,106 @@ router.post('/', async (req, res) => {
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
-    // LOGO
+    // LOGO y encabezado
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
+    console.log('Buscando logo en:', logoPath, 'Existe:', fs.existsSync(logoPath));
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 40, 30, { width: 100 });
+      try {
+        doc.image(logoPath, 40, 30, { width: 120 });
+        console.log('Logo agregado al PDF');
+      } catch (e) {
+        console.error('Error al agregar logo:', e);
+      }
+    } else {
+      console.log('Logo NO encontrado');
     }
+    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', 180, 40, { align: 'left' });
+    doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', 180, 70, { align: 'left' });
 
-    // TALLER Y DIRECCIÓN
-    doc.fontSize(9).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+    doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
 
-    // TÍTULO
-    doc.fontSize(22).fillColor('#222').font('Helvetica-Bold').text('JET SHOP', 0, 90, { align: 'center' });
-    doc.moveDown(0.2);
-    doc.fontSize(14).fillColor('#222').font('Helvetica').text('INVOICE', { align: 'center' });
-    doc.moveDown(0.5);
+    doc.moveDown(2);
 
-    // LÍNEA NEGRA
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).lineWidth(3).strokeColor('#222').stroke();
-    doc.moveDown(1);
+    // Datos principales
+    doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
+    doc.roundedRect(320, 110, 230, 60, 8).stroke('#1976d2');
+    doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
+    doc.text('Customer:', 50, 120);
+    doc.text('Trailer:', 50, 140);
+    doc.text('Date:', 330, 120);
+    doc.text('Invoice #:', 330, 140);
 
-    // CAJAS DE INFORMACIÓN
-    const yInfo = doc.y + 10;
-    doc.fontSize(10).fillColor('#222').font('Helvetica-Bold');
-    doc.rect(40, yInfo, 230, 18).fillAndStroke('#e3e3e3', '#222');
-    doc.rect(330, yInfo, 230, 18).fillAndStroke('#e3e3e3', '#222');
-    doc.fillColor('#222').text('DATE', 45, yInfo + 4);
-    doc.text('INVOICE #', 335, yInfo + 4);
+    doc.font('Helvetica').fillColor('#222').fontSize(10);
+    doc.text(billToCo || '-', 110, 120);
+    doc.text(trailer || '-', 110, 140);
+    doc.text(formattedDate, 390, 120);
+    doc.text(result.insertId, 400, 140);
 
-    doc.font('Helvetica').fillColor('#000');
-    doc.rect(40, yInfo + 18, 230, 40).stroke();
-    doc.rect(330, yInfo + 18, 230, 40).stroke();
-    doc.text(formattedDate, 45, yInfo + 24);
-    doc.text(result.insertId, 335, yInfo + 24);
-
-    doc.font('Helvetica-Bold').fillColor('#222');
-    doc.rect(40, yInfo + 58, 230, 18).fillAndStroke('#e3e3e3', '#222');
-    doc.rect(330, yInfo + 58, 230, 18).fillAndStroke('#e3e3e3', '#222');
-    doc.fillColor('#222').text('CUSTOMER INFORMATION', 45, yInfo + 62);
-    doc.text('REPAIR ORDER', 335, yInfo + 62);
-
-    doc.font('Helvetica').fillColor('#000');
-    doc.rect(40, yInfo + 76, 230, 40).stroke();
-    doc.rect(330, yInfo + 76, 230, 40).stroke();
-    doc.text(`TRAILER: ${trailer}`, 45, yInfo + 82);
-    doc.text(`${description || ''}`, 335, yInfo + 82);
-
-    doc.moveDown(7);
+    doc.moveDown(6);
 
     // TABLA DE PARTES
-    const tableTop = doc.y + 10;
-    const col = [40, 90, 250, 340, 390, 460, 520]; // Ajusta según ancho de página
+    const tableTop = 190;
+    const col = [40, 80, 200, 320, 370, 440, 520]; // Ajusta según ancho de página
 
     // Encabezado de tabla
-    doc.rect(col[0], tableTop, col[6] - col[0], 20).fillAndStroke('#b3d1f7', '#222');
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#222');
-    doc.text('PART NO', col[0] + 2, tableTop + 5, { width: col[1] - col[0] - 4, align: 'center' });
-    doc.text('DESCRIPTION', col[1] + 2, tableTop + 5, { width: col[2] - col[1] - 4, align: 'center' });
-    doc.text('QTY', col[2] + 2, tableTop + 5, { width: col[3] - col[2] - 4, align: 'center' });
-    doc.text('U/M', col[3] + 2, tableTop + 5, { width: col[4] - col[3] - 4, align: 'center' });
-    doc.text('PRICE', col[4] + 2, tableTop + 5, { width: col[5] - col[4] - 4, align: 'center' });
-    doc.text('TOTAL', col[5] + 2, tableTop + 5, { width: col[6] - col[5] - 4, align: 'center' });
+    doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
+    doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
+    doc.text('Description', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
+    doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
+    doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
+    doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
 
-    // Filas de partes
-    let y = tableTop + 20;
-    const maxRows = 15;
+    let y = tableTop + 22;
+    const maxRows = 12;
     (partsArr.length ? partsArr : Array(maxRows).fill({})).slice(0, maxRows).forEach((p, i) => {
-      doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#b3d1f7').stroke();
-      doc.font('Helvetica').fontSize(10).fillColor('#000');
-      doc.text(p.sku || '-', col[0] + 2, y + 4, { width: col[1] - col[0] - 4, align: 'center' });
-      doc.text(p.part || '-', col[1] + 2, y + 4, { width: col[2] - col[1] - 4, align: 'center' });
-      doc.text(p.qty || '-', col[2] + 2, y + 4, { width: col[3] - col[2] - 4, align: 'center' });
-      doc.text('-', col[3] + 2, y + 4, { width: col[4] - col[3] - 4, align: 'center' }); // U/M
+      doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
+      doc.font('Helvetica').fontSize(10).fillColor('#222');
+      doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
+      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
+      doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
+      doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
       doc.text(
         p.unitPrice
           ? Number(p.unitPrice).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : '$0.00',
-        col[4] + 2, y + 4, { width: col[5] - col[4] - 4, align: 'center' }
+        col[4], y + 4, { width: col[5] - col[4], align: 'center' }
       );
       doc.text(
         p.qty && p.unitPrice
           ? (Number(p.qty) * Number(p.unitPrice)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : '$0.00',
-        col[5] + 2, y + 4, { width: col[6] - col[5] - 4, align: 'center' }
+        col[5], y + 4, { width: col[6] - col[5], align: 'center' }
       );
       y += 18;
     });
 
     // Línea final de tabla
-    doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#222', '#222');
+    doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
 
-    // SUBTOTAL, TAX, TOTAL
+    // TOTALES
     y += 10;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#222');
-    doc.text('SUBTOTAL:', col[4], y, { width: col[5] - col[4], align: 'right' });
-    doc.font('Helvetica').text(partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    doc.text('Subtotal Parts:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.font('Helvetica').fillColor('#222').text(partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
 
     y += 16;
-    doc.font('Helvetica-Bold').text('TAX:', col[4], y, { width: col[5] - col[4], align: 'right' });
-    doc.font('Helvetica').text('$0.00', col[5], y, { width: col[6] - col[5], align: 'center' });
+    doc.font('Helvetica-Bold').fillColor('#1976d2').text('Labor:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.font('Helvetica').fillColor('#222').text(laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
 
-    y += 16;
-    doc.font('Helvetica-Bold').text('TOTAL:', col[4], y, { width: col[5] - col[4], align: 'right' });
-    doc.font('Helvetica').fillColor('#d32f2f').text((partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+    (extraLabels || []).forEach((label, idx) => {
+      y += 16;
+      doc.font('Helvetica-Bold').fillColor('#1976d2').text(`${label}:`, col[4], y, { width: col[5] - col[4], align: 'right' });
+      doc.font('Helvetica').fillColor('#222').text(extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+    });
+
+    y += 18;
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#d32f2f');
+    doc.text('TOTAL:', col[4], y, { width: col[5] - col[4], align: 'right' });
+    doc.text((partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
 
     // TÉRMINOS Y FIRMAS
     doc.moveDown(2);
@@ -228,7 +224,7 @@ router.post('/', async (req, res) => {
 
     doc.moveDown(2);
     doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
-    doc.font('Helvetica-BoldOblique').fontSize(12).fillColor('#222').text('Thanks for your business!', 40, doc.y + 30);
+    doc.font('Helvetica-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
 
     doc.end();
 
