@@ -52,6 +52,8 @@ const TrailasTable: React.FC = () => {
   const [selectedWO, setSelectedWO] = useState<number | null>(null);
   const [woParts, setWoParts] = useState<any[]>([]);
 
+  const [workOrder, setWorkOrder] = useState<any>({ parts: [] });
+
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
@@ -157,6 +159,16 @@ const TrailasTable: React.FC = () => {
 
   const trailasPorCliente = (cliente: string) =>
     trailas.filter(t => t.nombre.startsWith(clientePrefijos[cliente]));
+
+  const addEmptyPart = () => {
+    setWorkOrder((prev: any) => ({
+      ...prev,
+      parts: [
+        ...prev.parts,
+        { part: '', qty: '', cost: '' }
+      ]
+    }));
+  };
 
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>

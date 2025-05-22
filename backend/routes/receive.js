@@ -25,14 +25,16 @@ router.post('/', async (req, res) => {
     destino_trailer, qty, costTax, totalPOClassic, usuario, invoiceLink
   } = req.body;
 
+  const qty_remaining = qty; // Inicializa qty_remaining igual a qty recibido
+
   try {
     const [result] = await db.query(
       `INSERT INTO receives
         (sku, category, item, provider, brand, um, destino_trailer, invoice, invoiceLink, qty, costTax, totalPOClassic, estatus, qty_remaining)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sku, category, item, provider, brand, um,
-        destino_trailer, req.body.invoice, req.body.invoiceLink, qty, costTax, totalPOClassic, 'PENDING', qty // invoice = invoiceLink
+        destino_trailer, req.body.invoice, req.body.invoiceLink, qty, costTax, totalPOClassic, 'PENDING', qty_remaining
       ]
     );
     const { usuario: user, ...rest } = req.body;

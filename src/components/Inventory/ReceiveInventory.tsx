@@ -288,10 +288,30 @@ const ReceiveInventory: React.FC = () => {
                   <option value="">Bill To Co</option>
                   {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
-                <select name="destino_trailer" value={form.destino_trailer} onChange={handleChange} style={inputStyle}>
-                  <option value="">Destination Trailer</option>
-                  {getTrailerOptions(form.billToCo).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
+                {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(form.billToCo) ? (
+                  <select
+                    name="destino_trailer"
+                    value={form.destino_trailer}
+                    onChange={handleChange}
+                    style={inputStyle}
+                    required
+                  >
+                    <option value="">Destination Trailer</option>
+                    {getTrailerOptions(form.billToCo).map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    name="destino_trailer"
+                    value={form.destino_trailer}
+                    onChange={handleChange}
+                    placeholder="Destination Trailer"
+                    style={inputStyle}
+                    required
+                  />
+                )}
                 {/* Campo para número de invoice */}
                 <input
                   type="text"
@@ -354,10 +374,30 @@ const ReceiveInventory: React.FC = () => {
                     <option value="">Bill To Co</option>
                     {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
-                  <select name="destino_trailer" value={editForm.destino_trailer} onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })} style={inputStyle}>
-                    <option value="">Destination Trailer</option>
-                    {getTrailerOptions(editForm.billToCo).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                  {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
+                    <select
+                      name="destino_trailer"
+                      value={editForm.destino_trailer}
+                      onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
+                      style={inputStyle}
+                      required
+                    >
+                      <option value="">Destination Trailer</option>
+                      {getTrailerOptions(editForm.billToCo).map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      name="destino_trailer"
+                      value={editForm.destino_trailer}
+                      onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
+                      placeholder="Destination Trailer"
+                      style={inputStyle}
+                      required
+                    />
+                  )}
                   <input name="qty" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
                   <input name="costTax" value={editForm.costTax} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
                   <input name="totalPOClassic" value={editForm.totalPOClassic} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />

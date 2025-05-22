@@ -15,16 +15,24 @@ interface WorkOrderFormProps {
   pendingPartsQty?: { [id: number]: string };
   setPendingPartsQty?: React.Dispatch<React.SetStateAction<{ [id: number]: string }>>;
   onAddPendingPart?: (part: any, qty: string) => void;
+  onAddEmptyPart?: () => void;
 }
 
+const formatCurrency = (value: string | number) => {
+  const num = Number(value);
+  if (isNaN(num)) return '';
+  return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+};
+
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
-  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart
+  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart
 }) => {
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
-      // Busca el costo en el inventario
+      // Busca la parte en el inventario
       const found = inventory.find(item => item.sku === value);
-      const cost = found ? (found.price || found.costTax || '') : '';
+      // Usa el último precio registrado (puede ser price o costTax)
+      const cost = found ? (found.precio || found.price || found.costTax || '') : '';
       onPartChange(index, 'part', value);
       onPartChange(index, 'cost', cost.toString());
     } else {
@@ -177,31 +185,56 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'cost', e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
                   />
+                  <span style={{ color: '#1976d2', fontWeight: 600, marginLeft: 4 }}>
+                    {formatCurrency(part.cost)}
+                  </span>
                 </label>
               </div>
             ))}
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={onAddEmptyPart}
+              style={{
+                background: '#fff',
+                color: '#1976d2',
+                border: '1px solid #1976d2',
+                padding: '6px 16px',
+                borderRadius: 4,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              + Agregar otra parte
+            </button>
           </div>
         </div>
         {pendingParts && pendingParts.length > 0 && (
           <div style={{ margin: '12px 0', background: '#fffbe6', border: '1px solid #ffd600', borderRadius: 6, padding: 12 }}>
             <strong>Pending Parts for this trailer:</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {pendingParts.map((part, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    border: '1px solid #1976d2',
-                    borderRadius: 4,
-                    padding: '6px 12px',
-                    background: '#e3f2fd',
-                    cursor: 'pointer'
-                  }}
-                  title="Click to add to WO"
-                  onClick={() => onAddPendingPart && onAddPendingPart(part, part.qty)}
-                >
-                  {part.sku} - {part.item} ({part.qty} pcs)
-                </div>
-              ))}
+              {pendingParts.map((part, idx) => {
+                const alreadyAdded = workOrder.parts.some((p: any) => p.sku === part.sku);
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      border: '1px solid #1976d2',
+                      borderRadius: 4,
+                      padding: '6px 12px',
+                      background: alreadyAdded ? '#e0e0e0' : '#e3f2fd',
+                      color: alreadyAdded ? '#888' : '#1976d2',
+                      cursor: alreadyAdded ? 'not-allowed' : 'pointer',
+                      opacity: alreadyAdded ? 0.6 : 1
+                    }}
+                    title={alreadyAdded ? "Ya agregada a la WO" : "Click para agregar a la WO"}
+                    onClick={() => !alreadyAdded && onAddPendingPart && onAddPendingPart(part, part.qty)}
+                  >
+                    {part.sku} - {part.item} ({part.qty} pcs)
+                  </div>
+                );
+              })}
             </div>
             <div style={{ fontSize: 12, color: '#1976d2', marginTop: 4 }}>
               Click a part to add it to the WO parts list.
@@ -230,6 +263,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               onChange={onChange}
               style={{ width: '100%', marginTop: 4 }}
             />
+            <span style={{ color: '#1976d2', fontWeight: 600, marginLeft: 4 }}>
+              {formatCurrency(workOrder.totalLabAndParts)}
+            </span>
           </label>
           <label style={{ flex: 1 }}>
             Status<span style={{ color: 'red' }}>*</span>

@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
   try {
     // Busca recibos FIFO con partes disponibles
     const [receives] = await db.query(
-      'SELECT id, invoice, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
+      'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
       [sku]
     );
 
@@ -22,7 +22,9 @@ router.post('/', async (req, res) => {
 
       // Descuenta del recibo
       await db.query(
-        'UPDATE receives SET qty_remaining = qty_remaining - ? WHERE id = ?',
+        'UPDATE receives SET qty_remaining = qty_remaining - ?' +
+        (deductQty === receive.qty_remaining ? ', estatus = "USED"' : '') +
+        ' WHERE id = ?',
         [deductQty, receive.id]
       );
 
