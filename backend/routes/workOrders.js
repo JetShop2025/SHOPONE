@@ -88,11 +88,14 @@ router.post('/', async (req, res) => {
 
     doc.pipe(stream);
 
-    // --- LOGO EN LA PARTE SUPERIOR IZQUIERDA ---
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
     if (fs.existsSync(logoPath)) {
+      console.log('Logo encontrado:', logoPath);
       doc.image(logoPath, 40, 30, { width: 120 });
+    } else {
+      console.log('Logo NO encontrado:', logoPath);
     }
+
     doc.fontSize(22).fillColor('#1976d2').text('INVOICE', 0, 40, { align: 'right' });
     doc.moveDown(2);
 
@@ -123,8 +126,22 @@ router.post('/', async (req, res) => {
     doc.moveDown(0.5);
     doc.font('Helvetica').fontSize(10);
 
+    // ... después de doc.moveDown(0.5);
+    doc.font('Helvetica').fontSize(10);
+
+    // Dibuja fondo y líneas de encabezado
+    doc.rect(col[0] - 2, tableTop - 2, col[5] + 60 - col[0] + 4, 20).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.fillColor('#1976d2').font('Helvetica-Bold').fontSize(10);
+    doc.text('No.', col[0], tableTop);
+    doc.text('SKU', col[1], tableTop);
+    doc.text('Descripción', col[2], tableTop);
+    doc.text('Qty', col[3], tableTop, { width: 40, align: 'right' });
+    doc.text('Unit', col[4], tableTop, { width: 50, align: 'right' });
+    doc.text('Total', col[5], tableTop, { width: 60, align: 'right' });
+    doc.fillColor('#333').font('Helvetica').fontSize(10);
+
+    let y = tableTop + 20;
     (parts || []).forEach((p, i) => {
-      const y = doc.y;
       doc.text(i + 1, col[0], y);
       doc.text(p.sku || '', col[1], y);
       doc.text(p.part || '', col[2], y, { width: 170 });
@@ -138,67 +155,33 @@ router.post('/', async (req, res) => {
         totalPart.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
         col[5], y, { width: 60, align: 'right' }
       );
-      doc.moveDown(0.5);
+      // Línea separadora
+      doc.moveTo(col[0], y + 14).lineTo(col[5] + 60, y + 14).strokeColor('#e0e0e0').stroke();
+      y += 18;
     });
 
-    doc.moveDown(1);
+    doc.moveDown(2);
 
     // --- TOTALES ---
-    // Calcula partes, labor y extras igual que en el frontend
-    let partsTotal = 0;
-    let laborTotal = 0;
-    let extra = 0;
-    let extraLabels = [];
-    let extraArr = [];
-    try {
-      const partsArr = Array.isArray(parts) ? parts : [];
-      partsTotal = partsArr.reduce((sum, p) => {
-        const val = Number((p.cost || '').toString().replace(/[^0-9.]/g, ''));
-        return sum + (isNaN(val) ? 0 : val);
-      }, 0);
-      laborTotal = Number(totalHrs) * 60 || 0;
-      const subtotal = partsTotal + laborTotal;
-
-      // Cambia aquí: soporta varios extras
-      const extras = Array.isArray(req.body.extraOptions) ? req.body.extraOptions : [];
-      extras.forEach(opt => {
-        if (opt === '5') {
-          extra += subtotal * 0.05;
-          extraLabels.push('5% Extra');
-          extraArr.push(subtotal * 0.05);
-        } else if (opt === '15shop') {
-          extra += subtotal * 0.15;
-          extraLabels.push('15% Shop Miscellaneous');
-          extraArr.push(subtotal * 0.15);
-        } else if (opt === '15weld') {
-          extra += subtotal * 0.15;
-          extraLabels.push('15% Welding Supplies');
-          extraArr.push(subtotal * 0.15);
-        }
-      });
-    } catch {}
-
-    // Formato moneda
     const fmt = v => Number(v).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-
     const rightCol = 410;
-    doc.font('Helvetica-Bold').fontSize(11);
-    doc.text('Subtotal Parts:', rightCol, doc.y, { width: 120, align: 'right' });
-    doc.font('Helvetica').text(fmt(partsTotal), rightCol + 120, doc.y, { width: 80, align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
+    doc.text('Subtotal Parts:', rightCol, y + 10, { width: 120, align: 'right' });
+    doc.font('Helvetica').fillColor('#333').text(fmt(partsTotal), rightCol + 120, y + 10, { width: 80, align: 'right' });
 
-    doc.font('Helvetica-Bold').text('Labor (HRS x $60):', rightCol, doc.y + 18, { width: 120, align: 'right' });
-    doc.font('Helvetica').text(fmt(laborTotal), rightCol + 120, doc.y + 18, { width: 80, align: 'right' });
+    doc.font('Helvetica-Bold').fillColor('#1976d2').text('Labor (HRS x $60):', rightCol, y + 28, { width: 120, align: 'right' });
+    doc.font('Helvetica').fillColor('#333').text(fmt(laborTotal), rightCol + 120, y + 28, { width: 80, align: 'right' });
 
-    let yTot = doc.y + 36;
+    let yTot = y + 46;
     (extraLabels || []).forEach((label, idx) => {
-      doc.font('Helvetica-Bold').text(`${label}:`, rightCol, yTot, { width: 120, align: 'right' });
-      doc.font('Helvetica').text(fmt(extraArr[idx]), rightCol + 120, yTot, { width: 80, align: 'right' });
+      doc.font('Helvetica-Bold').fillColor('#1976d2').text(`${label}:`, rightCol, yTot, { width: 120, align: 'right' });
+      doc.font('Helvetica').fillColor('#333').text(fmt(extraArr[idx]), rightCol + 120, yTot, { width: 80, align: 'right' });
       yTot += 18;
     });
 
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#1976d2');
-    doc.text('TOTAL LAB & PARTS:', rightCol, yTot, { width: 120, align: 'right' });
-    doc.text(fmt(partsTotal + laborTotal + extra), rightCol + 120, yTot, { width: 80, align: 'right' });
+    doc.text('TOTAL LAB & PARTS:', rightCol, yTot + 10, { width: 120, align: 'right' });
+    doc.text(fmt(partsTotal + laborTotal + extra), rightCol + 120, yTot + 10, { width: 80, align: 'right' });
 
     doc.end();
     // --- FIN DEL BLOQUE COMPLETO DE GENERACIÓN DEL PDF ---
