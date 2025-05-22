@@ -340,10 +340,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               readOnly
               style={{ width: '100%', marginTop: 4, background: '#e3f2fd', fontWeight: 700 }}
             />
-            <div style={{ fontSize: 12, color: '#1976d2', marginTop: 2 }}>
-              Partes: {formatCurrencyInput(partsTotal)} + Labor: {formatCurrencyInput(laborTotal)}
-              {extra > 0 && <> + {extraLabel}: {formatCurrencyInput(extra)}</>}
-            </div>
           </label>
           <label style={{ flex: 1 }}>
             Status<span style={{ color: 'red' }}>*</span>

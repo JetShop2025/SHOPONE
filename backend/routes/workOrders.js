@@ -155,10 +155,47 @@ router.post('/', async (req, res) => {
     doc.moveDown(1.5);
 
     // --- TOTALES ---
-    doc.font('Helvetica-Bold').fontSize(12).text(`TOTAL HRS: `, 40, doc.y, { continued: true });
-    doc.font('Helvetica').text(`${totalHrs || ''}`, doc.x, doc.y, { continued: true });
-    doc.font('Helvetica-Bold').text(`   TOTAL LAB & PARTS: `, doc.x + 20, doc.y, { continued: true });
-    doc.font('Helvetica').text(`${totalLabAndParts || ''}`, doc.x, doc.y);
+    // Calcula partes, labor y extra igual que en el frontend
+    let partsTotal = 0;
+    let laborTotal = 0;
+    let extra = 0;
+    let extraLabel = '';
+    try {
+      const partsArr = Array.isArray(parts) ? parts : [];
+      partsTotal = partsArr.reduce((sum, p) => {
+        const val = Number((p.cost || '').toString().replace(/[^0-9.]/g, ''));
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+      laborTotal = Number(totalHrs) * 60 || 0;
+      const subtotal = partsTotal + laborTotal;
+      if (req.body.extraOption === '5') {
+        extra = subtotal * 0.05;
+        extraLabel = '5% Extra';
+      } else if (req.body.extraOption === '15shop') {
+        extra = subtotal * 0.15;
+        extraLabel = '15% Shop Miscellaneous';
+      } else if (req.body.extraOption === '15weld') {
+        extra = subtotal * 0.15;
+        extraLabel = '15% Welding Supplies';
+      }
+    } catch {}
+
+    // Formato moneda
+    const fmt = v => Number(v).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+    doc.font('Helvetica-Bold').fontSize(12).text(`TOTAL PARTS: `, 40, doc.y, { continued: true });
+    doc.font('Helvetica').text(fmt(partsTotal), doc.x, doc.y);
+
+    doc.font('Helvetica-Bold').fontSize(12).text(`LABOR (HRS x $60): `, 40, doc.y + 18, { continued: true });
+    doc.font('Helvetica').text(fmt(laborTotal), doc.x, doc.y + 18);
+
+    if (extra > 0) {
+      doc.font('Helvetica-Bold').fontSize(12).text(`${extraLabel}: `, 40, doc.y + 36, { continued: true });
+      doc.font('Helvetica').text(fmt(extra), doc.x, doc.y + 36);
+    }
+
+    doc.font('Helvetica-Bold').fontSize(13).text(`TOTAL LAB & PARTS: `, 40, doc.y + 54, { continued: true });
+    doc.font('Helvetica').text(fmt(partsTotal + laborTotal + extra), doc.x, doc.y + 54);
 
     doc.end();
     // --- FIN DEL BLOQUE COMPLETO DE GENERACIÓN DEL PDF ---
