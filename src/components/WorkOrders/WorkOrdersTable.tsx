@@ -134,6 +134,7 @@ const WorkOrdersTable: React.FC = () => {
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
   const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
 
   useEffect(() => {
     const API_URL = process.env.REACT_APP_API_URL || '';
@@ -251,6 +252,7 @@ const WorkOrdersTable: React.FC = () => {
       // 3. Guarda la orden como ya lo haces
       const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
+        extraOptions, // <-- agrega esto
         usuario: localStorage.getItem('username') || ''
       });
       const data = res.data as { id: number, pdfUrl?: string };
@@ -636,6 +638,8 @@ const WorkOrdersTable: React.FC = () => {
                   });
                 }}
                 onAddEmptyPart={addEmptyPart}
+                extraOptions={extraOptions}
+                setExtraOptions={setExtraOptions}
               />
             </div>
           </div>
@@ -722,7 +726,8 @@ const WorkOrdersTable: React.FC = () => {
                             ...editWorkOrder,
                             date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
                             parts: editWorkOrder.parts,
-                            usuario: localStorage.getItem('username') || ''
+                            usuario: localStorage.getItem('username') || '',
+                            extraOptions, // <-- agrega esto
                           });
                           const updated = await axios.get(`${API_URL}/work-orders`);
                           setWorkOrders(updated.data as any[]);
@@ -741,6 +746,8 @@ const WorkOrdersTable: React.FC = () => {
                       getTrailerOptions={getTrailerOptions}
                       inventory={inventory}
                       onAddEmptyPart={addEmptyPart}
+                      extraOptions={extraOptions}           // <-- agrega esto
+                      setExtraOptions={setExtraOptions}     // <-- agrega esto
                     />
                   </>
                 )}

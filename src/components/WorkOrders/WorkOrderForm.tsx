@@ -16,6 +16,8 @@ interface WorkOrderFormProps {
   setPendingPartsQty?: React.Dispatch<React.SetStateAction<{ [id: number]: string }>>;
   onAddPendingPart?: (part: any, qty: string) => void;
   onAddEmptyPart?: () => void;
+  extraOptions: string[];
+  setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const formatCurrency = (value: string | number) => {
@@ -37,11 +39,10 @@ const parseCurrencyInput = (value: string) => {
 };
 
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
-  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart
+  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart, extraOptions, setExtraOptions
 }) => {
   const [extraOption, setExtraOption] = React.useState('none');
   const [autocomplete, setAutocomplete] = React.useState<{ [k: number]: any[] }>({});
-  const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [successMsg, setSuccessMsg] = React.useState('');
 
@@ -84,24 +85,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   };
 
   // Suma de partes
-  const partsTotal = workOrder.parts && workOrder.parts.length > 0
-    ? workOrder.parts.reduce((sum: number, part: any) => {
-        const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-        return sum + (isNaN(val) ? 0 : val);
-      }, 0)
-    : 0;
+  const partsTotal = workOrder.parts?.reduce((sum: number, part: any) => {
+    const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0) || 0;
 
   // Labor
   const laborHrs = Number(workOrder.totalHrs);
   const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
 
-  // Subtotal (puede ser solo labor si no hay partes)
+  // Subtotal
   const subtotal = partsTotal + laborTotal;
 
-  // Calcula el extra SIEMPRE sobre el subtotal (aunque sea solo labor)
+  // Extras
   let extra = 0;
   let extraLabels: string[] = [];
-  extraOptions.forEach(opt => {
+  (extraOptions || []).forEach(opt => {
     if (opt === '5') {
       extra += subtotal * 0.05;
       extraLabels.push('5% Extra');
