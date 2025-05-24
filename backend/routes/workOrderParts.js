@@ -11,6 +11,8 @@ router.post('/', async (req, res) => {
 
   const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
 
+  console.log('Body recibido en /work-order-parts:', req.body);
+
   try {
     // Busca recibos FIFO con partes disponibles
     const [receives] = await db.query(
@@ -53,6 +55,23 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Error al registrar partes usadas:', error);
     res.status(500).json({ error: 'Error al registrar partes usadas' });
+  }
+});
+
+// Obtener partes por work_order_id
+router.get('/:work_order_id', async (req, res) => {
+  const { work_order_id } = req.params;
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM work_order_parts WHERE work_order_id = ?',
+      [work_order_id]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'No parts found for this work order' });
+    }
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching parts' });
   }
 });
 
