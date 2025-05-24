@@ -42,6 +42,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const [extraOption, setExtraOption] = React.useState('none');
   const [autocomplete, setAutocomplete] = React.useState<{ [k: number]: any[] }>({});
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [successMsg, setSuccessMsg] = React.useState('');
 
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
@@ -125,10 +127,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }}
     >
       <h2 style={{ color: '#1976d2', marginBottom: 16 }}>{title}</h2>
+      {loading && <div>Generando orden y PDF, por favor espera...</div>}
+      {successMsg && <div>{successMsg}</div>}
       <form
-        onSubmit={e => {
+        onSubmit={async e => {
           e.preventDefault();
-          onSubmit();
+          setLoading(true);
+          setSuccessMsg('');
+          try {
+            await onSubmit(); // tu función para crear la WO y PDF
+            setSuccessMsg('¡Orden creada y PDF generado con éxito!');
+            setTimeout(() => setSuccessMsg(''), 4000);
+          } catch (err) {
+            setSuccessMsg('Ocurrió un error al crear la orden.');
+          }
+          setLoading(false);
         }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
@@ -294,27 +307,38 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <div style={{ margin: '12px 0', background: '#fffbe6', border: '1px solid #ffd600', borderRadius: 6, padding: 12 }}>
             <strong>Pending Parts for this trailer:</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {pendingParts.map((part, idx) => {
-                const alreadyAdded = workOrder.parts.some((p: any) => p.sku === part.sku);
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      border: '1px solid #1976d2',
-                      borderRadius: 4,
-                      padding: '6px 12px',
-                      background: alreadyAdded ? '#e0e0e0' : '#e3f2fd',
-                      color: alreadyAdded ? '#888' : '#1976d2',
-                      cursor: alreadyAdded ? 'not-allowed' : 'pointer',
-                      opacity: alreadyAdded ? 0.6 : 1
-                    }}
-                    title={alreadyAdded ? "Ya agregada a la WO" : "Click para agregar a la WO"}
-                    onClick={() => !alreadyAdded && onAddPendingPart && onAddPendingPart(part, part.qty)}
-                  >
-                    {part.sku} - {part.item} ({part.qty} pcs)
-                  </div>
-                );
-              })}
+              {pendingParts
+                .filter(part => {
+                  // Calcula cuántas ya se agregaron de esta parte
+                  const addedQty = workOrder.parts
+                    .filter((p: any) => p.sku === part.sku)
+                    .reduce((sum: number, p: any) => sum + Number(p.qty), 0);
+                  // Solo muestra si quedan por agregar
+                  return Number(part.qty) - addedQty > 0;
+                })
+                .map((part, idx) => {
+                  const addedQty = workOrder.parts
+                    .filter((p: any) => p.sku === part.sku)
+                    .reduce((sum: number, p: any) => sum + Number(p.qty), 0);
+                  const remainingQty = Number(part.qty) - addedQty;
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        border: '1px solid #1976d2',
+                        borderRadius: 4,
+                        padding: '6px 12px',
+                        background: '#e3f2fd',
+                        color: '#1976d2',
+                        cursor: 'pointer'
+                      }}
+                      title={"Click para agregar a la WO"}
+                      onClick={() => onAddPendingPart && onAddPendingPart(part, String(remainingQty))}
+                    >
+                      {part.sku} - {part.item} ({remainingQty} pcs)
+                    </div>
+                  );
+                })}
             </div>
             <div style={{ fontSize: 12, color: '#1976d2', marginTop: 4 }}>
               Click a part to add it to the WO parts list.
