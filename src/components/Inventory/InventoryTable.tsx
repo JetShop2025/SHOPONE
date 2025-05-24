@@ -560,7 +560,7 @@ const InventoryTable: React.FC = () => {
                         ? <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>{item.invoice}</a>
                         : item.invoice
                     )
-                    : <span style={{ color: '#d32f2f', fontStyle: 'italic' }}>Inventario general</span>
+                    : ''
                   }
                 </td>
               </tr>

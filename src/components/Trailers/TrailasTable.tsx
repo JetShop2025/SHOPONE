@@ -490,7 +490,7 @@ const TrailasTable: React.FC = () => {
                   <th>Nombre</th>
                   <th>Cantidad</th>
                   <th>Costo</th>
-                  <th>Link OneDrive</th>
+                  <th>Invoice</th> 
                   <th>Usuario</th>
                   <th>Fecha</th>
                 </tr>
@@ -503,11 +503,14 @@ const TrailasTable: React.FC = () => {
                     <td>{p.qty_used}</td>
                     <td>{p.cost}</td>
                     <td>
-                      {p.invoiceLink ? (
-                        <a href={p.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
-                          Ver
-                        </a>
-                      ) : '—'}
+                      {p.invoice
+                        ? (
+                            p.invoiceLink
+                              ? <a href={p.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>{p.invoice}</a>
+                              : p.invoice
+                          )
+                        : '—'
+                      }
                     </td>
                     <td>{p.usuario}</td>
                     <td>{p.fecha?.slice(0, 16).replace('T', ' ')}</td>
