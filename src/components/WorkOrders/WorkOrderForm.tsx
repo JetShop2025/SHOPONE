@@ -84,18 +84,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   };
 
   // Suma de partes
-  const partsTotal = workOrder.parts.reduce((sum: number, part: any) => {
-    const val = Number(part.cost.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(val) ? 0 : val);
-  }, 0);
+  const partsTotal = workOrder.parts && workOrder.parts.length > 0
+    ? workOrder.parts.reduce((sum: number, part: any) => {
+        const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0)
+    : 0;
 
   // Labor
   const laborTotal = Number(workOrder.totalHrs) * 60 || 0;
 
-  // Subtotal
-  let subtotal = partsTotal + laborTotal;
+  // Subtotal (puede ser solo labor si no hay partes)
+  const subtotal = partsTotal + laborTotal;
 
-  // Calcula el extra sumando todos los seleccionados
+  // Calcula el extra SIEMPRE sobre el subtotal (aunque sea solo labor)
   let extra = 0;
   let extraLabels: string[] = [];
   extraOptions.forEach(opt => {
