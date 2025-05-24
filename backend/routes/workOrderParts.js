@@ -16,6 +16,7 @@ router.post('/', async (req, res) => {
       [sku]
     );
 
+    let totalDeducted = 0;
     for (const receive of receives) {
       if (qtyToDeduct <= 0) break;
       const deductQty = Math.min(receive.qty_remaining, qtyToDeduct);
@@ -35,27 +36,21 @@ router.post('/', async (req, res) => {
       );
 
       qtyToDeduct -= deductQty;
+      totalDeducted += deductQty;
     }
 
-    res.status(200).json({ message: 'Parts registered with FIFO invoices' });
-  } catch (err) {
-    console.error('Error in /work-order-parts:', err);
-    res.status(500).send('Error registering part');
-  }
-});
+    // Si faltó descontar y no hay receives, registra como inventario general
+    if (qtyToDeduct > 0) {
+      await db.query(
+        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoice, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [work_order_id, sku, part_name, qtyToDeduct, cost, usuario, null, null]
+      );
+    }
 
-// Consultar partes usadas por WO
-router.get('/:work_order_id', async (req, res) => {
-  const { work_order_id } = req.params;
-  try {
-    const [rows] = await db.query(
-      'SELECT * FROM work_order_parts WHERE work_order_id = ?',
-      [work_order_id]
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error('Error in GET /work-order-parts/:work_order_id:', err); // <-- Para depuración
-    res.status(500).send('Error fetching parts');
+    res.status(200).json({ message: 'Partes registradas exitosamente', totalDeducted });
+  } catch (error) {
+    console.error('Error al registrar partes usadas:', error);
+    res.status(500).json({ error: 'Error al registrar partes usadas' });
   }
 });
 

@@ -171,7 +171,7 @@ router.post('/', async (req, res) => {
     doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
-    doc.text('Description', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
+    doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' }); // Cambiado a "Nombre"
     doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
     doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
     doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
@@ -184,7 +184,7 @@ router.post('/', async (req, res) => {
       doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
       doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' }); // SKU
       doc.text(
-        p.part_name || p.description || p.part || '-', // Description
+        p.part_name || '-', // Solo el nombre/descripcion de la parte
         col[2], y + 4, { width: col[3] - col[2], align: 'center' }
       );
       doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
@@ -234,8 +234,8 @@ router.post('/', async (req, res) => {
     doc.font('Helvetica').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
 
     doc.moveDown(2);
-    doc.font('Helvetica').fontSize(9).text('I accept this estimate without any changes □', 40, doc.y + 10);
-    doc.text('I accept this estimate with the handwritten changes □', 40, doc.y + 24);
+    doc.font('Helvetica').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
+    doc.text('I accept this estimate with the handwritten changes ', 40, doc.y + 24);
 
     doc.moveDown(2);
     doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
