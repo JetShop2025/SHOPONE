@@ -9,6 +9,8 @@ router.post('/', async (req, res) => {
   const { work_order_id, sku, part_name, qty_used, cost, usuario } = req.body;
   let qtyToDeduct = Number(qty_used);
 
+  const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
+
   try {
     // Busca recibos FIFO con partes disponibles
     const [receives] = await db.query(
@@ -32,7 +34,7 @@ router.post('/', async (req, res) => {
       // Inserta en work_order_parts con el invoice correcto
       await db.query(
         'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoice, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, deductQty, cost, usuario, receive.invoice, receive.invoiceLink]
+        [work_order_id, sku, part_name, deductQty, cleanCost, usuario, receive.invoice, receive.invoiceLink]
       );
 
       qtyToDeduct -= deductQty;
@@ -43,7 +45,7 @@ router.post('/', async (req, res) => {
     if (qtyToDeduct > 0) {
       await db.query(
         'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoice, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, qtyToDeduct, cost, usuario, null, null]
+        [work_order_id, sku, part_name, qtyToDeduct, cleanCost, usuario, null, null]
       );
     }
 
