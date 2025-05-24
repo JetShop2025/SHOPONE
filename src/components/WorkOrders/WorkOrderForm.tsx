@@ -92,7 +92,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     : 0;
 
   // Labor
-  const laborTotal = Number(workOrder.totalHrs) * 60 || 0;
+  const laborHrs = Number(workOrder.totalHrs);
+  const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
 
   // Subtotal (puede ser solo labor si no hay partes)
   const subtotal = partsTotal + laborTotal;
