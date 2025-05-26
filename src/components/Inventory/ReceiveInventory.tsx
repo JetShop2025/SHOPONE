@@ -62,6 +62,8 @@ const ReceiveInventory: React.FC = () => {
   const [editPassword, setEditPassword] = useState('');
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  const [providerFilter, setProviderFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
 
   useEffect(() => {
     axios.get(`${API_URL}/inventory`).then(res => setInventory(res.data as any[]));
@@ -193,6 +195,19 @@ const ReceiveInventory: React.FC = () => {
     }
   };
 
+  const filteredReceives = receives.filter(r => {
+    // Filtro por provider
+    const providerOk = providerFilter ? r.provider === providerFilter : true;
+    // Filtro por mes
+    let monthOk = true;
+    if (monthFilter && r.fecha) {
+      const fecha = new Date(r.fecha);
+      const [year, month] = monthFilter.split('-');
+      monthOk = fecha.getFullYear() === Number(year) && (fecha.getMonth() + 1) === Number(month);
+    }
+    return providerOk && monthOk;
+  });
+
   return (
     <div style={{ maxWidth: 1200, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
       <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Inventory Receipts</h1>
@@ -249,6 +264,34 @@ const ReceiveInventory: React.FC = () => {
         >
           Edit
         </button>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
+        {/* Filtro por Provider */}
+        <label>
+          Provider:&nbsp;
+          <select
+            value={providerFilter}
+            onChange={e => setProviderFilter(e.target.value)}
+            style={{ minWidth: 160 }}
+          >
+            <option value="">All</option>
+            {Array.from(new Set(receives.map(r => r.provider).filter(Boolean))).map(provider => (
+              <option key={provider} value={provider}>{provider}</option>
+            ))}
+          </select>
+        </label>
+        {/* Filtro por Mes */}
+        <label>
+          Month:&nbsp;
+          <input
+            type="month"
+            value={monthFilter}
+            onChange={e => setMonthFilter(e.target.value)}
+            style={{ minWidth: 140 }}
+          />
+        </label>
       </div>
 
       {/* ADD RECEIPT FORM */}
@@ -444,7 +487,7 @@ const ReceiveInventory: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {receives.map((r, idx) => (
+          {filteredReceives.map((r, idx) => (
             <tr
               key={r.id}
               style={{

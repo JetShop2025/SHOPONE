@@ -48,17 +48,25 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
-      // Autocompletado
+      // Obtén los SKUs ya seleccionados en otras líneas
+      const usedSkus = workOrder.parts
+        .filter((p: any, i: number) => i !== index && p.sku)
+        .map((p: any) => p.sku);
+
+      // Filtra inventario excluyendo los ya usados
       const suggestions = inventory.filter(item =>
-        item.sku.toLowerCase().includes(value.toLowerCase()) ||
-        (item.part && item.part.toLowerCase().includes(value.toLowerCase()))
+        !usedSkus.includes(item.sku) && (
+          item.sku.toLowerCase().includes(value.toLowerCase()) ||
+          (item.part && item.part.toLowerCase().includes(value.toLowerCase()))
+        )
       );
       setAutocomplete(prev => ({ ...prev, [index]: suggestions }));
 
       // Si selecciona una sugerencia exacta, autocompleta precio unitario
       const found = inventory.find(item => item.sku === value || item.part === value);
       if (found) {
-        onPartChange(index, 'part', found.sku);
+        onPartChange(index, 'sku', found.sku);
+        onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
         const qty = workOrder.parts[index]?.qty || 1;
         const total = Number(qty) * Number(found.precio || found.price || found.costTax || 0);
@@ -252,15 +260,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     <div style={{
                       position: 'absolute', zIndex: 10, background: '#fff', border: '1px solid #1976d2', borderRadius: 4, width: '100%', maxHeight: 120, overflowY: 'auto'
                     }}>
-                      {autocomplete[index].map((item, i) => (
-                        <div
-                          key={item.sku}
-                          style={{ padding: 6, cursor: 'pointer', color: '#1976d2' }}
-                          onClick={() => handlePartChange(index, 'part', item.sku)}
-                        >
-                          {item.sku} - {item.part}
-                        </div>
-                      ))}
+                      {autocomplete[index]
+                        // .filter(item => !usedSkus.includes(item.sku)) // Ya filtrado arriba
+                        .map((item, i) => (
+                          <div
+                            key={item.sku}
+                            style={{ padding: 6, cursor: 'pointer', color: '#1976d2' }}
+                            onClick={() => handlePartChange(index, 'part', item.sku)}
+                          >
+                            {item.sku} - {item.part}
+                          </div>
+                        ))}
                     </div>
                   )}
                 </label>
