@@ -83,6 +83,34 @@ const sectionTitleStyle = {
   marginBottom: 16,
 };
 
+const formatCurrency = (value: number) =>
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+function calcularTotalWO(order: any) {
+  // Suma de partes
+  const partsTotal = order.parts?.reduce((sum: number, part: any) => {
+    const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0) || 0;
+
+  // Labor
+  const laborHrs = Number(order.totalHrs);
+  const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
+
+  // Subtotal
+  const subtotal = partsTotal + laborTotal;
+
+  // Extras
+  let extra = 0;
+  (order.extraOptions || []).forEach((opt: string) => {
+    if (opt === '5') extra += subtotal * 0.05;
+    if (opt === '15shop') extra += subtotal * 0.15;
+    if (opt === '15weld') extra += subtotal * 0.15;
+  });
+
+  return subtotal + extra;
+}
+
 const WorkOrdersTable: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [pendingParts, setPendingParts] = useState<any[]>([]);
@@ -193,7 +221,7 @@ const WorkOrdersTable: React.FC = () => {
     return inWeek && matchesStatus;
   });
 
-  
+
 
   // Cambios generales
   const handleWorkOrderChange = (
@@ -273,7 +301,12 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       if (data.pdfUrl) {
-        window.open(`${API_URL}${data.pdfUrl}`, '_blank');
+        const link = document.createElement('a');
+        link.href = `${API_URL}${data.pdfUrl}`;
+        link.download = data.pdfUrl.split('/').pop() || 'orden.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
       setShowForm(false);
       setNewWorkOrder({
@@ -761,7 +794,7 @@ const WorkOrdersTable: React.FC = () => {
           <table className="wo-table">
             <thead>
               <tr>
-  
+
                 <th>ID</th>
                 <th>Bill To Co</th>
                 <th>Trailer</th>
@@ -832,7 +865,7 @@ const WorkOrdersTable: React.FC = () => {
             </React.Fragment>
           ))}
           <td>{order.totalHrs}</td>
-          <td>{order.totalLabAndParts}</td>
+          <td>{formatCurrency(calcularTotalWO(order))}</td>
           <td>{order.status}</td>
         </tr>
         {expandedRow === order.id && hasMoreParts && (
