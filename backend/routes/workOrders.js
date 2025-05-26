@@ -392,49 +392,4 @@ router.get('/audit-log', async (req, res) => {
 // Servir los PDFs generados
 router.use('/pdfs', express.static(path.join(__dirname, '..', 'pdfs')));
 
-// Construye la tabla de partes
-const partsTableBody = [
-  [
-    { text: '#', bold: true },
-    { text: 'SKU', bold: true },
-    { text: 'Descripción', bold: true },
-    { text: 'Cantidad', bold: true },
-    { text: 'Costo Unitario', bold: true },
-    { text: 'Total', bold: true }
-  ],
-  ...parts.map((part, idx) => [
-    idx + 1,
-    part.sku || '',
-    part.description || part.part || '',
-    part.qty || '',
-    part.unitPrice ? `$${Number(part.unitPrice).toFixed(2)}` : '',
-    part.cost ? `$${Number(part.cost).toFixed(2)}` : ''
-  ])
-];
-
-// Ejemplo para pdfmake
-const exampleDocDefinition = {
-  content: [
-    // ... otros contenidos ...
-    {
-      table: {
-        widths: [20, 60, '*', 40, 60, 60],
-        body: partsTableBody
-      },
-      layout: 'lightHorizontalLines',
-      margin: [0, 10, 0, 10]
-    },
-    // Desglose de totales
-    [
-      { text: 'Subtotal Parts:', alignment: 'right', bold: true },
-      { text: `$${partsTotal.toFixed(2)}`, alignment: 'right' }
-    ],
-    [
-      { text: 'Labor:', alignment: 'right', bold: true },
-      { text: `$${laborTotal.toFixed(2)}`, alignment: 'right' }
-    ],
-    // ...extras y total...
-  ]
-};
-
 module.exports = router;
