@@ -1,4 +1,7 @@
 import React from 'react';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 
 interface WorkOrderFormProps {
   workOrder: any;
@@ -18,6 +21,14 @@ interface WorkOrderFormProps {
   onAddEmptyPart?: () => void;
   extraOptions: string[];
   setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+interface Part {
+  sku: string;
+  part: string;
+  qty: number;
+  cost: number;
+  [key: string]: any;
 }
 
 const formatCurrency = (value: string | number) => {
@@ -50,8 +61,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (field === 'part') {
       // Obtén los SKUs ya seleccionados en otras líneas
       const usedSkus = workOrder.parts
-        .filter((p: any, i: number) => i !== index && p.sku)
-        .map((p: any) => p.sku);
+        .filter((p: Part, i: number) => i !== index && p.sku)
+        .map((p: Part) => p.sku);
 
       // Filtra inventario excluyendo los ya usados
       const suggestions = inventory.filter(item =>
@@ -66,7 +77,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const found = inventory.find(item => item.sku === value || item.part === value);
       if (found) {
         // Cuando el usuario selecciona una sugerencia:
-        onPartChange(index, 'sku', found.sku); // <--- Esto es CLAVE
+        onPartChange(index, 'sku', found.sku);
         onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
         const qty = workOrder.parts[index]?.qty || 1;
@@ -94,7 +105,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   };
 
   // Suma de partes
-  const partsTotal = workOrder.parts?.reduce((sum: number, part: any) => {
+  const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
     const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
     return sum + (isNaN(val) ? 0 : val);
   }, 0) || 0;
@@ -125,6 +136,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Total final
   const totalLabAndParts = subtotal + extra;
 
+  const hasMissingSku = workOrder.parts.some((p: Part) => !p.sku);
+
   return (
     <div
       style={{
@@ -147,6 +160,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           setSuccessMsg('');
           try {
             await onSubmit(); // tu función para crear la WO y PDF
+
+            // Nueva sección: Deductar partes del inventario
+            const partsToDeduct = workOrder.parts
+              .filter((p: Part) => p.sku && p.qty) // Solo partes válidas
+              .map((p: Part) => ({
+                sku: p.sku,
+                qty: Number(p.qty)
+              }));
+
+            await axios.post(`${API_URL}/inventory/deduct`, partsToDeduct);
+
             setSuccessMsg('¡Orden creada y PDF generado con éxito!');
             setTimeout(() => setSuccessMsg(''), 4000);
           } catch (err) {
@@ -244,7 +268,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         <div style={{ marginTop: 16 }}>
           <strong>Partes</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-            {workOrder.parts.map((part: any, index: number) => (
+            {workOrder.parts.map((part: Part, index: number) => (
               <div key={index} style={{ border: '1px solid #ccc', borderRadius: 4, padding: 8, minWidth: 180, position: 'relative' }}>
                 <label>
                   PRT{index + 1}
@@ -262,8 +286,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                       position: 'absolute', zIndex: 10, background: '#fff', border: '1px solid #1976d2', borderRadius: 4, width: '100%', maxHeight: 120, overflowY: 'auto'
                     }}>
                       {autocomplete[index]
-                        // .filter(item => !usedSkus.includes(item.sku)) // Ya filtrado arriba
-                        .map((item, i) => (
+                        .map((item: any, i: number) => (
                           <div
                             key={item.sku}
                             style={{ padding: 6, cursor: 'pointer', color: '#1976d2' }}
@@ -320,38 +343,39 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <div style={{ margin: '12px 0', background: '#fffbe6', border: '1px solid #ffd600', borderRadius: 6, padding: 12 }}>
             <strong>Pending Parts for this trailer:</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {pendingParts
-                .filter(part => {
-                  // Calcula cuántas ya se agregaron de esta parte
-                  const addedQty = workOrder.parts
-                    .filter((p: any) => p.sku === part.sku)
-                    .reduce((sum: number, p: any) => sum + Number(p.qty), 0);
-                  // Solo muestra si quedan por agregar
-                  return Number(part.qty) - addedQty > 0;
-                })
-                .map((part, idx) => {
-                  const addedQty = workOrder.parts
-                    .filter((p: any) => p.sku === part.sku)
-                    .reduce((sum: number, p: any) => sum + Number(p.qty), 0);
-                  const remainingQty = Number(part.qty) - addedQty;
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        border: '1px solid #1976d2',
-                        borderRadius: 4,
-                        padding: '6px 12px',
-                        background: '#e3f2fd',
-                        color: '#1976d2',
-                        cursor: 'pointer'
-                      }}
-                      title={"Click para agregar a la WO"}
-                      onClick={() => onAddPendingPart && onAddPendingPart(part, String(remainingQty))}
-                    >
-                      {part.sku} - {part.item} ({remainingQty} pcs)
-                    </div>
-                  );
-                })}
+              {pendingParts &&
+                pendingParts
+                  .filter((part: any) => {
+                    // Calcula cuántas ya se agregaron de esta parte
+                    const addedQty = workOrder.parts
+                      .filter((p: Part) => p.sku === part.sku)
+                      .reduce((sum: number, p: Part) => sum + Number(p.qty), 0);
+                    // Solo muestra si quedan por agregar
+                    return Number(part.qty) - addedQty > 0;
+                  })
+                  .map((part: any, idx: number) => {
+                    const addedQty = workOrder.parts
+                      .filter((p: Part) => p.sku === part.sku)
+                      .reduce((sum: number, p: Part) => sum + Number(p.qty), 0);
+                    const remainingQty = Number(part.qty) - addedQty;
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          border: '1px solid #1976d2',
+                          borderRadius: 4,
+                          padding: '6px 12px',
+                          background: '#e3f2fd',
+                          color: '#1976d2',
+                          cursor: 'pointer'
+                        }}
+                        title={"Click para agregar a la WO"}
+                        onClick={() => onAddPendingPart && onAddPendingPart(part, String(remainingQty))}
+                      >
+                        {part.sku} - {part.item} ({remainingQty} pcs)
+                      </div>
+                    );
+                  })}
             </div>
             <div style={{ fontSize: 12, color: '#1976d2', marginTop: 4 }}>
               Click a part to add it to the WO parts list.

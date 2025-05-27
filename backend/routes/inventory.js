@@ -40,8 +40,16 @@ router.post('/', async (req, res) => {
 });
 
 // Descontar partes del inventario
-router.post('/deduct', express.json(), async (req, res) => {
-  const { parts, usuario } = req.body;
+router.post('/deduct', async (req, res) => {
+  const parts = req.body;
+  if (!Array.isArray(parts) || parts.length === 0) {
+    return res.status(400).send('No parts provided');
+  }
+  for (const part of parts) {
+    if (!part.sku || !part.qty || isNaN(Number(part.qty))) {
+      return res.status(400).send('Invalid part data');
+    }
+  }
   let errorMsg = '';
   try {
     for (const part of parts) {
