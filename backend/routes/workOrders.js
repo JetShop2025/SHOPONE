@@ -43,6 +43,7 @@ router.get('/', async (req, res) => {
 
 // Agregar nueva orden de trabajo y generar PDF
 router.post('/', async (req, res) => {
+  console.log('REQ BODY:', req.body);
   const { billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status, usuario } = req.body;
 
   // --- VALIDACIÓN DE PARTES ---
@@ -270,12 +271,8 @@ router.post('/', async (req, res) => {
 
 // backend/routes/workOrders.js
 router.post('/', async (req, res) => {
-  // ... tus campos ...
-  const [result] = await db.query(
-    'INSERT INTO work_orders (...) VALUES (?, ?, ...)',
-    [/* tus valores */]
-  );
-  res.status(200).json({ id: result.insertId }); // <-- esto es clave
+  console.log('REQ BODY:', req.body);
+  // ...tu lógica...
 });
 
 // Eliminar orden de trabajo por ID
