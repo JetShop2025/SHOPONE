@@ -15,7 +15,7 @@ const MenuOptions: React.FC = () => {
       setError('');
       navigate('/audit');
     } else {
-      setError('wrong password, try again!');
+      setError('wrong password, try  again!');
     }
   };
 
