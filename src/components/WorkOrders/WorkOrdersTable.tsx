@@ -509,6 +509,18 @@ const WorkOrdersTable: React.FC = () => {
   // Función para ocultar el tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
 
+  const handlePartHover = (e: React.MouseEvent, sku: string) => {
+    const partInfo = inventory.find(i => i.sku === sku);
+    if (partInfo) {
+      setTooltip({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        info: partInfo
+      });
+    }
+  };
+
   return (
     <>
       <style>
@@ -889,11 +901,12 @@ const WorkOrdersTable: React.FC = () => {
           {[0,1,2,3,4].map(i => (
             <React.Fragment key={i}>
               <td
-                style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2' }}
-                onClick={order.parts && order.parts[i] && order.parts[i].sku
-                  ? (e) => handlePartClick(e, order.parts[i].sku)
+                style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2', position: 'relative' }}
+                onMouseEnter={order.parts && order.parts[i] && order.parts[i].sku
+                  ? (e) => handlePartHover(e, order.parts[i].sku)
                   : undefined
                 }
+                onMouseLeave={hideTooltip}
               >
                 {order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}
               </td>
@@ -960,9 +973,9 @@ const WorkOrdersTable: React.FC = () => {
     <div><b>On Hand:</b> {tooltip.info.onHand}</div>
     <div><b>U/M:</b> {tooltip.info.um}</div>
     <div>
-      <b>Precio actual (+10%):</b>{" "}
+      <b>Precio actual:</b>{" "}
       {tooltip.info.precio
-        ? (Number(tooltip.info.precio) * 1.10).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+        ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
         : '$0.00'}
     </div>
     <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
