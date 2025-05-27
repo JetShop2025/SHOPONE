@@ -133,21 +133,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   });
 
-  // Total final
+  // **Agrega esta línea**
   const totalLabAndParts = subtotal + extra;
-
-  const hasMissingSku = workOrder.parts.some((p: Part) => !p.sku);
-  const hasInvalidQty = workOrder.parts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
-  if (hasMissingSku) {
-    setSuccessMsg('Hay partes sin SKU. Selecciona todas las partes desde el inventario.');
-    setLoading(false);
-    return;
-  }
-  if (hasInvalidQty) {
-    setSuccessMsg('Hay partes con cantidad inválida.');
-    setLoading(false);
-    return;
-  }
 
   return (
     <div
@@ -173,7 +160,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           // Limpia los costos de las partes (quita $ y comas)
           const cleanParts = workOrder.parts.map((p: Part) => ({
             ...p,
-            cost: Number(String(p.cost).replace(/[^0-9.]/g, '')) // quita $ y comas
+            cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
           }));
 
           // Validación usando cleanParts
