@@ -263,7 +263,7 @@ const WorkOrdersTable: React.FC = () => {
     try {
       // 1. Prepara las partes a descontar
       const partesUsadas = datosOrden.parts
-        .filter((p: any) => p.sku && p.qty && !isNaN(Number(p.qty)) && Number(p.qty) > 0)
+        .filter((p: any) => p.sku && p.qty && Number(p.qty) > 0)
         .map((p: any) => ({
           sku: p.sku, // ✅ Usa el SKU real
           qty: Number(p.qty)

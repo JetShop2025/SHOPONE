@@ -48,7 +48,7 @@ router.post('/deduct', async (req, res) => {
     return res.status(400).send('No parts provided');
   }
   for (const part of parts) {
-    if (!part.sku || !part.qty || isNaN(Number(part.qty))) {
+    if (!part.sku || !part.qty || isNaN(Number(part.qty)) || Number(part.qty) <= 0) {
       return res.status(400).send('Invalid part data');
     }
   }

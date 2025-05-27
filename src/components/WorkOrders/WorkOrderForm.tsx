@@ -163,7 +163,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
             // Nueva sección: Deductar partes del inventario
             const partsToDeduct = workOrder.parts
-              .filter((p: Part) => p.sku && p.qty)
+              .filter((p: Part) => p.sku && p.qty && Number(p.qty) > 0)
               .map((p: Part) => ({
                 sku: p.sku,
                 qty: Number(p.qty)
