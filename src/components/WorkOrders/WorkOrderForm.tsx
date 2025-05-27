@@ -267,7 +267,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                           <div
                             key={item.sku}
                             style={{ padding: 6, cursor: 'pointer', color: '#1976d2' }}
-                            onClick={() => handlePartChange(index, 'part', item.sku)}
+                            onClick={() => handlePartChange(index, 'part', item.part)}
                           >
                             {item.sku} - {item.part}
                           </div>
