@@ -169,12 +169,28 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           e.preventDefault();
           setLoading(true);
           setSuccessMsg('');
+
+          // Limpia los costos de las partes (quita $ y comas)
+          const cleanParts = workOrder.parts.map((p: Part) => ({
+            ...p,
+            cost: Number(String(p.cost).replace(/[^0-9.]/g, '')) // quita $ y comas
+          }));
+
+          // Validación usando cleanParts
+          const hasMissingSku = cleanParts.some((p: Part) => !p.sku);
+          const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
+          if (hasMissingSku) {
+            setSuccessMsg('Hay partes sin SKU. Selecciona todas las partes desde el inventario.');
+            setLoading(false);
+            return;
+          }
+          if (hasInvalidQty) {
+            setSuccessMsg('Hay partes con cantidad inválida.');
+            setLoading(false);
+            return;
+          }
+
           try {
-            // Limpia los costos de las partes (quita $ y comas)
-            const cleanParts = workOrder.parts.map((p: Part) => ({
-              ...p,
-              cost: Number(String(p.cost).replace(/[^0-9.]/g, '')) // quita $ y comas
-            }));
             await axios.post(`${API_URL}/work-orders`, {
               ...workOrder,
               parts: cleanParts,
