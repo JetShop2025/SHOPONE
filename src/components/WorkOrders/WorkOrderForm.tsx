@@ -65,7 +65,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       // Si selecciona una sugerencia exacta, autocompleta precio unitario
       const found = inventory.find(item => item.sku === value || item.part === value);
       if (found) {
-        onPartChange(index, 'sku', found.sku);
+        // Cuando el usuario selecciona una sugerencia:
+        onPartChange(index, 'sku', found.sku); // <--- Esto es CLAVE
         onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
         const qty = workOrder.parts[index]?.qty || 1;

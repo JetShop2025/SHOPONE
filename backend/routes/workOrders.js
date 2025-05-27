@@ -45,6 +45,17 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status, usuario } = req.body;
 
+  // --- VALIDACIÓN DE PARTES ---
+  const [inventory] = await db.query('SELECT sku FROM inventory');
+  const inventorySkus = inventory.map(item => (item.sku || '').trim().toUpperCase());
+  const partsArr = Array.isArray(parts) ? parts : [];
+  for (const part of partsArr) {
+    if (!part.sku || !inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
+      return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
+    }
+  }
+  // --- FIN VALIDACIÓN ---
+
   if (!date) {
     return res.status(400).send('The date field is required');
   }
