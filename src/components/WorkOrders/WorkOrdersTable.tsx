@@ -908,7 +908,7 @@ const WorkOrdersTable: React.FC = () => {
                 }
                 onMouseLeave={hideTooltip}
               >
-                {order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}
+                {order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].sku : ''}
               </td>
               <td>{order.parts && order.parts[i] && order.parts[i].qty ? order.parts[i].qty : ''}</td>
               <td>{order.parts && order.parts[i] && order.parts[i].cost ? order.parts[i].cost : ''}</td>
@@ -935,7 +935,7 @@ const WorkOrdersTable: React.FC = () => {
                   {order.parts.slice(5).map((p: any, idx: number) => (
                     <tr key={idx}>
                       <td>{idx + 6}</td>
-                      <td>{p.part}</td>
+                      <td>{p.sku}</td>
                       <td>{p.qty}</td>
                       <td>{p.cost}</td>
                     </tr>

@@ -180,7 +180,7 @@ router.post('/', async (req, res) => {
     doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
-    doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' }); // Cambiado a "Nombre"
+    doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
     doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
     doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
     doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
@@ -191,20 +191,17 @@ router.post('/', async (req, res) => {
       doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
       doc.font('Courier').fontSize(10).fillColor('#222');
       doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
-      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' }); // SKU
-      doc.text(
-        p.part || '-', // Descripción de la parte
-        col[2], y + 4, { width: col[3] - col[2], align: 'center' }
-      );
+      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
+      doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
       doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
       doc.text(
-        p.cost
+        p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
           ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : '$0.00',
         col[4], y + 4, { width: col[5] - col[4], align: 'center' }
       );
       doc.text(
-        p.qty && p.cost
+        p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
           ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : '$0.00',
         col[5], y + 4, { width: col[6] - col[5], align: 'center' }
