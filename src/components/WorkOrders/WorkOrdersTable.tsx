@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, MouseEvent } from 'react';
 import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
 import dayjs from 'dayjs';
@@ -163,6 +163,7 @@ const WorkOrdersTable: React.FC = () => {
   const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
+  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
 
   useEffect(() => {
     const API_URL = process.env.REACT_APP_API_URL || '';
@@ -490,6 +491,23 @@ const WorkOrdersTable: React.FC = () => {
       ]
     }));
   };
+
+  // Función para mostrar el tooltip
+  const handlePartClick = (e: MouseEvent, sku: string) => {
+    e.stopPropagation();
+    const partInfo = inventory.find(i => i.sku === sku);
+    if (partInfo) {
+      setTooltip({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        info: partInfo
+      });
+    }
+  };
+
+  // Función para ocultar el tooltip
+  const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
 
   return (
     <>
@@ -870,7 +888,15 @@ const WorkOrdersTable: React.FC = () => {
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
           {[0,1,2,3,4].map(i => (
             <React.Fragment key={i}>
-              <td>{order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}</td>
+              <td
+                style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2' }}
+                onClick={order.parts && order.parts[i] && order.parts[i].sku
+                  ? (e) => handlePartClick(e, order.parts[i].sku)
+                  : undefined
+                }
+              >
+                {order.parts && order.parts[i] && order.parts[i].part ? order.parts[i].part : ''}
+              </td>
               <td>{order.parts && order.parts[i] && order.parts[i].qty ? order.parts[i].qty : ''}</td>
               <td>{order.parts && order.parts[i] && order.parts[i].cost ? order.parts[i].cost : ''}</td>
             </React.Fragment>
@@ -913,6 +939,35 @@ const WorkOrdersTable: React.FC = () => {
           </table>
         </div>       
       </div>
+      {tooltip.visible && tooltip.info && (
+  <div
+    style={{
+      position: 'fixed',
+      top: tooltip.y + 10,
+      left: tooltip.x + 10,
+      background: '#fff',
+      border: '1px solid #1976d2',
+      borderRadius: 8,
+      boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+      padding: 16,
+      zIndex: 9999,
+      minWidth: 220
+    }}
+    onClick={hideTooltip}
+  >
+    <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
+    <div><b>Part Name:</b> {tooltip.info.part}</div>
+    <div><b>On Hand:</b> {tooltip.info.onHand}</div>
+    <div><b>U/M:</b> {tooltip.info.um}</div>
+    <div>
+      <b>Precio actual (+10%):</b>{" "}
+      {tooltip.info.precio
+        ? (Number(tooltip.info.precio) * 1.10).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+        : '$0.00'}
+    </div>
+    <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
+  </div>
+)}
     </>
   );
 };

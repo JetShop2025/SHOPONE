@@ -76,10 +76,7 @@ router.post('/', async (req, res) => {
 
     // Calcula partes y labor
     const partsArr = Array.isArray(parts) ? parts : [];
-    const partsTotal = partsArr.reduce((sum, p) => {
-      const val = Number((p.cost || '').toString().replace(/[^0-9.]/g, ''));
-      return sum + (isNaN(val) ? 0 : val);
-    }, 0);
+    const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
     const laborTotal = Number(totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
 
@@ -196,19 +193,19 @@ router.post('/', async (req, res) => {
       doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
       doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' }); // SKU
       doc.text(
-        p.part_name || '-', // Solo el nombre/descripcion de la parte
+        p.part || '-', // Descripción de la parte
         col[2], y + 4, { width: col[3] - col[2], align: 'center' }
       );
       doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
       doc.text(
-        p.unitPrice
-          ? Number(p.unitPrice).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+        p.cost
+          ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : '$0.00',
         col[4], y + 4, { width: col[5] - col[4], align: 'center' }
       );
       doc.text(
-        p.qty && p.unitPrice
-          ? (Number(p.qty) * Number(p.unitPrice)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+        p.qty && p.cost
+          ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           : '$0.00',
         col[5], y + 4, { width: col[6] - col[5], align: 'center' }
       );
