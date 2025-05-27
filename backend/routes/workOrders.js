@@ -268,6 +268,21 @@ router.post('/', async (req, res) => {
   }
 });
 
+// AGREGAR ESTA RUTA:
+router.post('/', async (req, res) => {
+  try {
+    // Aquí va tu lógica para guardar la work order en la base de datos
+    // Por ejemplo:
+    // const result = await db.query('INSERT INTO work_orders SET ?', req.body);
+    // res.status(201).json({ id: result.insertId, ...req.body });
+
+    // Por ahora, solo responde OK para probar:
+    res.status(201).json({ message: 'Work order creada (dummy)', data: req.body });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al crear la work order' });
+  }
+});
+
 // Eliminar orden de trabajo por ID
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
