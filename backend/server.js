@@ -14,10 +14,8 @@ app.use(cors({
 
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
-const workOrdersRouter = require('./routes/workOrders'); // <-- asegúrate de que el path es correcto
-
-app.use(express.json());
-app.use('/work-orders', workOrdersRouter); // <-- ESTA LÍNEA ES CLAVE
+const workOrdersRouter = require('./routes/workOrders');
+app.use('/work-orders', workOrdersRouter);
 
 app.use('/trailas', trailasRoutes);
 app.use('/pdfs', express.static(__dirname + '/pdfs'));

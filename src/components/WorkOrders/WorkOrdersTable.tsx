@@ -8,7 +8,7 @@ import 'dayjs/locale/es';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
-const API_URL = process.env.REACT_APP_API_URL || '';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
@@ -166,7 +166,7 @@ const WorkOrdersTable: React.FC = () => {
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
 
   useEffect(() => {
-    const API_URL = process.env.REACT_APP_API_URL || '';
+    const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
     axios.get(`${API_URL}/work-orders`)
       .then((response: any) => {
         setWorkOrders(response.data);
@@ -177,7 +177,7 @@ const WorkOrdersTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const API_URL = process.env.REACT_APP_API_URL || '';
+    const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
     axios.get(`${API_URL}/inventory`)
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));
