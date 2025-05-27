@@ -269,12 +269,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// backend/routes/workOrders.js
-router.post('/', async (req, res) => {
-  console.log('REQ BODY:', req.body);
-  // ...tu lógica...
-});
-
 // Eliminar orden de trabajo por ID
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;

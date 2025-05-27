@@ -326,7 +326,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <div style={{ marginTop: 8 }}>
             <button
               type="button"
-              onClick={onAddEmptyPart}
+              onClick={() => {
+                onPartChange(workOrder.parts.length, 'part', '');
+                onPartChange(workOrder.parts.length, 'sku', ''); // <-- agrega esto si tu lógica lo permite
+              }}
               style={{
                 background: '#fff',
                 color: '#1976d2',

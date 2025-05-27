@@ -129,11 +129,11 @@ const WorkOrdersTable: React.FC = () => {
     date: '',
     description: '',
     parts: [
-      { part: '', qty: '', cost: '' },
-      { part: '', qty: '', cost: '' },
-      { part: '', qty: '', cost: '' },
-      { part: '', qty: '', cost: '' },
-      { part: '', qty: '', cost: '' },
+      { part: '', sku: '', qty: '', cost: '' },
+      { part: '', sku: '', qty: '', cost: '' },
+      { part: '', sku: '', qty: '', cost: '' },
+      { part: '', sku: '', qty: '', cost: '' },
+      { part: '', sku: '', qty: '', cost: '' },
     ],
     totalHrs: '',
     totalLabAndParts: '',
@@ -245,11 +245,11 @@ const WorkOrdersTable: React.FC = () => {
   const handlePartChange = (index: number, field: string, value: string) => {
     if (showForm) {
       const updatedParts = [...newWorkOrder.parts];
-      updatedParts[index][field as 'part' | 'qty' | 'cost'] = value;
+      updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
       setNewWorkOrder(prev => ({ ...prev, parts: updatedParts }));
     } else if (showEditForm && editWorkOrder) {
       const updatedParts = [...editWorkOrder.parts];
-      updatedParts[index][field as 'part' | 'qty' | 'cost'] = value;
+      updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
       setEditWorkOrder((prev: any) => ({ ...prev, parts: updatedParts }));
     }
   };
@@ -265,7 +265,7 @@ const WorkOrdersTable: React.FC = () => {
       const partesUsadas = datosOrden.parts
         .filter((p: any) => p.sku && p.qty && Number(p.qty) > 0)
         .map((p: any) => ({
-          sku: p.sku, // ✅ Usa el SKU real
+          sku: p.sku,
           qty: Number(p.qty)
         }));
 
@@ -277,27 +277,36 @@ const WorkOrdersTable: React.FC = () => {
         });
       }
 
-      // 3. Guarda la orden como ya lo haces
+      // 3. Prepara partes para guardar en la orden
+      const partesParaGuardar = datosOrden.parts
+        .filter((p: any) => p.sku && p.qty && Number(p.qty) > 0)
+        .map((p: any) => ({
+          sku: p.sku,
+          part: p.part,
+          qty: Number(p.qty),
+          cost: p.cost
+        }));
+
+      // 4. Guarda la orden
       const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
-        extraOptions, // <-- agrega esto
+        parts: partesParaGuardar,
+        extraOptions,
         usuario: localStorage.getItem('username') || ''
       });
       const data = res.data as { id: number, pdfUrl?: string };
       const newWorkOrderId = data.id;
 
       // REGISTRA PARTES USADAS EN work_order_parts
-      for (const part of datosOrden.parts) {
-        if (part.sku && part.qty) {
-          await axios.post(`${API_URL}/work-order-parts`, {
-            work_order_id: newWorkOrderId,
-            sku: part.sku, // ✅ Usa el SKU real
-            part_name: inventory.find(i => i.sku === part.sku)?.part || '',
-            qty_used: part.qty,
-            cost: part.cost,
-            usuario: localStorage.getItem('username') || ''
-          });
-        }
+      for (const part of partesParaGuardar) {
+        await axios.post(`${API_URL}/work-order-parts`, {
+          work_order_id: newWorkOrderId,
+          sku: part.sku,
+          part_name: inventory.find(i => i.sku === part.sku)?.part || '',
+          qty_used: part.qty,
+          cost: part.cost,
+          usuario: localStorage.getItem('username') || ''
+        });
       }
 
       if (data.pdfUrl) {
@@ -316,11 +325,11 @@ const WorkOrdersTable: React.FC = () => {
         date: '',
         description: '',
         parts: [
-          { part: '', qty: '', cost: '' },
-          { part: '', qty: '', cost: '' },
-          { part: '', qty: '', cost: '' },
-          { part: '', qty: '', cost: '' },
-          { part: '', qty: '', cost: '' },
+          { part: '', sku: '', qty: '', cost: '' },
+          { part: '', sku: '', qty: '', cost: '' },
+          { part: '', sku: '', qty: '', cost: '' },
+          { part: '', sku: '', qty: '', cost: '' },
+          { part: '', sku: '', qty: '', cost: '' },
         ],
         totalHrs: '',
         totalLabAndParts: '',
@@ -329,13 +338,12 @@ const WorkOrdersTable: React.FC = () => {
       const updated = await axios.get(`${API_URL}/work-orders`);
       setWorkOrders(updated.data as any[]);
       for (const part of pendingParts) {
-        // Si quieres marcar todas como usadas, o filtra según lo que el usuario seleccione
         await axios.put(`${API_URL}/receive/${part.id}/use`);
       }
       for (const partId of selectedPendingParts) {
         await axios.put(`${API_URL}/receive/${partId}/use`);
       }
-      setSelectedPendingParts([]); // Limpia la selección después de guardar
+      setSelectedPendingParts([]);
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.error) {
         alert('Error: ' + err.response.data.error);
@@ -380,15 +388,16 @@ const WorkOrdersTable: React.FC = () => {
         if (idx < nuevasPartes.length) {
           nuevasPartes[idx] = {
             part: parte.sku,
+            sku: parte.sku, // <-- obligatorio
             qty: parte.qty,
-            cost: '' // Puedes poner el costo si lo tienes
+            cost: ''
           };
           idx++;
         }
       }
       // Vacía los campos restantes si sobran
       for (; idx < nuevasPartes.length; idx++) {
-        nuevasPartes[idx] = { part: '', qty: '', cost: '' };
+        nuevasPartes[idx] = { part: '', sku: '', qty: '', cost: '' }; // <-- obligatorio
       }
       setNewWorkOrder(prev => ({
         ...prev,
@@ -477,7 +486,7 @@ const WorkOrdersTable: React.FC = () => {
       ...prev,
       parts: [
         ...prev.parts,
-        { part: '', qty: '', cost: '' }
+        { part: '', sku: '', qty: '', cost: '' }
       ]
     }));
   };
@@ -650,7 +659,8 @@ const WorkOrdersTable: React.FC = () => {
                     if (emptyIdx !== -1) {
                       const newParts = [...prev.parts];
                       newParts[emptyIdx] = {
-                        part: part.sku,
+                        part: part.part || part.sku,
+                        sku: part.sku, // <-- ahora siempre se asigna sku
                         qty: cantidad,
                         cost: part.costTax?.toString() || ''
                       };
@@ -661,7 +671,8 @@ const WorkOrdersTable: React.FC = () => {
                         parts: [
                           ...prev.parts,
                           {
-                            part: part.sku,
+                            part: part.part || part.sku,
+                            sku: part.sku,
                             qty: cantidad,
                             cost: part.costTax?.toString() || ''
                           }
