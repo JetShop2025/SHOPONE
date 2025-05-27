@@ -14,18 +14,20 @@ app.use(cors({
 
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
+const workOrdersRouter = require('./routes/workOrders'); // <-- asegúrate de que el path es correcto
+
+app.use(express.json());
+app.use('/work-orders', workOrdersRouter); // <-- ESTA LÍNEA ES CLAVE
 
 app.use('/trailas', trailasRoutes);
 app.use('/pdfs', express.static(__dirname + '/pdfs'));
 // Rutas
 const inventoryRoutes = require('./routes/inventory');
-const workOrdersRoutes = require('./routes/workOrders');
 const receiveRoutes = require('./routes/receive');
 const loginRoutes = require('./routes/login');
 const workOrderPartsRoutes = require('./routes/workOrderParts');
 
 app.use('/inventory', inventoryRoutes);
-app.use('/work-orders', workOrdersRoutes);
 app.use('/receive', receiveRoutes);
 app.use('/login', loginRoutes);
 app.use('/work-order-parts', workOrderPartsRoutes);
