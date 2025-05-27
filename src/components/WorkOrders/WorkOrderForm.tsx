@@ -137,6 +137,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const totalLabAndParts = subtotal + extra;
 
   const hasMissingSku = workOrder.parts.some((p: Part) => !p.sku);
+  const hasInvalidQty = workOrder.parts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
+  if (hasMissingSku) {
+    setSuccessMsg('Hay partes sin SKU. Selecciona todas las partes desde el inventario.');
+    setLoading(false);
+    return;
+  }
+  if (hasInvalidQty) {
+    setSuccessMsg('Hay partes con cantidad inválida.');
+    setLoading(false);
+    return;
+  }
 
   return (
     <div
@@ -173,8 +184,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
             setSuccessMsg('¡Orden creada y PDF generado con éxito!');
             setTimeout(() => setSuccessMsg(''), 4000);
-          } catch (err) {
-            setSuccessMsg('Ocurrió un error al crear la orden.');
+          } catch (err: any) {
+            setLoading(false);
+            if (err.response && err.response.data) {
+              setSuccessMsg(err.response.data); // Mensaje claro del backend
+            } else {
+              setSuccessMsg('Ocurrió un error al crear la orden.');
+            }
           }
           setLoading(false);
         }}
