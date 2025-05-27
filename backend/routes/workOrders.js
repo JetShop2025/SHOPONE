@@ -263,8 +263,8 @@ router.post('/', async (req, res) => {
       });
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('ERROR CREATING WORK ORDER');
+    console.error('ERROR CREATING WORK ORDER:', err); // <-- Esto imprime el error real en consola
+    res.status(500).send(err?.message || 'ERROR CREATING WORK ORDER'); // <-- Esto manda el mensaje real al frontend
   }
 });
 

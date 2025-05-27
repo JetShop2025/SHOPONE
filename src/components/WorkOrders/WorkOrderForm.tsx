@@ -190,7 +190,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           } catch (err: any) {
             setLoading(false);
             if (err.response && err.response.data) {
-              setSuccessMsg(err.response.data); // Mensaje claro del backend
+              setSuccessMsg(err.response.data); // Muestra el mensaje real del backend
             } else {
               setSuccessMsg('Ocurrió un error al crear la orden.');
             }
