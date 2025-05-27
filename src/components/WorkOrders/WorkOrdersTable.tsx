@@ -285,7 +285,7 @@ const WorkOrdersTable: React.FC = () => {
           sku: p.sku,
           part: p.part,
           qty: Number(p.qty),
-          cost: p.cost
+          cost: Number(String(p.cost).replace(/[^0-9.]/g, '')) // <-- LIMPIA AQUÍ
         }));
 
       // 4. Guarda la orden
@@ -305,7 +305,7 @@ const WorkOrdersTable: React.FC = () => {
           sku: part.sku,
           part_name: inventory.find(i => i.sku === part.sku)?.part || '',
           qty_used: part.qty,
-          cost: part.cost,
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
           usuario: localStorage.getItem('username') || ''
         });
       }
