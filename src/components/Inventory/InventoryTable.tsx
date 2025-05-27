@@ -136,7 +136,7 @@ const InventoryTable: React.FC = () => {
   const handleAddPart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addPassword !== '6214') {
-      setAddError('Incorrect password');
+      setAddError('Incorrect   password');
       return;
     }
     setAddError('');
