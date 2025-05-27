@@ -49,7 +49,13 @@ router.post('/', async (req, res) => {
   // --- VALIDACIÓN DE PARTES ---
   const [inventory] = await db.query('SELECT sku FROM inventory');
   const inventorySkus = inventory.map(item => (item.sku || '').trim().toUpperCase());
-  const partsArr = Array.isArray(parts) ? parts : [];
+  // LIMPIA COSTO DE CADA PARTE AQUÍ
+  const partsArr = Array.isArray(parts)
+    ? parts.map(part => ({
+        ...part,
+        cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
+      }))
+    : [];
   for (const part of partsArr) {
     if (!part.sku || !inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
       return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
@@ -67,15 +73,14 @@ router.post('/', async (req, res) => {
   `;
   const values = [
     billToCo, trailer, mechanic, date, description,
-    JSON.stringify(parts),
+    JSON.stringify(partsArr), // GUARDA EL ARRAY LIMPIO
     totalHrs, totalLabAndParts, status
   ];
 
   try {
     const [result] = await db.query(query, values);
 
-    // Calcula partes y labor
-    const partsArr = Array.isArray(parts) ? parts : [];
+    // Calcula partes y labor usando el array LIMPIO
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
     const laborTotal = Number(totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
