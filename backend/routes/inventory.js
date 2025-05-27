@@ -41,7 +41,9 @@ router.post('/', async (req, res) => {
 
 // Descontar partes del inventario
 router.post('/deduct', async (req, res) => {
-  const parts = req.body;
+  // Soporta ambos formatos: array directo o { parts, usuario }
+  const usuario = req.body.usuario || 'system';
+  const parts = Array.isArray(req.body) ? req.body : req.body.parts;
   if (!Array.isArray(parts) || parts.length === 0) {
     return res.status(400).send('No parts provided');
   }
@@ -52,6 +54,7 @@ router.post('/deduct', async (req, res) => {
   }
   let errorMsg = '';
   try {
+    console.log('Partes recibidas para descontar:', parts);
     for (const part of parts) {
       if (part.sku && part.qty) {
         const [results] = await db.query(

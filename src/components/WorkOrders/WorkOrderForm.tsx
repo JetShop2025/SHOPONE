@@ -163,13 +163,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
             // Nueva sección: Deductar partes del inventario
             const partsToDeduct = workOrder.parts
-              .filter((p: Part) => p.sku && p.qty) // Solo partes válidas
+              .filter((p: Part) => p.sku && p.qty)
               .map((p: Part) => ({
                 sku: p.sku,
                 qty: Number(p.qty)
               }));
-
-            await axios.post(`${API_URL}/inventory/deduct`, partsToDeduct);
+            await axios.post(`${API_URL}/inventory/deduct`, {
+              parts: partsToDeduct,
+              usuario: localStorage.getItem('username') || ''
+            });
 
             setSuccessMsg('¡Orden creada y PDF generado con éxito!');
             setTimeout(() => setSuccessMsg(''), 4000);
