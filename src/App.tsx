@@ -7,6 +7,7 @@ import InventoryList from './components/Inventory/index';
 import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
 import TrailasTable from './components/Trailers/TrailasTable';  
+import './env-test';
 
 const App: React.FC = () => {
   return (
