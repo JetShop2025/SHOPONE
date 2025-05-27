@@ -297,7 +297,7 @@ const InventoryTable: React.FC = () => {
                 setEditPassword('');
                 setEditError('');
               } else if (pwd !== null) {
-                alert('Incorrect password');
+                alert('Incorrect  password');
               }
             } else {
               alert('Selecciona una parte para editar');
