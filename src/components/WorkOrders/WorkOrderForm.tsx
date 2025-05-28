@@ -190,9 +190,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               window.alert('¡Orden creada y PDF generado con éxito!');
             }
 
-            // Abrir PDF si existe
+            // Abrir PDF SOLO en nueva pestaña
             if (res.data.pdfUrl) {
-              window.open(`${API_URL}${res.data.pdfUrl}`, '_blank');
+              window.open(`${API_URL}${res.data.pdfUrl}`, '_blank', 'noopener,noreferrer');
             }
 
             setLoading(false);
@@ -353,8 +353,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <button
               type="button"
               onClick={() => {
-                onPartChange(workOrder.parts.length, 'part', '');
-                onPartChange(workOrder.parts.length, 'sku', ''); // <-- agrega esto si tu lógica lo permite
+                if (onAddEmptyPart) onAddEmptyPart();
               }}
               style={{
                 background: '#fff',
