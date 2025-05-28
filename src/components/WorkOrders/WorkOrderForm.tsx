@@ -157,7 +157,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           setLoading(true);
           setSuccessMsg('');
 
-          // Limpia y filtra partes: solo partes con SKU
           const cleanParts = workOrder.parts
             .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
             .map((p: Part) => ({
@@ -165,7 +164,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
             }));
 
-          // Validación solo para cantidad inválida
           const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
           if (hasInvalidQty) {
             setSuccessMsg('Hay partes con cantidad inválida.');
@@ -174,21 +172,40 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           }
 
           try {
-            await axios.post(`${API_URL}/work-orders`, {
-              ...workOrder,
-              parts: cleanParts,
-              extraOptions,
-              usuario: localStorage.getItem('username') || ''
-            });
+            let res;
+            if (workOrder.id) {
+              res = await axios.put<{ pdfUrl?: string }>(`${API_URL}/work-orders/${workOrder.id}`, {
+                ...workOrder,
+                parts: cleanParts,
+                extraOptions,
+                usuario: localStorage.getItem('username') || ''
+              });
+              setSuccessMsg('¡Orden editada y PDF generado con éxito!');
+            } else {
+              res = await axios.post<{ pdfUrl?: string }>(`${API_URL}/work-orders`, {
+                ...workOrder,
+                parts: cleanParts,
+                extraOptions,
+                usuario: localStorage.getItem('username') || ''
+              });
+              setSuccessMsg('¡Orden creada y PDF generado con éxito!');
+            }
 
-            setSuccessMsg('¡Orden creada y PDF generado con éxito!');
-            setTimeout(() => setSuccessMsg(''), 4000);
+            // Abrir PDF si existe
+            if (res.data.pdfUrl) {
+              window.open(`${API_URL}${res.data.pdfUrl}`, '_blank');
+            }
+
+            setTimeout(() => {
+              setSuccessMsg('');
+              onCancel();
+            }, 2000);
           } catch (err: any) {
             setLoading(false);
             if (err.response && err.response.data) {
-              setSuccessMsg(err.response.data); // Muestra el mensaje real del backend
+              setSuccessMsg(err.response.data);
             } else {
-              setSuccessMsg('Ocurrió un error al crear la orden.');
+              setSuccessMsg('Ocurrió un error al guardar la orden.');
             }
           }
           setLoading(false);
