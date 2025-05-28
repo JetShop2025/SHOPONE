@@ -324,12 +324,7 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       if (data.pdfUrl) {
-        const link = document.createElement('a');
-        link.href = `${API_URL}${data.pdfUrl}`;
-        link.download = data.pdfUrl.split('/').pop() || 'orden.pdf';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
       }
       setShowForm(false);
       setNewWorkOrder({

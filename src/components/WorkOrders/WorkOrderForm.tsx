@@ -153,7 +153,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       {successMsg && <div>{successMsg}</div>}
       <form
         onSubmit={async e => {
-          e.preventDefault();
+          e.preventDefault(); // Esto es clave
           setLoading(true);
 
           const cleanParts = workOrder.parts
@@ -196,7 +196,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             }
 
             setLoading(false);
-            onSubmit(); // Refresca tabla y cierra formulario
+            onSubmit(); // Esto debe cerrar el formulario/modal y refrescar la tabla
           } catch (err: any) {
             setLoading(false);
             if (err.response && err.response.data) {
