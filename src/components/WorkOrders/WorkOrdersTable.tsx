@@ -462,7 +462,7 @@ const WorkOrdersTable: React.FC = () => {
           await axios.delete(`${API_URL}/work-orders/${id}`, {
             headers: { 'Content-Type': 'application/json' },
             data: { usuario: localStorage.getItem('username') || '' }
-          });
+          } as any);
           setWorkOrders(workOrders.filter(order => order.id !== id));
           setSelectedRow(null);
           alert('Order deleted successfully');
