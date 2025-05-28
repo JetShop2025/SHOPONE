@@ -280,18 +280,18 @@ const WorkOrdersTable: React.FC = () => {
 
       // 3. Prepara partes para guardar en la orden
       const partesParaGuardar = datosOrden.parts
-        .filter((p: any) => p.sku && p.qty && Number(p.qty) > 0)
+        .filter((p: any) => p.sku && String(p.sku).trim() !== '') // Solo partes con SKU
         .map((p: any) => ({
           sku: p.sku,
           part: p.part,
           qty: Number(p.qty),
-          cost: Number(String(p.cost).replace(/[^0-9.]/g, '')) // <-- LIMPIA AQUÍ
+          cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
         }));
 
       // 4. Guarda la orden
       const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
-        parts: partesParaGuardar,
+        parts: partesParaGuardar, // <-- SOLO partes válidas
         extraOptions,
         usuario: localStorage.getItem('username') || ''
       });

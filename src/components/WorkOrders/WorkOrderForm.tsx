@@ -157,20 +157,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           setLoading(true);
           setSuccessMsg('');
 
-          // Limpia los costos de las partes (quita $ y comas)
-          const cleanParts = workOrder.parts.map((p: Part) => ({
-            ...p,
-            cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
-          }));
+          // Limpia y filtra partes: solo partes con SKU
+          const cleanParts = workOrder.parts
+            .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
+            .map((p: Part) => ({
+              ...p,
+              cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
+            }));
 
-          // Validación usando cleanParts
-          const hasMissingSku = cleanParts.some((p: Part) => !p.sku);
+          // Validación solo para cantidad inválida
           const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
-          if (hasMissingSku) {
-            setSuccessMsg('Hay partes sin SKU. Selecciona todas las partes desde el inventario.');
-            setLoading(false);
-            return;
-          }
           if (hasInvalidQty) {
             setSuccessMsg('Hay partes con cantidad inválida.');
             setLoading(false);
