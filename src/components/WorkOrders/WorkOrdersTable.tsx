@@ -1,4 +1,4 @@
-import React, { useState, useEffect, MouseEvent } from 'react';
+import React, { useEffect, useState, useCallback, MouseEvent } from 'react';
 import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
 import dayjs from 'dayjs';
@@ -165,16 +165,29 @@ const WorkOrdersTable: React.FC = () => {
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
 
-  useEffect(() => {
-    const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
-    axios.get(`${API_URL}/work-orders`)
-      .then((response: any) => {
-        setWorkOrders(response.data);
-      })
-      .catch((error: any) => {
-        console.error('Error al obtener las órdenes de trabajo:', error);
-      });
+  // Función para cargar las órdenes
+  const fetchWorkOrders = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/work-orders`);
+      setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
+    } catch (err) {
+      window.alert('Error cargando órdenes');
+    }
   }, []);
+
+  // Polling cada 5 segundos para ver cambios de otros usuarios
+  useEffect(() => {
+    fetchWorkOrders();
+    const interval = setInterval(fetchWorkOrders, 5000);
+    return () => clearInterval(interval);
+  }, [fetchWorkOrders]);
+
+  // Al guardar o editar, refresca la tabla y cierra el formulario
+  const handleFormSuccess = () => {
+    fetchWorkOrders();
+    setShowForm(false);
+    setEditWorkOrder(null);
+  };
 
   useEffect(() => {
     const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
@@ -337,7 +350,7 @@ const WorkOrdersTable: React.FC = () => {
         status: '',
       });
       const updated = await axios.get(`${API_URL}/work-orders`);
-      setWorkOrders(updated.data as any[]);
+      setWorkOrders(Array.isArray(updated.data) ? (updated.data as any[]) : []);
       for (const part of pendingParts) {
         await axios.put(`${API_URL}/receive/${part.id}/use`);
       }
@@ -439,18 +452,18 @@ const WorkOrdersTable: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (selectedRow === null) return;
+  const handleDelete = async (id: number) => {
+    if (id == null) return;
     const pwd = window.prompt('Enter password to delete:');
     if (pwd === '6214') {
       if (window.confirm('Are you sure you want to delete this order?')) {
         try {
-          await axios.request({
-            url: `${API_URL}/work-orders/${selectedRow}`,
-            method: 'DELETE',
+          // @ts-ignore
+          await axios.delete(`${API_URL}/work-orders/${id}`, {
+            headers: { 'Content-Type': 'application/json' },
             data: { usuario: localStorage.getItem('username') || '' }
           });
-          setWorkOrders(workOrders.filter(order => order.id !== selectedRow));
+          setWorkOrders(workOrders.filter(order => order.id !== id));
           setSelectedRow(null);
           alert('Order deleted successfully');
         } catch {
@@ -650,7 +663,7 @@ const WorkOrdersTable: React.FC = () => {
             className="wo-btn"
             style={dangerBtn}
             disabled={selectedRow === null}
-            onClick={handleDelete}
+            onClick={() => handleDelete(selectedRow!)}
           >
             Delete
           </button>
@@ -804,7 +817,7 @@ const WorkOrdersTable: React.FC = () => {
                             extraOptions, // <-- agrega esto
                           });
                           const updated = await axios.get(`${API_URL}/work-orders`);
-                          setWorkOrders(updated.data as any[]);
+                          setWorkOrders(Array.isArray(updated.data) ? (updated.data as any[]) : []);
                           setShowEditForm(false);
                           setEditWorkOrder(null);
                           setEditId('');

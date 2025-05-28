@@ -155,7 +155,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         onSubmit={async e => {
           e.preventDefault();
           setLoading(true);
-          setSuccessMsg('');
 
           const cleanParts = workOrder.parts
             .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
@@ -166,7 +165,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
           const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
           if (hasInvalidQty) {
-            setSuccessMsg('Hay partes con cantidad inválida.');
+            window.alert('Hay partes con cantidad inválida.');
             setLoading(false);
             return;
           }
@@ -180,7 +179,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 extraOptions,
                 usuario: localStorage.getItem('username') || ''
               });
-              setSuccessMsg('¡Orden editada y PDF generado con éxito!');
+              window.alert('¡Orden editada y PDF generado con éxito!');
             } else {
               res = await axios.post<{ pdfUrl?: string }>(`${API_URL}/work-orders`, {
                 ...workOrder,
@@ -188,7 +187,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 extraOptions,
                 usuario: localStorage.getItem('username') || ''
               });
-              setSuccessMsg('¡Orden creada y PDF generado con éxito!');
+              window.alert('¡Orden creada y PDF generado con éxito!');
             }
 
             // Abrir PDF si existe
@@ -196,19 +195,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               window.open(`${API_URL}${res.data.pdfUrl}`, '_blank');
             }
 
-            setTimeout(() => {
-              setSuccessMsg('');
-              onCancel();
-            }, 2000);
+            setLoading(false);
+            onSubmit(); // Refresca tabla y cierra formulario
           } catch (err: any) {
             setLoading(false);
             if (err.response && err.response.data) {
-              setSuccessMsg(err.response.data);
+              window.alert(err.response.data);
             } else {
-              setSuccessMsg('Ocurrió un error al guardar la orden.');
+              window.alert('Ocurrió un error al guardar la orden.');
             }
           }
-          setLoading(false);
         }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
