@@ -49,15 +49,17 @@ router.post('/', async (req, res) => {
   // --- VALIDACIÓN DE PARTES ---
   const [inventory] = await db.query('SELECT sku FROM inventory');
   const inventorySkus = inventory.map(item => (item.sku || '').trim().toUpperCase());
-  // LIMPIA COSTO DE CADA PARTE AQUÍ
+  // LIMPIA COSTO DE CADA PARTE AQUÍ Y FILTRA VACÍAS
   const partsArr = Array.isArray(parts)
-    ? parts.map(part => ({
-        ...part,
-        cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
-      }))
+    ? parts
+        .filter(part => part.sku && String(part.sku).trim() !== '') // Solo partes con SKU
+        .map(part => ({
+          ...part,
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
+        }))
     : [];
   for (const part of partsArr) {
-    if (!part.sku || !inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
+    if (!inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
       return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
     }
   }
