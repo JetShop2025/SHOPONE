@@ -54,13 +54,15 @@ router.put('/:nombre/estatus', async (req, res) => {
     const [antesArr] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
     const antes = antesArr[0];
 
-    const fechaRentaDB = fechaRenta === '' ? null : fechaRenta;
-    const fechaEntregaDB = fechaEntrega === '' ? null : fechaEntrega;
+    // Usa los datos actuales si no vienen en el body
+    const clienteFinal = (cliente !== undefined && cliente !== '') ? cliente : antes.cliente;
+    const fechaRentaFinal = (fechaRenta !== undefined && fechaRenta !== '') ? fechaRenta : antes.fechaRenta;
+    const fechaEntregaFinal = (fechaEntrega !== undefined && fechaEntrega !== '') ? fechaEntrega : antes.fechaEntrega;
 
     // 2. Realiza el update
     await db.query(
       'UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?',
-      [estatus, cliente, fechaRentaDB, fechaEntregaDB, nombre]
+      [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
     );
 
     // 3. Guarda en historial de rentas si cambia a RENTADA o DISPONIBLE
@@ -69,10 +71,10 @@ router.put('/:nombre/estatus', async (req, res) => {
         'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, fecha_entrega, usuario, accion) VALUES (?, ?, ?, ?, ?, ?)',
         [
           nombre,
-          cliente,
-          fechaRentaDB,
-          fechaEntregaDB,
-          usuario || 'system', // <--- CAMBIA AQUÍ
+          clienteFinal,
+          fechaRentaFinal,
+          fechaEntregaFinal,
+          usuario || 'system',
           estatus === 'RENTADA' ? 'RENT' : 'RETURN'
         ]
       );
@@ -81,26 +83,26 @@ router.put('/:nombre/estatus', async (req, res) => {
       await db.query(
         'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
         [
-          usuario || 'system', // <--- Y AQUÍ
+          usuario || 'system',
           estatus === 'RENTADA' ? 'RENT' : 'RETURN',
           'trailer_rentals',
           rentalResult.insertId,
           JSON.stringify({
             trailer_nombre: nombre,
-            cliente,
-            fecha_renta: fechaRenta,
-            fecha_entrega: fechaEntrega,
+            cliente: clienteFinal,
+            fecha_renta: fechaRentaFinal,
+            fecha_entrega: fechaEntregaFinal,
             accion: estatus === 'RENTADA' ? 'RENT' : 'RETURN'
           })
         ]
       );
     }
 
-    // 2. Obtén los datos después del cambio
+    // 4. Obtén los datos después del cambio
     const [despuesArr] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
     const despues = despuesArr[0];
 
-    // 3. Detecta solo los campos que cambiaron
+    // 5. Detecta solo los campos que cambiaron
     const cambios = {};
     ['estatus', 'cliente', 'fechaRenta', 'fechaEntrega'].forEach(key => {
       if ((antes[key] ?? null) !== (despues[key] ?? null)) {
@@ -108,7 +110,7 @@ router.put('/:nombre/estatus', async (req, res) => {
       }
     });
 
-    // 4. Inserta en la auditoría solo si hubo cambios
+    // 6. Inserta en la auditoría solo si hubo cambios
     if (Object.keys(cambios).length > 0) {
       await db.query(
         'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
