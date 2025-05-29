@@ -124,20 +124,29 @@ const TrailasTable: React.FC = () => {
   const cambiarEstatus = async (traila: any, nuevoEstatus: any, fechaEntrega: any) => {
     await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, {
       estatus: nuevoEstatus,
-      password: '6214', // o el método que uses
-      cliente: traila.cliente,
-      fechaRenta: traila.fechaRenta,
-      fechaEntrega: fechaEntrega,
+      password: '6214',
+      cliente: traila.cliente, // Siempre se envía el cliente actual
+      fechaRenta: traila.fechaRenta, // Siempre se envía la fecha de renta actual
+      fechaEntrega: fechaEntrega, // Nueva fecha de entrega
       usuario: localStorage.getItem('username') || ''
     });
     // refresca datos...
   };
 
   const handleConfirmEntrega = async () => {
-  if (!trailaAEntregar) return;
-  await cambiarEstatus(trailaAEntregar, 'DISPONIBLE', nuevaFechaEntrega);
-  setShowEntregaModal(false);
-  setTrailaAEntregar(null);
+    if (!trailaAEntregar) return;
+    // Asegúrate de pasar los datos actuales de la traila
+    await cambiarEstatus(
+      {
+        ...trailaAEntregar,
+        cliente: trailaAEntregar.cliente,
+        fechaRenta: trailaAEntregar.fechaRenta
+      },
+      'DISPONIBLE',
+      nuevaFechaEntrega
+    );
+    setShowEntregaModal(false);
+    setTrailaAEntregar(null);
   };
 
   // Confirmar renta desde el modal elegante

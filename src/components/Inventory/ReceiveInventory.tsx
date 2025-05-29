@@ -100,7 +100,7 @@ const ReceiveInventory: React.FC = () => {
     const newPrice = form.costTax ? (Number(form.costTax) * 1.1).toFixed(2) : '';
 
     // Guarda el recibo
-    const data = { ...form, date: form.fecha, usuario: localStorage.getItem('username') || '' };
+    const data = { ...form, usuario: localStorage.getItem('username') || '' };   
     await axios.post(`${API_URL}/receive`, data);
 
     // ACTUALIZA onHand Y precio EN UNA SOLA PETICIÓN
