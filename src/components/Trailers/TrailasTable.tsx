@@ -106,12 +106,18 @@ const TrailasTable: React.FC = () => {
   // Cambiar estatus con modal elegante
   const handleChangeStatus = (traila: any) => {
     if (traila.estatus === 'RENTADA') {
+      // Si está RENTADA, abrir modal para devolver (disponible)
       setTrailaAEntregar(traila);
       setNuevaFechaEntrega(traila.fechaEntrega ? traila.fechaEntrega.slice(0, 10) : dayjs().format('YYYY-MM-DD'));
       setShowEntregaModal(true);
     } else {
-      // Cambia estatus directamente si no es RENTADA
-      cambiarEstatus(traila, 'DISPONIBLE', traila.fechaEntrega);
+      // Si está DISPONIBLE, abrir modal de renta
+      setSelected(traila);
+      setRentCliente('');
+      setRentFechaRenta(dayjs().format('YYYY-MM-DD'));
+      setRentFechaEntrega('');
+      setRentPassword('');
+      setShowRentModal(true);
     }
   };
 
