@@ -141,7 +141,7 @@ router.post('/', async (req, res) => {
     }
 
     // TITULO CENTRADO
-    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', 0, 40, { align: 'center' });
+    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', { align: 'center' });
     doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', { align: 'center' });
 
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
@@ -182,7 +182,7 @@ router.post('/', async (req, res) => {
 
     const tableTop = 190;
 
-    // Encabezado de tabla
+    // Encabezado de tabla de partes
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
     doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
@@ -219,27 +219,35 @@ router.post('/', async (req, res) => {
     // Línea final de tabla
     doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
 
-    // TOTALES
+    // TOTALES - Subtotal, Labor y Extras en línea completa
     y += 10;
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
-    doc.text('Subtotal Parts:', col[4], y, { width: col[5] - col[4], align: 'right' });
-    doc.font('Helvetica').fillColor('#222').text(partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+    doc.text(
+      `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
+    );
 
     y += 16;
-    doc.font('Helvetica-Bold').fillColor('#1976d2').text('Labor:', col[4], y, { width: col[5] - col[4], align: 'right' });
-    doc.font('Helvetica').fillColor('#222').text(laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+    doc.text(
+      `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
+    );
 
     (extraLabels || []).forEach((label, idx) => {
       y += 16;
-      doc.font('Helvetica-Bold').fillColor('#1976d2').text(`${label}:`, col[4], y, { width: col[5] - col[4], align: 'right' });
-      doc.font('Helvetica').fillColor('#222').text(extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+      doc.text(
+        `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+        col[0], y, { width: col[6] - col[0], align: 'right' }
+      );
     });
 
     // TOTAL LAB & PARTS destacado y separado
     y += 24;
     doc.font('Helvetica-Bold').fontSize(12).fillColor('#d32f2f');
-    doc.text('TOTAL LAB & PARTS:', col[4], y, { width: col[5] - col[4], align: 'right' });
-    doc.text((partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), col[5], y, { width: col[6] - col[5], align: 'center' });
+    doc.text(
+      `TOTAL LAB & PARTS: ${(partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
+    );
 
     // TÉRMINOS Y FIRMAS
     doc.moveDown(2);

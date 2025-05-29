@@ -100,7 +100,7 @@ const ReceiveInventory: React.FC = () => {
     const newPrice = form.costTax ? (Number(form.costTax) * 1.1).toFixed(2) : '';
 
     // Guarda el recibo
-    const data = { ...form, usuario: localStorage.getItem('username') || '' };
+    const data = { ...form, date: form.fecha, usuario: localStorage.getItem('username') || '' };
     await axios.post(`${API_URL}/receive`, data);
 
     // ACTUALIZA onHand Y precio EN UNA SOLA PETICIÓN
@@ -210,7 +210,9 @@ const ReceiveInventory: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1200, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
-      <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Inventory Receipts</h1>
+      <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>
+        Inventory Receives
+      </h1>
       <div style={{ marginBottom: 24 }}>
         <button
           style={{
@@ -525,7 +527,19 @@ const ReceiveInventory: React.FC = () => {
                 {r.qty && r.costTax ? (Number(r.qty) * Number(r.costTax)).toFixed(2) : ''}
               </td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.totalPOClassic}</td>
-              <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 600, color: r.estatus === 'PENDING' ? '#d32f2f' : '#388e3c' }}>
+              <td
+                style={{
+                  padding: '8px 6px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  color:
+                    r.estatus === 'USED'
+                      ? '#d32f2f'
+                      : r.estatus === 'PENDING'
+                      ? '#388e3c'
+                      : '#333'
+                }}
+              >
                 {r.estatus}
               </td>
             </tr>
