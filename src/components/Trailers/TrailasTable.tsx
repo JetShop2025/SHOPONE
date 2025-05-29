@@ -54,6 +54,9 @@ const TrailasTable: React.FC = () => {
 
   // Determina si hay receives para la traila de la WO seleccionada
   const [receivesForTrailer, setReceivesForTrailer] = useState<any[]>([]);
+  const [showEntregaModal, setShowEntregaModal] = useState(false);
+  const [nuevaFechaEntrega, setNuevaFechaEntrega] = useState('');
+  const [trailaAEntregar, setTrailaAEntregar] = useState<any>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,38 +104,34 @@ const TrailasTable: React.FC = () => {
   const hasReceivesForTrailer = receivesForTrailer.length > 0;
 
   // Cambiar estatus con modal elegante
-  const handleChangeStatus = async () => {
-    if (!selected) return;
-    if (selected.estatus === 'RENTADA') {
-      // Cambiar a DISPONIBLE (solo pide password)
-      const password = prompt('Ingresa el password para cambiar el estatus:');
-      if (!password) return;
-      try {
-        await axios.put(`${API_URL}/trailas/${selected.nombre}/estatus`, {
-          estatus: 'DISPONIBLE',
-          password,
-          cliente: '',
-          fechaRenta: null,
-          fechaEntrega: null,
-          usuario: localStorage.getItem('username') || ''
-        });
-        setTrailas(trailas.map(t =>
-          t.nombre === selected.nombre
-            ? { ...t, estatus: 'DISPONIBLE', cliente: '', fechaRenta: '', fechaEntrega: '' }
-            : t
-        ));
-        setSelected({ ...selected, estatus: 'DISPONIBLE', cliente: '', fechaRenta: '', fechaEntrega: '' });
-        alert('Estatus actualizado');
-      } catch (err: any) {
-        alert(err.response?.data?.error || 'Error al actualizar estatus');
-      }
+  const handleChangeStatus = (traila: any) => {
+    if (traila.estatus === 'RENTADA') {
+      setTrailaAEntregar(traila);
+      setNuevaFechaEntrega(traila.fechaEntrega ? traila.fechaEntrega.slice(0, 10) : dayjs().format('YYYY-MM-DD'));
+      setShowEntregaModal(true);
     } else {
-      // Cambiar a RENTADA: abre modal elegante
-      setRentCliente(selected.cliente || '');
-      setRentFechaRenta(dayjs().format('YYYY-MM-DD'));
-      setRentPassword('');
-      setShowRentModal(true);
+      // Cambia estatus directamente si no es RENTADA
+      cambiarEstatus(traila, 'DISPONIBLE', traila.fechaEntrega);
     }
+  };
+
+  const cambiarEstatus = async (traila: any, nuevoEstatus: any, fechaEntrega: any) => {
+    await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, {
+      estatus: nuevoEstatus,
+      password: '6214', // o el método que uses
+      cliente: traila.cliente,
+      fechaRenta: traila.fechaRenta,
+      fechaEntrega: fechaEntrega,
+      usuario: localStorage.getItem('username') || ''
+    });
+    // refresca datos...
+  };
+
+  const handleConfirmEntrega = async () => {
+  if (!trailaAEntregar) return;
+  await cambiarEstatus(trailaAEntregar, 'DISPONIBLE', nuevaFechaEntrega);
+  setShowEntregaModal(false);
+  setTrailaAEntregar(null);
   };
 
   // Confirmar renta desde el modal elegante
@@ -538,6 +537,57 @@ const TrailasTable: React.FC = () => {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para cambio de estatus a DISPONIBLE con fecha de entrega */}
+      {showEntregaModal && (
+        <div style={modalStyle} onClick={() => setShowEntregaModal(false)}>
+          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 18 }}>Confirmar Entrega de Tráiler</h2>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontWeight: 600 }}>Nueva Fecha de Entrega:</label>
+              <input
+                type="date"
+                value={nuevaFechaEntrega}
+                onChange={e => setNuevaFechaEntrega(e.target.value)}
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button
+                onClick={handleConfirmEntrega}
+                style={{
+                  background: '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '10px 28px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: 'pointer'
+                }}
+              >
+                Confirmar Entrega
+              </button>
+              <button
+                onClick={() => setShowEntregaModal(false)}
+                style={{
+                  background: '#fff',
+                  color: '#1976d2',
+                  border: '1.5px solid #1976d2',
+                  borderRadius: 6,
+                  padding: '10px 28px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
