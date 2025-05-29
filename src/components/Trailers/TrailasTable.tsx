@@ -187,7 +187,7 @@ const TrailasTable: React.FC = () => {
             </span>
           </div>
           <button
-            onClick={handleChangeStatus}
+            onClick={() => handleChangeStatus(selected)}
             style={{
               background: selected.estatus === 'RENTADA' ? '#388e3c' : '#d32f2f',
               color: '#fff',
