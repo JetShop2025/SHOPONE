@@ -416,10 +416,13 @@ const ReceiveInventory: React.FC = () => {
                   <input name="provider" value={editForm.provider} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
                   <input name="um" value={editForm.um} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
-                  <select name="billToCo" value={editForm.billToCo} onChange={e => setEditForm({ ...editForm, billToCo: e.target.value })} required style={inputStyle}>
-                    <option value="">Bill To Co</option>
-                    {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                  {/* Bill To Co solo lectura */}
+                  <input
+                    name="billToCo"
+                    value={editForm.billToCo}
+                    readOnly
+                    style={inputStyle}
+                  />
                   {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
                     <select
                       name="destino_trailer"
@@ -502,7 +505,7 @@ const ReceiveInventory: React.FC = () => {
             >
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.id}</td>
               <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
-                {r.fecha ? dayjs(r.fecha).format('MM-DD-YYYY') : ''}
+                {r.fecha || r.date ? dayjs(r.fecha || r.date).format('MM-DD-YYYY') : ''}
               </td>
               <td style={{ padding: '8px 6px', borderRight: '1px solid #e3eaf2' }}>{r.sku}</td>
               <td style={{ padding: '8px 6px', borderRight: '1px solid #e3eaf2' }}>{r.item}</td>
