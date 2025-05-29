@@ -164,8 +164,12 @@ const ReceiveInventory: React.FC = () => {
     if (pwd === '6214') {
       const found = receives.find(r => r.id === selectedRow);
       if (found) {
+        // Asegura que billToCo tenga valor, ya sea en camelCase o snake_case
         setEditId(found.id);
-        setEditForm({ ...found });
+        setEditForm({
+          ...found,
+          billToCo: found.billToCo || found.bill_to_co || ''
+        });
         setShowEditForm(true);
       }
     } else if (pwd !== null) {

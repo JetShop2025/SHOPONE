@@ -138,19 +138,8 @@ const TrailasTable: React.FC = () => {
 
   const handleConfirmEntrega = async () => {
     if (!trailaAEntregar) return;
-    const cliente = trailaAEntregar.cliente || 'NO_CLIENTE';
-    const fechaRenta = trailaAEntregar.fechaRenta || dayjs().format('YYYY-MM-DD');
-    // Convierte la fecha a YYYY-MM-DD antes de enviarla
     const fechaEntregaFormatted = dayjs(nuevaFechaEntrega).format('YYYY-MM-DD');
-    await cambiarEstatus(
-      {
-        ...trailaAEntregar,
-        cliente,
-        fechaRenta
-      },
-      'DISPONIBLE',
-      fechaEntregaFormatted
-    );
+    await cambiarEstatus(trailaAEntregar, 'DISPONIBLE', fechaEntregaFormatted);
     setShowEntregaModal(false);
     setTrailaAEntregar(null);
   };
