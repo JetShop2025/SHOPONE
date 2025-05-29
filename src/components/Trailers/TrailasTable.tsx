@@ -122,25 +122,30 @@ const TrailasTable: React.FC = () => {
   };
 
   const cambiarEstatus = async (traila: any, nuevoEstatus: any, fechaEntrega: any) => {
-    await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, {
-      estatus: nuevoEstatus,
-      password: '6214',
-      cliente: traila.cliente, // Siempre se envía el cliente actual
-      fechaRenta: traila.fechaRenta, // Siempre se envía la fecha de renta actual
-      fechaEntrega: fechaEntrega, // Nueva fecha de entrega
-      usuario: localStorage.getItem('username') || ''
-    });
-    // refresca datos...
+    try {
+      await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, {
+        estatus: nuevoEstatus,
+        password: '6214',
+        cliente: traila.cliente,
+        fechaRenta: traila.fechaRenta,
+        fechaEntrega: fechaEntrega,
+        usuario: localStorage.getItem('username') || ''
+      });
+    } catch (err: any) {
+      alert(err.response?.data || 'Error al actualizar estatus');
+    }
   };
 
   const handleConfirmEntrega = async () => {
     if (!trailaAEntregar) return;
-    // Asegúrate de pasar los datos actuales de la traila
+    // Si cliente o fechaRenta están vacíos, pon un valor por defecto para evitar error 500
+    const cliente = trailaAEntregar.cliente || 'NO_CLIENTE';
+    const fechaRenta = trailaAEntregar.fechaRenta || dayjs().format('YYYY-MM-DD');
     await cambiarEstatus(
       {
         ...trailaAEntregar,
-        cliente: trailaAEntregar.cliente,
-        fechaRenta: trailaAEntregar.fechaRenta
+        cliente,
+        fechaRenta
       },
       'DISPONIBLE',
       nuevaFechaEntrega
