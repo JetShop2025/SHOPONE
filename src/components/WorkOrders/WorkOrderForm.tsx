@@ -154,8 +154,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       <form
         onSubmit={async e => {
           e.preventDefault(); // Esto es clave
-          setLoading(true);
-
+          
           const cleanParts = workOrder.parts
             .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
             .map((p: Part) => ({

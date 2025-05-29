@@ -680,7 +680,7 @@ const WorkOrdersTable: React.FC = () => {
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
-                onSubmit={() => handleAddWorkOrder(newWorkOrder)}
+                onSubmit={handleFormSuccess}
                 onCancel={() => setShowForm(false)}
                 title="New Work Order"
                 billToCoOptions={billToCoOptions}
