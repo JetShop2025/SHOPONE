@@ -146,8 +146,10 @@ const TrailasTable: React.FC = () => {
         password: rentPassword,
         cliente: rentCliente,
         fechaRenta: rentFechaRenta,
-        fechaEntrega: rentFechaEntrega
+        fechaEntrega: rentFechaEntrega,
+        usuario: localStorage.getItem('username') || ''
       });
+      // Actualiza el estado local y cierra el modal
       setTrailas(trailas.map(t =>
         t.nombre === selected.nombre
           ? { ...t, estatus: 'RENTADA', cliente: rentCliente, fechaRenta: rentFechaRenta, fechaEntrega: rentFechaEntrega }
