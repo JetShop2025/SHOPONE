@@ -11,16 +11,9 @@ function renderDetalles(detalles: string) {
     return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{detalles}</pre>;
   }
 
-  // Si el formato es { campo: { antes, despues }, ... }
-  if (
-    parsed &&
-    typeof parsed === 'object' &&
-    !Array.isArray(parsed) &&
-    Object.values(parsed).every(
-      (v: any) => v && typeof v === 'object' && 'antes' in v && 'despues' in v
-    )
-  ) {
-    const keys = Object.keys(parsed);
+  // Si es un objeto, mostrar siempre como tabla ordenada
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const keys = Object.keys(parsed).sort();
     return (
       <table style={{
         fontSize: 14,
@@ -41,17 +34,27 @@ function renderDetalles(detalles: string) {
         </thead>
         <tbody>
           {keys.map(key => {
-            const { antes, despues } = parsed[key];
-            const changed = antes !== despues;
+            // Si es formato { campo: { antes, despues } }
+            if (
+              parsed[key] &&
+              typeof parsed[key] === 'object' &&
+              'antes' in parsed[key] &&
+              'despues' in parsed[key]
+            ) {
+              return (
+                <tr key={key}>
+                  <td style={{ padding: 7, borderRight: '1px solid #e3eaf2', fontWeight: 600 }}>{key}</td>
+                  <td style={{ padding: 7, borderRight: '1px solid #e3eaf2' }}>{String(parsed[key].antes ?? '')}</td>
+                  <td style={{ padding: 7 }}>{String(parsed[key].despues ?? '')}</td>
+                </tr>
+              );
+            }
+            // Si es objeto plano (ejemplo: rentas)
             return (
               <tr key={key}>
-                <td style={{ borderRight: '1px solid #e3eaf2', padding: 6, fontWeight: 600 }}>{key}</td>
-                <td style={{ borderRight: '1px solid #e3eaf2', padding: 6, color: '#d32f2f', background: changed ? '#fff8e1' : undefined }}>
-                  {String(antes ?? '')}
-                </td>
-                <td style={{ padding: 6, color: changed ? '#388e3c' : '#333', fontWeight: changed ? 700 : 400, background: changed ? '#e8f5e9' : undefined }}>
-                  {String(despues ?? '')}
-                </td>
+                <td style={{ padding: 7, borderRight: '1px solid #e3eaf2', fontWeight: 600 }}>{key}</td>
+                <td style={{ padding: 7, borderRight: '1px solid #e3eaf2' }}></td>
+                <td style={{ padding: 7 }}>{String(parsed[key] ?? '')}</td>
               </tr>
             );
           })}
@@ -60,20 +63,8 @@ function renderDetalles(detalles: string) {
     );
   }
 
-  // Si es creación o eliminación, muestra bonito
-  return (
-    <pre style={{
-      whiteSpace: 'pre-wrap',
-      fontSize: 13,
-      background: '#f5faff',
-      borderRadius: 8,
-      padding: 10,
-      color: '#333',
-      border: '1px solid #e3eaf2'
-    }}>
-      {JSON.stringify(parsed, null, 2)}
-    </pre>
-  );
+  // Si no es objeto, mostrar como texto plano
+  return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{detalles}</pre>;
 }
 
 const AuditLogTable: React.FC = () => {

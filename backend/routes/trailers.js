@@ -69,7 +69,7 @@ router.put('/:nombre/estatus', async (req, res) => {
         cliente,
         fechaRentaDB,
         fechaEntregaDB,
-        req.user?.username || 'system',
+        usuario || 'system', // <--- CAMBIA AQUÍ
         estatus === 'RENTADA' ? 'RENT' : 'RETURN'
       ]
     );
@@ -78,7 +78,7 @@ router.put('/:nombre/estatus', async (req, res) => {
     await db.query(
       'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
       [
-        req.user?.username || 'system',
+        usuario || 'system', // <--- Y AQUÍ
         estatus === 'RENTADA' ? 'RENT' : 'RETURN',
         'trailer_rentals',
         rentalResult.insertId,

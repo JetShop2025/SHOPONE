@@ -42,7 +42,7 @@ const TrailasTable: React.FC = () => {
   const [showRentModal, setShowRentModal] = useState(false);
   const [rentCliente, setRentCliente] = useState('');
   const [rentFechaRenta, setRentFechaRenta] = useState(dayjs().format('YYYY-MM-DD'));
-  const rentFechaEntrega = dayjs(rentFechaRenta).add(1, 'month').format('YYYY-MM-DD');
+  const [rentFechaEntrega, setRentFechaEntrega] = useState(dayjs(rentFechaRenta).add(1, 'month').format('YYYY-MM-DD'));
   const [rentPassword, setRentPassword] = useState('');
 
   const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
@@ -267,8 +267,8 @@ const TrailasTable: React.FC = () => {
               <input
                 type="date"
                 value={rentFechaEntrega}
-                disabled
-                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4, background: '#eee' }}
+                onChange={e => setRentFechaEntrega(e.target.value)}
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
               />
             </div>
             <div style={{ marginBottom: 18 }}>
