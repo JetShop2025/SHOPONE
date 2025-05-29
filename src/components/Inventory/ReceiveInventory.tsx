@@ -419,9 +419,10 @@ const ReceiveInventory: React.FC = () => {
                   {/* Bill To Co solo lectura */}
                   <input
                     name="billToCo"
-                    value={editForm.billToCo}
+                    value={editForm.billToCo || ''}
                     readOnly
                     style={inputStyle}
+                    placeholder="Bill To Co"
                   />
                   {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
                     <select

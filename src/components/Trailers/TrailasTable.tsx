@@ -122,18 +122,18 @@ const TrailasTable: React.FC = () => {
   };
 
   const cambiarEstatus = async (traila: any, nuevoEstatus: any, fechaEntrega: any) => {
-    try {
-      await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, {
-        estatus: nuevoEstatus,
-        password: '6214',
-        cliente: traila.cliente,
-        fechaRenta: traila.fechaRenta,
-        fechaEntrega: fechaEntrega,
-        usuario: localStorage.getItem('username') || ''
-      });
-    } catch (err: any) {
-      alert(err.response?.data || 'Error al actualizar estatus');
+    const payload: any = {
+      estatus: nuevoEstatus,
+      password: '6214',
+      fechaEntrega: fechaEntrega,
+      usuario: localStorage.getItem('username') || ''
+    };
+    // Solo agrega cliente y fechaRenta si vas a RENTAR
+    if (nuevoEstatus === 'RENTADA') {
+      payload.cliente = traila.cliente;
+      payload.fechaRenta = traila.fechaRenta;
     }
+    await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, payload);
   };
 
   const handleConfirmEntrega = async () => {
