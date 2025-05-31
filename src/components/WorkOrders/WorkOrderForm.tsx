@@ -222,7 +222,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </select>
           </label>
           <label style={{ flex: '1 1 120px' }}>
-            Trailer<span style={{ color: 'red' }}>*</span>
+            Trailer
             {(() => {
               const trailerOpts = getTrailerOptions(workOrder.billToCo);
               if (trailerOpts.length > 0) {
@@ -247,7 +247,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   <input
                     type="text"
                     name="trailer"
-                    placeholder="Trailer*"
+                    placeholder="Trailer"
                     value={workOrder.trailer}
                     onChange={onChange}
                     style={{ width: '100%', marginTop: 4 }}
