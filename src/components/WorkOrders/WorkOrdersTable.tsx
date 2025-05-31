@@ -5,6 +5,10 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import 'dayjs/locale/es';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -470,6 +474,63 @@ const WorkOrdersTable: React.FC = () => {
     }
   };
 
+  const exportToExcel = () => {
+    // Prepara los datos
+    const data = filteredOrders.map(order => ({
+      ID: order.id,
+      'Bill To Co': order.billToCo,
+      Trailer: order.trailer,
+      Mechanic: order.mechanic,
+      Date: order.date?.slice(0, 10),
+      Description: order.description,
+      Status: order.status,
+      'Total HRS': order.totalHrs,
+      'Total LAB & PRTS': calcularTotalWO(order),
+      ...order.parts.slice(0, 5).reduce((acc: any, part: any, idx: number) => {
+        acc[`PRT${idx + 1}`] = part?.sku || '';
+        acc[`Qty${idx + 1}`] = part?.qty || '';
+        acc[`Costo${idx + 1}`] = part?.cost || '';
+        return acc;
+      }, {})
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'WorkOrders');
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), 'work_orders.xlsx');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const columns = [
+      'ID', 'Bill To Co', 'Trailer', 'Mechanic', 'Date', 'Description', 'Status', 'Total HRS', 'Total LAB & PRTS',
+      ...[1,2,3,4,5].flatMap(i => [`PRT${i}`, `Qty${i}`, `Costo${i}`])
+    ];
+    const rows = filteredOrders.map(order => [
+      order.id,
+      order.billToCo,
+      order.trailer,
+      order.mechanic,
+      order.date?.slice(0, 10),
+      order.description,
+      order.status,
+      order.totalHrs,
+      calcularTotalWO(order),
+      ...order.parts.slice(0, 5).flatMap((part: any) => [
+        part?.sku || '',
+        part?.qty || '',
+        part?.cost || ''
+      ])
+    ]);
+    doc.autoTable({
+      head: [columns],
+      body: rows,
+      styles: { fontSize: 8 }
+    });
+    doc.save('work_orders.pdf');
+  };
+
   const modalStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -654,21 +715,11 @@ const WorkOrdersTable: React.FC = () => {
           <button className="wo-btn" style={primaryBtn} onClick={() => setShowForm(true)}>
             NEW W.O
           </button>
-          <button
-            className="wo-btn"
-            style={dangerBtn}
-            disabled={selectedRow === null}
-            onClick={() => handleDelete(selectedRow!)}
-          >
-            Delete
+          <button className="wo-btn" style={secondaryBtn} onClick={exportToExcel}>
+            Export Excel
           </button>
-          <button
-            className="wo-btn"
-            style={secondaryBtn}
-            disabled={selectedRow === null}
-            onClick={handleEdit}
-          >
-            Edit
+          <button className="wo-btn" style={secondaryBtn} onClick={exportToPDF}>
+            Export PDF
           </button>
         </div>
 

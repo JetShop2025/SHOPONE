@@ -13,13 +13,17 @@
     "@types/react-dom": "^19.1.2",
     "axios": "^1.9.0",
     "dayjs": "^1.11.13",
+    "file-saver": "^2.0.5",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "react": "^19.1.0",
     "react-barcode": "^1.6.1",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.5.2",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -47,6 +51,7 @@
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
+    "@types/file-saver": "^2.0.7",
     "@types/react-router-dom": "^5.3.3"
   },
   "proxy": "http://localhost:5050"
