@@ -64,40 +64,7 @@ router.put('/:nombre/estatus', async (req, res) => {
       'UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?',
       [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
     );
-
-    // 3. Guarda en historial de rentas si cambia a RENTADA o DISPONIBLE
-    if (estatus === 'RENTADA' || estatus === 'DISPONIBLE') {
-      const [rentalResult] = await db.query(
-        'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, fecha_entrega, usuario, accion) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          nombre,
-          clienteFinal,
-          fechaRentaFinal,
-          fechaEntregaFinal,
-          usuario || 'system',
-          estatus === 'RENTADA' ? 'RENT' : 'RETURN'
-        ]
-      );
-
-      // AUDIT LOG FOR RENTALS
-      await db.query(
-        'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
-        [
-          usuario || 'system',
-          estatus === 'RENTADA' ? 'RENT' : 'RETURN',
-          'trailer_rentals',
-          rentalResult.insertId,
-          JSON.stringify({
-            trailer_nombre: nombre,
-            cliente: clienteFinal,
-            fecha_renta: fechaRentaFinal,
-            fecha_entrega: fechaEntregaFinal,
-            accion: estatus === 'RENTADA' ? 'RENT' : 'RETURN'
-          })
-        ]
-      );
-    }
-
+    
     // 4. Obtén los datos después del cambio
     const [despuesArr] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
     const despues = despuesArr[0];
@@ -122,6 +89,43 @@ router.put('/:nombre/estatus', async (req, res) => {
           JSON.stringify(cambios)
         ]
       );
+    }
+
+    // Al cambiar estatus a DISPONIBLE
+    if (estatus === 'DISPONIBLE') {
+      // Actualiza la fecha de entrega de la última renta activa
+      await db.query(
+        `UPDATE trailer_rentals
+         SET fecha_entrega = ?
+         WHERE trailer_nombre = ? AND fecha_entrega IS NULL
+         ORDER BY fecha_renta DESC
+         LIMIT 1`,
+        [fechaEntregaFinal, nombre]
+      );
+      // Actualiza el estatus de la traila
+      await db.query(
+        `UPDATE trailers SET estatus = ?, fechaEntrega = ? WHERE nombre = ?`,
+        [estatus, fechaEntregaFinal, nombre]
+      );
+      res.json({ ok: true });
+      return;
+    }
+
+    // Al cambiar estatus a RENTADA
+    if (estatus === 'RENTADA') {
+      // Crea un nuevo registro en historial de rentas
+      await db.query(
+        `INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, fecha_entrega)
+         VALUES (?, ?, ?, ?)`,
+        [nombre, clienteFinal, fechaRentaFinal, fechaEntregaFinal]
+      );
+      // Actualiza el estatus de la traila
+      await db.query(
+        `UPDATE trailers SET estatus = ?, cliente = ?, fechaRenta = ?, fechaEntrega = ? WHERE nombre = ?`,
+        [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
+      );
+      res.json({ ok: true });
+      return;
     }
   }
 

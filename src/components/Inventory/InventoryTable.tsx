@@ -550,19 +550,6 @@ const InventoryTable: React.FC = () => {
                     'No image'
                   )}
                 </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
-                  {item.precio ? Number(item.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}
-                </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
-                  {item.invoice
-                    ? (
-                      item.invoiceLink
-                        ? <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>{item.invoice}</a>
-                        : item.invoice
-                    )
-                    : ''
-                  }
-                </td>
               </tr>
             ))}
           </tbody>

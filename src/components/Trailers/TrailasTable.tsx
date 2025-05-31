@@ -350,9 +350,6 @@ const TrailasTable: React.FC = () => {
                 <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
                   <th>Name</th>
                   <th>Status</th>
-                  <th>Customer</th>
-                  <th>Rental Date</th>
-                  <th>Delivery Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -380,9 +377,6 @@ const TrailasTable: React.FC = () => {
                       <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
                         {traila.estatus}
                       </td>
-                      <td>{traila.cliente || '-'}</td>
-                      <td>{traila.fechaRenta ? traila.fechaRenta.slice(0, 10) : '-'}</td>
-                      <td>{traila.fechaEntrega ? traila.fechaEntrega.slice(0, 10) : '-'}</td>
                     </tr>
                   );
                 })}
