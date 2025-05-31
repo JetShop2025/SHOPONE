@@ -57,6 +57,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [successMsg, setSuccessMsg] = React.useState('');
   const [manualCostEdit, setManualCostEdit] = React.useState<{ [k: number]: boolean }>({});
+  const [manualTotalEdit, setManualTotalEdit] = React.useState(false);
 
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
@@ -437,8 +438,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="text"
               name="totalLabAndParts"
               placeholder="Total LAB & PRTS*"
-              value={workOrder.totalLabAndParts ?? formatCurrencyInput(totalLabAndParts)}
-              onChange={onChange}
+              value={
+                manualTotalEdit
+                  ? workOrder.totalLabAndParts
+                  : formatCurrencyInput(subtotal + extra)
+              }
+              onChange={e => {
+                onChange(e);
+                setManualTotalEdit(e.target.value !== '');
+              }}
+              onBlur={e => {
+                if (e.target.value === '') setManualTotalEdit(false);
+              }}
               style={{ width: '100%', marginTop: 4, background: '#e3f2fd', fontWeight: 700 }}
             />
           </label>
