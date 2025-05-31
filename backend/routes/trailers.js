@@ -93,7 +93,7 @@ router.put('/:nombre/estatus', async (req, res) => {
 
     // Al cambiar estatus a DISPONIBLE
     if (estatus === 'DISPONIBLE') {
-      // Actualiza la fecha de entrega de la última renta activa
+      // Actualiza la fecha de entrega en el último registro de renta activo
       await db.query(
         `UPDATE trailer_rentals
          SET fecha_entrega = ?
@@ -102,10 +102,10 @@ router.put('/:nombre/estatus', async (req, res) => {
          LIMIT 1`,
         [fechaEntregaFinal, nombre]
       );
-      // Actualiza el estatus de la traila
+      // Actualiza el estatus y la fecha en la tabla principal
       await db.query(
-        `UPDATE trailers SET estatus = ?, fechaEntrega = ? WHERE nombre = ?`,
-        [estatus, fechaEntregaFinal, nombre]
+        `UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?`,
+        [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
       );
       res.json({ ok: true });
       return;

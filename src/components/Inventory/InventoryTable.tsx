@@ -550,6 +550,9 @@ const InventoryTable: React.FC = () => {
                     'No image'
                   )}
                 </td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
+                  {item.precio !== undefined && item.precio !== '' ? `$${item.precio}` : ''}
+                </td>
               </tr>
             ))}
           </tbody>
