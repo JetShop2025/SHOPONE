@@ -193,28 +193,31 @@ router.post('/', async (req, res) => {
     doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
 
     let y = tableTop + 22;
-    const maxRows = 12;
-    (partsArr.length ? partsArr : Array(maxRows).fill({})).slice(0, maxRows).forEach((p, i) => {
-      doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
-      doc.font('Courier').fontSize(10).fillColor('#222');
-      doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
-      doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
-      doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
-      doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
-      doc.text(
-        p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
-          ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-          : '$0.00',
-        col[4], y + 4, { width: col[5] - col[4], align: 'center' }
-      );
-      doc.text(
-        p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
-          ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-          : '$0.00',
-        col[5], y + 4, { width: col[6] - col[5], align: 'center' }
-      );
-      y += 18;
-    });
+
+    // SOLO dibuja filas si hay partes
+    if (partsArr.length > 0) {
+      partsArr.forEach((p, i) => {
+        doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
+        doc.font('Courier').fontSize(10).fillColor('#222');
+        doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
+        doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
+        doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
+        doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
+        doc.text(
+          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
+            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : '$0.00',
+          col[4], y + 4, { width: col[5] - col[4], align: 'center' }
+        );
+        doc.text(
+          p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
+            ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : '$0.00',
+          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
+        );
+        y += 18;
+      });
+    }
 
     // Línea final de tabla
     doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');

@@ -76,13 +76,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       // Si selecciona una sugerencia exacta, autocompleta precio unitario
       const found = inventory.find(item => item.sku === value || item.part === value);
       if (found) {
-        // Cuando el usuario selecciona una sugerencia:
         onPartChange(index, 'sku', found.sku);
         onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
-        const qty = workOrder.parts[index]?.qty || 1;
-        const total = Number(qty) * Number(found.precio || found.price || found.costTax || 0);
-        onPartChange(index, 'cost', formatCurrencyInput(total));
+        // Solo actualiza el costo si está vacío
+        if (!workOrder.parts[index]?.cost) {
+          const qty = workOrder.parts[index]?.qty || 1;
+          const total = Number(qty) * Number(found.precio || found.price || found.costTax || 0);
+          onPartChange(index, 'cost', formatCurrencyInput(total));
+        }
         setAutocomplete(prev => ({ ...prev, [index]: [] }));
       } else {
         onPartChange(index, 'part', value);
@@ -429,8 +431,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="text"
               name="totalLabAndParts"
               placeholder="Total LAB & PRTS*"
-              value={formatCurrencyInput(totalLabAndParts)}
-              readOnly
+              value={workOrder.totalLabAndParts ?? formatCurrencyInput(totalLabAndParts)}
+              onChange={onChange}
               style={{ width: '100%', marginTop: 4, background: '#e3f2fd', fontWeight: 700 }}
             />
           </label>
