@@ -718,8 +718,23 @@ const WorkOrdersTable: React.FC = () => {
           <button className="wo-btn" style={secondaryBtn} onClick={exportToExcel}>
             Export Excel
           </button>
-          <button className="wo-btn" style={secondaryBtn} onClick={exportToPDF}>
-            Export PDF
+          {/* Botón Edit */}
+          <button
+            className="wo-btn"
+            style={secondaryBtn}
+            onClick={handleEdit}
+            disabled={selectedRow === null}
+          >
+            Edit
+          </button>
+          {/* Botón Delete */}
+          <button
+            className="wo-btn"
+            style={dangerBtn}
+            onClick={() => selectedRow !== null && handleDelete(selectedRow)}
+            disabled={selectedRow === null}
+          >
+            Delete
           </button>
         </div>
 
