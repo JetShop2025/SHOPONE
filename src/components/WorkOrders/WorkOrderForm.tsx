@@ -56,6 +56,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const [autocomplete, setAutocomplete] = React.useState<{ [k: number]: any[] }>({});
   const [loading, setLoading] = React.useState(false);
   const [successMsg, setSuccessMsg] = React.useState('');
+  const [manualCostEdit, setManualCostEdit] = React.useState<{ [k: number]: boolean }>({});
 
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
@@ -93,13 +94,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
     } else if (field === 'qty') {
       onPartChange(index, 'qty', value);
-      // Multiplica por el precio unitario si existe
-      const unitPrice = Number(workOrder.parts[index]?.unitPrice || 0);
-      const qty = Number(value);
-      if (!isNaN(unitPrice) && !isNaN(qty)) {
-        onPartChange(index, 'cost', formatCurrencyInput(unitPrice * qty));
+      // Solo recalcula si el usuario NO editó manualmente el costo
+      if (!manualCostEdit[index]) {
+        const unitPrice = Number(workOrder.parts[index]?.unitPrice || 0);
+        const qty = Number(value);
+        if (!isNaN(unitPrice) && !isNaN(qty)) {
+          onPartChange(index, 'cost', formatCurrencyInput(unitPrice * qty));
+        }
       }
     } else if (field === 'cost') {
+      setManualCostEdit(prev => ({ ...prev, [index]: true })); // marca como editado manualmente
       onPartChange(index, 'cost', formatCurrencyInput(parseCurrencyInput(value)));
     } else {
       onPartChange(index, field, value);
@@ -136,7 +140,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   });
 
   // **Agrega esta línea**
-  const totalLabAndParts = subtotal + extra;
+  const totalLabAndParts = workOrder.totalLabAndParts
+  ? Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
+  : subtotal + extra;
 
   return (
     <div
@@ -511,5 +517,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     </div>
   );
 };
+
+function calcularTotalWO(order: any) {
+  if (order.totalLabAndParts) {
+    // Usa el valor manual si existe
+    return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
+  }
+  // Si no, calcula automático
+  const partsTotal = order.parts?.reduce((sum: number, part: any) => {
+    const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0) || 0;
+  const laborHrs = Number(order.totalHrs);
+  const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
+  const subtotal = partsTotal + laborTotal;
+  let extra = 0;
+  (order.extraOptions || []).forEach((opt: string) => {
+    if (opt === '5') extra += subtotal * 0.05;
+    if (opt === '15shop') extra += subtotal * 0.15;
+    if (opt === '15weld') extra += subtotal * 0.15;
+  });
+  return subtotal + extra;
+}
 
 export default WorkOrderForm;

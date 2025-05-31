@@ -246,9 +246,15 @@ router.post('/', async (req, res) => {
 
     // TOTAL LAB & PARTS destacado y separado
     y += 24;
+    let totalLabAndPartsFinal = 0;
+    if (req.body.totalLabAndParts) {
+      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = partsTotal + laborTotal + extra;
+    }
     doc.font('Helvetica-Bold').fontSize(12).fillColor('#d32f2f');
     doc.text(
-      `TOTAL LAB & PARTS: ${(partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
 
