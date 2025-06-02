@@ -530,14 +530,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 };
 
 function calcularTotalWO(order: any) {
-  if (order.totalLabAndParts) {
-    // Usa el valor manual si existe
+  // Si el usuario editó el total manualmente, respétalo tal cual (sin recalcular extras)
+  if (
+    order.totalLabAndParts !== undefined &&
+    order.totalLabAndParts !== null &&
+    order.totalLabAndParts !== ''
+  ) {
+    // Si viene con símbolo, límpialo y conviértelo a número
     return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
   // Si no, calcula automático
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
-    const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(val) ? 0 : val);
+    const qty = Number(part.qty);
+    const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(qty) || isNaN(cost) ? 0 : qty * cost);
   }, 0) || 0;
   const laborHrs = Number(order.totalHrs);
   const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
