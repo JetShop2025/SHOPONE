@@ -136,7 +136,7 @@ router.post('/', async (req, res) => {
         doc.image(logoPath, 40, 30, { width: 120 });
         console.log('Logo agregado al PDF');
       } catch (e) {
-        console.error('Error al agregar logo:', e);
+        console.error('ERROR AL CARGAR LA ORDEN:', e);
       }
     }
 
