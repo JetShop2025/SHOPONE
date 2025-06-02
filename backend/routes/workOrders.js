@@ -337,6 +337,17 @@ router.put('/:id', async (req, res) => {
     }
     const oldData = oldResults[0];
 
+    // LIMPIA COSTO DE CADA PARTE Y FILTRA VACÍAS
+    const partsArr = Array.isArray(fields.parts)
+      ? fields.parts
+          .filter(part => part.sku && String(part.sku).trim() !== '')
+          .map(part => ({
+            ...part,
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
+          }))
+      : [];
+    fields.parts = partsArr;
+
     await db.query(
       `UPDATE work_orders SET 
         billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
@@ -518,7 +529,8 @@ router.put('/:id', async (req, res) => {
       });
     });
   } catch (err) {
-    res.status(500).send('ERROR UPDATING WORK ORDER');
+    console.error('ERROR UPDATING WORK ORDER:', err); // <-- Esto imprime el error real en consola/logs de Render
+    res.status(500).send(err?.message || 'ERROR UPDATING WORK ORDER'); // <-- Esto manda el mensaje real al frontend
   }
 });
 
