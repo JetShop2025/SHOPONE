@@ -250,7 +250,12 @@ router.post('/', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '') {
+    if (
+      totalLabAndParts !== undefined &&
+      totalLabAndParts !== null &&
+      totalLabAndParts !== '' &&
+      !isNaN(Number(String(totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
       totalLabAndPartsFinal = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
@@ -517,7 +522,12 @@ router.put('/:id', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '') {
+    if (
+      totalLabAndParts !== undefined &&
+      totalLabAndParts !== null &&
+      totalLabAndParts !== '' &&
+      !isNaN(Number(String(totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
       totalLabAndPartsFinal = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;

@@ -171,6 +171,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
             }));
 
+          // Antes de enviar al backend, limpia el valor:
+          const cleanTotalLabAndParts = workOrder.totalLabAndParts
+            ? Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
+            : undefined;
+
           const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
           if (hasInvalidQty) {
             window.alert('Hay partes con cantidad inválida.');
@@ -183,6 +188,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             if (workOrder.id) {
               res = await axios.put<{ pdfUrl?: string }>(`${API_URL}/work-orders/${workOrder.id}`, {
                 ...workOrder,
+                totalLabAndParts: cleanTotalLabAndParts,
                 parts: cleanParts,
                 extraOptions,
                 usuario: localStorage.getItem('username') || ''
@@ -191,6 +197,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             } else {
               res = await axios.post<{ pdfUrl?: string }>(`${API_URL}/work-orders`, {
                 ...workOrder,
+                totalLabAndParts: cleanTotalLabAndParts,
                 parts: cleanParts,
                 extraOptions,
                 usuario: localStorage.getItem('username') || ''
@@ -530,13 +537,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 };
 
 function calcularTotalWO(order: any) {
-  // Si el usuario editó el total manualmente, respétalo tal cual (sin recalcular extras)
   if (
     order.totalLabAndParts !== undefined &&
     order.totalLabAndParts !== null &&
-    order.totalLabAndParts !== ''
+    order.totalLabAndParts !== '' &&
+    !isNaN(Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, '')))
   ) {
-    // Si viene con símbolo, límpialo y conviértelo a número
     return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
   // Si no, calcula automático
