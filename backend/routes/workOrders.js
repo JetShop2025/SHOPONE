@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
 // Agregar nueva orden de trabajo y generar PDF
 router.post('/', async (req, res) => {
   console.log('REQ BODY:', req.body);
-  const { billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status, usuario } = req.body;
+  const { billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status, usuario, extraOptions } = req.body;
 
   // --- VALIDACIÓN DE PARTES ---
   const [inventory] = await db.query('SELECT sku FROM inventory');
@@ -426,13 +426,13 @@ router.put('/:id', async (req, res) => {
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
-    doc.text(billToCo || '-', 110, 120);
-    doc.text(trailer || '-', 110, 140);
-    doc.text(mechanic || '-', 110, 160);
+    doc.text(fields.billToCo || '-', 110, 120);
+    doc.text(fields.trailer || '-', 110, 140);
+    doc.text(fields.mechanic || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
 
-    const descText = description || '';
+    const descText = fields.description || '';
 
     // --- DESCRIPCIÓN BIEN COLOCADA ---
     let descY = 180;
