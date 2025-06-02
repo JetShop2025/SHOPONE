@@ -358,6 +358,32 @@ router.put('/:id', async (req, res) => {
       ]
     );
 
+    // --- BLOQUE DE CÁLCULO DE TOTALES Y EXTRAS ---
+    const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
+    const laborTotal = Number(fields.totalHrs) * 60 || 0;
+    const subtotal = partsTotal + laborTotal;
+
+    let extra = 0;
+    let extraLabels = [];
+    let extraArr = [];
+    const extras = Array.isArray(fields.extraOptions) ? fields.extraOptions : [];
+    extras.forEach(opt => {
+      if (opt === '5') {
+        extra += subtotal * 0.05;
+        extraLabels.push('5% Extra');
+        extraArr.push(subtotal * 0.05);
+      } else if (opt === '15shop') {
+        extra += subtotal * 0.15;
+        extraLabels.push('15% Shop Miscellaneous');
+        extraArr.push(subtotal * 0.15);
+      } else if (opt === '15weld') {
+        extra += subtotal * 0.15;
+        extraLabels.push('15% Welding Supplies');
+        extraArr.push(subtotal * 0.15);
+      }
+    });
+    // --- FIN BLOQUE DE CÁLCULO ---
+
     // Después de actualizar la orden en el PUT:
     const jsDate = new Date(fields.date);
     const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
