@@ -164,13 +164,15 @@ router.post('/', async (req, res) => {
     doc.text(formattedDate, 390, 120);
     doc.text(result.insertId || id, 400, 140);
 
-    // --- AHORA AGREGA LA DESCRIPCIÓN DEBAJO DE LOS CUADROS ---
-    let descY = 180; // Justo debajo de los cuadros (ajusta si es necesario)
-    if (req.body.description) {
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', 50, descY, { continued: true });
-      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
-      doc.moveDown(1);
-    }
+    // --- DESCRIPCIÓN BIEN COLOCADA ---
+    let descY = 180;
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
+    doc.text('Descripción:', 50, descY);
+    doc.font('Helvetica').fontSize(11).fillColor('#222');
+    const descText = fields.description || '';
+    const descHeight = doc.heightOfString(descText, { width: 500 });
+    doc.text(descText, 50, descY + 16, { width: 500 });
+    let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
     const tableWidth = 480;
@@ -184,8 +186,6 @@ router.post('/', async (req, res) => {
       leftMargin + 400,          // Unit
       leftMargin + 480           // Total (fin tabla)
     ];
-
-    const tableTop = 190;
 
     // Encabezado de tabla de partes
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
@@ -227,20 +227,16 @@ router.post('/', async (req, res) => {
     // Línea final de tabla
     doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
 
-    // TOTALES - Subtotal, Labor y Extras en línea completa
-    y += 10;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    // Subtotales
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-
     y += 16;
     doc.text(
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-
     (extraLabels || []).forEach((label, idx) => {
       y += 16;
       doc.text(
@@ -249,11 +245,11 @@ router.post('/', async (req, res) => {
       );
     });
 
-    // TOTAL LAB & PARTS destacado y separado
+    // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (req.body.totalLabAndParts !== undefined && req.body.totalLabAndParts !== null && req.body.totalLabAndParts !== '') {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    if (fields.totalLabAndParts !== undefined && fields.totalLabAndParts !== null && fields.totalLabAndParts !== '') {
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
@@ -433,13 +429,15 @@ router.put('/:id', async (req, res) => {
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
 
-    // --- AHORA AGREGA LA DESCRIPCIÓN DEBAJO DE LOS CUADROS ---
-    let descY = 180; // Justo debajo de los cuadros (ajusta si es necesario)
-    if (req.body.description) {
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', 50, descY, { continued: true });
-      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
-      doc.moveDown(1);
-    }
+    // --- DESCRIPCIÓN BIEN COLOCADA ---
+    let descY = 180;
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
+    doc.text('Descripción:', 50, descY);
+    doc.font('Helvetica').fontSize(11).fillColor('#222');
+    const descText = fields.description || '';
+    const descHeight = doc.heightOfString(descText, { width: 500 });
+    doc.text(descText, 50, descY + 16, { width: 500 });
+    let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
     const tableWidth = 480;
@@ -453,8 +451,6 @@ router.put('/:id', async (req, res) => {
       leftMargin + 400,          // Unit
       leftMargin + 480           // Total (fin tabla)
     ];
-
-    const tableTop = 190;
 
     // Encabezado de tabla de partes
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
@@ -496,20 +492,16 @@ router.put('/:id', async (req, res) => {
     // Línea final de tabla
     doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
 
-    // TOTALES - Subtotal, Labor y Extras en línea completa
-    y += 10;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    // Subtotales
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-
     y += 16;
     doc.text(
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-
     (extraLabels || []).forEach((label, idx) => {
       y += 16;
       doc.text(
@@ -518,11 +510,11 @@ router.put('/:id', async (req, res) => {
       );
     });
 
-    // TOTAL LAB & PARTS destacado y separado
+    // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (req.body.totalLabAndParts !== undefined && req.body.totalLabAndParts !== null && req.body.totalLabAndParts !== '') {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    if (fields.totalLabAndParts !== undefined && fields.totalLabAndParts !== null && fields.totalLabAndParts !== '') {
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
