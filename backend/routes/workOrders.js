@@ -84,14 +84,14 @@ router.post('/', async (req, res) => {
 
     // Calcula partes y labor usando el array LIMPIO
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
-    const laborTotal = Number(totalHrs) * 60 || 0;
+    const laborTotal = Number(fields.totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
 
     // Calcula extras
     let extra = 0;
     let extraLabels = [];
     let extraArr = [];
-    const extras = Array.isArray(req.body.extraOptions) ? req.body.extraOptions : [];
+    const extras = Array.isArray(fields.extraOptions) ? fields.extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
         extra += subtotal * 0.05;
