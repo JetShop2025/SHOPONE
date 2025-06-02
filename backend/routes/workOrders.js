@@ -147,8 +147,14 @@ router.post('/', async (req, res) => {
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
-
     doc.moveDown(2);
+
+    // Agrega la descripción de la W.O.
+    if (req.body.description) {
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', { continued: true });
+      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
+      doc.moveDown(1);
+    }
 
     // Datos principales
     doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
@@ -247,13 +253,12 @@ router.post('/', async (req, res) => {
     // TOTAL LAB & PARTS destacado y separado
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (req.body.totalLabAndParts) {
+    if (req.body.totalLabAndParts !== undefined && req.body.totalLabAndParts !== null && req.body.totalLabAndParts !== '') {
       totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
-    doc.font('Helvetica-Bold').fontSize(12).fillColor('#d32f2f');
-    doc.text(
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
@@ -342,15 +347,178 @@ router.put('/:id', async (req, res) => {
         JSON.stringify(fields.parts), fields.totalHrs, fields.totalLabAndParts, fields.status, id
       ]
     );
-    const { usuario, ...rest } = fields;
-    await logAccion(
-      usuario,
-      'UPDATE',
-      'work_orders',
-      id,
-      JSON.stringify({ before: oldData, after: rest })
+
+    // Después de actualizar la orden en el PUT:
+    const jsDate = new Date(fields.date);
+    const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(jsDate.getDate()).padStart(2, '0');
+    const yyyy = jsDate.getFullYear();
+    const formattedDate = `${mm}-${dd}-${yyyy}`;
+    const pdfName = `${formattedDate}_${id}.pdf`;
+    const pdfPath = path.join(__dirname, '..', 'pdfs', pdfName);
+
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const stream = fs.createWriteStream(pdfPath);
+    doc.pipe(stream);
+
+    // LOGO y encabezado
+    const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
+    console.log('Buscando logo en:', logoPath, 'Existe:', fs.existsSync(logoPath));
+    if (fs.existsSync(logoPath)) {
+      try {
+        doc.image(logoPath, 40, 30, { width: 120 });
+        console.log('Logo agregado al PDF');
+      } catch (e) {
+        console.error('Error al agregar logo:', e);
+      }
+    }
+
+    // TITULO CENTRADO
+    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', { align: 'center' });
+    doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', { align: 'center' });
+
+    doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+    doc.text('740 EL CAMINO REAL', { align: 'right' });
+    doc.text('GREENFIELD, CA 93927', { align: 'right' });
+    doc.moveDown(2);
+
+    // Agrega la descripción de la W.O.
+    if (req.body.description) {
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', { continued: true });
+      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
+      doc.moveDown(1);
+    }
+
+    // Datos principales
+    doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
+    doc.roundedRect(320, 110, 230, 60, 8).stroke('#1976d2');
+    doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
+    doc.text('Customer:', 50, 120);
+    doc.text('Trailer:', 50, 140);
+    doc.text('Date:', 330, 120);
+    doc.text('Invoice #:', 330, 140);
+
+    doc.font('Helvetica').fillColor('#222').fontSize(10);
+    doc.text(billToCo || '-', 110, 120);
+    doc.text(trailer || '-', 110, 140);
+    doc.text(formattedDate, 390, 120);
+    doc.text(id, 400, 140);
+
+    doc.moveDown(6);
+
+    // Centrar tabla en la hoja
+    const tableWidth = 480;
+    const leftMargin = (595.28 - tableWidth) / 2;
+    const col = [
+      leftMargin,                // inicio tabla
+      leftMargin + 40,           // No.
+      leftMargin + 160,          // SKU
+      leftMargin + 280,          // Description
+      leftMargin + 330,          // Qty
+      leftMargin + 400,          // Unit
+      leftMargin + 480           // Total (fin tabla)
+    ];
+
+    const tableTop = 190;
+
+    // Encabezado de tabla de partes
+    doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
+    doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
+    doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
+    doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
+    doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
+    doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
+    doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+
+    let y = tableTop + 22;
+
+    // SOLO dibuja filas si hay partes
+    if (partsArr.length > 0) {
+      partsArr.forEach((p, i) => {
+        doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
+        doc.font('Courier').fontSize(10).fillColor('#222');
+        doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
+        doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
+        doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
+        doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
+        doc.text(
+          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
+            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : '$0.00',
+          col[4], y + 4, { width: col[5] - col[4], align: 'center' }
+        );
+        doc.text(
+          p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
+            ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : '$0.00',
+          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
+        );
+        y += 18;
+      });
+    }
+
+    // Línea final de tabla
+    doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
+
+    // TOTALES - Subtotal, Labor y Extras en línea completa
+    y += 10;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    doc.text(
+      `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-    res.status(200).send('WORK ORDER UPDATED SUCCESSFULLY');
+
+    y += 16;
+    doc.text(
+      `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
+    );
+
+    (extraLabels || []).forEach((label, idx) => {
+      y += 16;
+      doc.text(
+        `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+        col[0], y, { width: col[6] - col[0], align: 'right' }
+      );
+    });
+
+    // TOTAL LAB & PARTS destacado y separado
+    y += 24;
+    let totalLabAndPartsFinal = 0;
+    if (req.body.totalLabAndParts !== undefined && req.body.totalLabAndParts !== null && req.body.totalLabAndParts !== '') {
+      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = partsTotal + laborTotal + extra;
+    }
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
+      `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
+    );
+
+    // TÉRMINOS Y FIRMAS
+    doc.moveDown(2);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
+    doc.font('Helvetica').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
+
+    doc.moveDown(2);
+    doc.font('Helvetica').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
+    doc.text('I accept this estimate with the handwritten changes ', 40, doc.y + 24);
+
+    doc.moveDown(2);
+    doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
+    doc.font('Helvetica-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
+
+    doc.end();
+
+    stream.on('finish', async () => {
+      await logAccion(usuario, 'UPDATE', 'work_orders', id, JSON.stringify({ before: oldData, after: fields }));
+      res.status(200).json({
+        message: 'WORK ORDER UPDATED SUCCESSFULLY',
+        id,
+        pdfUrl: `/pdfs/${pdfName}`
+      });
+    });
   } catch (err) {
     res.status(500).send('ERROR UPDATING WORK ORDER');
   }

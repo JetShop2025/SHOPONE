@@ -91,27 +91,28 @@ const formatCurrency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 function calcularTotalWO(order: any) {
-  // Suma de partes
+  // Si el usuario editó el total manualmente, respétalo
+  if (
+    order.totalLabAndParts !== undefined &&
+    order.totalLabAndParts !== null &&
+    order.totalLabAndParts !== ''
+  ) {
+    return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
+  }
+  // Si no, calcula automático
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
     const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
     return sum + (isNaN(val) ? 0 : val);
   }, 0) || 0;
-
-  // Labor
   const laborHrs = Number(order.totalHrs);
   const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
-
-  // Subtotal
   const subtotal = partsTotal + laborTotal;
-
-  // Extras
   let extra = 0;
   (order.extraOptions || []).forEach((opt: string) => {
     if (opt === '5') extra += subtotal * 0.05;
     if (opt === '15shop') extra += subtotal * 0.15;
     if (opt === '15weld') extra += subtotal * 0.15;
   });
-
   return subtotal + extra;
 }
 
