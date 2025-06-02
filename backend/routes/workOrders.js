@@ -84,14 +84,14 @@ router.post('/', async (req, res) => {
 
     // Calcula partes y labor usando el array LIMPIO
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
-    const laborTotal = Number(fields.totalHrs) * 60 || 0;
+    const laborTotal = Number(totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
 
     // Calcula extras
     let extra = 0;
     let extraLabels = [];
     let extraArr = [];
-    const extras = Array.isArray(fields.extraOptions) ? fields.extraOptions : [];
+    const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
         extra += subtotal * 0.05;
@@ -141,7 +141,7 @@ router.post('/', async (req, res) => {
     }
 
     // TITULO CENTRADO
-    doc.fontSize(12).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
+    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
 
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
@@ -159,18 +159,19 @@ router.post('/', async (req, res) => {
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
-    doc.text(fields.billToCo || '-', 110, 120);
-    doc.text(fields.trailer || '-', 110, 140);
-    doc.text(fields.mechanic || '-', 110, 160); // NUEVA LÍNEA
+    doc.text(billToCo || '-', 110, 120);
+    doc.text(trailer || '-', 110, 140);
+    doc.text(mechanic || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
     doc.text(result?.insertId || id, 400, 140);
+
+    const descText = description || '';
 
     // --- DESCRIPCIÓN BIEN COLOCADA ---
     let descY = 180;
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Descripción:', 50, descY);
     doc.font('Helvetica').fontSize(11).fillColor('#222');
-    const descText = fields.description || '';
     const descHeight = doc.heightOfString(descText, { width: 500 });
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
@@ -249,8 +250,8 @@ router.post('/', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (fields.totalLabAndParts !== undefined && fields.totalLabAndParts !== null && fields.totalLabAndParts !== '') {
-      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '') {
+      totalLabAndPartsFinal = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
@@ -407,8 +408,7 @@ router.put('/:id', async (req, res) => {
     }
 
     // TITULO CENTRADO
-    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', { align: 'center' });
-    doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', { align: 'center' });
+    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
 
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
@@ -426,18 +426,19 @@ router.put('/:id', async (req, res) => {
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
-    doc.text(fields.billToCo || '-', 110, 120);
-    doc.text(fields.trailer || '-', 110, 140);
-    doc.text(fields.mechanic || '-', 110, 160); // NUEVA LÍNEA
+    doc.text(billToCo || '-', 110, 120);
+    doc.text(trailer || '-', 110, 140);
+    doc.text(mechanic || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
+
+    const descText = description || '';
 
     // --- DESCRIPCIÓN BIEN COLOCADA ---
     let descY = 180;
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Descripción:', 50, descY);
     doc.font('Helvetica').fontSize(11).fillColor('#222');
-    const descText = fields.description || '';
     const descHeight = doc.heightOfString(descText, { width: 500 });
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
@@ -516,8 +517,8 @@ router.put('/:id', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
-    if (fields.totalLabAndParts !== undefined && fields.totalLabAndParts !== null && fields.totalLabAndParts !== '') {
-      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '') {
+      totalLabAndPartsFinal = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
