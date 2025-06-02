@@ -15,7 +15,7 @@ dayjs.extend(weekOfYear);
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 
 const billToCoOptions = [
-  "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
+  "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE,CHUSAL"
 ];
 
 function getTrailerOptions(billToCo: string): string[] {

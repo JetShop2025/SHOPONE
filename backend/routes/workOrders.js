@@ -149,13 +149,6 @@ router.post('/', async (req, res) => {
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
     doc.moveDown(2);
 
-    // Agrega la descripción de la W.O.
-    if (req.body.description) {
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', { continued: true });
-      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
-      doc.moveDown(1);
-    }
-
     // Datos principales
     doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 60, 8).stroke('#1976d2');
@@ -169,9 +162,15 @@ router.post('/', async (req, res) => {
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
     doc.text(formattedDate, 390, 120);
-    doc.text(result.insertId, 400, 140);
+    doc.text(result.insertId || id, 400, 140);
 
-    doc.moveDown(6);
+    // --- AHORA AGREGA LA DESCRIPCIÓN DEBAJO DE LOS CUADROS ---
+    let descY = 180; // Justo debajo de los cuadros (ajusta si es necesario)
+    if (req.body.description) {
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', 50, descY, { continued: true });
+      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
+      doc.moveDown(1);
+    }
 
     // Centrar tabla en la hoja
     const tableWidth = 480;
@@ -382,13 +381,6 @@ router.put('/:id', async (req, res) => {
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
     doc.moveDown(2);
 
-    // Agrega la descripción de la W.O.
-    if (req.body.description) {
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', { continued: true });
-      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
-      doc.moveDown(1);
-    }
-
     // Datos principales
     doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 60, 8).stroke('#1976d2');
@@ -404,7 +396,13 @@ router.put('/:id', async (req, res) => {
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
 
-    doc.moveDown(6);
+    // --- AHORA AGREGA LA DESCRIPCIÓN DEBAJO DE LOS CUADROS ---
+    let descY = 180; // Justo debajo de los cuadros (ajusta si es necesario)
+    if (req.body.description) {
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2').text('Descripción:', 50, descY, { continued: true });
+      doc.font('Helvetica').fontSize(11).fillColor('#222').text(' ' + req.body.description, { align: 'left' });
+      doc.moveDown(1);
+    }
 
     // Centrar tabla en la hoja
     const tableWidth = 480;
