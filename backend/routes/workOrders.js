@@ -141,8 +141,7 @@ router.post('/', async (req, res) => {
     }
 
     // TITULO CENTRADO
-    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('JET SHOP', { align: 'center' });
-    doc.fontSize(12).fillColor('#333').font('Helvetica').text('INVOICE', { align: 'center' });
+    doc.fontSize(12).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
 
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
@@ -150,19 +149,21 @@ router.post('/', async (req, res) => {
     doc.moveDown(2);
 
     // Datos principales
-    doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
-    doc.roundedRect(320, 110, 230, 60, 8).stroke('#1976d2');
+    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2'); // Aumenta la altura del cuadro
+    doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
     doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
+    doc.text('Mechanic:', 50, 160); // NUEVA LÍNEA
     doc.text('Date:', 330, 120);
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
     doc.text(fields.billToCo || '-', 110, 120);
     doc.text(fields.trailer || '-', 110, 140);
+    doc.text(fields.mechanic || '-', 110, 160); // NUEVA LÍNEA
     doc.text(formattedDate, 390, 120);
-    doc.text(result.insertId || id, 400, 140);
+    doc.text(result?.insertId || id, 400, 140);
 
     // --- DESCRIPCIÓN BIEN COLOCADA ---
     let descY = 180;
@@ -415,17 +416,19 @@ router.put('/:id', async (req, res) => {
     doc.moveDown(2);
 
     // Datos principales
-    doc.roundedRect(40, 110, 250, 60, 8).stroke('#1976d2');
-    doc.roundedRect(320, 110, 230, 60, 8).stroke('#1976d2');
+    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2'); // Aumenta la altura del cuadro
+    doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
     doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
+    doc.text('Mechanic:', 50, 160); // NUEVA LÍNEA
     doc.text('Date:', 330, 120);
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
     doc.text(fields.billToCo || '-', 110, 120);
     doc.text(fields.trailer || '-', 110, 140);
+    doc.text(fields.mechanic || '-', 110, 160); // NUEVA LÍNEA
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
 

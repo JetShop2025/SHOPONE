@@ -101,8 +101,9 @@ function calcularTotalWO(order: any) {
   }
   // Si no, calcula automático
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
-    const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(val) ? 0 : val);
+    const qty = Number(part.qty);
+    const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(qty) || isNaN(cost) ? 0 : qty * cost);
   }, 0) || 0;
   const laborHrs = Number(order.totalHrs);
   const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
