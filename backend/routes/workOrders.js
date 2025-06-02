@@ -159,7 +159,7 @@ router.post('/', async (req, res) => {
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
-    doc.text(billToCo || '-', 110, 120);
+    doc.text(fields.billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
     doc.text(formattedDate, 390, 120);
     doc.text(result.insertId || id, 400, 140);
@@ -402,7 +402,7 @@ router.put('/:id', async (req, res) => {
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
-    doc.text(billToCo || '-', 110, 120);
+    doc.text(fields.billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
