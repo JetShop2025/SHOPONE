@@ -250,13 +250,14 @@ router.post('/', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
+    const manualTotal = typeof totalLabAndParts !== 'undefined' ? totalLabAndParts : fields.totalLabAndParts;
     if (
-      totalLabAndParts !== undefined &&
-      totalLabAndParts !== null &&
-      totalLabAndParts !== '' &&
-      !isNaN(Number(String(totalLabAndParts).replace(/[^0-9.]/g, '')))
+      manualTotal !== undefined &&
+      manualTotal !== null &&
+      manualTotal !== '' &&
+      !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))
     ) {
-      totalLabAndPartsFinal = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
+      totalLabAndPartsFinal = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
@@ -331,7 +332,19 @@ router.delete('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const fields = req.body;
-  const { usuario } = req.body;
+  const {
+    billToCo,
+    trailer,
+    mechanic,
+    date,
+    description,
+    parts,
+    totalHrs,
+    totalLabAndParts, // <-- AGREGA ESTA LÍNEA
+    status,
+    extraOptions,
+    usuario
+  } = fields;
 
   try {
     const [oldResults] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
@@ -522,13 +535,14 @@ router.put('/:id', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     let totalLabAndPartsFinal = 0;
+    const manualTotal = typeof totalLabAndParts !== 'undefined' ? totalLabAndParts : fields.totalLabAndParts;
     if (
-      totalLabAndParts !== undefined &&
-      totalLabAndParts !== null &&
-      totalLabAndParts !== '' &&
-      !isNaN(Number(String(totalLabAndParts).replace(/[^0-9.]/g, '')))
+      manualTotal !== undefined &&
+      manualTotal !== null &&
+      manualTotal !== '' &&
+      !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))
     ) {
-      totalLabAndPartsFinal = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
+      totalLabAndPartsFinal = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     }
