@@ -444,7 +444,8 @@ const WorkOrdersTable: React.FC = () => {
       if (found) {
         setEditWorkOrder({
           ...found,
-          date: found.date ? found.date.slice(0, 10) : ''
+          date: found.date ? found.date.slice(0, 10) : '',
+          parts: Array.isArray(found.parts) ? found.parts : []
         });
         setShowEditForm(true);
       }
@@ -842,7 +843,8 @@ const WorkOrdersTable: React.FC = () => {
                         if (found) {
                           setEditWorkOrder({
                             ...found,
-                            date: found.date ? found.date.slice(0, 10) : ''
+                            date: found.date ? found.date.slice(0, 10) : '',
+                            parts: Array.isArray(found.parts) ? found.parts : []
                           });
                           setEditError('');
                         } else {
