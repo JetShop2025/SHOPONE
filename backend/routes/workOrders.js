@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
   const values = [
     billToCo, trailer, mechanic, date, description,
     JSON.stringify(partsArr), // GUARDA EL ARRAY LIMPIO
-    totalHrs, totalLabAndParts, status
+    totalHrs, totalLabAndPartsFinal, status
   ];
 
   try {
@@ -249,18 +249,7 @@ router.post('/', async (req, res) => {
 
     // TOTAL LAB & PARTS
     y += 24;
-    let totalLabAndPartsFinal = 0;
-    const manualTotal = typeof totalLabAndParts !== 'undefined' ? totalLabAndParts : fields.totalLabAndParts;
-    if (
-      manualTotal !== undefined &&
-      manualTotal !== null &&
-      manualTotal !== '' &&
-      !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = partsTotal + laborTotal + extra;
-    }
+    const totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
@@ -340,52 +329,38 @@ router.put('/:id', async (req, res) => {
     description,
     parts,
     totalHrs,
-    totalLabAndParts, // <-- AGREGA ESTA LÍNEA
     status,
     extraOptions,
     usuario
   } = fields;
 
   try {
+    // 1. Verifica que la orden exista
     const [oldResults] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
     if (!oldResults || oldResults.length === 0) {
       return res.status(404).send('WORK ORDER NOT FOUND');
     }
     const oldData = oldResults[0];
 
-    // LIMPIA COSTO DE CADA PARTE Y FILTRA VACÍAS
-    const partsArr = Array.isArray(fields.parts)
-      ? fields.parts
+    // 2. Limpia y valida partes
+    const partsArr = Array.isArray(parts)
+      ? parts
           .filter(part => part.sku && String(part.sku).trim() !== '')
           .map(part => ({
             ...part,
             cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
           }))
       : [];
-    fields.parts = partsArr;
 
-    // SIEMPRE recalcula el total al editar
-    let totalLabAndPartsFinal = partsTotal + laborTotal + extra;
-
-    await db.query(
-      `UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
-       WHERE id = ?`,
-      [
-        fields.billToCo, fields.trailer, fields.mechanic, fields.date, fields.description,
-        JSON.stringify(fields.parts), fields.totalHrs, totalLabAndPartsFinal, fields.status, id
-      ]
-    );
-
-    // --- BLOQUE DE CÁLCULO DE TOTALES Y EXTRAS ---
+    // 3. Calcula totales SIEMPRE (ignora totalLabAndParts manual)
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
-    const laborTotal = Number(fields.totalHrs) * 60 || 0;
+    const laborTotal = Number(totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
 
     let extra = 0;
     let extraLabels = [];
     let extraArr = [];
-    const extras = Array.isArray(fields.extraOptions) ? fields.extraOptions : [];
+    const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
         extra += subtotal * 0.05;
@@ -401,10 +376,21 @@ router.put('/:id', async (req, res) => {
         extraArr.push(subtotal * 0.15);
       }
     });
-    // --- FIN BLOQUE DE CÁLCULO ---
+    const totalLabAndPartsFinal = partsTotal + laborTotal + extra;
 
-    // Después de actualizar la orden en el PUT:
-    const jsDate = new Date(fields.date);
+    // 4. Actualiza la orden en la base de datos
+    await db.query(
+      `UPDATE work_orders SET 
+        billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
+       WHERE id = ?`,
+      [
+        billToCo, trailer, mechanic, date, description,
+        JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status, id
+      ]
+    );
+
+    // 5. Genera el PDF actualizado
+    const jsDate = new Date(date);
     const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
     const dd = String(jsDate.getDate()).padStart(2, '0');
     const yyyy = jsDate.getFullYear();
@@ -418,44 +404,38 @@ router.put('/:id', async (req, res) => {
 
     // LOGO y encabezado
     const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
-    console.log('Buscando logo en:', logoPath, 'Existe:', fs.existsSync(logoPath));
     if (fs.existsSync(logoPath)) {
       try {
         doc.image(logoPath, 40, 30, { width: 120 });
-        console.log('Logo agregado al PDF');
       } catch (e) {
         console.error('Error al agregar logo:', e);
       }
     }
 
-    // TITULO CENTRADO
     doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
-
     doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
     doc.moveDown(2);
 
     // Datos principales
-    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2'); // Aumenta la altura del cuadro
+    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
     doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
-    doc.text('Mechanic:', 50, 160); // NUEVA LÍNEA
+    doc.text('Mechanic:', 50, 160);
     doc.text('Date:', 330, 120);
     doc.text('Invoice #:', 330, 140);
 
     doc.font('Helvetica').fillColor('#222').fontSize(10);
-    doc.text(fields.billToCo || '-', 110, 120);
-    doc.text(fields.trailer || '-', 110, 140);
-    doc.text(fields.mechanic || '-', 110, 160);
+    doc.text(billToCo || '-', 110, 120);
+    doc.text(trailer || '-', 110, 140);
+    doc.text(mechanic || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
 
-    const descText = fields.description || '';
-
-    // --- DESCRIPCIÓN BIEN COLOCADA ---
+    const descText = description || '';
     let descY = 180;
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Descripción:', 50, descY);
@@ -468,13 +448,13 @@ router.put('/:id', async (req, res) => {
     const tableWidth = 480;
     const leftMargin = (595.28 - tableWidth) / 2;
     const col = [
-      leftMargin,                // inicio tabla
-      leftMargin + 40,           // No.
-      leftMargin + 160,          // SKU
-      leftMargin + 280,          // Description
-      leftMargin + 330,          // Qty
-      leftMargin + 400,          // Unit
-      leftMargin + 480           // Total (fin tabla)
+      leftMargin,
+      leftMargin + 40,
+      leftMargin + 160,
+      leftMargin + 280,
+      leftMargin + 330,
+      leftMargin + 400,
+      leftMargin + 480
     ];
 
     // Encabezado de tabla de partes
@@ -488,8 +468,6 @@ router.put('/:id', async (req, res) => {
     doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
 
     let y = tableTop + 22;
-
-    // SOLO dibuja filas si hay partes
     if (partsArr.length > 0) {
       partsArr.forEach((p, i) => {
         doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
@@ -514,10 +492,7 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Línea final de tabla
     doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
-
-    // Subtotales
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
@@ -538,8 +513,8 @@ router.put('/:id', async (req, res) => {
     // TOTAL LAB & PARTS
     y += 24;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
-    `TOTAL LAB & PARTS: ${(partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-    col[0], y, { width: col[6] - col[0], align: 'right' }
+      `TOTAL LAB & PARTS: ${(partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[6] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS
@@ -566,8 +541,8 @@ router.put('/:id', async (req, res) => {
       });
     });
   } catch (err) {
-    console.error('ERROR UPDATING WORK ORDER:', err); // <-- Esto imprime el error real en consola/logs de Render
-    res.status(500).send(err?.message || 'ERROR UPDATING WORK ORDER'); // <-- Esto manda el mensaje real al frontend
+    console.error('ERROR UPDATING WORK ORDER:', err);
+    res.status(500).send(err?.message || 'ERROR UPDATING WORK ORDER');
   }
 });
 
