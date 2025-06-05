@@ -245,18 +245,25 @@ const WorkOrdersTable: React.FC = () => {
 
   // Cambios generales
   const handleWorkOrderChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any
   ) => {
-    const { name, value } = e.target;
-    if (showForm) {
-      setNewWorkOrder(prev => ({ ...prev, [name]: value }));
-      if (name === 'trailer') {
-        fetchPendingParts(value); // <-- Agrega esta línea
+    // Si es un evento (input, select, textarea)
+    if (e && e.target) {
+      const { name, value } = e.target;
+      if (showForm) {
+        setNewWorkOrder(prev => ({ ...prev, [name]: value }));
+        if (name === 'trailer') fetchPendingParts(value);
+      } else if (showEditForm && editWorkOrder) {
+        setEditWorkOrder((prev: any) => ({ ...prev, [name]: value }));
+        if (name === 'trailer') fetchPendingParts(value);
       }
-    } else if (showEditForm && editWorkOrder) {
-      setEditWorkOrder((prev: any) => ({ ...prev, [name]: value }));
-      if (name === 'trailer') {
-        fetchPendingParts(value); // <-- Agrega esta línea
+    }
+    // Si es un objeto (por ejemplo, desde useEffect o cambios automáticos)
+    else if (typeof e === 'object') {
+      if (showForm) {
+        setNewWorkOrder(e);
+      } else if (showEditForm && editWorkOrder) {
+        setEditWorkOrder(e);
       }
     }
   };
@@ -868,6 +875,9 @@ const WorkOrdersTable: React.FC = () => {
                     <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
                       Order ID: {editWorkOrder.id}
                     </div>
+                    {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (
+  <div style={{ color: 'red', padding: 32 }}>No data to edit.</div>
+)}
                     <WorkOrderForm
                       workOrder={editWorkOrder}
                       onChange={handleWorkOrderChange}
