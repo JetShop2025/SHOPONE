@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
@@ -52,7 +52,6 @@ const parseCurrencyInput = (value: string) => {
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart, extraOptions, setExtraOptions
 }) => {
-  const [extraOption, setExtraOption] = React.useState('none');
   const [autocomplete, setAutocomplete] = React.useState<{ [k: number]: any[] }>({});
   const [loading, setLoading] = React.useState(false);
   const [successMsg, setSuccessMsg] = React.useState('');
@@ -144,6 +143,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const totalLabAndParts = workOrder.totalLabAndParts
   ? Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
   : subtotal + extra;
+
+  useEffect(() => {
+    if (!manualTotalEdit) {
+      const total = calcularTotalWO(workOrder);
+      onChange({ ...workOrder, totalLabAndParts: total });
+    }
+    // eslint-disable-next-line
+  }, [workOrder.parts, workOrder.totalHrs, workOrder.extraOptions]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any) => {
+    if (e && e.target) {
+      const { name, value } = e.target;
+      onChange({ ...workOrder, [name]: value });
+    } else if (typeof e === 'object') {
+      onChange(e);
+    }
+  };
 
   return (
     <div
@@ -316,9 +332,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <strong>Partes</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
             {workOrder.parts.map((part: Part, index: number) => (
-              <div key={index} style={{ border: '1px solid #ccc', borderRadius: 4, padding: 8, minWidth: 180, position: 'relative' }}>
+              <div key={index} style={{
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                padding: 8,
+                minWidth: 180,
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column', // <-- Cambia a columna
+                gap: 4
+              }}>
                 <label>
-                  PRT{index + 1}
+                  PRT
                   <input
                     type="text"
                     name="part"
@@ -362,7 +387,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="Costo"
                     value={part.cost}
                     onChange={e => onPartChange(index, 'cost', e.target.value)}
-                    style={{ width: 80, background: '#fff' }}
+                    style={{ width: '100%', marginTop: 4 }}
                   />
                 </label>
               </div>
@@ -372,7 +397,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (onAddEmptyPart) onAddEmptyPart();
+                onChange({
+                  ...workOrder,
+                  parts: [
+                    ...workOrder.parts,
+                    { part: '', sku: '', qty: '', cost: '' }
+                  ]
+                });
               }}
               style={{
                 background: '#fff',
@@ -452,7 +483,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               value={workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== ''
                 ? workOrder.totalLabAndParts
                 : calcularTotalWO(workOrder)}
-              onChange={e => onChange({ ...workOrder, totalLabAndParts: e.target.value })}
+              onChange={e => {
+                setManualTotalEdit(true);
+                onChange({ ...workOrder, totalLabAndParts: e.target.value });
+              }}
+              onBlur={e => {
+                if (!e.target.value) setManualTotalEdit(false);
+              }}
               style={{ width: '100%', marginTop: 4, background: '#e3f2fd', fontWeight: 700 }}
             />
           </label>
