@@ -41,73 +41,67 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Agregar nueva orden de trabajo y generar PDF
+// --- CREAR ORDEN DE TRABAJO ---
 router.post('/', async (req, res) => {
-  console.log('REQ BODY:', req.body);
-  const { billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status, usuario, extraOptions } = req.body;
-
-  // --- VALIDACIÓN DE PARTES ---
-  const [inventory] = await db.query('SELECT sku FROM inventory');
-  const inventorySkus = inventory.map(item => (item.sku || '').trim().toUpperCase());
-  // LIMPIA COSTO DE CADA PARTE AQUÍ Y FILTRA VACÍAS
-  const partsArr = Array.isArray(parts)
-    ? parts
-        .filter(part => part.sku && String(part.sku).trim() !== '') // Solo partes con SKU
-        .map(part => ({
-          ...part,
-          cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
-        }))
-    : [];
-  for (const part of partsArr) {
-    if (!inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
-      return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
-    }
-  }
-  // --- FIN VALIDACIÓN ---
-
-  if (!date) {
-    return res.status(400).send('The date field is required');
-  }
-
-  const query = `
-    INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  const values = [
-    billToCo, trailer, mechanic, date, description,
-    JSON.stringify(partsArr), // GUARDA EL ARRAY LIMPIO
-    totalHrs, totalLabAndPartsFinal, status
-  ];
-
   try {
-    const [result] = await db.query(query, values);
+    const { billToCo, trailer, mechanic, date, description, parts, totalHrs, status, usuario, extraOptions } = req.body;
 
-    // Calcula partes y labor usando el array LIMPIO
+    // Validación y limpieza de partes
+    const [inventory] = await db.query('SELECT sku FROM inventory');
+    const inventorySkus = inventory.map(item => (item.sku || '').trim().toUpperCase());
+    const partsArr = Array.isArray(parts)
+      ? parts
+          .filter(part => part.sku && String(part.sku).trim() !== '')
+          .map(part => ({
+            ...part,
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
+          }))
+      : [];
+    for (const part of partsArr) {
+      if (!inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
+        return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
+      }
+    }
+    if (!date) return res.status(400).send('The date field is required');
+
+    // --- CÁLCULO DE TOTALES ---
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
     const laborTotal = Number(totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
 
-    // Calcula extras
-    let extra = 0;
+    // Extras
+    let extra5 = 0;
     let extraLabels = [];
     let extraArr = [];
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
-        extra += subtotal * 0.05;
-        extraLabels.push('5% Extra');
-        extraArr.push(subtotal * 0.05);
+        extra5 += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDF
       } else if (opt === '15shop') {
-        extra += subtotal * 0.15;
         extraLabels.push('15% Shop Miscellaneous');
         extraArr.push(subtotal * 0.15);
       } else if (opt === '15weld') {
-        extra += subtotal * 0.15;
         extraLabels.push('15% Welding Supplies');
         extraArr.push(subtotal * 0.15);
       }
     });
+    const extrasSuppliesTotal = extraArr.reduce((a, b) => a + b, 0);
 
+    // TOTAL FINAL
+    const totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
+
+    // --- INSERTA EN LA BASE DE DATOS ---
+    const query = `
+      INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const values = [
+      billToCo, trailer, mechanic, date, description,
+      JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status
+    ];
+    const [result] = await db.query(query, values);
+
+    // --- GENERA EL PDF ---
     // Formatea la fecha a MM-DD-YYYY
     const jsDate = new Date(date);
     const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
@@ -239,17 +233,16 @@ router.post('/', async (req, res) => {
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-    (extraLabels || []).forEach((label, idx) => {
+    // SOLO muestra extras supplies (NO el 5%)
+    extraLabels.forEach((label, idx) => {
       y += 16;
       doc.text(
         `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
         col[0], y, { width: col[6] - col[0], align: 'right' }
       );
     });
-
-    // TOTAL LAB & PARTS
+    // TOTAL FINAL
     y += 24;
-    const totalLabAndPartsFinal = partsTotal + laborTotal + extra;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
@@ -270,17 +263,19 @@ router.post('/', async (req, res) => {
 
     doc.end();
 
+    // --- RESPUESTA ---
     stream.on('finish', async () => {
       await logAccion(usuario, 'CREATE', 'work_orders', result.insertId, JSON.stringify(req.body));
       res.status(201).json({
         message: 'WORK ORDER CREATED SUCCESSFULLY',
         id: result.insertId,
-        pdfUrl: `/pdfs/${pdfName}`
+        pdfUrl: `/pdfs/${pdfName}`,
+        totalLabAndParts: totalLabAndPartsFinal // <-- para mostrar en tabla
       });
     });
   } catch (err) {
-    console.error('ERROR CREATING WORK ORDER:', err); // <-- Esto imprime el error real en consola
-    res.status(500).send(err?.message || 'ERROR CREATING WORK ORDER'); // <-- Esto manda el mensaje real al frontend
+    console.error('ERROR CREATING WORK ORDER:', err);
+    res.status(500).send(err?.message || 'ERROR CREATING WORK ORDER');
   }
 });
 
@@ -317,7 +312,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Actualizar orden de trabajo
+// --- EDITAR ORDEN DE TRABAJO ---
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const fields = req.body;
@@ -352,31 +347,29 @@ router.put('/:id', async (req, res) => {
           }))
       : [];
 
-    // 3. Calcula totales SIEMPRE (ignora totalLabAndParts manual)
+    // 3. Calcula totales SIEMPRE
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
     const laborTotal = Number(totalHrs) * 60 || 0;
     const subtotal = partsTotal + laborTotal;
 
-    let extra = 0;
+    let extra5 = 0;
     let extraLabels = [];
     let extraArr = [];
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
-        extra += subtotal * 0.05;
-        extraLabels.push('5% Extra');
-        extraArr.push(subtotal * 0.05);
+        extra5 += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDF
       } else if (opt === '15shop') {
-        extra += subtotal * 0.15;
         extraLabels.push('15% Shop Miscellaneous');
         extraArr.push(subtotal * 0.15);
       } else if (opt === '15weld') {
-        extra += subtotal * 0.15;
         extraLabels.push('15% Welding Supplies');
         extraArr.push(subtotal * 0.15);
       }
     });
-    const totalLabAndPartsFinal = partsTotal + laborTotal + extra;
+    const extrasSuppliesTotal = extraArr.reduce((a, b) => a + b, 0);
+
+    const totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
 
     // 4. Actualiza la orden en la base de datos
     await db.query(
@@ -390,6 +383,7 @@ router.put('/:id', async (req, res) => {
     );
 
     // 5. Genera el PDF actualizado
+    // Formatea la fecha a MM-DD-YYYY
     const jsDate = new Date(date);
     const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
     const dd = String(jsDate.getDate()).padStart(2, '0');
@@ -502,18 +496,18 @@ router.put('/:id', async (req, res) => {
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
-    (extraLabels || []).forEach((label, idx) => {
+    // SOLO muestra extras supplies (NO el 5%)
+    extraLabels.forEach((label, idx) => {
       y += 16;
       doc.text(
         `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
         col[0], y, { width: col[6] - col[0], align: 'right' }
       );
     });
-
-    // TOTAL LAB & PARTS
+    // TOTAL FINAL
     y += 24;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
-      `TOTAL LAB & PARTS: ${(partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
 
@@ -537,7 +531,8 @@ router.put('/:id', async (req, res) => {
       res.status(200).json({
         message: 'WORK ORDER UPDATED SUCCESSFULLY',
         id,
-        pdfUrl: `/pdfs/${pdfName}`
+        pdfUrl: `/pdfs/${pdfName}`,
+        totalLabAndParts: totalLabAndPartsFinal // <-- para mostrar en tabla
       });
     });
   } catch (err) {

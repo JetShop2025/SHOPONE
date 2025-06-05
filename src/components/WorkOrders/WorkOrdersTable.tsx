@@ -991,7 +991,7 @@ const WorkOrdersTable: React.FC = () => {
             </React.Fragment>
           ))}
           <td>{order.totalHrs}</td>
-          <td>{formatCurrency(calcularTotalWO(order))}</td>
+          <td>{formatCurrency(order.totalLabAndParts)}</td>
           <td>{order.status}</td>
         </tr>
         {expandedRow === order.id && hasMoreParts && (

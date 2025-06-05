@@ -361,8 +361,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     type="text"
                     placeholder="Costo"
                     value={part.cost}
-                    onChange={e => handlePartChange(index, 'cost', e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    onChange={e => onPartChange(index, 'cost', e.target.value)}
+                    style={{ width: 80, background: '#fff' }}
                   />
                 </label>
               </div>
@@ -449,18 +449,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="text"
               name="totalLabAndParts"
               placeholder="Total LAB & PRTS*"
-              value={
-                manualTotalEdit
-                  ? workOrder.totalLabAndParts
-                  : formatCurrencyInput(subtotal + extra)
-              }
-              onChange={e => {
-                onChange(e);
-                setManualTotalEdit(e.target.value !== '');
-              }}
-              onBlur={e => {
-                if (e.target.value === '') setManualTotalEdit(false);
-              }}
+              value={workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== ''
+                ? workOrder.totalLabAndParts
+                : calcularTotalWO(workOrder)}
+              onChange={e => onChange({ ...workOrder, totalLabAndParts: e.target.value })}
               style={{ width: '100%', marginTop: 4, background: '#e3f2fd', fontWeight: 700 }}
             />
           </label>
