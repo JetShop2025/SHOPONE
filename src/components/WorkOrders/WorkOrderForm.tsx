@@ -225,17 +225,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
           <label style={{ flex: '1 1 200px' }}>
             Bill To Co<span style={{ color: 'red' }}>*</span>
-            <select
+            <input
+              list="clientes"
               name="billToCo"
               value={workOrder.billToCo}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4 }}
-            >
-              <option value="">Selecciona...</option>
+              required
+              autoComplete="off"
+              placeholder="Escribe o selecciona..."
+            />
+            <datalist id="clientes">
               {billToCoOptions.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
+                <option key={opt} value={opt} />
               ))}
-            </select>
+            </datalist>
           </label>
           <label style={{ flex: '1 1 120px' }}>
             Trailer

@@ -364,13 +364,16 @@ router.put('/:id', async (req, res) => {
       : [];
     fields.parts = partsArr;
 
+    // SIEMPRE recalcula el total al editar
+    let totalLabAndPartsFinal = partsTotal + laborTotal + extra;
+
     await db.query(
       `UPDATE work_orders SET 
         billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
        WHERE id = ?`,
       [
         fields.billToCo, fields.trailer, fields.mechanic, fields.date, fields.description,
-        JSON.stringify(fields.parts), fields.totalHrs, fields.totalLabAndParts, fields.status, id
+        JSON.stringify(fields.parts), fields.totalHrs, totalLabAndPartsFinal, fields.status, id
       ]
     );
 
@@ -534,21 +537,9 @@ router.put('/:id', async (req, res) => {
 
     // TOTAL LAB & PARTS
     y += 24;
-    let totalLabAndPartsFinal = 0;
-    const manualTotal = typeof totalLabAndParts !== 'undefined' ? totalLabAndParts : fields.totalLabAndParts;
-    if (
-      manualTotal !== undefined &&
-      manualTotal !== null &&
-      manualTotal !== '' &&
-      !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = partsTotal + laborTotal + extra;
-    }
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
-      `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+    `TOTAL LAB & PARTS: ${(partsTotal + laborTotal + extra).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+    col[0], y, { width: col[6] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS
