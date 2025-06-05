@@ -445,15 +445,27 @@ const WorkOrdersTable: React.FC = () => {
 
   useEffect(() => {
     if (showEditForm && editWorkOrder) {
-      const totalHrs = parseFloat(editWorkOrder.totalHrs) || 0;
+      // Calcula el subtotal de partes y labor
       const partsCost = editWorkOrder.parts.reduce((sum: number, p: any) => sum + (parseFloat(p.cost) || 0), 0);
-      const totalLabAndParts = (totalHrs * 60) + partsCost;
+      const totalHrs = parseFloat(editWorkOrder.totalHrs) || 0;
+      const laborTotal = totalHrs * 60;
+      let subtotal = partsCost + laborTotal;
+
+      // Suma extras
+      let extra = 0;
+      (extraOptions || []).forEach((opt: string) => {
+        if (opt === '5') extra += subtotal * 0.05;
+        if (opt === '15shop') extra += subtotal * 0.15;
+        if (opt === '15weld') extra += subtotal * 0.15;
+      });
+
+      const totalLabAndParts = subtotal + extra;
       setEditWorkOrder((prev: any) => ({
         ...prev,
         totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
       }));
     }
-  }, [editWorkOrder?.parts, editWorkOrder?.totalHrs, showEditForm]);
+  }, [editWorkOrder?.parts, editWorkOrder?.totalHrs, extraOptions, showEditForm]);
 
   const handleEdit = () => {
     if (selectedRow === null) return;

@@ -90,12 +90,12 @@ router.post('/', async (req, res) => {
     // TOTAL FINAL
     let totalLabAndPartsFinal;
     if (
-      fields.totalLabAndParts !== undefined &&
-      fields.totalLabAndParts !== null &&
-      fields.totalLabAndParts !== '' &&
-      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
+      req.body.totalLabAndParts !== undefined &&
+      req.body.totalLabAndParts !== null &&
+      req.body.totalLabAndParts !== '' &&
+      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
     ) {
-      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
     }
