@@ -443,6 +443,18 @@ const WorkOrdersTable: React.FC = () => {
     }
   }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm]);
 
+  useEffect(() => {
+    if (showEditForm && editWorkOrder) {
+      const totalHrs = parseFloat(editWorkOrder.totalHrs) || 0;
+      const partsCost = editWorkOrder.parts.reduce((sum: number, p: any) => sum + (parseFloat(p.cost) || 0), 0);
+      const totalLabAndParts = (totalHrs * 60) + partsCost;
+      setEditWorkOrder((prev: any) => ({
+        ...prev,
+        totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
+      }));
+    }
+  }, [editWorkOrder?.parts, editWorkOrder?.totalHrs, showEditForm]);
+
   const handleEdit = () => {
     if (selectedRow === null) return;
     const pwd = window.prompt('Enter password to edit:');
@@ -998,8 +1010,17 @@ const WorkOrdersTable: React.FC = () => {
               >
                 {order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].sku : ''}
               </td>
-              <td>{order.parts && order.parts[i] && order.parts[i].qty ? order.parts[i].qty : ''}</td>
-              <td>{order.parts && order.parts[i] && order.parts[i].cost ? order.parts[i].cost : ''}</td>
+              <td>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
+              <td>
+                {order.parts && order.parts[i] && order.parts[i].sku
+                  ? (
+                      order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
+                        ? Number(order.parts[i].cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                        : '$0.00'
+                    )
+                  : ''
+                }
+              </td>
             </React.Fragment>
           ))}
           <td>{order.totalHrs}</td>

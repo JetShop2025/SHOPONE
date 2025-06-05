@@ -88,7 +88,17 @@ router.post('/', async (req, res) => {
     const extrasSuppliesTotal = extraArr.reduce((a, b) => a + b, 0);
 
     // TOTAL FINAL
-    const totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
+    let totalLabAndPartsFinal;
+    if (
+      fields.totalLabAndParts !== undefined &&
+      fields.totalLabAndParts !== null &&
+      fields.totalLabAndParts !== '' &&
+      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
+    }
 
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
@@ -225,7 +235,7 @@ router.post('/', async (req, res) => {
 
     // Subtotales
     doc.text(
-      `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      ` ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[6] - col[0], align: 'right' }
     );
     y += 16;
@@ -369,7 +379,18 @@ router.put('/:id', async (req, res) => {
     });
     const extrasSuppliesTotal = extraArr.reduce((a, b) => a + b, 0);
 
-    const totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
+    // Al final del cálculo de totales, antes de guardar:
+    let totalLabAndPartsFinal;
+    if (
+      fields.totalLabAndParts !== undefined &&
+      fields.totalLabAndParts !== null &&
+      fields.totalLabAndParts !== '' &&
+      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
+    }
 
     // 4. Actualiza la orden en la base de datos
     await db.query(
