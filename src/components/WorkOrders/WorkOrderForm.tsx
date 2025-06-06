@@ -293,28 +293,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               }
             })()}
           </label>
-          <label style={{ flex: '1 1 150px' }}>
-            Mechanic<span style={{ color: 'red' }}>*</span>
-            <input
-              type="text"
-              name="mechanic"
-              placeholder="Mechanic*"
-              value={workOrder.mechanic}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
-            />
-          </label>
-          <label style={{ flex: '1 1 150px' }}>
-            Date<span style={{ color: 'red' }}>*</span>
-            <input
-              type="date"
-              name="date"
-              value={workOrder.date || ''}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
-              required
-            />
-          </label>
+          
         </div>
         <div style={{ marginTop: 16 }}>
           <label style={{ width: '100%' }}>
@@ -465,33 +444,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         )}
         <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
           <label style={{ flex: 1 }}>
-            Total HRS<span style={{ color: 'red' }}>*</span>
-            <input
+                      <input
               type="text"
               name="totalHrs"
               placeholder="Total HRS*"
               value={workOrder.totalHrs}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4 }}
-            />
-          </label>
-          <label style={{ flex: 1 }}>
-            Total LAB & PRTS<span style={{ color: 'red' }}>*</span>
-            <input
-              type="text"
-              name="totalLabAndParts"
-              placeholder="Total LAB & PRTS*"
-              value={workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== ''
-                ? workOrder.totalLabAndParts
-                : calcularTotalWO(workOrder)}
-              onChange={e => {
-                setManualTotalEdit(true);
-                onChange({ ...workOrder, totalLabAndParts: e.target.value });
-              }}
-              onBlur={e => {
-                if (!e.target.value) setManualTotalEdit(false);
-              }}
-              style={{ width: '100%', marginTop: 4, background: '#e3f2fd', fontWeight: 700 }}
             />
           </label>
           <label style={{ flex: 1 }}>
@@ -562,10 +521,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </label>
         </div>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <strong>Mecánicos y horas</strong>
+          <strong>Mecánicos y horas<span style={{ color: 'red' }}>*</span></strong>
           {(workOrder.mechanics && workOrder.mechanics.length > 0
             ? workOrder.mechanics
-            : [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }]
+            : [{ name: '', hrs: '' }]
           ).map((m: any, idx: number) => (
             <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
               <input
@@ -573,35 +532,37 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 placeholder="Mecánico"
                 value={m.name}
                 onChange={e => {
-                  const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+                  const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
                   mechanics[idx].name = e.target.value;
-                  // Limpia mechanic/totalHrs legacy si se usa mechanics
-                  onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+                  onChange({ ...workOrder, mechanics });
                 }}
                 style={{ flex: 2 }}
+                required
               />
               <input
                 type="number"
                 placeholder="Horas"
                 value={m.hrs}
+                min={0}
                 onChange={e => {
-                  const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+                  const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
                   mechanics[idx].hrs = e.target.value;
-                  onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+                  onChange({ ...workOrder, mechanics });
                 }}
                 style={{ flex: 1 }}
+                required
               />
               <button type="button" onClick={() => {
-                const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+                const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
                 mechanics.splice(idx, 1);
-                onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+                onChange({ ...workOrder, mechanics });
               }}>🗑️</button>
             </div>
           ))}
           <button type="button" onClick={() => {
-            const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+            const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
             mechanics.push({ name: '', hrs: '' });
-            onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+            onChange({ ...workOrder, mechanics });
           }}>+ Agregar mecánico</button>
         </div>
         <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
@@ -628,7 +589,13 @@ function calcularTotalWO(order: any) {
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
     return sum + (isNaN(qty) || isNaN(cost) ? 0 : qty * cost);
   }, 0) || 0;
-  const laborHrs = Number(order.totalHrs);
+  // Suma de horas de todos los mecánicos
+  let laborHrs = 0;
+  if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
+    laborHrs = order.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0);
+  } else {
+    laborHrs = Number(order.totalHrs) || 0;
+  }
   const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
   const subtotal = partsTotal + laborTotal;
   let extra = 0;
