@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import HourmeterModal from './HourmeterModal';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -170,6 +171,7 @@ const WorkOrdersTable: React.FC = () => {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
+  const [showHourmeter, setShowHourmeter] = useState(false);
 
   // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
@@ -770,6 +772,13 @@ const WorkOrdersTable: React.FC = () => {
           >
             Delete
           </button>
+          <button
+            className="wo-btn"
+            style={secondaryBtn}
+            onClick={() => setShowHourmeter(true)}
+          >
+            Hourmeter
+          </button>
         </div>
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
@@ -1036,7 +1045,11 @@ const WorkOrdersTable: React.FC = () => {
             </React.Fragment>
           ))}
           <td>{order.totalHrs}</td>
-          <td>{formatCurrency(order.totalLabAndParts)}</td>
+          <td>
+              {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
+                ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                : '$0.00'}
+          </td>
           <td>{order.status}</td>
         </tr>
         {expandedRow === order.id && hasMoreParts && (
@@ -1102,6 +1115,12 @@ const WorkOrdersTable: React.FC = () => {
     <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
   </div>
 )}
+      <HourmeterModal
+  show={showHourmeter}
+  onClose={() => setShowHourmeter(false)}
+  workOrders={workOrders}
+mechanics={Array.from(new Set(workOrders.map(o => o.mechanic).filter(Boolean)))}  selectedWeek={selectedWeek}
+/>
     </>
   );
 };
