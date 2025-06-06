@@ -479,11 +479,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   value="5"
                   checked={extraOptions.includes('5')}
                   onChange={e => {
-                    setExtraOptions(prev =>
-                      e.target.checked
+                    setExtraOptions(prev => {
+                      const newOptions = e.target.checked
                         ? [...prev, '5']
-                        : prev.filter(opt => opt !== '5')
-                    );
+                        : prev.filter(opt => opt !== '5');
+                      onChange({ ...workOrder, extraOptions: newOptions, totalLabAndParts: '' });
+                      return newOptions;
+                    });
                   }}
                 />
                 +5% General
@@ -548,7 +550,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 onChange={e => {
                   const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
                   mechanics[idx].hrs = e.target.value;
-                  onChange({ ...workOrder, mechanics });
+                  onChange({ ...workOrder, mechanics, totalLabAndParts: '' });
                 }}
                 style={{ flex: 1 }}
                 required
