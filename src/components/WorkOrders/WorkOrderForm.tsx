@@ -259,6 +259,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </datalist>
           </label>
           <label style={{ flex: '1 1 120px' }}>
+            Fecha<span style={{ color: 'red' }}>*</span>
+            <input
+              type="date"
+              name="date"
+              value={workOrder.date || ''}
+              onChange={onChange}
+              required
+              style={{ width: '100%', marginTop: 4 }}
+            />
+          </label>
+          <label style={{ flex: '1 1 120px' }}>
             Trailer
             {(() => {
               const trailerOpts = getTrailerOptions(workOrder.billToCo);
