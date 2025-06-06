@@ -34,7 +34,8 @@ const columns = [
   'WO OUTPUTS',
   'ON HAND',
   'IMAGE LINK',
-  'PRICE (USD)'
+  'PRICE (USD)',
+  'INVOICE LINK'
 ];
 
 const emptyPart: PartType = {

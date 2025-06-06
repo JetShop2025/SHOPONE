@@ -443,18 +443,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         )}
         <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-          <label style={{ flex: 1 }}>
-                      <input
-              type="text"
-              name="totalHrs"
-              placeholder="Total HRS*"
-              value={workOrder.totalHrs}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
-            />
-          </label>
-          <label style={{ flex: 1 }}>
-            Status<span style={{ color: 'red' }}>*</span>
+         <label style={{ flex: 1 }}>
+             Status<span style={{ color: 'red' }}>*</span>
             <select
               name="status"
               value={workOrder.status}
@@ -570,6 +560,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <button type="button" onClick={onCancel} style={{ background: '#fff', color: '#1976d2', border: '1px solid #1976d2', padding: '8px 20px', borderRadius: 4 }}>Cancel</button>
         </div>
       </form>
+      <div style={{ marginTop: 16 }}>
+          <label style={{ fontWeight: 700, color: '#1976d2' }}>
+            Total LAB & PARTS:&nbsp;
+            <input
+              type="text"
+              value={calcularTotalWO(workOrder).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              readOnly
+              style={{ fontWeight: 700, color: '#1976d2', background: '#f5faff', border: 'none', fontSize: 18 }}
+            />
+          </label>
+        </div>
     </div>
   );
 };
@@ -593,10 +594,8 @@ function calcularTotalWO(order: any) {
   let laborHrs = 0;
   if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
     laborHrs = order.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0);
-  } else {
-    laborHrs = Number(order.totalHrs) || 0;
   }
-  const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
+  const laborTotal = laborHrs > 0 ? laborHrs * 60 : 0;
   const subtotal = partsTotal + laborTotal;
   let extra = 0;
   (order.extraOptions || []).forEach((opt: string) => {
