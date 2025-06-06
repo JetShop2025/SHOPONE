@@ -565,8 +565,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             Total LAB & PARTS:&nbsp;
             <input
               type="text"
-              value={calcularTotalWO(workOrder).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-              readOnly
+              name="totalLabAndParts"
+              value={workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
+                ? Number(workOrder.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                : calcularTotalWO(workOrder).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              onChange={e => {
+                // Permite edición manual y actualiza el estado
+                onChange({ ...workOrder, totalLabAndParts: e.target.value });
+              }}
               style={{ fontWeight: 700, color: '#1976d2', background: '#f5faff', border: 'none', fontSize: 18 }}
             />
           </label>

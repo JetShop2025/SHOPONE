@@ -537,7 +537,7 @@ const InventoryTable: React.FC = () => {
                         height={18}
                         fontSize={8}
                         margin={0}
-                        displayValue={false} // Oculta el texto debajo del código de barras
+                        displayValue={false}
                         background="#fff"
                       />
                     </div>
@@ -569,7 +569,7 @@ const InventoryTable: React.FC = () => {
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
                   {item.precio !== undefined && item.precio !== '' ? `$${item.precio}` : ''}
                 </td>
-                <td>
+                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
                   {item.invoiceLink ? (
                     <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 12 }}>
                       Invoice
