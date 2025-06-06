@@ -29,9 +29,16 @@ router.get('/', async (req, res) => {
       } catch (e) {
         parts = [];
       }
+      let mechanics = [];
+      try {
+        mechanics = JSON.parse(order.mechanics || '[]');
+      } catch (e) {
+        mechanics = [];
+      }
       return {
         ...order,
-        parts
+        parts,
+        mechanics
       };
     });
     res.json(parsedResults);
@@ -102,11 +109,11 @@ router.post('/', async (req, res) => {
 
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, parts, totalHrs, totalLabAndParts, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
-      billToCo, trailer, mechanic, date, description,
+      billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status
     ];
     const [result] = await db.query(query, values);
@@ -181,7 +188,7 @@ router.post('/', async (req, res) => {
     let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
-    const tableWidth = 480;
+    const tableWidth = 580; // Aumenta el ancho para una columna más
     const leftMargin = (595.28 - tableWidth) / 2;
     const col = [
       leftMargin,                // inicio tabla
@@ -190,25 +197,26 @@ router.post('/', async (req, res) => {
       leftMargin + 280,          // Description
       leftMargin + 330,          // Qty
       leftMargin + 400,          // Unit
-      leftMargin + 480           // Total (fin tabla)
+      leftMargin + 480,          // Total
+      leftMargin + 580           // Invoice Link (fin tabla)
     ];
 
     // Encabezado de tabla de partes
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-    doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.rect(col[0], tableTop, col[7] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
     doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
     doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
     doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
     doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+    doc.text('Invoice Link', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
 
     let y = tableTop + 22;
 
-    // SOLO dibuja filas si hay partes
     if (partsArr.length > 0) {
       partsArr.forEach((p, i) => {
-        doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
+        doc.rect(col[0], y, col[7] - col[0], 18).strokeColor('#e3f2fd').stroke();
         doc.font('Courier').fontSize(10).fillColor('#222');
         doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
         doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
@@ -226,36 +234,55 @@ router.post('/', async (req, res) => {
             : '$0.00',
           col[5], y + 4, { width: col[6] - col[5], align: 'center' }
         );
+        // Link clickeable
+        if (p.invoiceLink) {
+          doc.font('Courier').fillColor('#1976d2').text(
+            'Ver Invoice',
+            col[6], y + 4, { width: col[7] - col[6], align: 'center', underline: true }
+          );
+          // Calcula el ancho y alto del texto para el área clickeable
+          const linkText = 'Ver Invoice';
+          const textWidth = doc.widthOfString(linkText, { font: 'Courier', size: 10 });
+          const textHeight = doc.currentLineHeight();
+          // Centra el área del link en la celda
+          const linkX = col[6] + ((col[7] - col[6]) - textWidth) / 2;
+          doc.link(linkX, y + 4, textWidth, textHeight, p.invoiceLink);
+        } else {
+          doc.font('Courier').fillColor('#888').text(
+            '', // vacío si no hay link
+            col[6], y + 4, { width: col[7] - col[6], align: 'center' }
+          );
+        }
         y += 18;
       });
     }
 
     // Línea final de tabla
-    doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
+    doc.rect(col[0], y, col[7] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
 
     // Subtotales
     doc.text(
       ` ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+      col[0], y, { width: col[7] - col[0], align: 'right' }
     );
     y += 16;
     doc.text(
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+      col[0], y, { width: col[7] - col[0], align: 'right' }
     );
     // SOLO muestra extras supplies (NO el 5%)
     extraLabels.forEach((label, idx) => {
       y += 16;
       doc.text(
         `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-        col[0], y, { width: col[6] - col[0], align: 'right' }
+        col[0], y, { width: col[7] - col[0], align: 'right' }
       );
     });
     // TOTAL FINAL
     y += 24;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+      col[0], y, { width: col[7] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS
@@ -395,10 +422,10 @@ router.put('/:id', async (req, res) => {
     // 4. Actualiza la orden en la base de datos
     await db.query(
       `UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
        WHERE id = ?`,
       [
-        billToCo, trailer, mechanic, date, description,
+        billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
         JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status, id
       ]
     );
@@ -460,32 +487,34 @@ router.put('/:id', async (req, res) => {
     let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
-    const tableWidth = 480;
+    const tableWidth = 580; // Aumenta el ancho para una columna más
     const leftMargin = (595.28 - tableWidth) / 2;
     const col = [
-      leftMargin,
-      leftMargin + 40,
-      leftMargin + 160,
-      leftMargin + 280,
-      leftMargin + 330,
-      leftMargin + 400,
-      leftMargin + 480
+      leftMargin,                // inicio tabla
+      leftMargin + 40,           // No.
+      leftMargin + 160,          // SKU
+      leftMargin + 280,          // Description
+      leftMargin + 330,          // Qty
+      leftMargin + 400,          // Unit
+      leftMargin + 480,          // Total
+      leftMargin + 580           // Invoice Link (fin tabla)
     ];
 
     // Encabezado de tabla de partes
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-    doc.rect(col[0], tableTop, col[6] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.rect(col[0], tableTop, col[7] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
     doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
     doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
     doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
     doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+    doc.text('Invoice Link', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
 
     let y = tableTop + 22;
     if (partsArr.length > 0) {
       partsArr.forEach((p, i) => {
-        doc.rect(col[0], y, col[6] - col[0], 18).strokeColor('#e3f2fd').stroke();
+        doc.rect(col[0], y, col[7] - col[0], 18).strokeColor('#e3f2fd').stroke();
         doc.font('Courier').fontSize(10).fillColor('#222');
         doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
         doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
@@ -503,33 +532,52 @@ router.put('/:id', async (req, res) => {
             : '$0.00',
           col[5], y + 4, { width: col[6] - col[5], align: 'center' }
         );
+        // Link clickeable
+        if (p.invoiceLink) {
+          doc.font('Courier').fillColor('#1976d2').text(
+            'Ver Invoice',
+            col[6], y + 4, { width: col[7] - col[6], align: 'center', underline: true }
+          );
+          // Calcula el ancho y alto del texto para el área clickeable
+          const linkText = 'Ver Invoice';
+          const textWidth = doc.widthOfString(linkText, { font: 'Courier', size: 10 });
+          const textHeight = doc.currentLineHeight();
+          // Centra el área del link en la celda
+          const linkX = col[6] + ((col[7] - col[6]) - textWidth) / 2;
+          doc.link(linkX, y + 4, textWidth, textHeight, p.invoiceLink);
+        } else {
+          doc.font('Courier').fillColor('#888').text(
+            '', // vacío si no hay link
+            col[6], y + 4, { width: col[7] - col[6], align: 'center' }
+          );
+        }
         y += 18;
       });
     }
 
-    doc.rect(col[0], y, col[6] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
+    doc.rect(col[0], y, col[7] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+      col[0], y, { width: col[7] - col[0], align: 'right' }
     );
     y += 16;
     doc.text(
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+      col[0], y, { width: col[7] - col[0], align: 'right' }
     );
     // SOLO muestra extras supplies (NO el 5%)
     extraLabels.forEach((label, idx) => {
       y += 16;
       doc.text(
         `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-        col[0], y, { width: col[6] - col[0], align: 'right' }
+        col[0], y, { width: col[7] - col[0], align: 'right' }
       );
     });
     // TOTAL FINAL
     y += 24;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[6] - col[0], align: 'right' }
+      col[0], y, { width: col[7] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS
@@ -619,3 +667,5 @@ router.get('/audit-log', async (req, res) => {
 router.use('/pdfs', express.static(path.join(__dirname, '..', 'pdfs')));
 
 module.exports = router;
+
+

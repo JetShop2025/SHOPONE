@@ -80,6 +80,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         onPartChange(index, 'sku', found.sku);
         onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
+        onPartChange(index, 'invoiceLink', found.invoiceLink || ''); // <--- AGREGA ESTA LÍNEA
         // Solo actualiza el costo si está vacío
         if (!workOrder.parts[index]?.cost) {
           const qty = workOrder.parts[index]?.qty || 1;
@@ -559,6 +560,49 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </label>
             </div>
           </label>
+        </div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <strong>Mecánicos y horas</strong>
+          {(workOrder.mechanics && workOrder.mechanics.length > 0
+            ? workOrder.mechanics
+            : [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }]
+          ).map((m: any, idx: number) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+              <input
+                type="text"
+                placeholder="Mecánico"
+                value={m.name}
+                onChange={e => {
+                  const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+                  mechanics[idx].name = e.target.value;
+                  // Limpia mechanic/totalHrs legacy si se usa mechanics
+                  onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+                }}
+                style={{ flex: 2 }}
+              />
+              <input
+                type="number"
+                placeholder="Horas"
+                value={m.hrs}
+                onChange={e => {
+                  const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+                  mechanics[idx].hrs = e.target.value;
+                  onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+                }}
+                style={{ flex: 1 }}
+              />
+              <button type="button" onClick={() => {
+                const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+                mechanics.splice(idx, 1);
+                onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+              }}>🗑️</button>
+            </div>
+          ))}
+          <button type="button" onClick={() => {
+            const mechanics = [...(workOrder.mechanics || [{ name: workOrder.mechanic || '', hrs: workOrder.totalHrs || '' }])];
+            mechanics.push({ name: '', hrs: '' });
+            onChange({ ...workOrder, mechanics, mechanic: '', totalHrs: '' });
+          }}>+ Agregar mecánico</button>
         </div>
         <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
           <button type="submit" style={{ background: '#1976d2', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: 4 }}>Save</button>

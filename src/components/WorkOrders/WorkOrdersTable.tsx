@@ -1016,7 +1016,11 @@ const WorkOrdersTable: React.FC = () => {
           </td>
           <td>{order.billToCo}</td>
           <td>{order.trailer}</td>
-          <td>{order.mechanic}</td>
+          <td>
+  {Array.isArray(order.mechanics) && order.mechanics.length > 0
+    ? order.mechanics.map((m: any) => m.name).join(', ')
+    : order.mechanic}
+</td>
           <td>{order.date?.slice(0, 10)}</td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
           {[0,1,2,3,4].map(i => (

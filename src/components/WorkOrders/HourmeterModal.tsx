@@ -27,14 +27,51 @@ const HourmeterModal: React.FC<{
     return inWeek && matchesMechanic;
   });
 
-  let totalHrs = 0, workOrdersCount = 0, totalLabAndParts = 0, deadHours = 0;
+  // 1. Construye un objeto para acumular por mecánico
+  const mechanicStats: {
+    [mechanic: string]: {
+      totalHrs: number,
+      workOrders: number,
+      totalLabAndParts: number,
+      deadHours: number
+    }
+  } = {};
+
+  // 2. Recorre las órdenes filtradas
   filtered.forEach(order => {
-    const hrs = parseFloat(order.totalHrs) || 0;
-    const labAndParts = Number(order.totalLabAndParts) || 0;
-    totalHrs += hrs;
-    workOrdersCount += 1;
-    totalLabAndParts += labAndParts;
-    if (labAndParts === 0 && hrs > 0) deadHours += hrs;
+    // Si la orden tiene mechanics detallados
+    if (Array.isArray(order.mechanics)) {
+      order.mechanics.forEach((m: { name: string, hrs: number }) => {
+        if (!mechanicStats[m.name]) {
+          mechanicStats[m.name] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0 };
+        }
+        mechanicStats[m.name].totalHrs += m.hrs || 0;
+        mechanicStats[m.name].workOrders += 1;
+        mechanicStats[m.name].totalLabAndParts += Number(order.totalLabAndParts) || 0;
+        if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
+          mechanicStats[m.name].deadHours += m.hrs || 0;
+        }
+      });
+    } else {
+      // Soporte retrocompatible para mechanic como string o arreglo simple
+      let mechanics: string[] = [];
+      if (Array.isArray(order.mechanic)) {
+        mechanics = order.mechanic;
+      } else if (typeof order.mechanic === 'string') {
+        mechanics = order.mechanic.split(',').map((m: string) => m.trim()).filter(Boolean);
+      }
+      const hrs = parseFloat(order.totalHrs) || 0;
+      const labAndParts = Number(order.totalLabAndParts) || 0;
+      mechanics.forEach((mec: string) => {
+        if (!mechanicStats[mec]) {
+          mechanicStats[mec] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0 };
+        }
+        mechanicStats[mec].totalHrs += hrs;
+        mechanicStats[mec].workOrders += 1;
+        mechanicStats[mec].totalLabAndParts += labAndParts;
+        if (labAndParts === 0 && hrs > 0) mechanicStats[mec].deadHours += hrs;
+      });
+    }
   });
 
   if (!show) return null;
@@ -96,10 +133,14 @@ const HourmeterModal: React.FC<{
             <tbody>
               <tr>
                 <td>{mechanic || 'Todos'}</td>
-                <td>{workOrdersCount}</td>
-                <td>{totalHrs.toFixed(2)}</td>
-                <td>{totalLabAndParts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                <td>{deadHours.toFixed(2)}</td>
+                <td>{filtered.length}</td>
+                <td>{filtered.reduce((sum, order) => sum + (parseFloat(order.totalHrs) || 0), 0).toFixed(2)}</td>
+                <td>{filtered.reduce((sum, order) => sum + (Number(order.totalLabAndParts) || 0), 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td>{filtered.reduce((sum, order) => {
+                  const hrs = parseFloat(order.totalHrs) || 0;
+                  const labAndParts = Number(order.totalLabAndParts) || 0;
+                  return sum + (labAndParts === 0 && hrs > 0 ? hrs : 0);
+                }, 0).toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
