@@ -15,6 +15,7 @@ type PartType = {
   precio?: string;
   cantidad?: string;
   onHand?: string;
+  invoiceLink?: string;
   [key: string]: string | undefined;
 };
 
@@ -351,6 +352,13 @@ const InventoryTable: React.FC = () => {
                 style={inputStyle}
               />
               <input
+                name="invoiceLink"
+                value={newPart.invoiceLink || ''}
+                onChange={handleChange}
+                placeholder="Invoice Link (OneDrive, etc.)"
+                style={inputStyle}
+              />
+              <input
                 type="password"
                 placeholder="Password"
                 value={addPassword}
@@ -463,6 +471,13 @@ const InventoryTable: React.FC = () => {
                 required
                 style={inputStyle}
               />
+              <input
+                name="invoiceLink"
+                value={editPart.invoiceLink || ''}
+                onChange={handleEditChange}
+                placeholder="Invoice Link (OneDrive, etc.)"
+                style={inputStyle}
+              />
               {editError && <span style={{ color: 'red', width: '100%' }}>{editError}</span>}
               <div style={{ flexBasis: '100%', height: 0 }} />
               <button type="submit" style={primaryBtn}>Save Changes</button>
@@ -552,6 +567,13 @@ const InventoryTable: React.FC = () => {
                 </td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
                   {item.precio !== undefined && item.precio !== '' ? `$${item.precio}` : ''}
+                </td>
+                <td>
+                  {item.invoiceLink ? (
+                    <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 12 }}>
+                      Invoice
+                    </a>
+                  ) : ''}
                 </td>
               </tr>
             ))}
