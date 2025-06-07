@@ -27,7 +27,7 @@ router.post('/', async (req, res) => {
 
   try {
     await db.query(
-      `INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, onHand, imagen, precio, usuario)
+      `INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, onHand, imagen, precio, usuario, invoiceLink)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [sku, barCodes, category, part, provider, brand, um, area, Number(onHand) || 0, imagen || '', Number(precio) || 0, usuario]
     );
@@ -154,11 +154,11 @@ router.put('/:sku', upload.single('imagen'), async (req, res) => {
     await db.query(
       `UPDATE inventory SET 
         barCodes = ?, category = ?, part = ?, provider = ?, brand = ?, um = ?, area = ?, 
-        receive = ?, salidasWo = ?, onHand = ?, precio = ?, imagen = ?
+        receive = ?, salidasWo = ?, onHand = ?, precio = ?, imagen = ?, invoiceLink = ?
        WHERE sku = ?`,
       [
         fields.barCodes, fields.category, fields.part, fields.provider, fields.brand, fields.um, fields.area,
-        fields.receive, fields.salidasWo, fields.onHand, fields.precio, imagenPath, sku
+        fields.receive, fields.salidasWo, fields.onHand, fields.precio, imagenPath, fields.invoiceLink || '', sku
       ]
     );
     // 3. Guarda en detalles el antes y después
