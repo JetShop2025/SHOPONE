@@ -4,11 +4,7 @@ const app = express();
 
 // ¡Pon esto antes de cualquier app.use de rutas!
 app.use(cors({
-  origin: [
-    'https://shopone-1.onrender.com', //FRONTEND
-    'https://shopone.onrender.com', //BACKEND
-    'http://localhost:3000' //DESARROLLO LOCAL
-  ],
+  origin: 'https://shopone-1.onrender.com', // tu frontend
   credentials: true
 }));
 
