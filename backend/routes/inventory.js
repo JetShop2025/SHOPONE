@@ -28,8 +28,8 @@ router.post('/', async (req, res) => {
   try {
     await db.query(
       `INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, onHand, imagen, precio, usuario, invoiceLink)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sku, barCodes, category, part, provider, brand, um, area, Number(onHand) || 0, imagen || '', Number(precio) || 0, usuario]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [sku, barCodes, category, part, provider, brand, um, area, Number(onHand) || 0, imagen || '', Number(precio) || 0, usuario, req.body.invoiceLink || '']
     );
     await logAccion(usuario, 'CREATE', 'inventory', sku, JSON.stringify(req.body));
     res.sendStatus(200);
