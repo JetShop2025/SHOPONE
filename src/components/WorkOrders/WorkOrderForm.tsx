@@ -113,8 +113,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Suma de partes
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
-    const val = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(val) ? 0 : val);
+    const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(cost) ? 0 : cost);
   }, 0) || 0;
 
   // Labor
@@ -123,27 +123,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Subtotal
   const subtotal = partsTotal + laborTotal;
-
-  // Extras
   let extra = 0;
-  let extraLabels: string[] = [];
   (extraOptions || []).forEach(opt => {
-    if (opt === '5') {
-      extra += subtotal * 0.05;
-      extraLabels.push('5% Extra');
-    } else if (opt === '15shop') {
-      extra += subtotal * 0.15;
-      extraLabels.push('15% Shop Miscellaneous');
-    } else if (opt === '15weld') {
-      extra += subtotal * 0.15;
-      extraLabels.push('15% Welding Supplies');
-    }
+    if (opt === '5') extra += subtotal * 0.05;
+    if (opt === '15shop') extra += subtotal * 0.15;
+    if (opt === '15weld') extra += subtotal * 0.15;
   });
-
-  // **Agrega esta línea**
-  const totalLabAndParts = workOrder.totalLabAndParts
-  ? Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
-  : subtotal + extra;
+  const totalLabAndParts = subtotal + extra;
 
   useEffect(() => {
     if (!manualTotalEdit) {
@@ -579,11 +565,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <input
               type="text"
               name="totalLabAndParts"
-              value={workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
-                ? Number(workOrder.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                : calcularTotalWO(workOrder).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              value={
+                workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
+                  ? Number(workOrder.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                  : totalLabAndParts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              }
               onChange={e => {
-                // Permite edición manual y actualiza el estado
                 onChange({ ...workOrder, totalLabAndParts: e.target.value });
               }}
               style={{ fontWeight: 700, color: '#1976d2', background: '#f5faff', border: 'none', fontSize: 18 }}
@@ -603,11 +590,10 @@ function calcularTotalWO(order: any) {
   ) {
     return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
-  // Si no, calcula automático
+  // Suma solo los cost (ya es total por parte)
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
-    const qty = Number(part.qty);
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(qty) || isNaN(cost) ? 0 : qty * cost);
+    return sum + (isNaN(cost) ? 0 : cost);
   }, 0) || 0;
   // Suma de horas de todos los mecánicos
   let laborHrs = 0;
