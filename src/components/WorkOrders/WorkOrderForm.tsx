@@ -118,8 +118,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   }, 0) || 0;
 
   // Labor
-  const laborHrs = Number(workOrder.totalHrs);
-  const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
+  const laborHrs = Array.isArray(workOrder.mechanics)
+  ? workOrder.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0)
+  : 0;
+  const laborTotal = laborHrs > 0 ? laborHrs * 60 : 0;
 
   // Subtotal
   const subtotal = partsTotal + laborTotal;
@@ -137,7 +139,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       onChange({ ...workOrder, totalLabAndParts: total });
     }
     // eslint-disable-next-line
-  }, [workOrder.parts, workOrder.totalHrs, workOrder.extraOptions]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.extraOptions]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any) => {
     if (e && e.target) {
@@ -566,12 +568,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="text"
               name="totalLabAndParts"
               value={
-                workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
-                  ? Number(workOrder.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                manualTotalEdit
+                  ? workOrder.totalLabAndParts
                   : totalLabAndParts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
               }
               onChange={e => {
+                setManualTotalEdit(true);
                 onChange({ ...workOrder, totalLabAndParts: e.target.value });
+              }}
+              onBlur={() => {
+                if (
+                  workOrder.totalLabAndParts === '' ||
+                  workOrder.totalLabAndParts === undefined ||
+                  workOrder.totalLabAndParts === null
+                ) {
+                  setManualTotalEdit(false);
+                }
               }}
               style={{ fontWeight: 700, color: '#1976d2', background: '#f5faff', border: 'none', fontSize: 18 }}
             />
@@ -596,10 +608,9 @@ function calcularTotalWO(order: any) {
     return sum + (isNaN(cost) ? 0 : cost);
   }, 0) || 0;
   // Suma de horas de todos los mecánicos
-  let laborHrs = 0;
-  if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
-    laborHrs = order.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0);
-  }
+  const laborHrs = Array.isArray(order.mechanics)
+  ? order.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0)
+  : 0;
   const laborTotal = laborHrs > 0 ? laborHrs * 60 : 0;
   const subtotal = partsTotal + laborTotal;
   let extra = 0;
