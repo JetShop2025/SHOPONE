@@ -112,6 +112,7 @@ router.post('/', async (req, res) => {
       INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+    const mechanicsArr = Array.isArray(req.body.mechanics) ? req.body.mechanics : [];
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status
@@ -420,6 +421,7 @@ router.put('/:id', async (req, res) => {
     }
 
     // 4. Actualiza la orden en la base de datos
+    const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
     await db.query(
       `UPDATE work_orders SET 
         billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
