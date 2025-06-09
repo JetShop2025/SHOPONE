@@ -511,31 +511,83 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </div>
         <div style={{ flex: 1, minWidth: 220 }}>
           <strong>Mecánicos y horas<span style={{ color: 'red' }}>*</span></strong>
-          {(workOrder.mechanics && workOrder.mechanics.length > 0
+          {(Array.isArray(workOrder.mechanics) && workOrder.mechanics.length > 0
             ? workOrder.mechanics
             : [{ name: '', hrs: '' }]
-          ).map((m: any, idx: number) => (
-            <div key={idx}>
+          ).map((m: any, idx: number, arr: any[]) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <input
                 type="text"
-                value={m.name}
+                value={m?.name || ''}
                 onChange={e => {
-                  const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
-                  mechanics[idx].name = e.target.value;
+                  const mechanics = Array.isArray(workOrder.mechanics) && workOrder.mechanics.length > 0
+                    ? workOrder.mechanics.map((me: any) => ({ ...me }))
+                    : [{ name: '', hrs: '' }];
+                  mechanics[idx] = { ...mechanics[idx], name: e.target.value };
                   onChange({ ...workOrder, mechanics });
                 }}
+                placeholder="Nombre del mecánico"
+                style={{ flex: 2 }}
               />
               <input
                 type="number"
-                value={m.hrs}
+                value={m?.hrs || ''}
                 onChange={e => {
-                  const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
-                  mechanics[idx].hrs = e.target.value;
+                  const mechanics = Array.isArray(workOrder.mechanics) && workOrder.mechanics.length > 0
+                    ? workOrder.mechanics.map((me: any) => ({ ...me }))
+                    : [{ name: '', hrs: '' }];
+                  mechanics[idx] = { ...mechanics[idx], hrs: e.target.value };
                   onChange({ ...workOrder, mechanics });
                 }}
+                placeholder="Horas"
+                min={0}
+                step={0.1}
+                style={{ flex: 1 }}
               />
+              {arr.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const mechanics = workOrder.mechanics.filter((_: any, i: number) => i !== idx);
+                    onChange({ ...workOrder, mechanics });
+                  }}
+                  style={{
+                    background: '#fff',
+                    color: '#d32f2f',
+                    border: '1px solid #d32f2f',
+                    borderRadius: 4,
+                    padding: '2px 8px',
+                    cursor: 'pointer',
+                    fontWeight: 700
+                  }}
+                  title="Eliminar mecánico"
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              const mechanics = Array.isArray(workOrder.mechanics) && workOrder.mechanics.length > 0
+                ? [...workOrder.mechanics, { name: '', hrs: '' }]
+                : [{ name: '', hrs: '' }, { name: '', hrs: '' }];
+              onChange({ ...workOrder, mechanics });
+            }}
+            style={{
+              background: '#fff',
+              color: '#1976d2',
+              border: '1px solid #1976d2',
+              borderRadius: 4,
+              padding: '4px 12px',
+              marginTop: 4,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            + Agregar mecánico
+          </button>
         </div>
         <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
           <button type="submit" style={{ background: '#1976d2', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: 4 }}>Save</button>
