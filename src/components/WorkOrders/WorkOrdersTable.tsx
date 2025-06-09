@@ -478,8 +478,12 @@ const WorkOrdersTable: React.FC = () => {
         setEditWorkOrder({
           ...found,
           date: found.date ? found.date.slice(0, 10) : '',
-          parts: Array.isArray(found.parts) ? found.parts : []
+          parts: Array.isArray(found.parts) ? found.parts : [],
+          mechanics: Array.isArray(found.mechanics) ? found.mechanics : [],
+          // Si tu backend guarda extraOptions como array, úsalo directo
+          extraOptions: Array.isArray(found.extraOptions) ? found.extraOptions : [],
         });
+        setExtraOptions(Array.isArray(found.extraOptions) ? found.extraOptions : []);
         setShowEditForm(true);
       }
     } else if (pwd !== null) {
@@ -988,7 +992,7 @@ const WorkOrdersTable: React.FC = () => {
     return (
       <React.Fragment key={order.id}>
         <tr
-          className={`${rowClass} ${selectedRow === order.id ? 'wo-row-selected' : ''}`}
+          className={rowClass + (selectedRow === order.id ? ' wo-row-selected' : '')}
           style={{ fontWeight: 600, cursor: 'pointer' }}
           onClick={() => setSelectedRow(order.id)}
         >
@@ -1017,10 +1021,10 @@ const WorkOrdersTable: React.FC = () => {
           <td>{order.billToCo}</td>
           <td>{order.trailer}</td>
           <td>
-  {Array.isArray(order.mechanics) && order.mechanics.length > 0
-    ? order.mechanics.map((m: any) => m.name).join(', ')
-    : order.mechanic}
-</td>
+            {Array.isArray(order.mechanics) && order.mechanics.length > 0
+              ? order.mechanics.map((m: any) => m.name).join(', ')
+              : order.mechanic}
+          </td>
           <td>{order.date?.slice(0, 10)}</td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
           {[0,1,2,3,4].map(i => (
@@ -1050,9 +1054,9 @@ const WorkOrdersTable: React.FC = () => {
           ))}
           <td>{order.totalHrs}</td>
           <td>
-              {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
-                ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                : '$0.00'}
+            {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
+              ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              : '$0.00'}
           </td>
           <td>{order.status}</td>
         </tr>

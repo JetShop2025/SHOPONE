@@ -467,13 +467,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   value="5"
                   checked={extraOptions.includes('5')}
                   onChange={e => {
-                    setExtraOptions(prev => {
-                      const newOptions = e.target.checked
+                    setExtraOptions(prev =>
+                      e.target.checked
                         ? [...prev, '5']
-                        : prev.filter(opt => opt !== '5');
-                      onChange({ ...workOrder, extraOptions: newOptions, totalLabAndParts: '' });
-                      return newOptions;
-                    });
+                        : prev.filter(opt => opt !== '5')
+                    );
                   }}
                 />
                 +5% General
@@ -517,44 +515,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             ? workOrder.mechanics
             : [{ name: '', hrs: '' }]
           ).map((m: any, idx: number) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+            <div key={idx}>
               <input
                 type="text"
-                placeholder="Mecánico"
                 value={m.name}
                 onChange={e => {
                   const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
                   mechanics[idx].name = e.target.value;
                   onChange({ ...workOrder, mechanics });
                 }}
-                style={{ flex: 2 }}
-                required
               />
               <input
                 type="number"
-                placeholder="Horas"
                 value={m.hrs}
-                min={0}
                 onChange={e => {
                   const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
                   mechanics[idx].hrs = e.target.value;
-                  onChange({ ...workOrder, mechanics, totalLabAndParts: '' });
+                  onChange({ ...workOrder, mechanics });
                 }}
-                style={{ flex: 1 }}
-                required
               />
-              <button type="button" onClick={() => {
-                const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
-                mechanics.splice(idx, 1);
-                onChange({ ...workOrder, mechanics });
-              }}>🗑️</button>
             </div>
           ))}
-          <button type="button" onClick={() => {
-            const mechanics = [...(workOrder.mechanics || [{ name: '', hrs: '' }])];
-            mechanics.push({ name: '', hrs: '' });
-            onChange({ ...workOrder, mechanics });
-          }}>+ Agregar mecánico</button>
         </div>
         <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
           <button type="submit" style={{ background: '#1976d2', color: '#fff', padding: '8px 20px', border: 'none', borderRadius: 4 }}>Save</button>
