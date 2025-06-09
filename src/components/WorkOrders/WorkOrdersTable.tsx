@@ -100,21 +100,32 @@ function calcularTotalWO(order: any) {
   ) {
     return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
-  // Si no, calcula automático
+  // Suma el total de partes
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
     const qty = Number(part.qty);
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
     return sum + (isNaN(qty) || isNaN(cost) ? 0 : qty * cost);
   }, 0) || 0;
-  const laborHrs = Number(order.totalHrs);
-  const laborTotal = !isNaN(laborHrs) && laborHrs > 0 ? laborHrs * 60 : 0;
+
+  // Suma las horas de todos los mecánicos
+  let laborHrs = 0;
+  if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
+    laborHrs = order.mechanics.reduce((sum: number, m: any) => sum + (parseFloat(m.hrs) || 0), 0);
+  } else if (order.totalHrs) {
+    laborHrs = parseFloat(order.totalHrs) || 0;
+  }
+  const laborTotal = laborHrs * 60;
+
   const subtotal = partsTotal + laborTotal;
+
+  // Suma extras
   let extra = 0;
   (order.extraOptions || []).forEach((opt: string) => {
     if (opt === '5') extra += subtotal * 0.05;
     if (opt === '15shop') extra += subtotal * 0.15;
     if (opt === '15weld') extra += subtotal * 0.15;
   });
+
   return subtotal + extra;
 }
 
