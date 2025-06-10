@@ -190,7 +190,10 @@ router.post('/', async (req, res) => {
     const descText = description || '';
 
     // --- DESCRIPCIÓN BIEN COLOCADA ---
-    let descY = 180;
+    let descY = 200; // Ajusta según tu diseño
+    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2'); // Línea horizontal
+
+    descY += 10;
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Descripción:', 50, descY);
     doc.font('Helvetica').fontSize(11).fillColor('#222');
@@ -199,69 +202,71 @@ router.post('/', async (req, res) => {
     let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
-    const tableWidth = 580; // Aumenta el ancho para una columna más
+    const tableWidth = 620; // Ajusta el ancho total para una columna más
     const leftMargin = (595.28 - tableWidth) / 2;
+    // Define columnas
     const col = [
       leftMargin,                // inicio tabla
       leftMargin + 40,           // No.
-      leftMargin + 160,          // SKU
-      leftMargin + 280,          // Description
-      leftMargin + 330,          // Qty
-      leftMargin + 400,          // Unit
-      leftMargin + 480,          // Total
-      leftMargin + 580           // Invoice Link (fin tabla)
+      leftMargin + 120,          // SKU
+      leftMargin + 260,          // DESCRIPTION
+      leftMargin + 320,          // U/M
+      leftMargin + 370,          // QTY
+      leftMargin + 420,          // COSTO UNITARIO
+      leftMargin + 500,          // TOTAL
+      leftMargin + 620           // INVOICE LINK
     ];
 
-    // Encabezado de tabla de partes
+    // Encabezado de tabla
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-    doc.rect(col[0], tableTop, col[7] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.rect(col[0], tableTop, col[8] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
-    doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
-    doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
-    doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
-    doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
-    doc.text('Invoice Link', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
+    doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
+    doc.text('U/M', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
+    doc.text('QTY', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
+    doc.text('COSTO UNITARIO', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+    doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
+    doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
 
     let y = tableTop + 22;
 
     if (partsArr.length > 0) {
       partsArr.forEach((p, i) => {
-        doc.rect(col[0], y, col[7] - col[0], 18).strokeColor('#e3f2fd').stroke();
+        doc.rect(col[0], y, col[8] - col[0], 18).strokeColor('#e3f2fd').stroke();
         doc.font('Courier').fontSize(10).fillColor('#222');
         doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
         doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
         doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
-        doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
+        doc.text(p.um || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
+        doc.text(p.qty || '-', col[4], y + 4, { width: col[5] - col[4], align: 'center' }); // QTY
         doc.text(
           p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
             ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
-          col[4], y + 4, { width: col[5] - col[4], align: 'center' }
+          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
         );
         doc.text(
           p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
             ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
-          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
+          col[6], y + 4, { width: col[7] - col[6], align: 'center' }
         );
-        // Link clickeable
+        // INVOICE LINK O NÚMERO
         if (p.invoiceLink) {
+          const invoiceNumber = p.invoiceNumber || '';
           doc.font('Courier').fillColor('#1976d2').text(
-            'Ver Invoice',
-            col[6], y + 4, { width: col[7] - col[6], align: 'center', underline: true }
+            invoiceNumber ? invoiceNumber : 'Ver Invoice',
+            col[7], y + 4, { width: col[8] - col[7], align: 'center', underline: true }
           );
-          // Calcula el ancho y alto del texto para el área clickeable
-          const linkText = 'Ver Invoice';
+          const linkText = invoiceNumber ? invoiceNumber : 'Ver Invoice';
           const textWidth = doc.widthOfString(linkText, { font: 'Courier', size: 10 });
           const textHeight = doc.currentLineHeight();
-          // Centra el área del link en la celda
-          const linkX = col[6] + ((col[7] - col[6]) - textWidth) / 2;
+          const linkX = col[7] + ((col[8] - col[7]) - textWidth) / 2;
           doc.link(linkX, y + 4, textWidth, textHeight, p.invoiceLink);
         } else {
           doc.font('Courier').fillColor('#888').text(
-            '', // vacío si no hay link
-            col[6], y + 4, { width: col[7] - col[6], align: 'center' }
+            '', col[7], y + 4, { width: col[8] - col[7], align: 'center' }
           );
         }
         y += 18;
@@ -269,7 +274,7 @@ router.post('/', async (req, res) => {
     }
 
     // Línea final de tabla
-    doc.rect(col[0], y, col[7] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
+    doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
 
     // Subtotales
     doc.text(
@@ -507,7 +512,12 @@ router.put('/:id', async (req, res) => {
     doc.text(id, 400, 140);
 
     const descText = description || '';
-    let descY = 180;
+
+    // --- DESCRIPCIÓN BIEN COLOCADA ---
+    let descY = 200; // Ajusta según tu diseño
+    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2'); // Línea horizontal
+
+    descY += 10;
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Descripción:', 50, descY);
     doc.font('Helvetica').fontSize(11).fillColor('#222');
@@ -516,75 +526,78 @@ router.put('/:id', async (req, res) => {
     let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
-    const tableWidth = 580; // Aumenta el ancho para una columna más
+    const tableWidth = 620; // Ajusta el ancho total para una columna más
     const leftMargin = (595.28 - tableWidth) / 2;
+    // Define columnas
     const col = [
       leftMargin,                // inicio tabla
       leftMargin + 40,           // No.
-      leftMargin + 160,          // SKU
-      leftMargin + 280,          // Description
-      leftMargin + 330,          // Qty
-      leftMargin + 400,          // Unit
-      leftMargin + 480,          // Total
-      leftMargin + 580           // Invoice Link (fin tabla)
+      leftMargin + 120,          // SKU
+      leftMargin + 260,          // DESCRIPTION
+      leftMargin + 320,          // U/M
+      leftMargin + 370,          // QTY
+      leftMargin + 420,          // COSTO UNITARIO
+      leftMargin + 500,          // TOTAL
+      leftMargin + 620           // INVOICE LINK
     ];
 
-    // Encabezado de tabla de partes
+    // Encabezado de tabla
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-    doc.rect(col[0], tableTop, col[7] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.rect(col[0], tableTop, col[8] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
-    doc.text('Nombre', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
-    doc.text('Qty', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
-    doc.text('Unit', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
-    doc.text('Total', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
-    doc.text('Invoice Link', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
+    doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
+    doc.text('U/M', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
+    doc.text('QTY', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
+    doc.text('COSTO UNITARIO', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+    doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
+    doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
 
     let y = tableTop + 22;
     if (partsArr.length > 0) {
       partsArr.forEach((p, i) => {
-        doc.rect(col[0], y, col[7] - col[0], 18).strokeColor('#e3f2fd').stroke();
+        doc.rect(col[0], y, col[8] - col[0], 18).strokeColor('#e3f2fd').stroke();
         doc.font('Courier').fontSize(10).fillColor('#222');
         doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
         doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
         doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
-        doc.text(p.qty || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
+        doc.text(p.um || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
+        doc.text(p.qty || '-', col[4], y + 4, { width: col[5] - col[4], align: 'center' }); // QTY
         doc.text(
           p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
             ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
-          col[4], y + 4, { width: col[5] - col[4], align: 'center' }
+          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
         );
         doc.text(
           p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
             ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
-          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
+          col[6], y + 4, { width: col[7] - col[6], align: 'center' }
         );
-        // Link clickeable
+        // INVOICE LINK O NÚMERO
         if (p.invoiceLink) {
+          const invoiceNumber = p.invoiceNumber || '';
           doc.font('Courier').fillColor('#1976d2').text(
-            'Ver Invoice',
-            col[6], y + 4, { width: col[7] - col[6], align: 'center', underline: true }
+            invoiceNumber ? invoiceNumber : 'Ver Invoice',
+            col[7], y + 4, { width: col[8] - col[7], align: 'center', underline: true }
           );
-          // Calcula el ancho y alto del texto para el área clickeable
-          const linkText = 'Ver Invoice';
+          const linkText = invoiceNumber ? invoiceNumber : 'Ver Invoice';
           const textWidth = doc.widthOfString(linkText, { font: 'Courier', size: 10 });
           const textHeight = doc.currentLineHeight();
-          // Centra el área del link en la celda
-          const linkX = col[6] + ((col[7] - col[6]) - textWidth) / 2;
+          const linkX = col[7] + ((col[8] - col[7]) - textWidth) / 2;
           doc.link(linkX, y + 4, textWidth, textHeight, p.invoiceLink);
         } else {
           doc.font('Courier').fillColor('#888').text(
-            '', // vacío si no hay link
-            col[6], y + 4, { width: col[7] - col[6], align: 'center' }
+            '', col[7], y + 4, { width: col[8] - col[7], align: 'center' }
           );
         }
         y += 18;
       });
     }
 
-    doc.rect(col[0], y, col[7] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
+    doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
+    y += 10;
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[7] - col[0], align: 'right' }
