@@ -72,40 +72,36 @@ router.post('/', async (req, res) => {
     if (!date) return res.status(400).send('The date field is required');
 
     // --- CÁLCULO DE TOTALES ---
-    const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
-    const laborTotal = Number(totalHrs) * 60 || 0;
+    // Suma las horas de todos los mecánicos (array mechanics)
+    let totalHrsPost = 0;
+    if (Array.isArray(req.body.mechanics) && req.body.mechanics.length > 0) {
+      totalHrsPost = req.body.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
+    } else if (req.body.totalHrs) {
+      totalHrsPost = parseFloat(req.body.totalHrs) || 0;
+    }
+
+    // Calcula labor
+    const laborTotal = totalHrsPost * 60;
+
+    // Suma partes
+    const partsArrCalc = Array.isArray(parts) ? parts : [];
+    const partsTotal = partsArrCalc.reduce((sum, part) => {
+      const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
+    // Subtotal
     const subtotal = partsTotal + laborTotal;
 
     // Extras
-    let extra5 = 0;
-    let extraLabels = [];
-    let extraArr = [];
-    const extras = Array.isArray(extraOptions) ? extraOptions : [];
-    extras.forEach(opt => {
-      if (opt === '5') {
-        extra5 += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDF
-      } else if (opt === '15shop') {
-        extraLabels.push('15% Shop Miscellaneous');
-        extraArr.push(subtotal * 0.15);
-      } else if (opt === '15weld') {
-        extraLabels.push('15% Welding Supplies');
-        extraArr.push(subtotal * 0.15);
-      }
+    let extra = 0;
+    (Array.isArray(extraOptions) ? extraOptions : []).forEach(opt => {
+      if (opt === '5') extra += subtotal * 0.05;
+      if (opt === '15shop') extra += subtotal * 0.15;
+      if (opt === '15weld') extra += subtotal * 0.15;
     });
-    const extrasSuppliesTotal = extraArr.reduce((a, b) => a + b, 0);
 
-    // TOTAL FINAL
-    let totalLabAndPartsFinal;
-    if (
-      req.body.totalLabAndParts !== undefined &&
-      req.body.totalLabAndParts !== null &&
-      req.body.totalLabAndParts !== '' &&
-      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
-    }
+    const totalLabAndPartsFinal = subtotal + extra;
 
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
@@ -115,7 +111,7 @@ router.post('/', async (req, res) => {
     const mechanicsArr = Array.isArray(req.body.mechanics) ? req.body.mechanics : [];
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status
+      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status
     ];
     const [result] = await db.query(query, values);
 
@@ -386,8 +382,25 @@ router.put('/:id', async (req, res) => {
       : [];
 
     // 3. Calcula totales SIEMPRE
-    const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.qty) * Number(part.cost)), 0);
-    const laborTotal = Number(totalHrs) * 60 || 0;
+    // Suma las horas de todos los mecánicos (array mechanics)
+    let totalHrsPut = 0;
+    if (Array.isArray(fields.mechanics) && fields.mechanics.length > 0) {
+      totalHrsPut = fields.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
+    } else if (fields.totalHrs) {
+      totalHrsPut = parseFloat(fields.totalHrs) || 0;
+    }
+
+    // Calcula labor
+    const laborTotal = totalHrsPut * 60;
+
+    // Suma partes
+    const partsArrCalc = Array.isArray(fields.parts) ? fields.parts : [];
+    const partsTotal = partsArrCalc.reduce((sum, part) => {
+      const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
+    // Subtotal
     const subtotal = partsTotal + laborTotal;
 
     let extra5 = 0;
@@ -428,7 +441,7 @@ router.put('/:id', async (req, res) => {
        WHERE id = ?`,
       [
         billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-        JSON.stringify(partsArr), totalHrs, totalLabAndPartsFinal, status, id
+        JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, id
       ]
     );
 
