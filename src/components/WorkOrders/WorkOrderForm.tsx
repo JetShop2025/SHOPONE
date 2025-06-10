@@ -73,6 +73,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
     if (!Array.isArray(normalizedExtras)) normalizedExtras = [];
 
+    // Sincroniza el estado local de extras con los de la orden
+    setExtraOptions(normalizedExtras);
+
     // Normaliza mecánicos
     let normalizedMechanics = workOrder.mechanics;
     if (typeof normalizedMechanics === 'string') {

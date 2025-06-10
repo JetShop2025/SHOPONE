@@ -199,6 +199,7 @@ router.post('/', async (req, res) => {
     doc.text(result?.insertId || id, 400, 140);
 
     // Descripción
+    const descText = description || '';
     let descY = 200;
     doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2');
     descY += 10;
