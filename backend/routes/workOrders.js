@@ -210,6 +210,23 @@ router.post('/', async (req, res) => {
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
 
+    // Centrar tabla en la hoja
+    // Reduce el ancho de la tabla y ajusta columnas
+    const tableWidth = 520; // Antes era 620
+    const leftMargin = (595.28 - tableWidth) / 2;
+    // Define columnas
+    const col = [
+      leftMargin,                // Start
+      leftMargin + 37,           // No.
+      leftMargin + 105,          // SKU
+      leftMargin + 225,          // DESCRIPTION
+      leftMargin + 275,          // U/M
+      leftMargin + 320,          // QTY
+      leftMargin + 370,          // UNIT COST
+      leftMargin + 450,          // TOTAL
+      leftMargin + 520           // INVOICE
+    ];
+
     // Encabezado de tabla
     doc.save();
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');

@@ -33,27 +33,29 @@ const HourmeterModal: React.FC<{
       totalHrs: number,
       workOrders: number,
       totalLabAndParts: number,
-      deadHours: number
+      deadHours: number,
+      orders: Set<string>
     }
   } = {};
 
   // 2. Recorre las órdenes filtradas
   filtered.forEach(order => {
-    // Si la orden tiene mechanics detallados
+    // Identificador único de la orden (puede ser order.id o usa el índice si no hay id)
+    const orderId = order.id ? String(order.id) : JSON.stringify(order);
+
     if (Array.isArray(order.mechanics)) {
       order.mechanics.forEach((m: { name: string, hrs: number }) => {
         if (!mechanicStats[m.name]) {
-          mechanicStats[m.name] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0 };
+          mechanicStats[m.name] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
         mechanicStats[m.name].totalHrs += m.hrs || 0;
-        mechanicStats[m.name].workOrders += 1;
         mechanicStats[m.name].totalLabAndParts += Number(order.totalLabAndParts) || 0;
         if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
           mechanicStats[m.name].deadHours += m.hrs || 0;
         }
+        mechanicStats[m.name].orders.add(orderId);
       });
     } else {
-      // Soporte retrocompatible para mechanic como string o arreglo simple
       let mechanics: string[] = [];
       if (Array.isArray(order.mechanic)) {
         mechanics = order.mechanic;
@@ -64,12 +66,12 @@ const HourmeterModal: React.FC<{
       const labAndParts = Number(order.totalLabAndParts) || 0;
       mechanics.forEach((mec: string) => {
         if (!mechanicStats[mec]) {
-          mechanicStats[mec] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0 };
+          mechanicStats[mec] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
         mechanicStats[mec].totalHrs += hrs;
-        mechanicStats[mec].workOrders += 1;
         mechanicStats[mec].totalLabAndParts += labAndParts;
         if (labAndParts === 0 && hrs > 0) mechanicStats[mec].deadHours += hrs;
+        mechanicStats[mec].orders.add(orderId);
       });
     }
   });
@@ -131,17 +133,15 @@ const HourmeterModal: React.FC<{
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>{mechanic || 'Todos'}</td>
-                <td>{filtered.length}</td>
-                <td>{filtered.reduce((sum, order) => sum + (parseFloat(order.totalHrs) || 0), 0).toFixed(2)}</td>
-                <td>{filtered.reduce((sum, order) => sum + (Number(order.totalLabAndParts) || 0), 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                <td>{filtered.reduce((sum, order) => {
-                  const hrs = parseFloat(order.totalHrs) || 0;
-                  const labAndParts = Number(order.totalLabAndParts) || 0;
-                  return sum + (labAndParts === 0 && hrs > 0 ? hrs : 0);
-                }, 0).toFixed(2)}</td>
-              </tr>
+              {Object.entries(mechanicStats).map(([mec, stats]) => (
+                <tr key={mec}>
+                  <td>{mec}</td>
+                  <td>{stats.orders.size}</td>
+                  <td>{stats.totalHrs.toFixed(2)}</td>
+                  <td>{stats.totalLabAndParts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                  <td>{stats.deadHours.toFixed(2)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
           <div style={{ marginTop: 12, fontSize: 13, color: '#888' }}>
