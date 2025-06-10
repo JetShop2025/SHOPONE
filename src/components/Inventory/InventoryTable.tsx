@@ -157,7 +157,8 @@ const InventoryTable: React.FC = () => {
       onHand: newPart.onHand ? Number(newPart.onHand) : 0,
       imagen: newPart.imagen || '', // o imageLink si tu backend espera ese nombre
       precio: newPart.precio ? Number(newPart.precio) : 0,
-      usuario: localStorage.getItem('username') || ''
+      usuario: localStorage.getItem('username') || '',
+      invoiceLink: newPart.invoiceLink || ''
     };
 
     try {
@@ -549,9 +550,39 @@ const InventoryTable: React.FC = () => {
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 100 }}>{item.brand}</td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 60 }}>{item.um}</td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.area}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.receive ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.salidasWo ?? ''}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.onHand ?? ''}</td>
+                <td
+                  style={{
+                    border: '1px solid #b0c4de',
+                    padding: 6,
+                    textAlign: 'center',
+                    maxWidth: 80,
+                    background: '#b3e5fc' // azul claro para RECEIVE
+                  }}
+                >
+                  {item.receive ?? ''}
+                </td>
+                <td
+                  style={{
+                    border: '1px solid #b0c4de',
+                    padding: 6,
+                    textAlign: 'center',
+                    maxWidth: 80,
+                    background: '#ffe082' // amarillo fuerte para WO OUTPUTS
+                  }}
+                >
+                  {item.salidasWo ?? ''}
+                </td>
+                <td
+                  style={{
+                    border: '1px solid #b0c4de',
+                    padding: 6,
+                    textAlign: 'center',
+                    maxWidth: 80,
+                    background: '#c8e6c9' // verde para ON HAND
+                  }}
+                >
+                  {item.onHand ?? ''}
+                </td>
                 <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
                   {item.imagen ? (
                     <a
