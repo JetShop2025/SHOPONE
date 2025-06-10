@@ -22,13 +22,14 @@ const billToCoOptions = [
 function getTrailerOptions(billToCo: string): string[] {
   if (billToCo === "GALGRE") {
     const especiales = [
+      "1-100 TRK",
       "1-103 TRK",
       "1-101 TRK",
       "1-102 TRK",
       "1-105 TRK",
       "1-106 TRK",
       "1-107 TRK",
-      "1-111 TRKK"
+      "1-111 TRK"
     ];
     const normales = Array.from({length: 54}, (_, i) => `1-${100+i}`);
     return [...especiales, ...normales];

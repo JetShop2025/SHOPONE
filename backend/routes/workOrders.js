@@ -169,59 +169,45 @@ router.post('/', async (req, res) => {
     }
 
     // TITULO CENTRADO
-    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
+    doc.font('Courier-Bold').fontSize(24).fillColor('#1976d2').text('INVOICE', { align: 'center' });
 
-    doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+    doc.font('Courier').fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
     doc.moveDown(2);
 
     // Datos principales
-    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2'); // Aumenta la altura del cuadro
+    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
-    doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
+    doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
-    doc.text('Mechanic:', 50, 160); // NUEVA LÍNEA
+    doc.text('Mechanic:', 50, 160);
     doc.text('Date:', 330, 120);
     doc.text('Invoice #:', 330, 140);
 
-    doc.font('Helvetica').fillColor('#222').fontSize(10);
+    doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
-    doc.text(mechanic || '-', 110, 160);
+    // Determina el nombre del mecánico a mostrar
+    let mechanicToShow = mechanic;
+    if ((!mechanicToShow || mechanicToShow === '-') && Array.isArray(mechanicsArr) && mechanicsArr.length > 0) {
+      mechanicToShow = mechanicsArr.map(m => m.name || m.mechanic || '').filter(Boolean).join(', ');
+    }
+    doc.text(mechanicToShow || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
     doc.text(result?.insertId || id, 400, 140);
 
-    const descText = description || '';
-
-    // --- DESCRIPCIÓN BIEN COLOCADA ---
-    let descY = 200; // Ajusta según tu diseño
-    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2'); // Línea horizontal
-
+    // Descripción
+    let descY = 200;
+    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2');
     descY += 10;
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
-    doc.text('Descripción:', 50, descY);
-    doc.font('Helvetica').fontSize(11).fillColor('#222');
+    doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
+    doc.text('Description:', 50, descY);
+    doc.font('Courier').fontSize(11).fillColor('#222');
     const descHeight = doc.heightOfString(descText, { width: 500 });
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
-
-    // Centrar tabla en la hoja
-    const tableWidth = 620; // Ajusta el ancho total para una columna más
-    const leftMargin = (595.28 - tableWidth) / 2;
-    // Define columnas
-    const col = [
-      leftMargin,                // inicio tabla
-      leftMargin + 40,           // No.
-      leftMargin + 120,          // SKU
-      leftMargin + 260,          // DESCRIPTION
-      leftMargin + 320,          // U/M
-      leftMargin + 370,          // QTY
-      leftMargin + 420,          // COSTO UNITARIO
-      leftMargin + 500,          // TOTAL
-      leftMargin + 620           // INVOICE LINK
-    ];
 
     // Encabezado de tabla
     doc.save();
@@ -233,7 +219,7 @@ router.post('/', async (req, res) => {
     doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
     doc.text('U/M', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
     doc.text('QTY', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
-    doc.text('COSTO UNITARIO', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+    doc.text('UNIT COST', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
     doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
     doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
     doc.restore();
@@ -285,7 +271,7 @@ router.post('/', async (req, res) => {
     // Línea final de tabla
     doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
     y += 10;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[8] - col[0], align: 'right' }
@@ -303,23 +289,23 @@ router.post('/', async (req, res) => {
       );
     });
     y += 24;
-    doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
+    doc.font('Courier-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[8] - col[0], align: 'right' }
     );
 
-    // TÉRMINOS Y FIRMAS
+    // Términos y firmas en inglés y Courier
     doc.moveDown(2);
-    doc.font('Helvetica-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
-    doc.font('Helvetica').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
+    doc.font('Courier-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
+    doc.font('Courier').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
 
     doc.moveDown(2);
-    doc.font('Helvetica').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
+    doc.font('Courier').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
     doc.text('I accept this estimate with the handwritten changes ', 40, doc.y + 24);
 
     doc.moveDown(2);
     doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
-    doc.font('Helvetica-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
+    doc.font('Courier-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
 
     doc.end();
 
@@ -489,8 +475,8 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    doc.fontSize(24).fillColor('#1976d2').font('Helvetica-Bold').text('INVOICE', { align: 'center' });
-    doc.fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+    doc.font('Courier-Bold').fontSize(24).fillColor('#1976d2').text('INVOICE', { align: 'center' });
+    doc.font('Courier').fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
     doc.text('740 EL CAMINO REAL', { align: 'right' });
     doc.text('GREENFIELD, CA 93927', { align: 'right' });
     doc.moveDown(2);
@@ -498,17 +484,22 @@ router.put('/:id', async (req, res) => {
     // Datos principales
     doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
-    doc.font('Helvetica-Bold').fillColor('#1976d2').fontSize(10);
+    doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
     doc.text('Mechanic:', 50, 160);
     doc.text('Date:', 330, 120);
     doc.text('Invoice #:', 330, 140);
 
-    doc.font('Helvetica').fillColor('#222').fontSize(10);
+    doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
-    doc.text(mechanic || '-', 110, 160);
+    // Determina el nombre del mecánico a mostrar
+    let mechanicToShow = mechanic;
+    if ((!mechanicToShow || mechanicToShow === '-') && Array.isArray(mechanicsArr) && mechanicsArr.length > 0) {
+      mechanicToShow = mechanicsArr.map(m => m.name || m.mechanic || '').filter(Boolean).join(', ');
+    }
+    doc.text(mechanicToShow || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
     doc.text(id, 400, 140);
 
@@ -519,27 +510,28 @@ router.put('/:id', async (req, res) => {
     doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2'); // Línea horizontal
 
     descY += 10;
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1976d2');
-    doc.text('Descripción:', 50, descY);
-    doc.font('Helvetica').fontSize(11).fillColor('#222');
+    doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
+    doc.text('Description:', 50, descY);
+    doc.font('Courier').fontSize(11).fillColor('#222');
     const descHeight = doc.heightOfString(descText, { width: 500 });
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
 
     // Centrar tabla en la hoja
-    const tableWidth = 620; // Ajusta el ancho total para una columna más
+    // Reduce el ancho de la tabla y ajusta columnas
+    const tableWidth = 520; // Antes era 620
     const leftMargin = (595.28 - tableWidth) / 2;
     // Define columnas
     const col = [
-      leftMargin,                // inicio tabla
-      leftMargin + 35,           // No.
+      leftMargin,                // Start
+      leftMargin + 37,           // No.
       leftMargin + 105,          // SKU
       leftMargin + 225,          // DESCRIPTION
       leftMargin + 275,          // U/M
       leftMargin + 320,          // QTY
-      leftMargin + 370,          // COSTO UNITARIO
+      leftMargin + 370,          // UNIT COST
       leftMargin + 450,          // TOTAL
-      leftMargin + 560           // INVOICE LINK
+      leftMargin + 520           // INVOICE
     ];
 
     // Encabezado de tabla
@@ -552,7 +544,7 @@ router.put('/:id', async (req, res) => {
     doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
     doc.text('U/M', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
     doc.text('QTY', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
-    doc.text('COSTO UNITARIO', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
+    doc.text('UNIT COST', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
     doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
     doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
     doc.restore();
@@ -602,7 +594,7 @@ router.put('/:id', async (req, res) => {
 
     doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
     y += 10;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
+    doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[8] - col[0], align: 'right' }
@@ -620,23 +612,23 @@ router.put('/:id', async (req, res) => {
       );
     });
     y += 24;
-    doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
+    doc.font('Courier-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       col[0], y, { width: col[8] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS
     doc.moveDown(2);
-    doc.font('Helvetica-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
-    doc.font('Helvetica').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
+    doc.font('Courier-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
+    doc.font('Courier').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
 
     doc.moveDown(2);
-    doc.font('Helvetica').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
+    doc.font('Courier').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
     doc.text('I accept this estimate with the handwritten changes ', 40, doc.y + 24);
 
     doc.moveDown(2);
     doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
-    doc.font('Helvetica-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
+    doc.font('Courier-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
 
     doc.end();
 
