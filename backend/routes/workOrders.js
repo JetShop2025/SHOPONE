@@ -103,6 +103,20 @@ router.post('/', async (req, res) => {
 
     const totalLabAndPartsFinal = subtotal + extra;
 
+    // --- AGREGA ESTO ANTES DE GENERAR EL PDF ---
+    let extraLabels = [];
+    let extraArr = [];
+    (Array.isArray(extraOptions) ? extraOptions : []).forEach(opt => {
+      if (opt === '15shop') {
+        extraLabels.push('15% Shop Miscellaneous');
+        extraArr.push(subtotal * 0.15);
+      } else if (opt === '15weld') {
+        extraLabels.push('15% Welding Supplies');
+        extraArr.push(subtotal * 0.15);
+      }
+    });
+    // --------------------------------------------
+
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
       INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status)
