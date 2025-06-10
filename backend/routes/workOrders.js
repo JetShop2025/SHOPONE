@@ -54,14 +54,20 @@ router.post('/', async (req, res) => {
     const { billToCo, trailer, mechanic, date, description, parts, totalHrs, status, usuario, extraOptions } = req.body;
 
     // Validación y limpieza de partes
-    const [inventory] = await db.query('SELECT sku FROM inventory');
-    const inventorySkus = inventory.map(item => (item.sku || '').trim().toUpperCase());
+    const [inventory] = await db.query('SELECT sku, um FROM inventory');
+    const inventoryMap = {};
+    inventory.forEach(item => {
+      inventoryMap[(item.sku || '').trim().toUpperCase()] = item.um || '-';
+    });
+
+    // Al limpiar y mapear las partes:
     const partsArr = Array.isArray(parts)
       ? parts
           .filter(part => part.sku && String(part.sku).trim() !== '')
           .map(part => ({
             ...part,
-            cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
+            um: part.um || inventoryMap[(part.sku || '').trim().toUpperCase()] || '-'
           }))
       : [];
     for (const part of partsArr) {
@@ -397,7 +403,8 @@ router.put('/:id', async (req, res) => {
           .filter(part => part.sku && String(part.sku).trim() !== '')
           .map(part => ({
             ...part,
-            cost: Number(String(part.cost).replace(/[^0-9.]/g, ''))
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
+            um: part.um || inventoryMap[(part.sku || '').trim().toUpperCase()] || '-'
           }))
       : [];
 
@@ -525,14 +532,14 @@ router.put('/:id', async (req, res) => {
     // Define columnas
     const col = [
       leftMargin,                // inicio tabla
-      leftMargin + 40,           // No.
-      leftMargin + 120,          // SKU
-      leftMargin + 260,          // DESCRIPTION
-      leftMargin + 320,          // U/M
-      leftMargin + 370,          // QTY
-      leftMargin + 420,          // COSTO UNITARIO
-      leftMargin + 500,          // TOTAL
-      leftMargin + 620           // INVOICE LINK
+      leftMargin + 35,           // No.
+      leftMargin + 105,          // SKU
+      leftMargin + 225,          // DESCRIPTION
+      leftMargin + 275,          // U/M
+      leftMargin + 320,          // QTY
+      leftMargin + 370,          // COSTO UNITARIO
+      leftMargin + 450,          // TOTAL
+      leftMargin + 560           // INVOICE LINK
     ];
 
     // Encabezado de tabla
