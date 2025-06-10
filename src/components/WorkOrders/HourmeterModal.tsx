@@ -48,7 +48,7 @@ const HourmeterModal: React.FC<{
         if (!mechanicStats[m.name]) {
           mechanicStats[m.name] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
-        mechanicStats[m.name].totalHrs += m.hrs || 0;
+        mechanicStats[m.name].totalHrs += Number(m.hrs) || 0;
         mechanicStats[m.name].totalLabAndParts += Number(order.totalLabAndParts) || 0;
         if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
           mechanicStats[m.name].deadHours += m.hrs || 0;
@@ -136,10 +136,10 @@ const HourmeterModal: React.FC<{
               {Object.entries(mechanicStats).map(([mec, stats]) => (
                 <tr key={mec}>
                   <td>{mec}</td>
-                  <td>{stats.orders.size}</td>
-                  <td>{stats.totalHrs.toFixed(2)}</td>
-                  <td>{stats.totalLabAndParts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                  <td>{stats.deadHours.toFixed(2)}</td>
+                  <td>{stats.orders?.size || 0}</td>
+                  <td>{Number(stats.totalHrs || 0).toFixed(2)}</td>
+                  <td>{Number(stats.totalLabAndParts || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                  <td>{Number(stats.deadHours || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
