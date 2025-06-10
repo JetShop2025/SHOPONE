@@ -218,8 +218,10 @@ router.post('/', async (req, res) => {
     ];
 
     // Encabezado de tabla
+    doc.save();
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
     doc.rect(col[0], tableTop, col[8] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.fillColor('#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
     doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
@@ -228,6 +230,7 @@ router.post('/', async (req, res) => {
     doc.text('COSTO UNITARIO', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
     doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
     doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
+    doc.restore();
 
     let y = tableTop + 22;
 
@@ -275,30 +278,28 @@ router.post('/', async (req, res) => {
 
     // Línea final de tabla
     doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
-
-    // Subtotales
+    y += 10;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
     doc.text(
-      ` ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[7] - col[0], align: 'right' }
+      `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
+      col[0], y, { width: col[8] - col[0], align: 'right' }
     );
     y += 16;
     doc.text(
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[7] - col[0], align: 'right' }
+      col[0], y, { width: col[8] - col[0], align: 'right' }
     );
-    // SOLO muestra extras supplies (NO el 5%)
     extraLabels.forEach((label, idx) => {
       y += 16;
       doc.text(
         `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-        col[0], y, { width: col[7] - col[0], align: 'right' }
+        col[0], y, { width: col[8] - col[0], align: 'right' }
       );
     });
-    // TOTAL FINAL
     y += 24;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[7] - col[0], align: 'right' }
+      col[0], y, { width: col[8] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS
@@ -401,25 +402,18 @@ router.put('/:id', async (req, res) => {
       : [];
 
     // 3. Calcula totales SIEMPRE
-    // Suma las horas de todos los mecánicos (array mechanics)
     let totalHrsPut = 0;
     if (Array.isArray(fields.mechanics) && fields.mechanics.length > 0) {
       totalHrsPut = fields.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
     } else if (fields.totalHrs) {
       totalHrsPut = parseFloat(fields.totalHrs) || 0;
     }
-
-    // Calcula labor
     const laborTotal = totalHrsPut * 60;
-
-    // Suma partes
-    const partsArrCalc = Array.isArray(fields.parts) ? fields.parts : [];
-    const partsTotal = partsArrCalc.reduce((sum, part) => {
+    const partsTotal = partsArr.reduce((sum, part) => {
       const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
-      return sum + (isNaN(cost) ? 0 : cost);
-    }, 0);
-
-    // Subtotal
+      const qty = Number(part.qty) || 0;
+      return sum + (isNaN(cost) || isNaN(qty) ? 0 : qty * cost);
+    }, 0); // <-- ¡Asegúrate de multiplicar qty * cost!
     const subtotal = partsTotal + laborTotal;
 
     let extra5 = 0;
@@ -542,8 +536,10 @@ router.put('/:id', async (req, res) => {
     ];
 
     // Encabezado de tabla
+    doc.save();
     doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
     doc.rect(col[0], tableTop, col[8] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
+    doc.fillColor('#1976d2');
     doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
     doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
     doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
@@ -552,6 +548,7 @@ router.put('/:id', async (req, res) => {
     doc.text('COSTO UNITARIO', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
     doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
     doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
+    doc.restore();
 
     let y = tableTop + 22;
     if (partsArr.length > 0) {
@@ -598,28 +595,27 @@ router.put('/:id', async (req, res) => {
 
     doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
     y += 10;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1976d2');
     doc.text(
       `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[7] - col[0], align: 'right' }
+      col[0], y, { width: col[8] - col[0], align: 'right' }
     );
     y += 16;
     doc.text(
       `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[7] - col[0], align: 'right' }
+      col[0], y, { width: col[8] - col[0], align: 'right' }
     );
-    // SOLO muestra extras supplies (NO el 5%)
     extraLabels.forEach((label, idx) => {
       y += 16;
       doc.text(
         `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-        col[0], y, { width: col[7] - col[0], align: 'right' }
+        col[0], y, { width: col[8] - col[0], align: 'right' }
       );
     });
-    // TOTAL FINAL
     y += 24;
     doc.font('Helvetica-Bold').fontSize(13).fillColor('#d32f2f').text(
       `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[7] - col[0], align: 'right' }
+      col[0], y, { width: col[8] - col[0], align: 'right' }
     );
 
     // TÉRMINOS Y FIRMAS

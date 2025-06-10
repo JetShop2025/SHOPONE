@@ -58,6 +58,55 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const [manualCostEdit, setManualCostEdit] = React.useState<{ [k: number]: boolean }>({});
   const [manualTotalEdit, setManualTotalEdit] = React.useState(false);
 
+  // Normaliza datos al abrir para edición
+  useEffect(() => {
+    if (!workOrder) return;
+
+    // Normaliza extras
+    let normalizedExtras = workOrder.extraOptions;
+    if (typeof normalizedExtras === 'string') {
+      try {
+        normalizedExtras = JSON.parse(normalizedExtras);
+      } catch {
+        normalizedExtras = [];
+      }
+    }
+    if (!Array.isArray(normalizedExtras)) normalizedExtras = [];
+
+    // Normaliza mecánicos
+    let normalizedMechanics = workOrder.mechanics;
+    if (typeof normalizedMechanics === 'string') {
+      try {
+        normalizedMechanics = JSON.parse(normalizedMechanics);
+      } catch {
+        normalizedMechanics = [];
+      }
+    }
+    if (!Array.isArray(normalizedMechanics)) normalizedMechanics = [];
+
+    // Normaliza total
+    let normalizedTotal = workOrder.totalLabAndParts;
+    if (
+      normalizedTotal !== undefined &&
+      normalizedTotal !== null &&
+      normalizedTotal !== '' &&
+      !isNaN(Number(String(normalizedTotal).replace(/[^0-9.]/g, '')))
+    ) {
+      normalizedTotal = Number(String(normalizedTotal).replace(/[^0-9.]/g, ''));
+    } else {
+      normalizedTotal = '';
+    }
+
+    // Aplica normalización
+    onChange({
+      ...workOrder,
+      extraOptions: normalizedExtras,
+      mechanics: normalizedMechanics,
+      totalLabAndParts: normalizedTotal,
+    });
+    // eslint-disable-next-line
+  }, [workOrder.id]);
+
   const handlePartChange = (index: number, field: string, value: string) => {
     if (field === 'part') {
       // Obtén los SKUs ya seleccionados en otras líneas
