@@ -132,13 +132,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         onPartChange(index, 'sku', found.sku);
         onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
-        onPartChange(index, 'invoiceLink', found.invoiceLink || ''); // <--- AGREGA ESTA LÍNEA
-        // Solo actualiza el costo si está vacío
-        if (!workOrder.parts[index]?.cost) {
-          const qty = workOrder.parts[index]?.qty || 1;
-          const total = Number(qty) * Number(found.precio || found.price || found.costTax || 0);
-          onPartChange(index, 'cost', formatCurrencyInput(total));
-        }
+        onPartChange(index, 'invoiceLink', found.invoiceLink || '');
+        // Siempre guarda el costo unitario
+        onPartChange(index, 'cost', formatCurrencyInput(found.precio || found.price || found.costTax || 0));
         setAutocomplete(prev => ({ ...prev, [index]: [] }));
       } else {
         onPartChange(index, 'part', value);
@@ -150,9 +146,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       // Solo recalcula si el usuario NO editó manualmente el costo
       if (!manualCostEdit[index]) {
         const unitPrice = Number(workOrder.parts[index]?.unitPrice || 0);
-        const qty = Number(value);
-        if (!isNaN(unitPrice) && !isNaN(qty)) {
-          onPartChange(index, 'cost', formatCurrencyInput(unitPrice * qty));
+        if (!isNaN(unitPrice)) {
+          onPartChange(index, 'cost', formatCurrencyInput(unitPrice));
         }
       }
     } else if (field === 'cost') {
@@ -166,7 +161,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Suma de partes
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(cost) ? 0 : cost);
+    const qty = Number(part.qty) || 0;
+    return sum + (isNaN(cost) ? 0 : cost * qty);
   }, 0) || 0;
 
   // Labor
