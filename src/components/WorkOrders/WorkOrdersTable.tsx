@@ -331,10 +331,13 @@ const WorkOrdersTable: React.FC = () => {
           cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
         }));
 
+      // LIMPIA EL TOTAL ANTES DE ENVIAR
+      const totalLabAndPartsLimpio = Number(String(datosOrden.totalLabAndParts).replace(/[^0-9.]/g, ''));
       // 4. Guarda la orden
       const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
-        parts: partesParaGuardar, // <-- SOLO partes válidas
+        totalLabAndParts: totalLabAndPartsLimpio, // <-- ENVÍA EL TOTAL LIMPIO
+        parts: partesParaGuardar,
         extraOptions,
         usuario: localStorage.getItem('username') || ''
       });
@@ -937,12 +940,15 @@ const WorkOrdersTable: React.FC = () => {
                       onPartChange={handlePartChange}
                       onSubmit={async () => {
                         try {
+                          // LIMPIA EL TOTAL ANTES DE ENVIAR
+                          const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));
                           await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
+                            totalLabAndParts: totalLabAndPartsLimpio, // <-- ENVÍA EL TOTAL LIMPIO
                             date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
                             parts: editWorkOrder.parts,
                             usuario: localStorage.getItem('username') || '',
-                            extraOptions, // <-- agrega esto
+                            extraOptions,
                           });
                           const updated = await axios.get(`${API_URL}/work-orders`);
                           setWorkOrders(Array.isArray(updated.data) ? (updated.data as any[]) : []);
