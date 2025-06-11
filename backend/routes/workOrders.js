@@ -102,9 +102,8 @@ router.post('/', async (req, res) => {
     const laborTotal = totalHrsPost * 60;
 
     // Suma partes
-    const partsArrCalc = Array.isArray(parts) ? parts : [];
-    const partsTotal = partsArrCalc.reduce((sum, part) => {
-      const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
+    const partsTotal = partsArr.reduce((sum, part) => {
+      const cost = Number(part.cost) || 0;
       const qty = Number(part.qty) || 0;
       return sum + (qty * cost);
     }, 0);
