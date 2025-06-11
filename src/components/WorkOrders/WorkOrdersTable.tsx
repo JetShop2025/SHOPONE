@@ -760,7 +760,15 @@ const WorkOrdersTable: React.FC = () => {
 
         {/* --- BOTONES ARRIBA --- */}
         <div style={{ margin: '24px 0 16px 0' }}>
-          <button className="wo-btn" style={primaryBtn} onClick={() => setShowForm(true)}>
+          <button
+            className="wo-btn"
+            style={primaryBtn}
+            onClick={() => {
+              resetNewWorkOrder(); // <-- LIMPIA LOS CAMPOS
+              setExtraOptions([]); // <-- LIMPIA EXTRAS SI USAS
+              setShowForm(true);
+            }}
+          >
             NEW W.O
           </button>
           <button className="wo-btn" style={secondaryBtn} onClick={exportToExcel}>
