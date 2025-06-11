@@ -482,7 +482,7 @@ router.put('/:id', async (req, res) => {
       }
     });
     
-    const totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
+    const totalLabAndPartsFinal = subtotal + extra5 + extraArr.reduce((a, b) => a + b, 0);
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
