@@ -93,7 +93,8 @@ router.post('/', async (req, res) => {
     const partsArrCalc = Array.isArray(parts) ? parts : [];
     const partsTotal = partsArrCalc.reduce((sum, part) => {
       const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
-      return sum + (isNaN(cost) ? 0 : cost);
+      const qty = Number(part.qty) || 0;
+      return sum + (isNaN(cost) || isNaN(qty) ? 0 : qty * cost);
     }, 0);
 
     // Subtotal

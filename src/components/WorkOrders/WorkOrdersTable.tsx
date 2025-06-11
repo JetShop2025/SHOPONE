@@ -10,6 +10,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
+import { useNewWorkOrder } from './useNewWorkOrder';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -157,23 +158,7 @@ const WorkOrdersTable: React.FC = () => {
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showDeleteForm, setShowDeleteForm] = useState(false);
-  const [newWorkOrder, setNewWorkOrder] = useState({
-    billToCo: '',
-    trailer: '',
-    mechanic: '',
-    date: '',
-    description: '',
-    parts: [
-      { part: '', sku: '', qty: '', cost: '' },
-      { part: '', sku: '', qty: '', cost: '' },
-      { part: '', sku: '', qty: '', cost: '' },
-      { part: '', sku: '', qty: '', cost: '' },
-      { part: '', sku: '', qty: '', cost: '' },
-    ],
-    totalHrs: '',
-    totalLabAndParts: '',
-    status: '',
-  });
+  const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteDate, setDeleteDate] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(() => {
@@ -200,6 +185,7 @@ const WorkOrdersTable: React.FC = () => {
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string>(''); // <-- NUEVO ESTADO
 
   // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
@@ -268,7 +254,8 @@ const WorkOrdersTable: React.FC = () => {
     const orderDate = dayjs(order.date.slice(0, 10));
     const inWeek = orderDate.isBetween(start, end, 'day', '[]');
     const matchesStatus = !statusFilter || order.status === statusFilter;
-    return inWeek && matchesStatus;
+    const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay; // <-- NUEVO FILTRO
+    return inWeek && matchesStatus && matchesDay;
   });
 
 
@@ -281,7 +268,7 @@ const WorkOrdersTable: React.FC = () => {
     if (e && e.target) {
       const { name, value } = e.target;
       if (showForm) {
-        setNewWorkOrder(prev => ({ ...prev, [name]: value }));
+        setNewWorkOrder((prev: typeof newWorkOrder) => ({ ...prev, [name]: value }));
         if (name === 'trailer') fetchPendingParts(value);
       } else if (showEditForm && editWorkOrder) {
         setEditWorkOrder((prev: any) => ({ ...prev, [name]: value }));
@@ -303,7 +290,7 @@ const WorkOrdersTable: React.FC = () => {
     if (showForm) {
       const updatedParts = [...newWorkOrder.parts];
       updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
-      setNewWorkOrder(prev => ({ ...prev, parts: updatedParts }));
+      setNewWorkOrder((prev: typeof newWorkOrder) => ({ ...prev, parts: updatedParts }));
     } else if (showEditForm && editWorkOrder) {
       const updatedParts = [...editWorkOrder.parts];
       updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
@@ -370,23 +357,7 @@ const WorkOrdersTable: React.FC = () => {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
       }
       setShowForm(false);
-      setNewWorkOrder({
-        billToCo: '',
-        trailer: '',
-        mechanic: '',
-        date: '',
-        description: '',
-        parts: [
-          { part: '', sku: '', qty: '', cost: '' },
-          { part: '', sku: '', qty: '', cost: '' },
-          { part: '', sku: '', qty: '', cost: '' },
-          { part: '', sku: '', qty: '', cost: '' },
-          { part: '', sku: '', qty: '', cost: '' },
-        ],
-        totalHrs: '',
-        totalLabAndParts: '',
-        status: '',
-      });
+      resetNewWorkOrder();
       const updated = await axios.get(`${API_URL}/work-orders`);
       setWorkOrders(Array.isArray(updated.data) ? (updated.data as any[]) : []);
       for (const part of pendingParts) {
@@ -464,7 +435,7 @@ const WorkOrdersTable: React.FC = () => {
   useEffect(() => {
     if (showForm) {
       const totalHrs = parseFloat(newWorkOrder.totalHrs) || 0;
-      const partsCost = newWorkOrder.parts.reduce((sum, p) => sum + (parseFloat(p.cost) || 0), 0);
+      const partsCost = newWorkOrder.parts.reduce((sum: number, p: any) => sum + (parseFloat(p.cost) || 0), 0);
       const totalLabAndParts = (totalHrs * 60) + partsCost;
       setNewWorkOrder(prev => ({
         ...prev,
@@ -759,6 +730,15 @@ const WorkOrdersTable: React.FC = () => {
               type="week"
               value={selectedWeek}
               onChange={e => setSelectedWeek(e.target.value)}
+              className="wo-filter-input"
+            />
+          </label>
+          <label className="wo-filter-label" style={{ marginBottom: 6 }}>
+            Filter by day:&nbsp;
+            <input
+              type="date"
+              value={selectedDay}
+              onChange={e => setSelectedDay(e.target.value)}
               className="wo-filter-input"
             />
           </label>
