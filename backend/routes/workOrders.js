@@ -482,7 +482,17 @@ router.put('/:id', async (req, res) => {
       }
     });
     
-    const totalLabAndPartsFinal = subtotal + extra5 + extraArr.reduce((a, b) => a + b, 0);
+    let totalLabAndPartsFinal;
+    if (
+      fields.totalLabAndParts !== undefined &&
+      fields.totalLabAndParts !== null &&
+      fields.totalLabAndParts !== '' &&
+      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = subtotal + extra5 + extraArr.reduce((a, b) => a + b, 0);
+    }
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
