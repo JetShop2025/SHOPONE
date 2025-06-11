@@ -487,7 +487,7 @@ router.put('/:id', async (req, res) => {
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
-        extra5 += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDF
+        extra5 += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDFf
       } else if (opt === '15shop') {
         extraLabels.push('15% Shop Miscellaneous');
         extraArr.push(subtotal * 0.15);
