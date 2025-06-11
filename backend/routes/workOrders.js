@@ -202,10 +202,20 @@ router.post('/', async (req, res) => {
     doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
-    // Determina el nombre del mecánico a mostrar
+    // Determina el nombre del/los mecánico(s) y sus horas
     let mechanicToShow = mechanic;
-    if ((!mechanicToShow || mechanicToShow === '-') && Array.isArray(mechanicsArr) && mechanicsArr.length > 0) {
-      mechanicToShow = mechanicsArr.map(m => m.name || m.mechanic || '').filter(Boolean).join(', ');
+    if (
+      Array.isArray(mechanicsArr) &&
+      mechanicsArr.length > 0 &&
+      mechanicsArr.some(m => (m.name || m.mechanic))
+    ) {
+      mechanicToShow = mechanicsArr
+        .map(m => {
+          const name = m.name || m.mechanic || '-';
+          const hrs = m.hrs !== undefined && m.hrs !== null && m.hrs !== '' ? `(${m.hrs})` : '';
+          return `${name} ${hrs}`.trim();
+        })
+        .join(', ');
     }
     doc.text(mechanicToShow || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
@@ -534,10 +544,20 @@ router.put('/:id', async (req, res) => {
     doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
-    // Determina el nombre del mecánico a mostrar
+    // Determina el nombre del/los mecánico(s) y sus horas
     let mechanicToShow = mechanic;
-    if ((!mechanicToShow || mechanicToShow === '-') && Array.isArray(mechanicsArr) && mechanicsArr.length > 0) {
-      mechanicToShow = mechanicsArr.map(m => m.name || m.mechanic || '').filter(Boolean).join(', ');
+    if (
+      Array.isArray(mechanicsArr) &&
+      mechanicsArr.length > 0 &&
+      mechanicsArr.some(m => (m.name || m.mechanic))
+    ) {
+      mechanicToShow = mechanicsArr
+        .map(m => {
+          const name = m.name || m.mechanic || '-';
+          const hrs = m.hrs !== undefined && m.hrs !== null && m.hrs !== '' ? `(${m.hrs})` : '';
+          return `${name} ${hrs}`.trim();
+        })
+        .join(', ');
     }
     doc.text(mechanicToShow || '-', 110, 160);
     doc.text(formattedDate, 390, 120);
