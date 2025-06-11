@@ -66,11 +66,21 @@ router.post('/', async (req, res) => {
     const partsArr = Array.isArray(parts)
       ? parts
           .filter(part => part.sku && String(part.sku).trim() !== '')
-          .map(part => ({
-            ...part,
-            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
-            um: part.um || inventoryMap[(part.sku || '').trim().toUpperCase()] || '-'
-          }))
+          .map(part => {
+            const sku = (part.sku || '').trim().toUpperCase();
+            // Busca el costo en inventario si no viene o viene mal del frontend
+            let cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
+            if (!cost || isNaN(cost)) {
+              // Busca el costo en inventario
+              const invItem = inventory.find(item => (item.sku || '').trim().toUpperCase() === sku);
+              cost = invItem ? Number(invItem.precio) : 0;
+            }
+            return {
+              ...part,
+              cost,
+              um: part.um || inventoryMap[sku] || '-'
+            };
+          })
       : [];
     for (const part of partsArr) {
       if (!inventorySkus.has((part.sku || '').trim().toUpperCase())) {
@@ -96,7 +106,7 @@ router.post('/', async (req, res) => {
     const partsTotal = partsArrCalc.reduce((sum, part) => {
       const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
       const qty = Number(part.qty) || 0;
-      return sum + (isNaN(cost) || isNaN(qty) ? 0 : qty * cost);
+      return sum + (qty * cost);
     }, 0);
 
     // Subtotal
@@ -439,11 +449,21 @@ router.put('/:id', async (req, res) => {
     const partsArr = Array.isArray(parts)
       ? parts
           .filter(part => part.sku && String(part.sku).trim() !== '')
-          .map(part => ({
-            ...part,
-            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
-            um: part.um || inventoryMap[(part.sku || '').trim().toUpperCase()] || '-'
-          }))
+          .map(part => {
+            const sku = (part.sku || '').trim().toUpperCase();
+            // Busca el costo en inventario si no viene o viene mal del frontend
+            let cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
+            if (!cost || isNaN(cost)) {
+              // Busca el costo en inventario
+              const invItem = inventory.find(item => (item.sku || '').trim().toUpperCase() === sku);
+              cost = invItem ? Number(invItem.precio) : 0;
+            }
+            return {
+              ...part,
+              cost,
+              um: part.um || inventoryMap[sku] || '-'
+            };
+          })
       : [];
 
     // 3. Calcula totales SIEMPRE
@@ -455,9 +475,9 @@ router.put('/:id', async (req, res) => {
     }
     const laborTotal = totalHrsPut * 60;
     const partsTotal = partsArr.reduce((sum, part) => {
-      const cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
+      const cost = Number(part.cost) || 0;
       const qty = Number(part.qty) || 0;
-      return sum + (isNaN(cost) || isNaN(qty) ? 0 : qty * cost);
+      return sum + (qty * cost);
     }, 0); // <-- ¡Asegúrate de multiplicar qty * cost!
     const subtotal = partsTotal + laborTotal;
 
