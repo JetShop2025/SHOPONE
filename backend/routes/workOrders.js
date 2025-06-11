@@ -110,8 +110,6 @@ router.post('/', async (req, res) => {
 
     // Subtotal
     const subtotal = partsTotal + laborTotal;
-
-    // Extras
     let extra = 0;
     (Array.isArray(extraOptions) ? extraOptions : []).forEach(opt => {
       if (opt === '5') extra += subtotal * 0.05;
@@ -119,19 +117,7 @@ router.post('/', async (req, res) => {
       if (opt === '15weld') extra += subtotal * 0.15;
     });
 
-    // === AGREGA ESTA LÓGICA ===
-    let totalLabAndPartsFinal;
-    if (
-      req.body.totalLabAndParts !== undefined &&
-      req.body.totalLabAndParts !== null &&
-      req.body.totalLabAndParts !== '' &&
-      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = subtotal + extra;
-    }
-    // ==========================
+    const totalLabAndPartsFinal = subtotal + extra;
 
     // --- AGREGA ESTO ANTES DE GENERAR EL PDF ---
     let extraLabels = [];
@@ -495,20 +481,8 @@ router.put('/:id', async (req, res) => {
         extraArr.push(subtotal * 0.15);
       }
     });
-    const extrasSuppliesTotal = extraArr.reduce((a, b) => a + b, 0);
-
-    // Al final del cálculo de totales, antes de guardar:
-    let totalLabAndPartsFinal;
-    if (
-      fields.totalLabAndParts !== undefined &&
-      fields.totalLabAndParts !== null &&
-      fields.totalLabAndParts !== '' &&
-      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
-    }
+    
+    const totalLabAndPartsFinal = subtotal + extra5 + extrasSuppliesTotal;
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
