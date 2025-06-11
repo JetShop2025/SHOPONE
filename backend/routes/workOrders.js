@@ -414,6 +414,15 @@ router.put('/:id', async (req, res) => {
     }
     const oldData = oldResults[0];
 
+    // --- AGREGA ESTO ---
+    // Carga inventario y arma el mapa SKU->UM
+    const [inventory] = await db.query('SELECT sku, um FROM inventory');
+    const inventoryMap = {};
+    inventory.forEach(item => {
+      inventoryMap[(item.sku || '').trim().toUpperCase()] = item.um || '-';
+    });
+    // -------------------
+
     // 2. Limpia y valida partes
     const partsArr = Array.isArray(parts)
       ? parts
