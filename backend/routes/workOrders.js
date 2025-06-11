@@ -56,8 +56,10 @@ router.post('/', async (req, res) => {
     // Validación y limpieza de partes
     const [inventory] = await db.query('SELECT sku, um FROM inventory');
     const inventoryMap = {};
+    const inventorySkus = new Set();
     inventory.forEach(item => {
       inventoryMap[(item.sku || '').trim().toUpperCase()] = item.um || '-';
+      inventorySkus.add((item.sku || '').trim().toUpperCase());
     });
 
     // Al limpiar y mapear las partes:
@@ -71,7 +73,7 @@ router.post('/', async (req, res) => {
           }))
       : [];
     for (const part of partsArr) {
-      if (!inventorySkus.includes((part.sku || '').trim().toUpperCase())) {
+      if (!inventorySkus.has((part.sku || '').trim().toUpperCase())) {
         return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
       }
     }
