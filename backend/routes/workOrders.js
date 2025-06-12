@@ -200,16 +200,33 @@ router.post('/', async (req, res) => {
     doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
     doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
+
+    // Recuadro izquierdo
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
     doc.text('Mechanic:', 50, 160);
-    doc.text('Date:', 330, 120);
-    doc.text('Invoice #:', 330, 140);
+    doc.text('ID CLASSIC:', 50, 180);
 
     doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
-    // Determina el nombre del/los mecánico(s) y sus horas
+    doc.text(mechanic || '-', 110, 160);
+    doc.text(
+      (typeof idClassic !== 'undefined' && idClassic !== null && idClassic !== '') ? idClassic : '-',
+      110, 180
+    );
+
+    // Recuadro derecho
+    doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
+    doc.text('Date:', 330, 120);
+    doc.text('Invoice #:', 330, 140);
+    doc.text('Mechanics:', 330, 160);
+
+    doc.font('Courier').fillColor('#222').fontSize(10);
+    doc.text(formattedDate, 390, 120);
+    doc.text(result?.insertId || id, 400, 140);
+
+    // Lista de mecánicos con horas
     let mechanicToShow = mechanic;
     if (
       Array.isArray(mechanicsArr) &&
@@ -224,9 +241,7 @@ router.post('/', async (req, res) => {
         })
         .join(', ');
     }
-    doc.text(mechanicToShow || '-', 110, 160);
-    doc.text(formattedDate, 390, 120);
-    doc.text(result?.insertId || id, 400, 140);
+    doc.text(mechanicToShow || '-', 400, 160, { width: 140 });
 
     // Descripción
     const descText = description || '';
@@ -559,16 +574,33 @@ router.put('/:id', async (req, res) => {
     doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2');
     doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
     doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
+
+    // Recuadro izquierdo
     doc.text('Customer:', 50, 120);
     doc.text('Trailer:', 50, 140);
     doc.text('Mechanic:', 50, 160);
-    doc.text('Date:', 330, 120);
-    doc.text('Invoice #:', 330, 140);
+    doc.text('ID CLASSIC:', 50, 180);
 
     doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(billToCo || '-', 110, 120);
     doc.text(trailer || '-', 110, 140);
-    // Determina el nombre del/los mecánico(s) y sus horas
+    doc.text(mechanic || '-', 110, 160);
+    doc.text(
+      (typeof idClassic !== 'undefined' && idClassic !== null && idClassic !== '') ? idClassic : '-',
+      110, 180
+    );
+
+    // Recuadro derecho
+    doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
+    doc.text('Date:', 330, 120);
+    doc.text('Invoice #:', 330, 140);
+    doc.text('Mechanics:', 330, 160);
+
+    doc.font('Courier').fillColor('#222').fontSize(10);
+    doc.text(formattedDate, 390, 120);
+    doc.text(id, 400, 140);
+
+    // Lista de mecánicos con horas
     let mechanicToShow = mechanic;
     if (
       Array.isArray(mechanicsArr) &&
@@ -583,11 +615,7 @@ router.put('/:id', async (req, res) => {
         })
         .join(', ');
     }
-    doc.text(mechanicToShow || '-', 110, 160);
-    doc.text(formattedDate, 390, 120);
-    doc.text(id, 400, 140);
-
-    const descText = description || '';
+    doc.text(mechanicToShow || '-', 400, 160, { width: 140 });
 
     // --- DESCRIPCIÓN BIEN COLOCADA ---
     let descY = 200; // Ajusta según tu diseño
