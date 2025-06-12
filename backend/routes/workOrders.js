@@ -246,14 +246,15 @@ router.post('/', async (req, res) => {
     }
     doc.text(mechanicToShow || '-', 400, 160, { width: 140 });
 
-    // Descripción
-    const descText = description || '';
-    let descY = 200;
-    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2');
+    // --- DESCRIPCIÓN BIEN COLOCADA ---
+    let descY = 200; // Ajusta según tu diseño
+    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2'); // Línea horizontal
+
     descY += 10;
     doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Description:', 50, descY);
     doc.font('Courier').fontSize(11).fillColor('#222');
+    const descText = description || '';
     const descHeight = doc.heightOfString(descText, { width: 500 });
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
@@ -631,6 +632,7 @@ router.put('/:id', async (req, res) => {
     doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
     doc.text('Description:', 50, descY);
     doc.font('Courier').fontSize(11).fillColor('#222');
+    const descText = description || '';
     const descHeight = doc.heightOfString(descText, { width: 500 });
     doc.text(descText, 50, descY + 16, { width: 500 });
     let tableTop = descY + 16 + descHeight + 10;
