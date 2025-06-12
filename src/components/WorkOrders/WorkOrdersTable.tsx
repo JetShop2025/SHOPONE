@@ -186,6 +186,7 @@ const WorkOrdersTable: React.FC = () => {
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string>(''); // <-- NUEVO ESTADO
+  const [idClassicFilter, setIdClassicFilter] = useState('');
 
   // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
@@ -254,8 +255,9 @@ const WorkOrdersTable: React.FC = () => {
     const orderDate = dayjs(order.date.slice(0, 10));
     const inWeek = orderDate.isBetween(start, end, 'day', '[]');
     const matchesStatus = !statusFilter || order.status === statusFilter;
-    const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay; // <-- NUEVO FILTRO
-    return inWeek && matchesStatus && matchesDay;
+    const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
+    const matchesIdClassic = !idClassicFilter || (order.idClassic || '').toLowerCase().includes(idClassicFilter.toLowerCase());
+    return inWeek && matchesStatus && matchesDay && matchesIdClassic;
   });
 
 
@@ -758,6 +760,17 @@ const WorkOrdersTable: React.FC = () => {
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
+          </label>
+          <label className="wo-filter-label">
+            Filter by ID CLASSIC:&nbsp;
+            <input
+              type="text"
+              value={idClassicFilter}
+              onChange={e => setIdClassicFilter(e.target.value)}
+              className="wo-filter-input"
+              style={{ minWidth: 160 }}
+              placeholder="ID Classic"
+            />
           </label>
         </div>
 
