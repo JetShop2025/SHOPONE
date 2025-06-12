@@ -589,7 +589,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 }}
                 placeholder="Horas"
                 min={0}
-                step={0.1}
+                step="any"
                 style={{ flex: 1 }}
               />
               {arr.length > 1 && (
