@@ -117,7 +117,17 @@ router.post('/', async (req, res) => {
       if (opt === '15weld') extra += subtotal * 0.15;
     });
 
-    const totalLabAndPartsFinal = subtotal + extra;
+    let totalLabAndPartsFinal;
+    if (
+      req.body.totalLabAndParts !== undefined &&
+      req.body.totalLabAndParts !== null &&
+      req.body.totalLabAndParts !== '' &&
+      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
+      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = subtotal + extra;
+    }
 
     // --- AGREGA ESTO ANTES DE GENERAR EL PDF ---
     let extraLabels = [];
