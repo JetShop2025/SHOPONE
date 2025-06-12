@@ -158,7 +158,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   };
 
-  // Suma de partes
+  // Suma de partess
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
     const qty = Number(part.qty) || 0;
