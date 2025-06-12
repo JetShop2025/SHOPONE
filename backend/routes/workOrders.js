@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
 // --- CREAR ORDEN DE TRABAJO ---
 router.post('/', async (req, res) => {
   try {
-    const { billToCo, trailer, mechanic, date, description, parts, totalHrs, status, usuario, extraOptions } = req.body;
+    const { billToCo, trailer, mechanic, date, description, parts, totalHrs, status, usuario, extraOptions, idClassic } = req.body;
 
     // Validación y limpieza de partes
     const [inventory] = await db.query('SELECT sku, um FROM inventory');
@@ -421,7 +421,8 @@ router.put('/:id', async (req, res) => {
     totalHrs,
     status,
     extraOptions,
-    usuario
+    usuario,
+    idClassic // <-- agrega esto
   } = fields;
 
   try {
