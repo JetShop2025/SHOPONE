@@ -1012,6 +1012,9 @@ const WorkOrdersTable: React.FC = () => {
 
     const hasMoreParts = order.parts && order.parts.length > 5;
 
+    const [yyyy, mm, dd] = (order.date || '').split('-');
+    const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
+
     return (
       <React.Fragment key={order.id}>
         <tr
@@ -1050,9 +1053,7 @@ const WorkOrdersTable: React.FC = () => {
               : order.mechanic}
           </td>
           <td>
-            {order.date
-              ? new Date(order.date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
-              : ''}
+            {displayDate}
           </td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
           {[0,1,2,3,4].map(i => (

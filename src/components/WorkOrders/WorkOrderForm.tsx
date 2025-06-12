@@ -699,15 +699,16 @@ function calcularTotalWO(order: any) {
   ) {
     return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
-  // Suma solo los cost (ya es total por parte)
+  // Suma costo unitario * cantidad
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(cost) ? 0 : cost);
+    const qty = Number(part.qty) || 0;
+    return sum + (isNaN(cost) ? 0 : cost * qty);
   }, 0) || 0;
   // Suma de horas de todos los mecánicos
   const laborHrs = Array.isArray(order.mechanics)
-  ? order.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0)
-  : 0;
+    ? order.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0)
+    : 0;
   const laborTotal = laborHrs > 0 ? laborHrs * 60 : 0;
   const subtotal = partsTotal + laborTotal;
   let extra = 0;

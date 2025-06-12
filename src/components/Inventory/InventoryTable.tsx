@@ -518,97 +518,108 @@ const InventoryTable: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {inventory.map((item, idx) => (
-              <tr
-                key={idx}
-                style={{
-                  background: selectedIdx === idx ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
-                  cursor: 'pointer',
-                  fontSize: 12 // más pequeño para el contenido
-                }}
-                onClick={() => setSelectedIdx(idx)}
-              >
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 90, overflow: 'hidden' }}>
-                  {item.barCodes && (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-                      <Barcode
-                        value={item.barCodes.toString()}
-                        width={1}
-                        height={18}
-                        fontSize={8}
-                        margin={0}
-                        displayValue={false}
-                        background="#fff"
-                      />
-                    </div>
-                  )}
-                </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.category}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 140 }}>{item.part}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.provider}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 100 }}>{item.brand}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 60 }}>{item.um}</td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.area}</td>
-                <td
+            {inventory.map((item, idx) => {
+              // ...otros cálculos...
+
+              // Formatea la fecha de recibido
+              let displayReceive = '';
+              if (item.receive && typeof item.receive === 'string' && item.receive.includes('-')) {
+                const [yyyy, mm, dd] = item.receive.split('-');
+                displayReceive = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : item.receive;
+              }
+
+              return (
+                <tr
+                  key={idx}
                   style={{
-                    border: '1px solid #b0c4de',
-                    padding: 6,
-                    textAlign: 'center',
-                    maxWidth: 80,
-                    background: '#b3e5fc' // azul claro para RECEIVE
+                    background: selectedIdx === idx ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
+                    cursor: 'pointer',
+                    fontSize: 12 // más pequeño para el contenido
                   }}
+                  onClick={() => setSelectedIdx(idx)}
                 >
-                  {item.receive ?? ''}
-                </td>
-                <td
-                  style={{
-                    border: '1px solid #b0c4de',
-                    padding: 6,
-                    textAlign: 'center',
-                    maxWidth: 80,
-                    background: '#ffe082' // amarillo fuerte para WO OUTPUTS
-                  }}
-                >
-                  {item.salidasWo ?? ''}
-                </td>
-                <td
-                  style={{
-                    border: '1px solid #b0c4de',
-                    padding: 6,
-                    textAlign: 'center',
-                    maxWidth: 80,
-                    background: '#c8e6c9' // verde para ON HAND
-                  }}
-                >
-                  {item.onHand ?? ''}
-                </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
-                  {item.imagen ? (
-                    <a
-                      href={item.imagen}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: 12 }}
-                    >
-                      IMG
-                    </a>
-                  ) : (
-                    'No image'
-                  )}
-                </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
-                  {item.precio !== undefined && item.precio !== '' ? `$${item.precio}` : ''}
-                </td>
-                <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
-                  {item.invoiceLink ? (
-                    <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 12 }}>
-                      Invoice
-                    </a>
-                  ) : ''}
-                </td>
-              </tr>
-            ))}
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 90, overflow: 'hidden' }}>
+                    {item.barCodes && (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                        <Barcode
+                          value={item.barCodes.toString()}
+                          width={1}
+                          height={18}
+                          fontSize={8}
+                          margin={0}
+                          displayValue={false}
+                          background="#fff"
+                        />
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.category}</td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 140 }}>{item.part}</td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 120 }}>{item.provider}</td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 100 }}>{item.brand}</td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 60 }}>{item.um}</td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>{item.area}</td>
+                  <td
+                    style={{
+                      border: '1px solid #b0c4de',
+                      padding: 6,
+                      textAlign: 'center',
+                      maxWidth: 80,
+                      background: '#b3e5fc' // azul claro para RECEIVE
+                    }}
+                  >
+                    {displayReceive}
+                  </td>
+                  <td
+                    style={{
+                      border: '1px solid #b0c4de',
+                      padding: 6,
+                      textAlign: 'center',
+                      maxWidth: 80,
+                      background: '#ffe082' // amarillo fuerte para WO OUTPUTS
+                    }}
+                  >
+                    {item.salidasWo ?? ''}
+                  </td>
+                  <td
+                    style={{
+                      border: '1px solid #b0c4de',
+                      padding: 6,
+                      textAlign: 'center',
+                      maxWidth: 80,
+                      background: '#c8e6c9' // verde para ON HAND
+                    }}
+                  >
+                    {item.onHand ?? ''}
+                  </td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
+                    {item.imagen ? (
+                      <a
+                        href={item.imagen}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: 12 }}
+                      >
+                        IMG
+                      </a>
+                    ) : (
+                      'No image'
+                    )}
+                  </td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 80 }}>
+                    {item.precio !== undefined && item.precio !== '' ? `$${item.precio}` : ''}
+                  </td>
+                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
+                    {item.invoiceLink ? (
+                      <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 12 }}>
+                        Invoice
+                      </a>
+                    ) : ''}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

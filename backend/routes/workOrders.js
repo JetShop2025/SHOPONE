@@ -157,11 +157,14 @@ router.post('/', async (req, res) => {
 
     // --- GENERA EL PDF ---
     // Formatea la fecha a MM-DD-YYYY
-    const jsDate = new Date(date);
-    const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(jsDate.getDate()).padStart(2, '0');
-    const yyyy = jsDate.getFullYear();
-    const formattedDate = `${mm}-${dd}-${yyyy}`;
+    // Formatea la fecha a MM-DD-YYYY sin usar new Date()
+    let formattedDate = '';
+    if (typeof date === 'string' && date.includes('-')) {
+      const [yyyy, mm, dd] = date.split('-');
+      formattedDate = `${mm}-${dd}-${yyyy}`;
+    } else {
+      formattedDate = date || '';
+    }
 
     // Genera el nombre del PDF como MM-DD-YYYY_ID.pdf
     const pdfName = `${formattedDate}_${result.insertId || Date.now()}.pdf`;
@@ -542,11 +545,14 @@ router.put('/:id', async (req, res) => {
 
     // 5. Genera el PDF actualizado
     // Formatea la fecha a MM-DD-YYYY
-    const jsDate = new Date(date);
-    const mm = String(jsDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(jsDate.getDate()).padStart(2, '0');
-    const yyyy = jsDate.getFullYear();
-    const formattedDate = `${mm}-${dd}-${yyyy}`;
+    // Formatea la fecha a MM-DD-YYYY sin usar new Date()
+    let formattedDate = '';
+    if (typeof date === 'string' && date.includes('-')) {
+      const [yyyy, mm, dd] = date.split('-');
+      formattedDate = `${mm}-${dd}-${yyyy}`;
+    } else {
+      formattedDate = date || '';
+    }
     const pdfName = `${formattedDate}_${id}.pdf`;
     const pdfPath = path.join(__dirname, '..', 'pdfs', pdfName);
 
