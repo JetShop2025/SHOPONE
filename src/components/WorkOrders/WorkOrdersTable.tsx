@@ -1012,8 +1012,9 @@ const WorkOrdersTable: React.FC = () => {
 
     const hasMoreParts = order.parts && order.parts.length > 5;
 
-    const [yyyy, mm, dd] = (order.date || '').split('-');
-    const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
+    const dateStr = (order.date || '').slice(0, 10); // '2025-05-29'
+const [yyyy, mm, dd] = dateStr.split('-');
+const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
 
     return (
       <React.Fragment key={order.id}>
