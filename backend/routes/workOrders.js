@@ -506,15 +506,24 @@ router.put('/:id', async (req, res) => {
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
-    await db.query(
-      `UPDATE work_orders SET 
+    const updateFields = [
+      billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
+      JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status
+    ];
+    let updateQuery = `
+      UPDATE work_orders SET 
         billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
-       WHERE id = ?`,
-      [
-        billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-        JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, id
-      ]
-    );
+    `;
+
+    if (status === 'FINISHED') {
+      updateQuery += `, idClassic = ?`;
+      updateFields.push(fields.idClassic || null);
+    }
+
+    updateQuery += ` WHERE id = ?`;
+    updateFields.push(id);
+
+    await db.query(updateQuery, updateFields);
 
     // 5. Genera el PDF actualizado
     // Formatea la fecha a MM-DD-YYYY

@@ -984,6 +984,7 @@ const WorkOrdersTable: React.FC = () => {
               <tr>
 
                 <th>ID</th>
+                <th>ID CLASSIC</th>
                 <th>Bill To Co</th>
                 <th>Trailer</th>
                 <th>Mechanic</th>
@@ -1040,6 +1041,7 @@ const WorkOrdersTable: React.FC = () => {
             )}
             {order.id}
           </td>
+          <td>{order.idClassic || ''}</td>
           <td>{order.billToCo}</td>
           <td>{order.trailer}</td>
           <td>
@@ -1047,7 +1049,11 @@ const WorkOrdersTable: React.FC = () => {
               ? order.mechanics.map((m: any) => m.name).join(', ')
               : order.mechanic}
           </td>
-          <td>{order.date?.slice(0, 10)}</td>
+          <td>
+            {order.date
+              ? new Date(order.date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+              : ''}
+          </td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
           {[0,1,2,3,4].map(i => (
             <React.Fragment key={i}>

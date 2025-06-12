@@ -146,8 +146,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       // Solo recalcula si el usuario NO editó manualmente el costo
       if (!manualCostEdit[index]) {
         const unitPrice = Number(workOrder.parts[index]?.unitPrice || 0);
-        if (!isNaN(unitPrice)) {
-          onPartChange(index, 'cost', formatCurrencyInput(unitPrice));
+        const qty = Number(value) || 0;
+        if (!isNaN(unitPrice) && !isNaN(qty)) {
+          onPartChange(index, 'cost', formatCurrencyInput(unitPrice * qty));
         }
       }
     } else if (field === 'cost') {
@@ -670,6 +671,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             />
           </label>
         </div>
+        {workOrder.status === 'FINISHED' && (
+          <div style={{ marginTop: 12 }}>
+            <label>
+              ID CLASSIC:
+              <input
+                type="text"
+                name="idClassic"
+                value={workOrder.idClassic || ''}
+                onChange={e => onChange({ ...workOrder, idClassic: e.target.value })}
+                placeholder="ID del otro sistema"
+                style={{ marginLeft: 8 }}
+              />
+            </label>
+          </div>
+        )}
     </div>
   );
 };
