@@ -54,7 +54,7 @@ router.post('/', async (req, res) => {
     const { billToCo, trailer, mechanic, date, description, parts, totalHrs, status, usuario, extraOptions, idClassic } = req.body;
 
     // Validación y limpieza de partes
-    const [inventory] = await db.query('SELECT sku, um FROM inventory');
+    const [inventory] = await db.query('SELECT sku, um, precio FROM inventory');
     const inventoryMap = {};
     const inventorySkus = new Set();
     inventory.forEach(item => {
@@ -110,10 +110,23 @@ router.post('/', async (req, res) => {
     // Subtotal
     const subtotal = partsTotal + laborTotal;
     let extra = 0;
-    (Array.isArray(extraOptions) ? extraOptions : []).forEach(opt => {
-      if (opt === '5') extra += subtotal * 0.05;
-      if (opt === '15shop') extra += subtotal * 0.15;
-      if (opt === '15weld') extra += subtotal * 0.15;
+    let extraLabels = [];
+    let extraArr = [];
+    const extras = Array.isArray(extraOptions) ? extraOptions : [];
+    extras.forEach(opt => {
+      if (opt === '5') {
+        extra += subtotal * 0.05; // Suma el 5% al total
+      }
+      if (opt === '15shop') {
+        extraLabels.push('15% Shop Miscellaneous');
+        extraArr.push(subtotal * 0.15);
+        extra += subtotal * 0.15;
+      }
+      if (opt === '15weld') {
+        extraLabels.push('15% Welding Supplies');
+        extraArr.push(subtotal * 0.15);
+        extra += subtotal * 0.15;
+      }
     });
 
     let totalLabAndPartsFinal;
@@ -129,17 +142,6 @@ router.post('/', async (req, res) => {
     }
 
     // --- AGREGA ESTO ANTES DE GENERAR EL PDF ---
-    let extraLabels = [];
-    let extraArr = [];
-    (Array.isArray(extraOptions) ? extraOptions : []).forEach(opt => {
-      if (opt === '15shop') {
-        extraLabels.push('15% Shop Miscellaneous');
-        extraArr.push(subtotal * 0.15);
-      } else if (opt === '15weld') {
-        extraLabels.push('15% Welding Supplies');
-        extraArr.push(subtotal * 0.15);
-      }
-    });
     // --------------------------------------------
 
     // --- INSERTA EN LA BASE DE DATOS ---
@@ -453,7 +455,7 @@ router.put('/:id', async (req, res) => {
 
     // --- AGREGA ESTO ---
     // Carga inventario y arma el mapa SKU->UM
-    const [inventory] = await db.query('SELECT sku, um FROM inventory');
+    const [inventory] = await db.query('SELECT sku, um, precio FROM inventory');
     const inventoryMap = {};
     inventory.forEach(item => {
       inventoryMap[(item.sku || '').trim().toUpperCase()] = item.um || '-';
@@ -495,19 +497,23 @@ router.put('/:id', async (req, res) => {
     }, 0);
     const subtotal = partsTotal + laborTotal;
 
-    let extra5 = 0;
+    let extra = 0;
     let extraLabels = [];
     let extraArr = [];
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
       if (opt === '5') {
-        extra5 += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDFf
-      } else if (opt === '15shop') {
+        extra += subtotal * 0.05; // Suma el 5% pero NO lo muestres en el PDFf
+      } 
+      if (opt === '15shop') {
         extraLabels.push('15% Shop Miscellaneous');
         extraArr.push(subtotal * 0.15);
-      } else if (opt === '15weld') {
+        extra += subtotal * 0.15;
+      } 
+      if (opt === '15weld') {
         extraLabels.push('15% Welding Supplies');
         extraArr.push(subtotal * 0.15);
+        extra += subtotal * 0.15;
       }
     });
     
