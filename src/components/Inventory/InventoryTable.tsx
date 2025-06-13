@@ -111,7 +111,6 @@ const InventoryTable: React.FC = () => {
   const [editPart, setEditPart] = useState<PartType>({ ...emptyPart });
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
   const [skuSearch, setSkuSearch] = useState('');
-  const [sortCategory, setSortCategory] = useState<string | null>(null);
 
   // Fetch inventory
   useEffect(() => {
@@ -217,16 +216,12 @@ const InventoryTable: React.FC = () => {
     item.sku?.toLowerCase().includes(skuSearch.toLowerCase())
   );
 
-  // Ordenar por categoría (SKU que inicia por "1-", "2-", etc.)
-  const sortedInventory = sortCategory
-    ? [...filteredInventory].sort((a, b) => {
-        const aMatch = a.sku?.startsWith(sortCategory + '-');
-        const bMatch = b.sku?.startsWith(sortCategory + '-');
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
-      })
-    : filteredInventory;
+  // Ordena por SKU ascendente (puedes cambiar a .category si prefieres)
+  const sortedInventory = [...filteredInventory].sort((a, b) => {
+    if (a.sku < b.sku) return -1;
+    if (a.sku > b.sku) return 1;
+    return 0;
+  });
 
   // Handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,7 +324,7 @@ const InventoryTable: React.FC = () => {
       </div>
 
       {/* Buscador por SKU */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center' }}>
+      <div style={{ marginBottom: 16 }}>
         <input
           type="text"
           placeholder="Buscar por número de parte (SKU)..."
@@ -343,42 +338,6 @@ const InventoryTable: React.FC = () => {
             minWidth: 220
           }}
         />
-        <span style={{ fontWeight: 600, color: '#1976d2' }}>Ordenar por categoría:</span>
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-          <button
-            key={num}
-            onClick={() => setSortCategory(sortCategory === String(num) ? null : String(num))}
-            style={{
-              background: sortCategory === String(num) ? '#1976d2' : '#fff',
-              color: sortCategory === String(num) ? '#fff' : '#1976d2',
-              border: '1.5px solid #1976d2',
-              borderRadius: 6,
-              padding: '6px 14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginRight: 4
-            }}
-          >
-            {num}
-          </button>
-        ))}
-        {sortCategory && (
-          <button
-            onClick={() => setSortCategory(null)}
-            style={{
-              background: '#d32f2f',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '6px 14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginLeft: 8
-            }}
-          >
-            Quitar orden
-          </button>
-        )}
       </div>
 
       {/* Add Part Modal */}
