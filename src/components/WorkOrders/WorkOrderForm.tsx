@@ -168,7 +168,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
     // El campo cost ya debe ser el total de la línea (unitario * cantidad)
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(cost) ? 0 : cost);
+    return sum + (isNaN(cost) ? 0 : cost); // Solo suma el total de la línea
   }, 0) || 0;
 
   // Labor
@@ -224,11 +224,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           e.preventDefault(); // Esto es clave
           
           const cleanParts = workOrder.parts
-            .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
-            .map((p: Part) => ({
-              ...p,
-              cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
-            }));
+  .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
+  .map((p: Part) => {
+    const qty = Number(p.qty) || 0;
+    const cost = Number(String(p.cost).replace(/[^0-9.]/g, ''));
+    // Si el usuario puso el unitario, lo multiplicamos por qty
+    // Si ya puso el total de la línea, lo dejamos igual
+    // Considera unitario si cost < 1000 y qty > 1
+    const total = (qty > 0 && cost > 0 && cost < 1000) ? cost * qty : cost;
+    return {
+      ...p,
+      cost: total
+    };
+  });
 
           // Antes de enviar al backend, limpia el valor:
           const cleanTotalLabAndParts = workOrder.totalLabAndParts
@@ -707,8 +715,7 @@ function calcularTotalWO(order: any) {
   // Suma costo unitario * cantidad
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    const qty = Number(part.qty) || 0;
-    return sum + (isNaN(cost) ? 0 : cost * qty);
+    return sum + (isNaN(cost) ? 0 : cost); // Solo suma el total de la línea
   }, 0) || 0;
   // Suma de horas de todos los mecánicos
   const laborHrs = Array.isArray(order.mechanics)
