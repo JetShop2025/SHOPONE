@@ -1087,7 +1087,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
                 {order.parts && order.parts[i] && order.parts[i].sku
                   ? (
                       order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
-                        ? (Number(order.parts[i].cost) * Number(order.parts[i].qty || 0)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                        ? Number(order.parts[i].cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                         : '$0.00'
                     )
                   : ''
