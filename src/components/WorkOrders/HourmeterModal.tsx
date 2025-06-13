@@ -43,14 +43,19 @@ const HourmeterModal: React.FC<{
     // Identificador único de la orden (puede ser order.id o usa el índice si no hay id)
     const orderId = order.id ? String(order.id) : JSON.stringify(order);
 
-    if (Array.isArray(order.mechanics)) {
-      order.mechanics.forEach((m: { name: string, hrs: number }) => {
+    if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
+      // Reparte el total de LAB & PARTS entre los mecánicos de la orden
+      const numMech = order.mechanics.length;
+      order.mechanics.forEach((m: { name: string, hrs: number, deadHrs?: number }) => {
         if (!mechanicStats[m.name]) {
           mechanicStats[m.name] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
         mechanicStats[m.name].totalHrs += Number(m.hrs) || 0;
-        mechanicStats[m.name].totalLabAndParts += Number(order.totalLabAndParts) || 0;
-        if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
+        mechanicStats[m.name].totalLabAndParts += (Number(order.totalLabAndParts) || 0) / numMech;
+        // Dead hours: si tienes un campo deadHrs úsalo, si no, calcula como antes
+        if (typeof m.deadHrs === 'number') {
+          mechanicStats[m.name].deadHours += m.deadHrs;
+        } else if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
           mechanicStats[m.name].deadHours += m.hrs || 0;
         }
         mechanicStats[m.name].orders.add(orderId);
@@ -64,12 +69,13 @@ const HourmeterModal: React.FC<{
       }
       const hrs = parseFloat(order.totalHrs) || 0;
       const labAndParts = Number(order.totalLabAndParts) || 0;
+      const numMech = mechanics.length || 1;
       mechanics.forEach((mec: string) => {
         if (!mechanicStats[mec]) {
           mechanicStats[mec] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
         mechanicStats[mec].totalHrs += hrs;
-        mechanicStats[mec].totalLabAndParts += labAndParts;
+        mechanicStats[mec].totalLabAndParts += labAndParts / numMech;
         if (labAndParts === 0 && hrs > 0) mechanicStats[mec].deadHours += hrs;
         mechanicStats[mec].orders.add(orderId);
       });
