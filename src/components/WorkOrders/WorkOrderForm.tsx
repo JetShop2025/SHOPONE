@@ -161,9 +161,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Suma de partess
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
+    // El campo cost ya debe ser el total de la línea (unitario * cantidad)
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    const qty = Number(part.qty) || 0;
-    return sum + (isNaN(cost) ? 0 : cost * qty);
+    return sum + (isNaN(cost) ? 0 : cost);
   }, 0) || 0;
 
   // Labor
