@@ -103,9 +103,9 @@ router.post('/', async (req, res) => {
 
     // Suma partes
     const partsTotal = partsArr.reduce((sum, part) => {
-      const cost = Number(part.cost) || 0;
+      const cost = Number(part.cost) || 0; // unitario
       const qty = Number(part.qty) || 0;
-      return sum + (qty * cost);
+      return sum + (qty * cost); // total de la línea
     }, 0);
 
     // Subtotal
@@ -491,7 +491,7 @@ router.put('/:id', async (req, res) => {
     const partsTotal = partsArr.reduce((sum, part) => {
       const cost = Number(part.cost) || 0;
       const qty = Number(part.qty) || 0;
-      return sum + (qty * cost);
+      return sum + (qty * cost); // <-- ¡Asegúrate de multiplicar qty * cost!
     }, 0); // <-- ¡Asegúrate de multiplicar qty * cost!
     const subtotal = partsTotal + laborTotal;
 

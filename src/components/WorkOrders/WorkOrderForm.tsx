@@ -133,7 +133,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         onPartChange(index, 'part', found.part);
         onPartChange(index, 'unitPrice', found.precio || found.price || found.costTax || '');
         onPartChange(index, 'invoiceLink', found.invoiceLink || '');
-        // Siempre guarda el costo unitario
+        // Guarda el costo unitario, NO qty * unitario
         onPartChange(index, 'cost', formatCurrencyInput(found.precio || found.price || found.costTax || 0));
         setAutocomplete(prev => ({ ...prev, [index]: [] }));
       } else {
@@ -143,14 +143,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
     } else if (field === 'qty') {
       onPartChange(index, 'qty', value);
-      // Solo recalcula si el usuario NO editó manualmente el costo
-      if (!manualCostEdit[index]) {
-        const unitPrice = Number(workOrder.parts[index]?.unitPrice || 0);
-        const qty = Number(value) || 0;
-        if (!isNaN(unitPrice) && !isNaN(qty)) {
-          onPartChange(index, 'cost', formatCurrencyInput(unitPrice * qty));
-        }
-      }
+      // NO recalcules el costo aquí, solo deja el unitario
     } else if (field === 'cost') {
       setManualCostEdit(prev => ({ ...prev, [index]: true })); // marca como editado manualmente
       onPartChange(index, 'cost', formatCurrencyInput(parseCurrencyInput(value)));
