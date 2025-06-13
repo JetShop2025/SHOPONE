@@ -152,6 +152,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   };
 
+  // Cuando cambia qty o unitario:
+  const handleQtyOrUnitChange = (index: number, field: string, value: string) => {
+    const part = workOrder.parts[index];
+    let qty = field === 'qty' ? Number(value) : Number(part.qty);
+    let unit = field === 'unit' ? Number(value) : Number(part.unitCost);
+    let total = qty * unit;
+    // Actualiza el campo cambiado
+    onPartChange(index, field, value);
+    // Actualiza el costo total de la línea
+    onPartChange(index, 'cost', total.toString());
+  };
+
   // Suma de partess
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
     // El campo cost ya debe ser el total de la línea (unitario * cantidad)

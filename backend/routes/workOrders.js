@@ -103,9 +103,8 @@ router.post('/', async (req, res) => {
 
     // Suma partes
     const partsTotal = partsArr.reduce((sum, part) => {
-      const cost = Number(part.cost) || 0; // unitario
-      const qty = Number(part.qty) || 0;
-      return sum + (qty * cost); // total de la línea
+      const cost = Number(part.cost) || 0; // ahora cost es el total de la línea
+      return sum + cost;
     }, 0);
 
     // Subtotal
@@ -302,14 +301,16 @@ router.post('/', async (req, res) => {
         doc.text(p.um || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
         doc.text(p.qty || '-', col[4], y + 4, { width: col[5] - col[4], align: 'center' }); // QTY
         doc.text(
-          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
-            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          // UNIT COST: total de línea / qty
+          p.qty && p.cost
+            ? (Number(p.cost) / Number(p.qty)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
           col[5], y + 4, { width: col[6] - col[5], align: 'center' }
         );
         doc.text(
-          p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
-            ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          // TOTAL: el total de la línea (cost)
+          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
+            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
           col[6], y + 4, { width: col[7] - col[6], align: 'center' }
         );
@@ -677,14 +678,16 @@ router.put('/:id', async (req, res) => {
         doc.text(p.um || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
         doc.text(p.qty || '-', col[4], y + 4, { width: col[5] - col[4], align: 'center' }); // QTY
         doc.text(
-          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
-            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          // UNIT COST: total de línea / qty
+          p.qty && p.cost
+            ? (Number(p.cost) / Number(p.qty)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
           col[5], y + 4, { width: col[6] - col[5], align: 'center' }
         );
         doc.text(
-          p.qty && p.cost && !isNaN(Number(p.qty)) && !isNaN(Number(p.cost))
-            ? (Number(p.qty) * Number(p.cost)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          // TOTAL: el total de la línea (cost)
+          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
+            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '$0.00',
           col[6], y + 4, { width: col[7] - col[6], align: 'center' }
         );
