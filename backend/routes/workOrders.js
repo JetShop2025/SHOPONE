@@ -94,7 +94,8 @@ router.post('/', async (req, res) => {
     let totalHrsPost = 0;
     if (Array.isArray(req.body.mechanics) && req.body.mechanics.length > 0) {
       totalHrsPost = req.body.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
-    } else if (req.body.totalHrs) {
+    } 
+    if (!totalHrsPost && req.body.totalHrs) {
       totalHrsPost = parseFloat(req.body.totalHrs) || 0;
     }
 
@@ -487,7 +488,8 @@ router.put('/:id', async (req, res) => {
     let totalHrsPut = 0;
     if (Array.isArray(fields.mechanics) && fields.mechanics.length > 0) {
       totalHrsPut = fields.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
-    } else if (fields.totalHrs) {
+    } 
+    if (!totalHrsPut && fields.totalHrs) {
       totalHrsPut = parseFloat(fields.totalHrs) || 0;
     }
     const laborTotal = totalHrsPut * 60;
