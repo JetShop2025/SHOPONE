@@ -145,8 +145,8 @@ router.post('/', async (req, res) => {
 
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const mechanicsArr = Array.isArray(req.body.mechanics) ? req.body.mechanics : [];
 
@@ -168,7 +168,7 @@ router.post('/', async (req, res) => {
 
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status
+      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status, idClassic || null
     ];
     const [result] = await db.query(query, values);
 
