@@ -149,6 +149,23 @@ router.post('/', async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const mechanicsArr = Array.isArray(req.body.mechanics) ? req.body.mechanics : [];
+
+    // --- AGREGA ESTE BLOQUE ANTES DE GENERAR EL PDF ---
+    let mechanicToShow = mechanic;
+    if (
+      Array.isArray(mechanicsArr) &&
+      mechanicsArr.length > 0 &&
+      mechanicsArr.some(m => (m.name || m.mechanic))
+    ) {
+      mechanicToShow = mechanicsArr
+        .map(m => {
+          const name = m.name || m.mechanic || '-';
+          const hrs = m.hrs !== undefined && m.hrs !== null && m.hrs !== '' ? `(${m.hrs})` : '';
+          return `${name} ${hrs}`.trim();
+        })
+        .join(', ');
+    }
+
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status
@@ -585,7 +602,6 @@ router.put('/:id', async (req, res) => {
     doc.text(id, 400, 140);
 
     // Lista de mecánicos con horas
-    let mechanicToShow = mechanic;
     if (
       Array.isArray(mechanicsArr) &&
       mechanicsArr.length > 0 &&
