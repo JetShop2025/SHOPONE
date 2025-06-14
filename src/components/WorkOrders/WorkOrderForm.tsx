@@ -204,6 +204,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   };
 
+  useEffect(() => {
+  // Si el total guardado es diferente al calculado, activa manualTotalEdit
+  const calculated = calcularTotalWO(workOrder);
+  if (
+    workOrder.totalLabAndParts !== undefined &&
+    workOrder.totalLabAndParts !== null &&
+    workOrder.totalLabAndParts !== '' &&
+    Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, '')) !== calculated
+  ) {
+    setManualTotalEdit(true);
+  } else {
+    setManualTotalEdit(false);
+  }
+  // eslint-disable-next-line
+}, [workOrder.id]);
+
   return (
     <div
       style={{

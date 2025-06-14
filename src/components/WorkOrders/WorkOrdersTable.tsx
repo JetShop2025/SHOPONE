@@ -958,6 +958,7 @@ const WorkOrdersTable: React.FC = () => {
                           await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
                             totalLabAndParts: totalLabAndPartsLimpio, // <-- ENVÍA EL TOTAL LIMPIO
+                            manualTotalEdit: true,
                             date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
                             parts: editWorkOrder.parts,
                             usuario: localStorage.getItem('username') || '',
