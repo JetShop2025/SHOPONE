@@ -135,10 +135,19 @@ router.post('/', async (req, res) => {
       }
     });
 
-    const totalLabAndPartsFinal = subtotal + extra;
-
-    // --- AGREGA ESTO ANTES DE GENERAR EL PDF ---
-    // --------------------------------------------
+    // Si el frontend manda un valor manual, úsalo. Si no, calcula el total.
+    let totalLabAndPartsFinal;
+    if (
+      req.body.manualTotalEdit === true &&
+      req.body.totalLabAndParts !== undefined &&
+      req.body.totalLabAndParts !== null &&
+      req.body.totalLabAndParts !== '' &&
+      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
+      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = subtotal + extra;
+    }
 
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
@@ -515,7 +524,18 @@ router.put('/:id', async (req, res) => {
       }
     });
     
-    const totalLabAndPartsFinal = subtotal + extra;
+    let totalLabAndPartsFinal;
+    if (
+      fields.manualTotalEdit === true &&
+      fields.totalLabAndParts !== undefined &&
+      fields.totalLabAndParts !== null &&
+      fields.totalLabAndParts !== '' &&
+      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
+    ) {
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    } else {
+      totalLabAndPartsFinal = subtotal + extra;
+    }
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];

@@ -248,6 +248,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               res = await axios.put<{ pdfUrl?: string }>(`${API_URL}/work-orders/${workOrder.id}`, {
                 ...workOrder,
                 totalLabAndParts: cleanTotalLabAndParts,
+                manualTotalEdit,
                 parts: cleanParts,
                 extraOptions,
                 usuario: localStorage.getItem('username') || ''
@@ -257,6 +258,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               res = await axios.post<{ pdfUrl?: string }>(`${API_URL}/work-orders`, {
                 ...workOrder,
                 totalLabAndParts: cleanTotalLabAndParts,
+                manualTotalEdit,
                 parts: cleanParts,
                 extraOptions,
                 usuario: localStorage.getItem('username') || ''
