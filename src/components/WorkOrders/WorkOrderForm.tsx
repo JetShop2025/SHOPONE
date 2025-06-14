@@ -727,12 +727,10 @@ function calcularTotalWO(order: any) {
   ) {
     return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
-  // Suma costo unitario * cantidad si aplica
+  // Suma SOLO el total de línea (cost), NO multipliques por qty
   const partsTotal = order.parts?.reduce((sum: number, part: any) => {
-    const qty = Number(part.qty) || 0;
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    const total = (qty > 0 && cost > 0 && cost < 1000) ? cost * qty : cost;
-    return sum + (isNaN(total) ? 0 : total);
+    return sum + (isNaN(cost) ? 0 : cost);
   }, 0) || 0;
   // Suma de horas de todos los mecánicos
   const laborHrs = Array.isArray(order.mechanics)
