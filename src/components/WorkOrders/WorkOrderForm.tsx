@@ -166,11 +166,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Suma de partess
   const partsTotal = workOrder.parts?.reduce((sum: number, part: Part) => {
-    const qty = Number(part.qty) || 0;
     const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    // Si el costo es bajo y qty > 1, asumimos que es unitario y multiplicamos
-    const total = (qty > 0 && cost > 0 && cost < 1000) ? cost * qty : cost;
-    return sum + (isNaN(total) ? 0 : total);
+    return sum + (isNaN(cost) ? 0 : cost);
   }, 0) || 0;
 
   // Labor
@@ -227,18 +224,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           
           const cleanParts = workOrder.parts
   .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
-  .map((p: Part) => {
-    const qty = Number(p.qty) || 0;
-    const cost = Number(String(p.cost).replace(/[^0-9.]/g, ''));
-    // Si el usuario puso el unitario, lo multiplicamos por qty
-    // Si ya puso el total de la línea, lo dejamos igual
-    // Considera unitario si cost < 1000 y qty > 1
-    const total = (qty > 0 && cost > 0 && cost < 1000) ? cost * qty : cost;
-    return {
-      ...p,
-      cost: total
-    };
-  });
+  .map((p: Part) => ({
+    ...p,
+    cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
+  }));
 
           // Antes de enviar al backend, limpia el valor:
           const cleanTotalLabAndParts = workOrder.totalLabAndParts
@@ -382,7 +371,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 minWidth: 180,
                 position: 'relative',
                 display: 'flex',
-                flexDirection: 'column', // <-- Cambia a columna
+                flexDirection: 'column',
                 gap: 4
               }}>
                 <label>
@@ -419,7 +408,29 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     type="number"
                     placeholder="Cantidad"
                     value={part.qty}
-                    onChange={e => handlePartChange(index, 'qty', e.target.value)}
+                    min={1}
+                    onChange={e => {
+                      const qty = Number(e.target.value) || 0;
+                      const unit = Number(part.unitPrice) || 0;
+                      onPartChange(index, 'qty', qty.toString());
+                      onPartChange(index, 'cost', (qty > 0 && unit > 0 ? qty * unit : 0).toFixed(2));
+                    }}
+                    style={{ width: '100%', marginTop: 4 }}
+                  />
+                </label>
+                <label>
+                  Unitario
+                  <input
+                    type="number"
+                    placeholder="Unitario"
+                    value={part.unitPrice || ''}
+                    min={0}
+                    onChange={e => {
+                      const unit = Number(e.target.value) || 0;
+                      const qty = Number(part.qty) || 0;
+                      onPartChange(index, 'unitPrice', unit.toString());
+                      onPartChange(index, 'cost', (qty > 0 && unit > 0 ? qty * unit : 0).toFixed(2));
+                    }}
                     style={{ width: '100%', marginTop: 4 }}
                   />
                 </label>
@@ -429,8 +440,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     type="text"
                     placeholder="Costo"
                     value={part.cost}
-                    onChange={e => onPartChange(index, 'cost', e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    readOnly
+                    style={{ width: '100%', marginTop: 4, background: '#f0f0f0' }}
                   />
                 </label>
               </div>

@@ -45,20 +45,21 @@ const HourmeterModal: React.FC<{
     if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
       const numMech = order.mechanics.length;
       order.mechanics.forEach((m: { name: string, hrs: number, deadHrs?: number }) => {
-        if (!mechanicStats[m.name]) {
-          mechanicStats[m.name] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
+        const mechanicName = (m.name || '').trim().toUpperCase();
+        if (!mechanicStats[mechanicName]) {
+          mechanicStats[mechanicName] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
-        mechanicStats[m.name].totalHrs += Number(m.hrs) || 0;
-        mechanicStats[m.name].totalLabAndParts += (Number(order.totalLabAndParts) || 0) / numMech;
+        mechanicStats[mechanicName].totalHrs += Number(m.hrs) || 0;
+        mechanicStats[mechanicName].totalLabAndParts += (Number(order.totalLabAndParts) || 0) / numMech;
         // Dead hours: solo suma si es un número finito y mayor o igual a 0
         if (typeof m.deadHrs === 'number' && isFinite(m.deadHrs) && m.deadHrs >= 0 && m.deadHrs < 1000) {
-          mechanicStats[m.name].deadHours += m.deadHrs;
+          mechanicStats[mechanicName].deadHours += m.deadHrs;
         } else if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
-          mechanicStats[m.name].deadHours += Number(m.hrs) || 0;
+          mechanicStats[mechanicName].deadHours += Number(m.hrs) || 0;
         }
-        if (!mechanicStats[m.name].orders.has(orderId)) {
-          mechanicStats[m.name].orders.add(orderId);
-          mechanicStats[m.name].workOrders += 1;
+        if (!mechanicStats[mechanicName].orders.has(orderId)) {
+          mechanicStats[mechanicName].orders.add(orderId);
+          mechanicStats[mechanicName].workOrders += 1;
         }
       });
     } else {
@@ -72,16 +73,17 @@ const HourmeterModal: React.FC<{
       const labAndParts = Number(order.totalLabAndParts) || 0;
       const numMech = mechanics.length || 1;
       mechanics.forEach((mec: string) => {
-        if (!mechanicStats[mec]) {
-          mechanicStats[mec] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
+        const mechanicName = (mec || '').trim().toUpperCase();
+        if (!mechanicStats[mechanicName]) {
+          mechanicStats[mechanicName] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
         }
-        mechanicStats[mec].totalHrs += hrs;
-        mechanicStats[mec].totalLabAndParts += labAndParts / numMech;
+        mechanicStats[mechanicName].totalHrs += hrs;
+        mechanicStats[mechanicName].totalLabAndParts += labAndParts / numMech;
         // Dead hours: solo suma si es un número finito y razonable
-        if (labAndParts === 0 && hrs > 0 && hrs < 1000) mechanicStats[mec].deadHours += hrs;
-        if (!mechanicStats[mec].orders.has(orderId)) {
-          mechanicStats[mec].orders.add(orderId);
-          mechanicStats[mec].workOrders += 1;
+        if (labAndParts === 0 && hrs > 0 && hrs < 1000) mechanicStats[mechanicName].deadHours += hrs;
+        if (!mechanicStats[mechanicName].orders.has(orderId)) {
+          mechanicStats[mechanicName].orders.add(orderId);
+          mechanicStats[mechanicName].workOrders += 1;
         }
       });
     }
