@@ -409,6 +409,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="Cantidad"
                     value={part.qty}
                     min={1}
+                    step="any" // <-- Permite decimales
                     onChange={e => {
                       const qty = Number(e.target.value) || 0;
                       const unit = Number(part.unitPrice) || 0;
@@ -425,6 +426,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="Unitario"
                     value={part.unitPrice || ''}
                     min={0}
+                    step="any" // <-- Permite decimales
                     onChange={e => {
                       const unit = Number(e.target.value) || 0;
                       const qty = Number(part.qty) || 0;
