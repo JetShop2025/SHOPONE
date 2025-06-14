@@ -35,10 +35,15 @@ router.get('/', async (req, res) => {
       } catch (e) {
         mechanics = [];
       }
+      let extraOptions = [];
+      try {
+        extraOptions = JSON.parse(order.extraOptions || '[]');
+      } catch { extraOptions = []; }
       return {
         ...order,
         parts,
-        mechanics
+        mechanics,
+        extraOptions
       };
     });
     res.json(parsedResults);
@@ -137,8 +142,8 @@ router.post('/', async (req, res) => {
 
     // --- INSERTA EN LA BASE DE DATOS ---
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const mechanicsArr = Array.isArray(req.body.mechanics) ? req.body.mechanics : [];
 
@@ -160,7 +165,8 @@ router.post('/', async (req, res) => {
 
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status, idClassic || null
+      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status, idClassic || null,
+      JSON.stringify(extraOptions || [])
     ];
     const [result] = await db.query(query, values);
 
@@ -513,20 +519,19 @@ router.put('/:id', async (req, res) => {
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
-    const updateFields = [
-      billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status
-    ];
     let updateQuery = `
       UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?
     `;
-
+    const updateFields = [
+      billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
+      JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status,
+      JSON.stringify(extraOptions || [])
+    ];
     if (status === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
       updateFields.push(fields.idClassic || null);
     }
-
     updateQuery += ` WHERE id = ?`;
     updateFields.push(id);
 
