@@ -526,7 +526,8 @@ router.put('/:id', async (req, res) => {
     
     let totalLabAndPartsFinal;
     if (
-      fields.manualTotalEdit === true &&
+      fields.manualTotalEdit === true ||
+      fields.manualTotalEdit === 'true' &&
       fields.totalLabAndParts !== undefined &&
       fields.totalLabAndParts !== null &&
       fields.totalLabAndParts !== '' &&
