@@ -130,17 +130,7 @@ router.post('/', async (req, res) => {
       }
     });
 
-    let totalLabAndPartsFinal;
-    if (
-      req.body.totalLabAndParts !== undefined &&
-      req.body.totalLabAndParts !== null &&
-      req.body.totalLabAndParts !== '' &&
-      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = subtotal + extra;
-    }
+    const totalLabAndPartsFinal = subtotal + extra;
 
     // --- AGREGA ESTO ANTES DE GENERAR EL PDF ---
     // --------------------------------------------
@@ -519,17 +509,7 @@ router.put('/:id', async (req, res) => {
       }
     });
     
-    let totalLabAndPartsFinal;
-    if (
-      req.body.totalLabAndParts !== undefined &&
-      req.body.totalLabAndParts !== null &&
-      req.body.totalLabAndParts !== '' &&
-      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
-    ) {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
-    } else {
-      totalLabAndPartsFinal = subtotal + extra;
-    }
+    const totalLabAndPartsFinal = subtotal + extra;
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
