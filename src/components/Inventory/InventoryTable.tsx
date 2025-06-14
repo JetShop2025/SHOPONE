@@ -104,7 +104,7 @@ const InventoryTable: React.FC = () => {
   const [addError, setAddError] = useState('');
   const [showDeleteForm, setShowDeleteForm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [selectedSku, setSelectedSku] = useState<string | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editPassword, setEditPassword] = useState('');
   const [editError, setEditError] = useState('');
@@ -175,8 +175,9 @@ const InventoryTable: React.FC = () => {
 
   // Delete Part
   const handleDeletePart = async () => {
-    if (deletePassword !== '6214' || selectedIdx === null) return;
-    const part = inventory[selectedIdx];
+    if (deletePassword !== '6214' || !selectedSku) return;
+    const part = inventory.find(p => p.sku === selectedSku);
+    if (!part) return;
     try {
       await axios.request({
         url: `${API_URL}/inventory/${part.sku}`,
@@ -184,7 +185,7 @@ const InventoryTable: React.FC = () => {
         data: { usuario: localStorage.getItem('username') || '' }
       });
       setShowDeleteForm(false);
-      setSelectedIdx(null);
+      setSelectedSku(null);
       const res = await axios.get(`${API_URL}/inventory`);
       setInventory(res.data as any[]);
     } catch (err: any) {
@@ -203,7 +204,7 @@ const InventoryTable: React.FC = () => {
       });
       setShowEditForm(false);
       setEditPart({ ...emptyPart });
-      setSelectedIdx(null);
+      setSelectedSku(null);
       const res = await axios.get(`${API_URL}/inventory`);
       setInventory(res.data as any[]);
     } catch (err: any) {
@@ -279,7 +280,7 @@ const InventoryTable: React.FC = () => {
         <button onClick={() => setShowForm(true)} style={primaryBtn}>Add Part</button>
         <button
           onClick={async () => {
-            if (selectedIdx !== null) {
+            if (selectedSku) {
               const pwd = window.prompt('Enter password to delete:');
               if (pwd === '6214') {
                 setShowDeleteForm(true);
@@ -305,13 +306,16 @@ const InventoryTable: React.FC = () => {
         >Delete</button>
         <button
           onClick={async () => {
-            if (selectedIdx !== null) {
+            if (selectedSku) {
               const pwd = window.prompt('Enter password to edit:');
               if (pwd === '6214') {
-                setEditPart({ ...inventory[selectedIdx] });
-                setShowEditForm(true);
-                setEditPassword('');
-                setEditError('');
+                const part = inventory.find(p => p.sku === selectedSku);
+                if (part) {
+                  setEditPart({ ...part });
+                  setShowEditForm(true);
+                  setEditPassword('');
+                  setEditError('');
+                }
               } else if (pwd !== null) {
                 alert('Incorrect  password');
               }
@@ -424,7 +428,7 @@ const InventoryTable: React.FC = () => {
               </label>
             </div>
             <button
-              disabled={deletePassword !== '6214' || selectedIdx === null}
+              disabled={deletePassword !== '6214' || selectedSku === null}
               style={{
                 background: '#d32f2f',
                 color: '#fff',
@@ -434,7 +438,7 @@ const InventoryTable: React.FC = () => {
                 fontWeight: 600,
                 fontSize: 16,
                 marginRight: 8,
-                cursor: deletePassword !== '6214' || selectedIdx === null ? 'not-allowed' : 'pointer'
+                cursor: deletePassword !== '6214' || selectedSku === null ? 'not-allowed' : 'pointer'
               }}
               onClick={handleDeletePart}
             >
@@ -560,13 +564,13 @@ const InventoryTable: React.FC = () => {
 
               return (
                 <tr
-                  key={idx}
+                  key={item.sku}
                   style={{
-                    background: selectedIdx === idx ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
+                    background: selectedSku === item.sku ? '#e3f2fd' : (idx % 2 === 0 ? '#f9fafd' : '#fff'),
                     cursor: 'pointer',
-                    fontSize: 12 // más pequeño para el contenido
+                    fontSize: 12
                   }}
-                  onClick={() => setSelectedIdx(idx)}
+                  onClick={() => setSelectedSku(item.sku)}
                 >
                   <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
                   <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 90, overflow: 'hidden' }}>

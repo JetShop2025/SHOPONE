@@ -40,11 +40,9 @@ const HourmeterModal: React.FC<{
 
   // 2. Recorre las órdenes filtradas
   filtered.forEach(order => {
-    // Identificador único de la orden (puede ser order.id o usa el índice si no hay id)
     const orderId = order.id ? String(order.id) : JSON.stringify(order);
 
     if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
-      // Reparte el total de LAB & PARTS entre los mecánicos de la orden
       const numMech = order.mechanics.length;
       order.mechanics.forEach((m: { name: string, hrs: number, deadHrs?: number }) => {
         if (!mechanicStats[m.name]) {
@@ -52,13 +50,16 @@ const HourmeterModal: React.FC<{
         }
         mechanicStats[m.name].totalHrs += Number(m.hrs) || 0;
         mechanicStats[m.name].totalLabAndParts += (Number(order.totalLabAndParts) || 0) / numMech;
-        // Dead hours: si tienes un campo deadHrs úsalo, si no, calcula como antes
-        if (typeof m.deadHrs === 'number') {
+        // Dead hours: solo suma si es un número finito y mayor o igual a 0
+        if (typeof m.deadHrs === 'number' && isFinite(m.deadHrs) && m.deadHrs >= 0 && m.deadHrs < 1000) {
           mechanicStats[m.name].deadHours += m.deadHrs;
         } else if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
-          mechanicStats[m.name].deadHours += m.hrs || 0;
+          mechanicStats[m.name].deadHours += Number(m.hrs) || 0;
         }
-        mechanicStats[m.name].orders.add(orderId);
+        if (!mechanicStats[m.name].orders.has(orderId)) {
+          mechanicStats[m.name].orders.add(orderId);
+          mechanicStats[m.name].workOrders += 1;
+        }
       });
     } else {
       let mechanics: string[] = [];
@@ -76,8 +77,12 @@ const HourmeterModal: React.FC<{
         }
         mechanicStats[mec].totalHrs += hrs;
         mechanicStats[mec].totalLabAndParts += labAndParts / numMech;
-        if (labAndParts === 0 && hrs > 0) mechanicStats[mec].deadHours += hrs;
-        mechanicStats[mec].orders.add(orderId);
+        // Dead hours: solo suma si es un número finito y razonable
+        if (labAndParts === 0 && hrs > 0 && hrs < 1000) mechanicStats[mec].deadHours += hrs;
+        if (!mechanicStats[mec].orders.has(orderId)) {
+          mechanicStats[mec].orders.add(orderId);
+          mechanicStats[mec].workOrders += 1;
+        }
       });
     }
   });
