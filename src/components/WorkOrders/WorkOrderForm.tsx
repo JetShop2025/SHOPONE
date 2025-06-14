@@ -187,12 +187,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const totalLabAndParts = subtotal + extra;
 
   useEffect(() => {
+    // Solo recalcula si NO está en modo edición manual
     if (!manualTotalEdit) {
       const total = calcularTotalWO(workOrder);
       onChange({ ...workOrder, totalLabAndParts: total });
     }
     // eslint-disable-next-line
-  }, [workOrder.parts, workOrder.mechanics, workOrder.extraOptions]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.extraOptions, manualTotalEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any) => {
     if (e && e.target) {
@@ -230,9 +231,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   }));
 
           // Antes de enviar al backend, limpia el valor:
-          const cleanTotalLabAndParts = workOrder.totalLabAndParts
-            ? Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
-            : undefined;
+          const cleanTotalLabAndParts = manualTotalEdit
+  ? workOrder.totalLabAndParts
+  : totalLabAndParts;
 
           const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
           if (hasInvalidQty) {
