@@ -158,7 +158,21 @@ router.post('/', async (req, res) => {
       console.error('ERROR AL DESCONTAR INVENTARIO:', err);
     }
 
-    res.json({ success: true, id: result.insertId });
+    // --- GENERAR PDF AQUÍ ---
+    try {
+      // Aquí va tu función de generación de PDF, por ejemplo:
+      // await generarPDF(result.insertId, ...);
+      // O el bloque que usabas antes para crear el PDF y obtener el nombre/url
+      // Por ejemplo:
+      // const pdfName = await crearPDF(...);
+      // res.json({ success: true, id: result.insertId, pdfUrl: `/pdfs/${pdfName}` });
+
+      // Si no tienes generación de PDF, solo responde:
+      res.json({ success: true, id: result.insertId });
+    } catch (err) {
+      console.error('ERROR AL GENERAR PDF:', err);
+      res.status(500).json({ error: 'Error al generar el PDF' });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al crear la orden de trabajo' });
