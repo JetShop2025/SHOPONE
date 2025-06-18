@@ -161,12 +161,14 @@ router.post('/', async (req, res) => {
     // 3. Generar el PDF y responder solo cuando esté listo
     try {
       // Supón que tienes una variable 'date' con la fecha de la orden
+      // Usa la fecha de la orden, que normalmente está en 'fields.date'
+      const date = fields.date || new Date();
       let formattedDate = '';
       if (typeof date === 'string' && date.includes('-')) {
         const [yyyy, mm, dd] = date.split('-');
         formattedDate = `${mm}-${dd}-${yyyy}`;
       } else {
-        formattedDate = date || '';
+        formattedDate = date.toISOString ? date.toISOString().slice(0, 10) : '';
       }
 
       const pdfName = `${formattedDate}_${result.insertId}.pdf`;
@@ -550,7 +552,7 @@ router.put('/:id', async (req, res) => {
       const [yyyy, mm, dd] = date.split('-');
       formattedDate = `${mm}-${dd}-${yyyy}`;
     } else {
-      formattedDate = date || '';
+      formattedDate = date.toISOString ? date.toISOString().slice(0, 10) : '';
     }
     const pdfName = `${formattedDate}_${id}.pdf`;
     const pdfPath = path.join(__dirname, '..', 'pdfs', pdfName);
