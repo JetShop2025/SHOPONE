@@ -815,6 +815,18 @@ const WorkOrdersTable: React.FC = () => {
           >
             Hourmeter
           </button>
+          <button
+            className="wo-btn"
+            style={secondaryBtn}
+            disabled={selectedRow === null}
+            onClick={() => {
+              if (selectedRow !== null) {
+                window.open(`${API_URL}/work-orders/${selectedRow}/pdf`, '_blank', 'noopener,noreferrer');
+              }
+            }}
+          >
+            View PDF
+          </button>
         </div>
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
