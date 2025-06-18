@@ -172,7 +172,11 @@ router.post('/', async (req, res) => {
       }
 
       const pdfName = `${formattedDate}_${result.insertId}.pdf`;
-      const pdfPath = path.join('C:/Users/jetsh/OneDrive/Jet Shop Shared Drive/Work orders/SISTEMA DE INVENTARIO JET SHOP/ShopOne/WorkOrders', pdfName);
+      const pdfDir = 'C:/Users/jetsh/OneDrive/Jet Shop Shared Drive/Work orders/SISTEMA DE INVENTARIO JET SHOP/ShopOne/WorkOrders';
+      if (!fs.existsSync(pdfDir)) {
+        fs.mkdirSync(pdfDir, { recursive: true });
+      }
+      const pdfPath = path.join(pdfDir, pdfName);
       const doc = new PDFDocument();
       const stream = fs.createWriteStream(pdfPath);
       doc.pipe(stream);
@@ -594,7 +598,11 @@ router.put('/:id', async (req, res) => {
       formattedDate = date.toISOString ? date.toISOString().slice(0, 10) : '';
     }
     const pdfName = `${formattedDate}_${id}.pdf`;
-    const pdfPath = path.join('C:/Users/jetsh/OneDrive/Jet Shop Shared Drive/Work orders/SISTEMA DE INVENTARIO JET SHOP/ShopOne/WorkOrders', pdfName);
+    const pdfDir = 'C:/Users/jetsh/OneDrive/Jet Shop Shared Drive/Work orders/SISTEMA DE INVENTARIO JET SHOP/ShopOne/WorkOrders';
+    if (!fs.existsSync(pdfDir)) {
+      fs.mkdirSync(pdfDir, { recursive: true });
+    }
+    const pdfPath = path.join(pdfDir, pdfName);
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     const stream = fs.createWriteStream(pdfPath);
