@@ -215,7 +215,7 @@ router.post('/', async (req, res) => {
 
       doc.font('Courier').fillColor('#222').fontSize(10);
       doc.text(formattedDate, 390, 120);
-      doc.text(id, 400, 140);
+      doc.text(result.insertId, 400, 140);
 
       // Lista de mecánicos con horas
       if (
@@ -554,7 +554,7 @@ router.put('/:id', async (req, res) => {
     } else {
       formattedDate = date.toISOString ? date.toISOString().slice(0, 10) : '';
     }
-    const pdfName = `${formattedDate}_${result.insertId}.pdf`;
+    const pdfName = `${formattedDate}_${id}.pdf`;
     const pdfPath = path.join(__dirname, '..', 'pdfs', pdfName);
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -599,7 +599,7 @@ router.put('/:id', async (req, res) => {
 
     doc.font('Courier').fillColor('#222').fontSize(10);
     doc.text(formattedDate, 390, 120);
-    doc.text(id, 400, 140);
+    doc.text(result.insertId, 400, 140);
 
     // Lista de mecánicos con horas
     if (
