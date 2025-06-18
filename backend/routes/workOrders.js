@@ -188,7 +188,7 @@ router.post('/', async (req, res) => {
         // Guarda el PDF en la base de datos
         await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, result.insertId]);
 
-        res.json({ success: true, id: result.insertId, pdfUrl: `/pdfs/${pdfName}` });
+        res.json({ success: true, id, pdfUrl: `/pdfs/${pdfName}` });
       });
 
       stream.on('error', (err) => {
@@ -576,9 +576,9 @@ router.put('/:id', async (req, res) => {
       const pdfBuffer = fs.readFileSync(pdfPath);
 
       // Guarda el PDF en la base de datos
-      await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, result.insertId]);
+      await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
 
-      res.json({ success: true, id: result.insertId, pdfUrl: `/pdfs/${pdfName}` });
+      res.json({ success: true, id, pdfUrl: `/pdfs/${pdfName}` });
     });
   } catch (err) {
     console.error('ERROR UPDATING WORK ORDER:', err);
