@@ -544,6 +544,45 @@ router.put('/:id', async (req, res) => {
 
     await db.query(updateQuery, updateFields);
 
+    // 5. Descontar SOLO las partes nuevas agregadas
+    try {
+      // Partes originales (antes de editar)
+      const oldParts = Array.isArray(oldData.parts)
+        ? oldData.parts
+        : JSON.parse(oldData.parts || '[]');
+
+      // Crea un Set de SKUs originales
+      const oldSkus = new Set(oldParts.map(p => (p.sku || '').toUpperCase()));
+
+      // Busca partes nuevas (las que no estaban antes)
+      for (const part of partsArr) {
+        const sku = (part.sku || '').toUpperCase();
+        // Si el SKU NO estaba antes, descuéntalo
+        if (!oldSkus.has(sku) && part.qty && Number(part.qty) > 0) {
+          const [results] = await db.query('SELECT onHand FROM inventory WHERE sku = ?', [part.sku]);
+          if (!results || results.length === 0) continue;
+          if (results[0].onHand < Number(part.qty)) continue;
+          await db.query(
+            `UPDATE inventory 
+             SET onHand = onHand - ?, salidasWo = salidasWo + ?
+             WHERE sku = ?`,
+            [Number(part.qty), Number(part.qty), part.sku]
+          );
+          if (typeof logAccion === 'function') {
+            await logAccion(
+              usuario || 'system',
+              'DEDUCT',
+              'inventory',
+              part.sku,
+              JSON.stringify({ qty: part.qty, wo: id })
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.error('ERROR AL DESCONTAR INVENTARIO EN EDICIÓN:', err);
+    }
+
     // 5. Genera el PDF actualizado
     // Formatea la fecha a MM-DD-YYYY
     // Formatea la fecha a MM-DD-YYYY sin usar new Date()
