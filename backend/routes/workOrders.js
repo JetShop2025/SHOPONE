@@ -374,7 +374,7 @@ router.put('/:id', async (req, res) => {
     } else {
       formattedDate = date.toISOString ? date.toISOString().slice(0, 10) : '';
     }
-    const pdfName = `${formattedDate}_${result.insertId}.pdf`;
+    const pdfName = `${formattedDate}_${id}.pdf`;
     const pdfPath = path.join(__dirname, '..', 'pdfs', pdfName);
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
