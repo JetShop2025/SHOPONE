@@ -56,73 +56,48 @@ router.get('/', async (req, res) => {
 // --- CREAR ORDEN DE TRABAJO ---
 router.post('/', async (req, res) => {
   try {
-    const { billToCo, trailer, mechanic, date, description, parts, totalHrs, status, usuario, extraOptions, idClassic } = req.body;
+    const fields = req.body;
+    const parts = fields.parts || [];
+    const extraOptions = fields.extraOptions || [];
+    const billToCo = fields.billToCo || '';
+    const trailer = fields.trailer || '';
+    const mechanic = fields.mechanic || '';
+    const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
+    const date = fields.date || new Date();
+    const description = fields.description || '';
+    const totalHrsPost = fields.totalHrs || 0;
+    const status = fields.status || 'PENDING';
+    const idClassic = fields.idClassic || null;
 
-    // Validación y limpieza de partes
-    const [inventory] = await db.query('SELECT sku, um, precio FROM inventory');
-    const inventoryMap = {};
-    const inventorySkus = new Set();
-    inventory.forEach(item => {
-      inventoryMap[(item.sku || '').trim().toUpperCase()] = item.um || '-';
-      inventorySkus.add((item.sku || '').trim().toUpperCase());
-    });
-
-    // Al limpiar y mapear las partes:
+    // Limpia y valida partes
     const partsArr = Array.isArray(parts)
       ? parts
           .filter(part => part.sku && String(part.sku).trim() !== '')
-          .map(part => {
-            const sku = (part.sku || '').trim().toUpperCase();
-            // Busca el costo en inventario si no viene o viene mal del frontend
-            let cost = Number(String(part.cost).replace(/[^0-9.]/g, ''));
-            if (!cost || isNaN(cost)) {
-              // Busca el costo en inventario
-              const invItem = inventory.find(item => (item.sku || '').trim().toUpperCase() === sku);
-              cost = invItem ? Number(invItem.precio) : 0;
-            }
-            return {
-              ...part,
-              cost,
-              um: part.um || inventoryMap[sku] || '-'
-            };
-          })
+          .map(part => ({
+            ...part,
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
+            qty: Number(part.qty) || 0
+          }))
       : [];
-    for (const part of partsArr) {
-      if (!inventorySkus.has((part.sku || '').trim().toUpperCase())) {
-        return res.status(400).send(`The part "${part.sku}" does not exist in inventory.`);
-      }
+
+    // Calcula totales
+    let totalHrsPut = 0;
+    if (Array.isArray(fields.mechanics) && fields.mechanics.length > 0) {
+      totalHrsPut = fields.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
     }
-    if (!date) return res.status(400).send('The date field is required');
-
-    // --- CÁLCULO DE TOTALES ---
-    // Suma las horas de todos los mecánicos (array mechanics)
-    let totalHrsPost = 0;
-    if (Array.isArray(req.body.mechanics) && req.body.mechanics.length > 0) {
-      totalHrsPost = req.body.mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
-    } 
-    if (!totalHrsPost && req.body.totalHrs) {
-      totalHrsPost = parseFloat(req.body.totalHrs) || 0;
+    if (!totalHrsPut && fields.totalHrs) {
+      totalHrsPut = parseFloat(fields.totalHrs) || 0;
     }
-
-    // Calcula labor
-    const laborTotal = totalHrsPost * 60;
-
-    // Suma partes
-    const partsTotal = partsArr.reduce((sum, part) => {
-      const cost = Number(part.cost) || 0;
-      return sum + cost; // Suma solo el total de la línea
-    }, 0);
-
-    // Subtotal
+    const laborTotal = totalHrsPut * 60;
+    const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.cost) || 0), 0);
     const subtotal = partsTotal + laborTotal;
+
     let extra = 0;
     let extraLabels = [];
     let extraArr = [];
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     extras.forEach(opt => {
-      if (opt === '5') {
-        extra += subtotal * 0.05; // Suma el 5% al total
-      }
+      if (opt === '5') extra += subtotal * 0.05;
       if (opt === '15shop') {
         extraLabels.push('15% Shop Miscellaneous');
         extraArr.push(subtotal * 0.15);
@@ -135,268 +110,58 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // Si el frontend manda un valor manual, úsalo. Si no, calcula el total.
+    // Calcula el total final (respeta manual si aplica)
     let totalLabAndPartsFinal;
     if (
-      req.body.manualTotalEdit === true &&
-      req.body.totalLabAndParts !== undefined &&
-      req.body.totalLabAndParts !== null &&
-      req.body.totalLabAndParts !== '' &&
-      !isNaN(Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, '')))
+      (fields.manualTotalEdit === true || fields.manualTotalEdit === 'true') &&
+      fields.totalLabAndParts !== undefined &&
+      fields.totalLabAndParts !== null &&
+      fields.totalLabAndParts !== '' &&
+      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
     ) {
-      totalLabAndPartsFinal = Number(String(req.body.totalLabAndParts).replace(/[^0-9.]/g, ''));
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       totalLabAndPartsFinal = subtotal + extra;
     }
 
-    // --- INSERTA EN LA BASE DE DATOS ---
+    // Inserta la orden en la base de datos
     const query = `
       INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const mechanicsArr = Array.isArray(req.body.mechanics) ? req.body.mechanics : [];
-
-    // --- AGREGA ESTE BLOQUE ANTES DE GENERAR EL PDF ---
-    let mechanicToShow = mechanic;
-    if (
-      Array.isArray(mechanicsArr) &&
-      mechanicsArr.length > 0 &&
-      mechanicsArr.some(m => (m.name || m.mechanic))
-    ) {
-      mechanicToShow = mechanicsArr
-        .map(m => {
-          const name = m.name || m.mechanic || '-';
-          const hrs = m.hrs !== undefined && m.hrs !== null && m.hrs !== '' ? `(${m.hrs})` : '';
-          return `${name} ${hrs}`.trim();
-        })
-        .join(', ');
-    }
-
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status, idClassic || null,
+      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status, idClassic,
       JSON.stringify(extraOptions || [])
     ];
     const [result] = await db.query(query, values);
 
-    // --- GENERA EL PDF ---
-    // Formatea la fecha a MM-DD-YYYY
-    // Formatea la fecha a MM-DD-YYYY sin usar new Date()
-    let formattedDate = '';
-    if (typeof date === 'string' && date.includes('-')) {
-      const [yyyy, mm, dd] = date.split('-');
-      formattedDate = `${mm}-${dd}-${yyyy}`;
-    } else {
-      formattedDate = date || '';
-    }
-
-    // Genera el nombre del PDF como MM-DD-YYYY_ID.pdf
-    const pdfName = `${formattedDate}_${result.insertId || Date.now()}.pdf`;
-    const pdfPath = path.join(__dirname, '..', 'pdfs', pdfName);
-
-    // Asegúrate de que la carpeta 'pdfs' exista
-    if (!fs.existsSync(path.join(__dirname, '..', 'pdfs'))) {
-      fs.mkdirSync(path.join(__dirname, '..', 'pdfs'));
-    }
-
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
-    const stream = fs.createWriteStream(pdfPath);
-    doc.pipe(stream);
-
-    // LOGO y encabezado
-    const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
-    console.log('Buscando logo en:', logoPath, 'Existe:', fs.existsSync(logoPath));
-    if (fs.existsSync(logoPath)) {
-      try {
-        doc.image(logoPath, 40, 30, { width: 120 });
-        console.log('Logo agregado al PDF');
-      } catch (e) {
-        console.error('ERROR AL CARGAR LA ORDEN:', e);
-      }
-    }
-
-    // TITULO CENTRADO
-    doc.font('Courier-Bold').fontSize(24).fillColor('#1976d2').text('INVOICE', { align: 'center' });
-
-    doc.font('Courier').fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
-    doc.text('740 EL CAMINO REAL', { align: 'right' });
-    doc.text('GREENFIELD, CA 93927', { align: 'right' });
-    doc.moveDown(2);
-
-    // Datos principales
-    doc.roundedRect(40, 110, 250, 80, 8).stroke('#1976d2');
-    doc.roundedRect(320, 110, 230, 80, 8).stroke('#1976d2');
-    doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
-
-    // Recuadro izquierdo
-    doc.text('Customer:', 50, 120);
-    doc.text('Trailer:', 50, 140);
-
-    doc.font('Courier').fillColor('#222').fontSize(10);
-    doc.text(billToCo || '-', 110, 120);
-    doc.text(trailer || '-', 110, 140);
-
-    // Recuadro derecho
-    doc.font('Courier-Bold').fillColor('#1976d2').fontSize(10);
-    doc.text('Date:', 330, 120);
-    doc.text('Invoice #:', 330, 140);
-    doc.text('Mechanics:', 330, 160);
-    doc.text('ID CLASSIC:', 330, 180);
-
-    doc.font('Courier').fillColor('#222').fontSize(10);
-    doc.text(formattedDate, 390, 120);
-    doc.text(result?.insertId || id, 400, 140);
-    doc.text(mechanicToShow || '-', 400, 160, { width: 140 });
-    doc.text(
-      (typeof idClassic !== 'undefined' && idClassic !== null && idClassic !== '') ? idClassic : '-',
-      400, 180, { width: 140 }
-    );
-
-    // --- DESCRIPCIÓN BIEN COLOCADA ---
-    let descY = 200; // Ajusta según tu diseño
-    doc.moveTo(40, descY).lineTo(570, descY).stroke('#1976d2'); // Línea horizontal
-
-    descY += 10;
-    doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
-    doc.text('Description:', 50, descY);
-    doc.font('Courier').fontSize(11).fillColor('#222');
-    const descText = description || '';
-    const descHeight = doc.heightOfString(descText, { width: 500 });
-    doc.text(descText, 50, descY + 16, { width: 500 });
-    let tableTop = descY + 16 + descHeight + 10;
-
-    // Centrar tabla en la hoja
-    // Reduce el ancho de la tabla y ajusta columnas
-    const tableWidth = 520; // Antes era 620
-    const leftMargin = (595.28 - tableWidth) / 2;
-    // Define columnas
-    const col = [
-      leftMargin,                // Start
-      leftMargin + 37,           // No.
-      leftMargin + 105,          // SKU
-      leftMargin + 225,          // DESCRIPTION
-      leftMargin + 275,          // U/M
-      leftMargin + 320,          // QTY
-      leftMargin + 370,          // UNIT COST
-      leftMargin + 450,          // TOTAL
-      leftMargin + 520           // INVOICE
-    ];
-
-    // Encabezado de tabla
-    doc.save();
-    doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-    doc.rect(col[0], tableTop, col[8] - col[0], 22).fillAndStroke('#e3f2fd', '#1976d2');
-    doc.fillColor('#1976d2');
-    doc.text('No.', col[0], tableTop + 6, { width: col[1] - col[0], align: 'center' });
-    doc.text('SKU', col[1], tableTop + 6, { width: col[2] - col[1], align: 'center' });
-    doc.text('DESCRIPTION', col[2], tableTop + 6, { width: col[3] - col[2], align: 'center' });
-    doc.text('U/M', col[3], tableTop + 6, { width: col[4] - col[3], align: 'center' });
-    doc.text('QTY', col[4], tableTop + 6, { width: col[5] - col[4], align: 'center' });
-    doc.text('UNIT COST', col[5], tableTop + 6, { width: col[6] - col[5], align: 'center' });
-    doc.text('TOTAL', col[6], tableTop + 6, { width: col[7] - col[6], align: 'center' });
-    doc.text('INVOICE', col[7], tableTop + 6, { width: col[8] - col[7], align: 'center' });
-    doc.restore();
-
-    let y = tableTop + 22;
-
-    if (partsArr.length > 0) {
-      partsArr.forEach((p, i) => {
-        doc.rect(col[0], y, col[8] - col[0], 18).strokeColor('#e3f2fd').stroke();
-        doc.font('Courier').fontSize(10).fillColor('#222');
-        doc.text(i + 1, col[0], y + 4, { width: col[1] - col[0], align: 'center' });
-        doc.text(p.sku || '-', col[1], y + 4, { width: col[2] - col[1], align: 'center' });
-        doc.text(p.part || '-', col[2], y + 4, { width: col[3] - col[2], align: 'center' });
-        doc.text(p.um || '-', col[3], y + 4, { width: col[4] - col[3], align: 'center' });
-        doc.text(p.qty || '-', col[4], y + 4, { width: col[5] - col[4], align: 'center' }); // QTY
-        doc.text(
-          // UNIT COST: total de línea / qty
-          p.qty && p.cost
-            ? (Number(p.cost) / Number(p.qty)).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-            : '$0.00',
-          col[5], y + 4, { width: col[6] - col[5], align: 'center' }
-        );
-        doc.text(
-          // TOTAL: el total de la línea (cost)
-          p.cost !== undefined && p.cost !== null && !isNaN(Number(p.cost))
-            ? Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-            : '$0.00',
-          col[6], y + 4, { width: col[7] - col[6], align: 'center' }
-        );
-        // INVOICE LINK O NÚMERO
-        if (p.invoiceLink) {
-          const invoiceNumber = p.invoiceNumber || '';
-          doc.font('Courier').fillColor('#1976d2').text(
-            invoiceNumber ? invoiceNumber : 'Ver Invoice',
-            col[7], y + 4, { width: col[8] - col[7], align: 'center', underline: true }
+    // --- DESCONTAR PARTES DEL INVENTARIO ---
+    try {
+      for (const part of partsArr) {
+        if (part.sku && part.qty && Number(part.qty) > 0) {
+          const [results] = await db.query('SELECT onHand FROM inventory WHERE sku = ?', [part.sku]);
+          if (!results || results.length === 0) continue;
+          if (results[0].onHand < Number(part.qty)) continue;
+          await db.query(
+            `UPDATE inventory 
+             SET onHand = onHand - ?, salidasWo = salidasWo + ?
+             WHERE sku = ?`,
+            [Number(part.qty), Number(part.qty), part.sku]
           );
-          const linkText = invoiceNumber ? invoiceNumber : 'Ver Invoice';
-          const textWidth = doc.widthOfString(linkText, { font: 'Courier', size: 10 });
-          const textHeight = doc.currentLineHeight();
-          const linkX = col[7] + ((col[8] - col[7]) - textWidth) / 2;
-          doc.link(linkX, y + 4, textWidth, textHeight, p.invoiceLink);
-        } else {
-          doc.font('Courier').fillColor('#888').text(
-            '', col[7], y + 4, { width: col[8] - col[7], align: 'center' }
-          );
+          if (typeof logAccion === 'function') {
+            await logAccion(fields.usuario || 'system', 'DEDUCT', 'inventory', part.sku, JSON.stringify({ qty: part.qty, wo: result.insertId }));
+          }
         }
-        y += 18;
-      });
+      }
+    } catch (err) {
+      console.error('ERROR AL DESCONTAR INVENTARIO:', err);
     }
 
-    // Línea final de tabla
-    doc.rect(col[0], y, col[8] - col[0], 0.5).fillAndStroke('#1976d2', '#1976d2');
-    y += 10;
-    doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-    doc.text(
-      `Subtotal Parts: ${partsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[8] - col[0], align: 'right' }
-    );
-    y += 16;
-    doc.text(
-      `Labor: ${laborTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[8] - col[0], align: 'right' }
-    );
-    extraLabels.forEach((label, idx) => {
-      y += 16;
-      doc.text(
-        `${label}: ${extraArr[idx].toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-        col[0], y, { width: col[8] - col[0], align: 'right' }
-      );
-    });
-    y += 24;
-    doc.font('Courier-Bold').fontSize(13).fillColor('#d32f2f').text(
-      `TOTAL LAB & PARTS: ${totalLabAndPartsFinal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
-      col[0], y, { width: col[8] - col[0], align: 'right' }
-    );
-
-    // Términos y firmas en inglés y Courier
-    doc.moveDown(2);
-    doc.font('Courier-Bold').fontSize(9).fillColor('#222').text('TERMS & CONDITIONS:', 40, doc.y);
-    doc.font('Courier').fontSize(8).fillColor('#222').text('This estimate is not a final bill, pricing could change if job specifications change.', 40, doc.y + 12);
-
-    doc.moveDown(2);
-    doc.font('Courier').fontSize(9).text('I accept this estimate without any changes ', 40, doc.y + 10);
-    doc.text('I accept this estimate with the handwritten changes ', 40, doc.y + 24);
-
-    doc.moveDown(2);
-    doc.text('NAME: ____________________________    SIGNATURE: ____________________________', 40, doc.y + 10);
-    doc.font('Courier-BoldOblique').fontSize(12).fillColor('#1976d2').text('Thanks for your business!', 40, doc.y + 30);
-
-    doc.end();
-
-    // --- RESPUESTA ---
-    stream.on('finish', async () => {
-      await logAccion(usuario, 'CREATE', 'work_orders', result.insertId, JSON.stringify(req.body));
-      res.status(201).json({
-        message: 'WORK ORDER CREATED SUCCESSFULLY',
-        id: result.insertId,
-        pdfUrl: `/pdfs/${pdfName}`,
-        totalLabAndParts: totalLabAndPartsFinal // <-- para mostrar en tabla
-      });
-    });
+    res.json({ success: true, id: result.insertId });
   } catch (err) {
-    console.error('ERROR CREATING WORK ORDER:', err);
-    res.status(500).send(err?.message || 'ERROR CREATING WORK ORDER');
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear la orden de trabajo' });
   }
 });
 
