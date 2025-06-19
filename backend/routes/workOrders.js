@@ -513,7 +513,7 @@ router.put('/:id', async (req, res) => {
       }
     });
     
-   const totalLabAndPartsFinal = subtotal + extra;
+   const totalLabAndPartsFinal = calcularTotalLabAndParts(fields, subtotal, extra);
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
@@ -825,6 +825,19 @@ router.get('/:id/pdf', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
   res.send(results[0].pdf_file);
 });
+
+function calcularTotalLabAndParts(fields, subtotal, extra) {
+  if (
+    (fields.manualTotalEdit === true || fields.manualTotalEdit === 'true') &&
+    fields.totalLabAndParts !== undefined &&
+    fields.totalLabAndParts !== null &&
+    fields.totalLabAndParts !== '' &&
+    !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
+  ) {
+    return Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+  }
+  return subtotal + extra;
+}
 
 module.exports = router;
 
