@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
+// Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
 // ¡Pon esto antes de cualquier app.use de rutas!
 app.use(cors({
   origin: ['https://shopone-1.onrender.com', 'https://shopone.onrender.com'],// tu frontend
