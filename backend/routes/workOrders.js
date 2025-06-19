@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
     `;
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrsPost, totalLabAndPartsFinal, status, idClassic,
+      JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, idClassic,
       JSON.stringify(extraOptions || [])
     ];
     const [result] = await db.query(query, values);
@@ -813,11 +813,16 @@ router.use('/pdfs', express.static(path.join(__dirname, '..', 'pdfs')));
 // Obtener PDF por ID de orden
 router.get('/:id/pdf', async (req, res) => {
   const { id } = req.params;
-  const [results] = await db.query('SELECT pdf_file FROM work_orders WHERE id = ?', [id]);
+  const [results] = await db.query('SELECT pdf_file, idClassic FROM work_orders WHERE id = ?', [id]);
   if (!results || results.length === 0 || !results[0].pdf_file) {
     return res.status(404).send('PDF NOT FOUND');
   }
+  // Genera el nombre del archivo
+  const idClassic = results[0].idClassic || id;
+  const fileName = `workorder_${idClassic}.pdf`;
+
   res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
   res.send(results[0].pdf_file);
 });
 
