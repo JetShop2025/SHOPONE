@@ -48,12 +48,7 @@ const TrailasTable: React.FC = () => {
   const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
   const [showRentasModal, setShowRentasModal] = useState(false);
 
-  const [showPartsModal, setShowPartsModal] = useState(false);
-  const [selectedWO, setSelectedWO] = useState<number | null>(null);
-  const [woParts, setWoParts] = useState<any[]>([]);
-
   // Determina si hay receives para la traila de la WO seleccionada
-  const [receivesForTrailer, setReceivesForTrailer] = useState<any[]>([]);
   const [showEntregaModal, setShowEntregaModal] = useState(false);
   const [nuevaFechaEntrega, setNuevaFechaEntrega] = useState('');
   const [trailaAEntregar, setTrailaAEntregar] = useState<any>(null);
@@ -84,24 +79,6 @@ const TrailasTable: React.FC = () => {
       setWorkOrders([]);
     }
   }, [selected, showModal]);
-
-  useEffect(() => {
-    if (showPartsModal && selectedWO) {
-      axios.get(`${API_URL}/work-order-parts/${selectedWO}`)
-        .then(res => setWoParts(res.data as any[]))
-        .catch(() => setWoParts([]));
-    }
-  }, [showPartsModal, selectedWO]);
-
-  useEffect(() => {
-    if (showPartsModal && selected && selectedWO) {
-      axios.get(`${API_URL}/receive?destino_trailer=${selected.nombre}&estatus=PENDING`)
-        .then(res => setReceivesForTrailer(res.data as any[]))
-        .catch(() => setReceivesForTrailer([]));
-    }
-  }, [showPartsModal, selected, selectedWO]);
-
-  const hasReceivesForTrailer = receivesForTrailer.length > 0;
 
   // Cambiar estatus con modal elegante
   const handleChangeStatus = (traila: any) => {
@@ -401,21 +378,25 @@ const TrailasTable: React.FC = () => {
                 <thead>
                   <tr style={{ background: '#1976d2', color: '#fff' }}>
                     <th>ID</th>
+                    <th>ID CLASSIC</th> {/* <-- Agrega esta línea */}
                     <th>Date</th>
                     <th>Status</th>
+                    <th>Mechanic(s)</th>
                     <th>PDF</th>
-                    <th>Parts</th>
+                    {/* ...otras columnas... */}
                   </tr>
                 </thead>
                 <tbody>
                   {workOrders.map(wo => (
                     <tr key={wo.id}>
                       <td>{wo.id}</td>
-                      <td>{wo.date ? wo.date.slice(0, 10) : ''}</td>
+                      <td>{wo.idClassic || '-'}</td> {/* <-- Y esta línea */}
+                      <td>{wo.date}</td>
                       <td>{wo.status}</td>
+                      <td>{wo.mechanic}</td>
                       <td>
                         <a
-                          href={`${API_URL}/pdfs/${wo.date ? wo.date.slice(5, 7) + '-' + wo.date.slice(8, 10) + '-' + wo.date.slice(0, 4) : ''}_${wo.id}.pdf`}
+                          href={`${API_URL}/work-orders/${wo.id}/pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
@@ -423,18 +404,7 @@ const TrailasTable: React.FC = () => {
                           View PDF
                         </a>
                       </td>
-                      <td>
-                        <button
-                          style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            setSelectedWO(wo.id);
-                            setShowPartsModal(true);
-                          }}
-                        >
-                          Ver partes
-                        </button>
-                      </td>
+                      {/* ...otras columnas... */}
                     </tr>
                   ))}
                 </tbody>
@@ -474,75 +444,6 @@ const TrailasTable: React.FC = () => {
                 </tbody>
               </table>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal for parts used in work order */}
-      {showPartsModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: 12, padding: 24, minWidth: 400, maxWidth: 600, boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
-          }}>
-            <h2 style={{ color: '#1976d2', marginBottom: 16 }}>Partes usadas en WO #{selectedWO}</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Nombre</th>
-                  <th>Cantidad</th>
-                  <th>Costo</th>
-                  <th>Invoice</th> 
-                  <th>Usuario</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {woParts.map((p, idx) => (
-                  <tr key={idx}>
-                    <td>{p.sku}</td>
-                    <td>{p.part_name}</td>
-                    <td>{p.qty_used}</td>
-                    <td>{p.cost}</td>
-                    <td>
-                      {p.invoice
-                        ? (
-                            p.invoiceLink
-                              ? <a href={p.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>{p.invoice}</a>
-                              : p.invoice
-                          )
-                        : '—'
-                      }
-                    </td>
-                    <td>{p.usuario}</td>
-                    <td>{p.fecha?.slice(0, 16).replace('T', ' ')}</td>
-                  </tr>
-                ))}
-                {woParts.length > 0 && !hasReceivesForTrailer && (
-                  <tr>
-                    <td colSpan={7} style={{ color: '#1976d2', textAlign: 'center', fontStyle: 'italic', paddingTop: 8 }}>
-                      Estas partes se tomaron de inventario general (sin compras asociadas a esta traila).
-                    </td>
-                  </tr>
-                )}
-                {woParts.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ color: '#888', textAlign: 'center', fontStyle: 'italic', paddingTop: 8 }}>
-                      No hay partes registradas para esta orden.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            <button
-              style={{ marginTop: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 18px', cursor: 'pointer' }}
-              onClick={() => setShowPartsModal(false)}
-            >
-              Cerrar
-            </button>
           </div>
         </div>
       )}
