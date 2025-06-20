@@ -613,7 +613,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           ).map((m: any, idx: number, arr: any[]) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <input
-                type="text"
+                list="mechanics"
                 value={m?.name || ''}
                 onChange={e => {
                   const mechanics = Array.isArray(workOrder.mechanics) && workOrder.mechanics.length > 0
@@ -621,10 +621,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     : [{ name: '', hrs: '' }];
                   mechanics[idx] = { ...mechanics[idx], name: e.target.value };
                   onChange({ ...workOrder, mechanics });
-                }}
-                placeholder="Nombre del mecánico"
-                style={{ flex: 2 }}
+              }}
+              placeholder="Mechanic Name"
+              style={{ flex: 2 }}
               />
+            <datalist id="mechanics">
+              <option value="ADAN R" />
+              <option value="WILMER M" />
+              <option value="ADRIAN S" />
+              <option value="ULISES M" />
+              <option value="ALEX M" />
+              <option value="GUSTAVO M" />
+              <option value="DAVID C" />
+            </datalist>
+        
               <input
                 type="number"
                 value={m?.hrs || ''}

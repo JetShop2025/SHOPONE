@@ -161,23 +161,13 @@ const WorkOrdersTable: React.FC = () => {
   const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteDate, setDeleteDate] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const week = (() => {
-      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-      const weekNum = Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1)/7);
-      return weekNum.toString().padStart(2, '0');
-    })();
-    return `${year}-W${week}`;
-  });
+  const [selectedWeek, setSelectedWeek] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [idClassicFilter, setIdClassicFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [multiDeleteEnabled, setMultiDeleteEnabled] = useState(false);
   const [inventory, setInventory] = useState<any[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
   const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
@@ -185,8 +175,6 @@ const WorkOrdersTable: React.FC = () => {
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string>(''); // <-- NUEVO ESTADO
-  const [idClassicFilter, setIdClassicFilter] = useState('');
 
   // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
@@ -251,12 +239,19 @@ const WorkOrdersTable: React.FC = () => {
 
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
-    const { start, end } = getWeekRange(selectedWeek);
-    const orderDate = dayjs(order.date.slice(0, 10));
-    const inWeek = orderDate.isBetween(start, end, 'day', '[]');
+
+    // Si no hay filtro de semana, no filtra por semana
+    let inWeek = true;
+    if (selectedWeek) {
+      const { start, end } = getWeekRange(selectedWeek);
+      const orderDate = dayjs(order.date.slice(0, 10));
+      inWeek = orderDate.isBetween(start, end, 'day', '[]');
+    }
+
     const matchesStatus = !statusFilter || order.status === statusFilter;
     const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
     const matchesIdClassic = !idClassicFilter || (order.idClassic || '').toLowerCase().includes(idClassicFilter.toLowerCase());
+
     return inWeek && matchesStatus && matchesDay && matchesIdClassic;
   });
 
