@@ -37,6 +37,20 @@ router.get('/:nombre/historial-rentas', async (req, res) => {
   }
 });
 
+// Obtener historial de W.O. por tráiler
+router.get('/:nombre/work-orders-historial', async (req, res) => {
+  const { nombre } = req.params;
+  try {
+    const [results] = await db.query(
+      'SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC',
+      [nombre]
+    );
+    res.json(results);
+  } catch (err) {
+    res.status(500).send('ERROR FETCHING WORK ORDERS');
+  }
+});
+
 // Actualizar estatus de una traila
 router.put('/:nombre/estatus', async (req, res) => {
   const bodies = Array.isArray(req.body) ? req.body : [req.body];

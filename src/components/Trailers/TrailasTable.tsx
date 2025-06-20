@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { FaFilePdf, FaHistory, FaTools, FaTimes } from 'react-icons/fa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
@@ -54,6 +55,8 @@ const TrailasTable: React.FC = () => {
   // Historial
   const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [loadingWO, setLoadingWO] = useState(false);
+  const [pdfError, setPdfError] = useState<number | null>(null);
 
   // Para saber qué tráiler se está entregando
   const [trailaAEntregar, setTrailaAEntregar] = useState<any>(null);
@@ -80,12 +83,16 @@ const TrailasTable: React.FC = () => {
 
   // Cargar historial de W.O.
   const fetchWorkOrders = async (trailerNombre: string) => {
-    const res = await axios.get<any[]>(`${API_URL}/work-orders`);
-    const filtered = res.data
-      .filter((wo: any) => wo.trailer === trailerNombre)
-      .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
-    setWorkOrders(filtered);
+    setLoadingWO(true);
+    setPdfError(null);
+    try {
+      const res = await axios.get<any[]>(`${API_URL}/trailas/${encodeURIComponent(trailerNombre)}/work-orders-historial`);
+      setWorkOrders(res.data);
+    } catch {
+      setWorkOrders([]);
+    }
     setShowWorkOrdersModal(true);
+    setLoadingWO(false);
   };
 
   // Cambiar estatus (rentar o devolver)
@@ -143,6 +150,17 @@ const TrailasTable: React.FC = () => {
 
   const trailasPorCliente = (cliente: string) =>
     trailas.filter(t => t.nombre.startsWith(clientePrefijos[cliente]));
+
+  const handlePdfClick = async (woId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setPdfError(null);
+    try {
+      await axios.head(`${API_URL}/work-orders/${woId}/pdf`);
+      window.open(`${API_URL}/work-orders/${woId}/pdf`, '_blank');
+    } catch {
+      setPdfError(woId);
+    }
+  };
 
   return (
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
@@ -258,8 +276,18 @@ const TrailasTable: React.FC = () => {
                       onClick={() => setSelected(traila)}
                     >
                       <td>{traila.nombre}</td>
-                      <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
-                        {traila.estatus}
+                      <td>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 10px',
+                          borderRadius: 12,
+                          background: traila.estatus === 'RENTADA' ? '#ffe0e0' : '#e0ffe0',
+                          color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c',
+                          fontWeight: 700,
+                          fontSize: 14
+                        }}>
+                          {traila.estatus}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -437,12 +465,22 @@ const TrailasTable: React.FC = () => {
       {showWorkOrdersModal && selected && (
         <div style={modalStyle} onClick={() => setShowWorkOrdersModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, marginBottom: 10 }}>
-              Work Order History for {selected.nombre}
-            </h2>
-            <button onClick={() => setShowWorkOrdersModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Close</button>
-            {workOrders.length === 0 ? (
-              <div style={{ color: '#888', fontStyle: 'italic' }}>No work orders for this trailer.</div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+              <FaTools style={{ color: '#1976d2', fontSize: 28, marginRight: 10 }} />
+              <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, margin: 0 }}>
+                Work Order History for {selected.nombre}
+              </h2>
+              <button onClick={() => setShowWorkOrdersModal(false)} style={{ marginLeft: 'auto', color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 22 }}>
+                <FaTimes />
+              </button>
+            </div>
+            {loadingWO ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <div className="loader" />
+                <div style={{ color: '#1976d2', marginTop: 12 }}>Loading work orders...</div>
+              </div>
+            ) : workOrders.length === 0 ? (
+              <div style={{ color: '#888', fontStyle: 'italic', padding: 24 }}>No work orders for this trailer.</div>
             ) : (
               <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
                 <thead>
@@ -468,10 +506,14 @@ const TrailasTable: React.FC = () => {
                           href={`${API_URL}/work-orders/${wo.id}/pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
+                          style={{ color: '#d32f2f', textDecoration: 'underline', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                          onClick={e => handlePdfClick(wo.id, e)}
                         >
-                          View PDF
+                          <FaFilePdf /> View PDF
                         </a>
+                        {pdfError === wo.id && (
+                          <div style={{ color: '#d32f2f', fontSize: 12 }}>PDF not found for this W.O.</div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -486,3 +528,22 @@ const TrailasTable: React.FC = () => {
 };
 
 export default TrailasTable;
+
+/* Loader CSS (puedes ponerlo en tu CSS global) */
+<style>
+{`
+.loader {
+  border: 6px solid #e3f2fd;
+  border-top: 6px solid #1976d2;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
+`}
+</style>
