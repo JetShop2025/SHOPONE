@@ -717,10 +717,36 @@ const WorkOrdersTable: React.FC = () => {
         }}
       >
         <div className="wo-header">
-          <h1 className="wo-title">
-            <span className="wo-title-icon">WO</span>
-            Work Orders
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+  <div
+    style={{
+      width: 48,
+      height: 48,
+      borderRadius: '50%',
+      background: '#1976d2',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    }}
+  >
+    <span style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontFamily: 'Courier New, Courier, monospace', letterSpacing: 2 }}>
+      WO
+    </span>
+  </div>
+  <span
+    style={{
+      fontSize: 32,
+      fontWeight: 700,
+      color: '#1976d2',
+      fontFamily: 'Courier New, Courier, monospace',
+      letterSpacing: 2,
+      textShadow: '1px 1px 0 #fff',
+    }}
+  >
+    Work Orders
+  </span>
+</div>
         </div>
         {/* FILTROS DERECHA */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, marginTop: -16 }}>

@@ -18,7 +18,7 @@ const modalContentStyle: React.CSSProperties = {
   borderRadius: 16,
   padding: 32,
   minWidth: 400,
-  maxWidth: 420,
+  maxWidth: 600,
   maxHeight: '80vh',
   overflowY: 'auto',
   boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
@@ -35,24 +35,30 @@ const TrailasTable: React.FC = () => {
   const [trailas, setTrailas] = useState<any[]>([]);
   const [expandedCliente, setExpandedCliente] = useState<string | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
-  const [workOrders, setWorkOrders] = useState<any[]>([]);
-  const [showModal, setShowModal] = useState(false);
 
-  // Para el modal de captura de renta
+  // Modals
   const [showRentModal, setShowRentModal] = useState(false);
+  const [showEntregaModal, setShowEntregaModal] = useState(false);
+  const [showRentasModal, setShowRentasModal] = useState(false);
+  const [showWorkOrdersModal, setShowWorkOrdersModal] = useState(false);
+
+  // Rent form
   const [rentCliente, setRentCliente] = useState('');
   const [rentFechaRenta, setRentFechaRenta] = useState(dayjs().format('YYYY-MM-DD'));
-  const [rentFechaEntrega, setRentFechaEntrega] = useState(dayjs(rentFechaRenta).add(1, 'month').format('YYYY-MM-DD'));
+  const [rentFechaEntrega, setRentFechaEntrega] = useState(dayjs().add(1, 'month').format('YYYY-MM-DD'));
   const [rentPassword, setRentPassword] = useState('');
 
-  const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
-  const [showRentasModal, setShowRentasModal] = useState(false);
+  // Entrega form
+  const [nuevaFechaEntrega, setNuevaFechaEntrega] = useState(dayjs().format('YYYY-MM-DD'));
 
-  // Determina si hay receives para la traila de la WO seleccionada
-  const [showEntregaModal, setShowEntregaModal] = useState(false);
-  const [nuevaFechaEntrega, setNuevaFechaEntrega] = useState('');
+  // Historial
+  const [rentasHistorial, setRentasHistorial] = useState<any[]>([]);
+  const [workOrders, setWorkOrders] = useState<any[]>([]);
+
+  // Para saber qué tráiler se está entregando
   const [trailaAEntregar, setTrailaAEntregar] = useState<any>(null);
 
+  // Cargar trailas
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
@@ -65,63 +71,40 @@ const TrailasTable: React.FC = () => {
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
-  useEffect(() => {
-    if (selected && showModal) {
-      axios.get<any[]>(`${API_URL}/work-orders`)
-        .then(res => {
-          const filtered = res.data
-            .filter((wo: any) => wo.trailer === selected.nombre)
-            .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
-          setWorkOrders(filtered);
-        })
-        .catch(() => setWorkOrders([]));
-    } else {
-      setWorkOrders([]);
-    }
-  }, [selected, showModal]);
+  // Cargar historial de rentas
+  const fetchRentasHistorial = async (nombre: string) => {
+    const res = await axios.get(`${API_URL}/trailas/${nombre}/historial-rentas`);
+    setRentasHistorial(res.data as any[]);
+    setShowRentasModal(true);
+  };
 
-  // Cambiar estatus con modal elegante
+  // Cargar historial de W.O.
+  const fetchWorkOrders = async (trailerNombre: string) => {
+    const res = await axios.get<any[]>(`${API_URL}/work-orders`);
+    const filtered = res.data
+      .filter((wo: any) => wo.trailer === trailerNombre)
+      .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
+    setWorkOrders(filtered);
+    setShowWorkOrdersModal(true);
+  };
+
+  // Cambiar estatus (rentar o devolver)
   const handleChangeStatus = (traila: any) => {
     if (traila.estatus === 'RENTADA') {
-      // Si está RENTADA, abrir modal para devolver (disponible)
       setTrailaAEntregar(traila);
       setNuevaFechaEntrega(traila.fechaEntrega ? traila.fechaEntrega.slice(0, 10) : dayjs().format('YYYY-MM-DD'));
       setShowEntregaModal(true);
     } else {
-      // Si está DISPONIBLE, abrir modal de renta
       setSelected(traila);
       setRentCliente('');
       setRentFechaRenta(dayjs().format('YYYY-MM-DD'));
-      setRentFechaEntrega('');
+      setRentFechaEntrega(dayjs().add(1, 'month').format('YYYY-MM-DD'));
       setRentPassword('');
       setShowRentModal(true);
     }
   };
 
-  const cambiarEstatus = async (traila: any, nuevoEstatus: any, fechaEntrega: any) => {
-    const payload: any = {
-      estatus: nuevoEstatus,
-      password: '6214',
-      fechaEntrega: fechaEntrega,
-      usuario: localStorage.getItem('username') || ''
-    };
-    // Solo agrega cliente y fechaRenta si vas a RENTAR
-    if (nuevoEstatus === 'RENTADA') {
-      payload.cliente = traila.cliente;
-      payload.fechaRenta = traila.fechaRenta;
-    }
-    await axios.put(`${API_URL}/trailas/${traila.nombre}/estatus`, payload);
-  };
-
-  const handleConfirmEntrega = async () => {
-    if (!trailaAEntregar) return;
-    const fechaEntregaFormatted = dayjs(nuevaFechaEntrega).format('YYYY-MM-DD');
-    await cambiarEstatus(trailaAEntregar, 'DISPONIBLE', fechaEntregaFormatted);
-    setShowEntregaModal(false);
-    setTrailaAEntregar(null);
-  };
-
-  // Confirmar renta desde el modal elegante
+  // Confirmar renta
   const handleConfirmRent = async () => {
     if (!rentPassword) {
       alert('Debes ingresar el password');
@@ -136,13 +119,6 @@ const TrailasTable: React.FC = () => {
         fechaEntrega: rentFechaEntrega,
         usuario: localStorage.getItem('username') || ''
       });
-      // Actualiza el estado local y cierra el modal
-      setTrailas(trailas.map(t =>
-        t.nombre === selected.nombre
-          ? { ...t, estatus: 'RENTADA', cliente: rentCliente, fechaRenta: rentFechaRenta, fechaEntrega: rentFechaEntrega }
-          : t
-      ));
-      setSelected({ ...selected, estatus: 'RENTADA', cliente: rentCliente, fechaRenta: rentFechaRenta, fechaEntrega: rentFechaEntrega });
       setShowRentModal(false);
       alert('Estatus actualizado');
     } catch (err: any) {
@@ -150,10 +126,19 @@ const TrailasTable: React.FC = () => {
     }
   };
 
-  const fetchRentasHistorial = async (nombre: string) => {
-    const res = await axios.get(`${API_URL}/trailas/${nombre}/historial-rentas`);
-    setRentasHistorial(res.data as any[]);
-    setShowRentasModal(true);
+  // Confirmar entrega
+  const handleConfirmEntrega = async () => {
+    if (!trailaAEntregar) return;
+    const fechaEntregaFormatted = dayjs(nuevaFechaEntrega).format('YYYY-MM-DD');
+    await axios.put(`${API_URL}/trailas/${trailaAEntregar.nombre}/estatus`, {
+      estatus: 'DISPONIBLE',
+      password: '6214',
+      fechaEntrega: fechaEntregaFormatted,
+      usuario: localStorage.getItem('username') || ''
+    });
+    setShowEntregaModal(false);
+    setTrailaAEntregar(null);
+    alert('Tráiler marcado como disponible');
   };
 
   const trailasPorCliente = (cliente: string) =>
@@ -163,7 +148,7 @@ const TrailasTable: React.FC = () => {
     <div style={{ maxWidth: 1000, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
       <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>Trailer Control</h1>
 
-      {/* Selected trailer panel */}
+      {/* Panel de tráiler seleccionado */}
       {selected && (
         <div style={{ marginBottom: 24, background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
           <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22 }}>
@@ -192,7 +177,7 @@ const TrailasTable: React.FC = () => {
             Mark as {selected.estatus === 'RENTADA' ? 'AVAILABLE' : 'RENTED'}
           </button>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => fetchWorkOrders(selected.nombre)}
             style={{
               background: '#1976d2',
               color: '#fff',
@@ -226,7 +211,66 @@ const TrailasTable: React.FC = () => {
         </div>
       )}
 
-      {/* Modal elegante para capturar datos de renta */}
+      {/* Tablas agrupadas por cliente */}
+      {clientes.map(cliente => (
+        <div key={cliente} style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              background: '#1976d2',
+              color: '#fff',
+              padding: '12px 20px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: 20
+            }}
+            onClick={() => setExpandedCliente(expandedCliente === cliente ? null : cliente)}
+          >
+            {cliente} {expandedCliente === cliente ? '▲' : '▼'}
+          </div>
+          {expandedCliente === cliente && (
+            <table style={{ width: '100%', background: '#fff', borderRadius: 12, marginTop: 8, marginBottom: 8 }}>
+              <thead>
+                <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
+                  <th>Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trailasPorCliente(cliente).map(traila => {
+                  // Cálculo de colores para vencidas y por vencer
+                  let rowStyle: React.CSSProperties = {};
+                  if (traila.fechaEntrega) {
+                    const hoy = dayjs();
+                    const entrega = dayjs(traila.fechaEntrega);
+                    const diff = entrega.diff(hoy, 'day');
+                    if (diff < 0) rowStyle.background = '#ffcccc'; // Vencida (rojo claro)
+                    else if (diff <= 3) rowStyle.background = '#fff3cd'; // Por vencer (amarillo claro)
+                  }
+                  return (
+                    <tr
+                      key={traila.nombre}
+                      style={{
+                        ...rowStyle,
+                        background: selected?.nombre === traila.nombre ? '#e3f2fd' : rowStyle.background,
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setSelected(traila)}
+                    >
+                      <td>{traila.nombre}</td>
+                      <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
+                        {traila.estatus}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ))}
+
+      {/* Modal para rentar */}
       {showRentModal && (
         <div style={modalStyle} onClick={() => setShowRentModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
@@ -304,117 +348,58 @@ const TrailasTable: React.FC = () => {
         </div>
       )}
 
-      {/* Tablas agrupadas por cliente */}
-      {clientes.map(cliente => (
-        <div key={cliente} style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              background: '#1976d2',
-              color: '#fff',
-              padding: '12px 20px',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 700,
-              fontSize: 20
-            }}
-            onClick={() => setExpandedCliente(expandedCliente === cliente ? null : cliente)}
-          >
-            {cliente} {expandedCliente === cliente ? '▲' : '▼'}
-          </div>
-          {expandedCliente === cliente && (
-            <table style={{ width: '100%', background: '#fff', borderRadius: 12, marginTop: 8, marginBottom: 8 }}>
-              <thead>
-                <tr style={{ background: '#e3f2fd', color: '#1976d2' }}>
-                  <th>Name</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trailasPorCliente(cliente).map(traila => {
-                  // Cálculo de colores para vencidas y por vencer
-                  let rowStyle: React.CSSProperties = {};
-                  if (traila.fechaEntrega) {
-                    const hoy = dayjs();
-                    const entrega = dayjs(traila.fechaEntrega);
-                    const diff = entrega.diff(hoy, 'day');
-                    if (diff < 0) rowStyle.background = '#ffcccc'; // Vencida (rojo claro)
-                    else if (diff <= 3) rowStyle.background = '#fff3cd'; // Por vencer (amarillo claro)
-                  }
-                  return (
-                    <tr
-                      key={traila.nombre}
-                      style={{
-                        ...rowStyle,
-                        background: selected?.nombre === traila.nombre ? '#e3f2fd' : rowStyle.background,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => setSelected(traila)}
-                    >
-                      <td>{traila.nombre}</td>
-                      <td style={{ color: traila.estatus === 'RENTADA' ? '#d32f2f' : '#388e3c', fontWeight: 700 }}>
-                        {traila.estatus}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      ))}
-
-      {/* Modal for work order history */}
-      {showModal && selected && (
-        <div style={modalStyle} onClick={() => setShowModal(false)}>
+      {/* Modal para entrega */}
+      {showEntregaModal && (
+        <div style={modalStyle} onClick={() => setShowEntregaModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, marginBottom: 10 }}>
-              Work Order History for {selected.nombre}
-            </h2>
-            <button onClick={() => setShowModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Close</button>
-            {workOrders.length === 0 ? (
-              <div style={{ color: '#888', fontStyle: 'italic' }}>No work orders for this trailer.</div>
-            ) : (
-              <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
-                <thead>
-                  <tr style={{ background: '#1976d2', color: '#fff' }}>
-                    <th>ID</th>
-                    <th>ID CLASSIC</th> {/* <-- Agrega esta línea */}
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Mechanic(s)</th>
-                    <th>PDF</th>
-                    {/* ...otras columnas... */}
-                  </tr>
-                </thead>
-                <tbody>
-                  {workOrders.map(wo => (
-                    <tr key={wo.id}>
-                      <td>{wo.id}</td>
-                      <td>{wo.idClassic || '-'}</td> {/* <-- Y esta línea */}
-                      <td>{wo.date}</td>
-                      <td>{wo.status}</td>
-                      <td>{wo.mechanic}</td>
-                      <td>
-                        <a
-                          href={`${API_URL}/work-orders/${wo.id}/pdf`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
-                        >
-                          View PDF
-                        </a>
-                      </td>
-                      {/* ...otras columnas... */}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 18 }}>Confirm Trailer Delivery</h2>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontWeight: 600 }}>New Delivery Date:</label>
+              <input
+                type="date"
+                value={nuevaFechaEntrega}
+                onChange={e => setNuevaFechaEntrega(e.target.value)}
+                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button
+                onClick={handleConfirmEntrega}
+                style={{
+                  background: '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '10px 28px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: 'pointer'
+                }}
+              >
+                Confirm Delivery
+              </button>
+              <button
+                onClick={() => setShowEntregaModal(false)}
+                style={{
+                  background: '#fff',
+                  color: '#1976d2',
+                  border: '1.5px solid #1976d2',
+                  borderRadius: 6,
+                  padding: '10px 28px',
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal for rental history */}
+      {/* Modal historial de rentas */}
       {showRentasModal && (
         <div style={modalStyle} onClick={() => setShowRentasModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
@@ -448,53 +433,51 @@ const TrailasTable: React.FC = () => {
         </div>
       )}
 
-      {/* Modal para cambio de estatus a DISPONIBLE con fecha de entrega */}
-      {showEntregaModal && (
-        <div style={modalStyle} onClick={() => setShowEntregaModal(false)}>
+      {/* Modal historial de Work Orders */}
+      {showWorkOrdersModal && selected && (
+        <div style={modalStyle} onClick={() => setShowWorkOrdersModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h2 style={{ color: '#1976d2', fontWeight: 700, marginBottom: 18 }}>Confirmar Entrega de Tráiler</h2>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontWeight: 600 }}>Nueva Fecha de Entrega:</label>
-              <input
-                type="date"
-                value={nuevaFechaEntrega}
-                onChange={e => setNuevaFechaEntrega(e.target.value)}
-                style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #b0c4de', marginTop: 4 }}
-                autoFocus
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button
-                onClick={handleConfirmEntrega}
-                style={{
-                  background: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  padding: '10px 28px',
-                  fontWeight: 700,
-                  fontSize: 16,
-                  cursor: 'pointer'
-                }}
-              >
-                Confirmar Entrega
-              </button>
-              <button
-                onClick={() => setShowEntregaModal(false)}
-                style={{
-                  background: '#fff',
-                  color: '#1976d2',
-                  border: '1.5px solid #1976d2',
-                  borderRadius: 6,
-                  padding: '10px 28px',
-                  fontWeight: 700,
-                  fontSize: 16,
-                  cursor: 'pointer'
-                }}
-              >
-                Cancelar
-              </button>
-            </div>
+            <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, marginBottom: 10 }}>
+              Work Order History for {selected.nombre}
+            </h2>
+            <button onClick={() => setShowWorkOrdersModal(false)} style={{ marginBottom: 16, color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, float: 'right' }}>✕ Close</button>
+            {workOrders.length === 0 ? (
+              <div style={{ color: '#888', fontStyle: 'italic' }}>No work orders for this trailer.</div>
+            ) : (
+              <table style={{ width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(25,118,210,0.07)' }}>
+                <thead>
+                  <tr style={{ background: '#1976d2', color: '#fff' }}>
+                    <th>ID</th>
+                    <th>ID CLASSIC</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Mechanic(s)</th>
+                    <th>PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workOrders.map(wo => (
+                    <tr key={wo.id}>
+                      <td>{wo.id}</td>
+                      <td>{wo.idClassic || '-'}</td>
+                      <td>{wo.date ? dayjs(wo.date).format('MM/DD/YYYY') : '-'}</td>
+                      <td>{wo.status}</td>
+                      <td>{wo.mechanic}</td>
+                      <td>
+                        <a
+                          href={`${API_URL}/work-orders/${wo.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 600 }}
+                        >
+                          View PDF
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
