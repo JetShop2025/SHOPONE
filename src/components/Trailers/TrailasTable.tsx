@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { FaFilePdf, FaHistory, FaTools, FaTimes } from 'react-icons/fa';
+import { FaFilePdf, FaHistory, FaToolbox, FaTimes } from 'react-icons/fa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
@@ -466,7 +466,7 @@ const TrailasTable: React.FC = () => {
         <div style={modalStyle} onClick={() => setShowWorkOrdersModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-              <FaTools style={{ color: '#1976d2', fontSize: 28, marginRight: 10 }} />
+              <FaToolbox style={{ color: '#1976d2', fontSize: 28, marginRight: 10 }} />
               <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, margin: 0 }}>
                 Work Order History for {selected.nombre}
               </h2>
@@ -528,22 +528,3 @@ const TrailasTable: React.FC = () => {
 };
 
 export default TrailasTable;
-
-/* Loader CSS (puedes ponerlo en tu CSS global) */
-<style>
-{`
-.loader {
-  border: 6px solid #e3f2fd;
-  border-top: 6px solid #1976d2;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-@keyframes spin {
-  0% { transform: rotate(0deg);}
-  100% { transform: rotate(360deg);}
-}
-`}
-</style>
