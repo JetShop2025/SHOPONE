@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { FaFilePdf, FaHistory, FaTimes } from 'react-icons/fa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
@@ -466,12 +465,11 @@ const TrailasTable: React.FC = () => {
         <div style={modalStyle} onClick={() => setShowWorkOrdersModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-              <FaFilePdf style={{ color: '#1976d2', fontSize: 28, marginRight: 10 }} />
               <h2 style={{ color: '#1976d2', fontWeight: 700, fontSize: 22, margin: 0 }}>
                 Work Order History for {selected.nombre}
               </h2>
               <button onClick={() => setShowWorkOrdersModal(false)} style={{ marginLeft: 'auto', color: '#1976d2', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 22 }}>
-                <FaTimes />
+                ✕
               </button>
             </div>
             {loadingWO ? (
@@ -509,7 +507,7 @@ const TrailasTable: React.FC = () => {
                           style={{ color: '#d32f2f', textDecoration: 'underline', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                           onClick={e => handlePdfClick(wo.id, e)}
                         >
-                          <FaFilePdf /> View PDF
+                          
                         </a>
                         {pdfError === wo.id && (
                           <div style={{ color: '#d32f2f', fontSize: 12 }}>PDF not found for this W.O.</div>
