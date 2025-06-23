@@ -507,7 +507,7 @@ const TrailasTable: React.FC = () => {
                           style={{ color: '#d32f2f', textDecoration: 'underline', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                           onClick={e => handlePdfClick(wo.id, e)}
                         >
-                          
+                          📄 View PDF
                         </a>
                         {pdfError === wo.id && (
                           <div style={{ color: '#d32f2f', fontSize: 12 }}>PDF not found for this W.O.</div>
