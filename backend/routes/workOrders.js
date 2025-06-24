@@ -135,6 +135,7 @@ router.post('/', async (req, res) => {
       JSON.stringify(extraOptions || [])
     ];
     const [result] = await db.query(query, values);
+    const id = result.insertId;
 
     // --- DESCONTAR PARTES DEL INVENTARIO ---
     try {
