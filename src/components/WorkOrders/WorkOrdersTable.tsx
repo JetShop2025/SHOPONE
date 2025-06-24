@@ -491,7 +491,7 @@ const WorkOrdersTable: React.FC = () => {
             headers: { 'Content-Type': 'application/json' },
             data: { usuario: localStorage.getItem('username') || '' }
           } as any);
-          setWorkOrders(workOrders.filter(order => order.id !== id));
+          setWorkOrders(workOrders.filter((order: any) => order.id !== id));
           setSelectedRow(null);
           alert('Order deleted successfully');
         } catch {
@@ -982,19 +982,20 @@ const WorkOrdersTable: React.FC = () => {
                           const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));
                           await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
-                            totalLabAndParts: totalLabAndPartsLimpio, // <-- ENVÍA EL TOTAL LIMPIO
+                            totalLabAndParts: totalLabAndPartsLimpio,
                             manualTotalEdit: true,
                             date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
                             parts: editWorkOrder.parts,
                             usuario: localStorage.getItem('username') || '',
                             extraOptions,
                           });
-                          const updated = await axios.get(`${API_URL}/work-orders`);
-                          setWorkOrders(Array.isArray(updated.data) ? (updated.data as any[]) : []);
+                          // CIERRA EL MODAL Y LIMPIA ESTADO INMEDIATAMENTE
                           setShowEditForm(false);
                           setEditWorkOrder(null);
                           setEditId('');
                           setEditError('');
+                          // REFRESCA LA TABLA EN SEGUNDO PLANO
+                          fetchWorkOrders();
                           alert('Order updated successfully.');
                         } catch (err) {
                           alert('Error updating order.');
