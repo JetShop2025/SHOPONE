@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
 const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
 const modalStyle: React.CSSProperties = {
   position: 'fixed',

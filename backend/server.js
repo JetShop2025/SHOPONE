@@ -8,7 +8,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ¡Pon esto antes de cualquier app.use de rutas!
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({ 
+  origin: [
+    'http://localhost:3000',
+    'https://shopone.onrender.com',
+    'https://shopone-1.onrender.com'
+  ], 
+  credentials: true 
+}));
 
 // Servir archivos estáticos de React
 app.use(express.static(path.join(__dirname, '../build')));

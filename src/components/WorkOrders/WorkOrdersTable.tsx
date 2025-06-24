@@ -14,7 +14,7 @@ import { useNewWorkOrder } from './useNewWorkOrder';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","CHUSAL"
@@ -176,14 +176,14 @@ const WorkOrdersTable: React.FC = () => {
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [loading, setLoading] = useState(false);
-
   // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
     try {
       const res = await axios.get(`${API_URL}/work-orders`);
       setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
     } catch (err) {
-      window.alert('Error cargando órdenes');
+      console.error('Error cargando órdenes:', err);
+      // Solo muestra la alerta si hay problemas graves, no para errores de red menores
     }
   }, []);
 
@@ -200,9 +200,8 @@ const WorkOrdersTable: React.FC = () => {
     setShowForm(false);
     setEditWorkOrder(null);
   };
-
   useEffect(() => {
-    const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+    const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
     axios.get(`${API_URL}/inventory`)
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));
@@ -295,7 +294,6 @@ const WorkOrdersTable: React.FC = () => {
       setEditWorkOrder((prev: any) => ({ ...prev, parts: updatedParts }));
     }
   };
-
   // Guardar nueva orden
   const handleAddWorkOrder = async (datosOrden: any) => {
     setLoading(true);
@@ -351,16 +349,23 @@ const WorkOrdersTable: React.FC = () => {
         });
       }
 
+      // Muestra mensaje de éxito
+      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);
+
       if (data.pdfUrl) {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
       }
-      setShowForm(false); // <-- CIERRA EL MODAL INMEDIATAMENTE
+      
+      // Cierra el formulario y resetea
+      setShowForm(false);
       resetNewWorkOrder();
-      // luego actualiza la tabla y partes pendientes en segundo plano
-      fetchWorkOrders();
-      // actualiza partes pendientes si es necesario
+      
+      // Actualiza la tabla inmediatamente
+      await fetchWorkOrders();
+      
     } catch (err: any) {
-      alert('Error al guardar la orden');
+      console.error('Error al guardar la orden:', err);
+      alert(`Error al guardar la orden: ${err.response?.data?.error || err.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
