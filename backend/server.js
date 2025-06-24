@@ -7,20 +7,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ¡Pon esto antes de cualquier app.use de rutas!
-app.use(cors({
-  origin: function(origin, callback) {
-    // Permite peticiones sin origin (como Postman) o desde tus dos frontends
-    if (!origin || [
-      'https://shopone-1.onrender.com',
-      'https://shopone.onrender.com'
-    ].includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+app.use(cors({ origin: '*', credentials: true }));
 
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
