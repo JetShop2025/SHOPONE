@@ -363,19 +363,18 @@ router.post('/', async (req, res) => {
 
       doc.end();
 
+      // Responde rápido al frontend
+      res.json({ success: true, id });
+
+      // Genera el PDF en background (no bloquea la respuesta)
       stream.on('finish', async () => {
-        // Lee el PDF generado como buffer
-        const pdfBuffer = fs.readFileSync(pdfPath);
-
-        // Guarda el PDF en la base de datos
-        await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, result.insertId]);
-
-        res.json({ success: true, id: result.insertId, pdfUrl: `/pdfs/${pdfName}` });
-      });
-
-      stream.on('error', (err) => {
-        console.error('ERROR AL GENERAR PDF:', err);
-        res.status(500).json({ error: 'Error al generar el PDF' });
+        try {
+          const pdfBuffer = fs.readFileSync(pdfPath);
+          await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
+          // Opcional: notificar por websocket o email si quieres
+        } catch (err) {
+          console.error('Error al guardar el PDF en background:', err);
+        }
       });
 
     } catch (err) {
@@ -739,6 +738,8 @@ router.put('/:id', async (req, res) => {
 
     doc.end();
 
+    res.json({ success: true, id });
+
     stream.on('finish', async () => {
       // Lee el PDF generado como buffer
       const pdfBuffer = fs.readFileSync(pdfPath);
@@ -746,7 +747,7 @@ router.put('/:id', async (req, res) => {
       // Guarda el PDF en la base de datos
       await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
 
-      res.json({ success: true, id, pdfUrl: `/pdfs/${pdfName}` });
+      
     });
   } catch (err) {
     console.error('ERROR UPDATING WORK ORDER:', err);

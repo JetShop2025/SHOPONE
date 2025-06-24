@@ -233,12 +233,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }}
     >
       <h2 style={{ color: '#1976d2', marginBottom: 16 }}>{title}</h2>
-      {loading && <div>Generando orden y PDF, por favor espera...</div>}
+      {loading && (
+        <div style={{ color: '#1976d2', fontWeight: 700, marginBottom: 12 }}>
+          Procesando, por favor espera...
+        </div>
+      )}
       {successMsg && <div>{successMsg}</div>}
       <form
         onSubmit={async e => {
-          e.preventDefault(); // Esto es clave
-          
+          e.preventDefault();
+          setLoading(true); // <-- Muestra el loader
+
           const cleanParts = workOrder.parts
   .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
   .map((p: Part) => ({
@@ -281,16 +286,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               });
               window.alert('¡Orden creada y PDF generado con éxito!');
             }
+            setLoading(false); // <-- Oculta el loader
 
             // Abrir PDF SOLO en nueva pestaña
             if (res.data.pdfUrl) {
               window.open(`${API_URL}${res.data.pdfUrl}`, '_blank', 'noopener,noreferrer');
             }
 
-            setLoading(false);
             onSubmit(); // Esto debe cerrar el formulario/modal y refrescar la tabla
           } catch (err: any) {
-            setLoading(false);
+            setLoading(false); // <-- Oculta el loader en error también
             if (err.response && err.response.data) {
               window.alert(err.response.data);
             } else {
@@ -621,20 +626,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     : [{ name: '', hrs: '' }];
                   mechanics[idx] = { ...mechanics[idx], name: e.target.value };
                   onChange({ ...workOrder, mechanics });
-              }}
-              placeholder="Mechanic Name"
-              style={{ flex: 2 }}
+                }}
+                placeholder="Mechanic Name"
+                style={{ flex: 2 }}
+                required
               />
-            <datalist id="mechanics">
-              <option value="ADAN R" />
-              <option value="WILMER M" />
-              <option value="ADRIAN S" />
-              <option value="ULISES M" />
-              <option value="ALEX M" />
-              <option value="GUSTAVO M" />
-              <option value="DAVID C" />
-            </datalist>
-        
+              <datalist id="mechanics">
+                {MECHANICS.map((name:string) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
               <input
                 type="number"
                 value={m?.hrs || ''}
@@ -649,6 +650,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 min={0}
                 step="any"
                 style={{ flex: 1 }}
+                required
               />
               {arr.length > 1 && (
                 <button
@@ -775,5 +777,16 @@ function calcularTotalWO(order: any) {
   });
   return subtotal + extra;
 }
+
+const MECHANICS: string[] = [
+  "ADAN R",
+  "WILMER M",
+  "LUIS E",
+  "ULISES M",
+  "MIGUEL R",
+  "ALEX M",
+  "GUSTAVO M",
+  "DAVID C"
+];
 
 export default WorkOrderForm;
