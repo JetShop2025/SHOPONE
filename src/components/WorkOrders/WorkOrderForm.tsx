@@ -21,6 +21,8 @@ interface WorkOrderFormProps {
   onAddEmptyPart?: () => void;
   extraOptions: string[];
   setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
+  loading: boolean;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface Part {
@@ -50,10 +52,9 @@ const parseCurrencyInput = (value: string) => {
 };
 
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
-  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart, extraOptions, setExtraOptions
+  workOrder, onChange, onPartChange, onSubmit, onCancel, title, billToCoOptions, getTrailerOptions, inventory, trailersWithPendingParts, pendingParts, pendingPartsQty, setPendingPartsQty, onAddPendingPart, onAddEmptyPart, extraOptions, setExtraOptions, loading, setLoading
 }) => {
   const [autocomplete, setAutocomplete] = React.useState<{ [k: number]: any[] }>({});
-  const [loading, setLoading] = React.useState(false);
   const [successMsg, setSuccessMsg] = React.useState('');
   const [manualCostEdit, setManualCostEdit] = React.useState<{ [k: number]: boolean }>({});
   const [manualTotalEdit, setManualTotalEdit] = React.useState(false);

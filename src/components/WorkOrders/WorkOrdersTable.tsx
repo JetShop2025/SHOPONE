@@ -175,6 +175,7 @@ const WorkOrdersTable: React.FC = () => {
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
@@ -297,10 +298,7 @@ const WorkOrdersTable: React.FC = () => {
 
   // Guardar nueva orden
   const handleAddWorkOrder = async (datosOrden: any) => {
-    if (!datosOrden.date) {
-      alert('Debes seleccionar una fecha para la orden.');
-      return;
-    }
+    setLoading(true);
     try {
       // 1. Prepara las partes a descontar
       const partesUsadas = datosOrden.parts
@@ -356,23 +354,15 @@ const WorkOrdersTable: React.FC = () => {
       if (data.pdfUrl) {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
       }
-      setShowForm(false);
+      setShowForm(false); // <-- CIERRA EL MODAL INMEDIATAMENTE
       resetNewWorkOrder();
-      const updated = await axios.get(`${API_URL}/work-orders`);
-      setWorkOrders(Array.isArray(updated.data) ? (updated.data as any[]) : []);
-      for (const part of pendingParts) {
-        await axios.put(`${API_URL}/receive/${part.id}/use`);
-      }
-      for (const partId of selectedPendingParts) {
-        await axios.put(`${API_URL}/receive/${partId}/use`);
-      }
-      setSelectedPendingParts([]);
+      // luego actualiza la tabla y partes pendientes en segundo plano
+      fetchWorkOrders();
+      // actualiza partes pendientes si es necesario
     } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.error) {
-        alert('Error: ' + err.response.data.error);
-      } else {
-        alert('Error al guardar la orden');
-      }
+      alert('Error al guardar la orden');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -900,6 +890,8 @@ const WorkOrdersTable: React.FC = () => {
                 onAddEmptyPart={addEmptyPart}
                 extraOptions={extraOptions}
                 setExtraOptions={setExtraOptions}
+                loading={loading}
+                setLoading={setLoading}
               />
             </div>
           </div>
@@ -1014,8 +1006,10 @@ const WorkOrdersTable: React.FC = () => {
                       getTrailerOptions={getTrailerOptions}
                       inventory={inventory}
                       onAddEmptyPart={addEmptyPart}
-                      extraOptions={extraOptions}           // <-- agrega esto
-                      setExtraOptions={setExtraOptions}     // <-- agrega esto
+                      extraOptions={extraOptions}
+                      setExtraOptions={setExtraOptions}
+                      loading={loading}
+                      setLoading={setLoading}
                     />
                   </>
                 )}
@@ -1206,6 +1200,22 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
   workOrders={workOrders}
 mechanics={Array.from(new Set(workOrders.map(o => o.mechanic).filter(Boolean)))}  selectedWeek={selectedWeek}
 />
+      {loading && (
+  <div style={{
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(255,255,255,0.7)',
+    zIndex: 2000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }}>
+    <div className="loader" />
+    <div style={{ color: '#1976d2', fontWeight: 700, fontSize: 20, marginLeft: 16 }}>
+      Procesando, por favor espera...
+    </div>
+  </div>
+)}
     </>
   );
 };
