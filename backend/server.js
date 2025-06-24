@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
 // Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
@@ -8,6 +9,9 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ¡Pon esto antes de cualquier app.use de rutas!
 app.use(cors({ origin: '*', credentials: true }));
+
+// Servir archivos estáticos de React
+app.use(express.static(path.join(__dirname, '../build')));
 
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
@@ -28,6 +32,11 @@ app.use('/login', loginRoutes);
 app.use('/work-order-parts', workOrderPartsRoutes);
 
 app.use('/audit', auditRoutes);
+
+// Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build/index.html'));
+});
 
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, '0.0.0.0', () => {
