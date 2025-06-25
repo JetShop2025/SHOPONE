@@ -11,13 +11,18 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cors({ 
   origin: [
     'http://localhost:3000',
+    'https://shopone.onrender.com',
     'https://shopone-1.onrender.com'
   ], 
   credentials: true 
 }));
 
 // Servir archivos estáticos de React
-app.use(express.static(path.join(__dirname, '../build')));
+// En desarrollo: ../build, En producción: ./build
+const buildPath = path.join(__dirname, '../build');
+const fs = require('fs');
+const finalBuildPath = fs.existsSync(buildPath) ? buildPath : path.join(__dirname, './build');
+app.use(express.static(finalBuildPath));
 
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
@@ -41,7 +46,12 @@ app.use('/audit', auditRoutes);
 
 // Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build/index.html'));
+  const indexPath = path.join(finalBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Build files not found');
+  }
 });
 
 const PORT = process.env.PORT || 5050;
