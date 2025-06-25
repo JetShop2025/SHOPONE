@@ -48,5 +48,6 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`);
+  // Force redeploy - Fix API URL issue - 2025-06-24
 });
 
