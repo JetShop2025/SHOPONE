@@ -87,6 +87,37 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
+// Keep-alive endpoint para evitar que Render duerma el servidor
+app.get('/keep-alive', async (req, res) => {
+  console.log(`[${new Date().toISOString()}] Keep-alive ping received from ${req.ip}`);
+  
+  try {
+    // Test database connection as part of keep-alive
+    const db = require('./db');
+    await db.query('SELECT 1');
+    
+    res.json({ 
+      status: 'alive', 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      database: 'connected',
+      memory: process.memoryUsage(),
+      version: '2.1-render-ready'
+    });
+  } catch (err) {
+    console.error('Keep-alive database test failed:', err.message);
+    res.status(200).json({ 
+      status: 'alive', 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      database: 'error',
+      dbError: err.message,
+      memory: process.memoryUsage(),
+      version: '2.1-render-ready'
+    });
+  }
+});
+
 // Servir archivos estáticos de React
 // En desarrollo: ../build, En producción: ./build
 const buildPath = path.join(__dirname, '../build');

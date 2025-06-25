@@ -8,6 +8,7 @@ import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
 import TrailasTable from './components/Trailers/TrailasTable';  
 import './env-test';
+import './services/keepAlive'; // Importar el servicio keep-alive
 
 const App: React.FC = () => {
   return (

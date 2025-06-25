@@ -11,6 +11,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
+import { keepAliveService } from '../../services/keepAlive';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -173,32 +174,73 @@ const WorkOrdersTable: React.FC = () => {
   const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
-  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
-  const [showHourmeter, setShowHourmeter] = useState(false);
-  const [loading, setLoading] = useState(false);  // Función para cargar las órdenes
-  const fetchWorkOrders = useCallback(async () => {
+  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });  const [showHourmeter, setShowHourmeter] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+
+  // Función para cargar las órdenes con manejo inteligente de errores
+  const fetchWorkOrders = useCallback(async (isRetry = false) => {
     try {
-      const res = await axios.get(`${API_URL}/work-orders`);
+      setLoading(true);
+      const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });
       setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
+      setServerStatus('online');      setRetryCount(0); // Reset retry count on success
     } catch (err: any) {
       console.error('Error cargando órdenes:', err);
-      // Si el servidor está dormido (502), intentar reactivarlo
-      if (err?.response?.status === 502 || err?.response?.status === 503) {
-        console.log('Servidor dormido, intentando reactivar...');
-        // Reintentar después de 10 segundos
-        setTimeout(() => {
-          fetchWorkOrders();
-        }, 10000);
+      
+      // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
+      if ((err?.response?.status === 502 || err?.response?.status === 503 || err.code === 'ECONNABORTED') && retryCount < maxRetries) {
+        if (!isRetry) {
+          setServerStatus('waking');
+          console.log(`Servidor dormido, intento ${retryCount + 1}/${maxRetries} de reactivación...`);
+          
+          // Usar el servicio keepAlive para intentar despertar el servidor
+          try {
+            const pingSuccess = await keepAliveService.manualPing();
+            if (pingSuccess) {
+              console.log('Keep-alive ping exitoso, servidor despertando...');
+            }
+          } catch (keepAliveError) {
+            console.log('Keep-alive ping falló, server might be cold starting...');
+          }
+          
+          setRetryCount(prev => prev + 1);
+          // Reintentar con backoff exponencial (más agresivo para despertar el servidor)
+          setTimeout(() => {
+            fetchWorkOrders(true);
+          }, Math.min(8000 * Math.pow(1.5, retryCount), 25000));
+        }
+      } else {
+        setServerStatus('offline');
+        if (retryCount >= maxRetries) {
+          console.error('Max reintentos alcanzados, servidor no responde');
+        }
       }
+    } finally {
+      setLoading(false);
     }
-  }, []);
-
-  // REDUCIR polling de 5 segundos a 30 segundos para no saturar
+  }, [retryCount]);
+  // Polling inteligente - ajusta frecuencia según estado del servidor
   useEffect(() => {
     fetchWorkOrders();
-    const interval = setInterval(fetchWorkOrders, 30000); // 30 segundos en lugar de 5
-    return () => clearInterval(interval);
-  }, [fetchWorkOrders]);
+    
+    let interval: NodeJS.Timeout;
+    
+    if (serverStatus === 'online') {
+      // Servidor online: polling normal cada 30 segundos
+      interval = setInterval(() => fetchWorkOrders(), 30000);
+    } else if (serverStatus === 'waking') {
+      // Servidor despertando: polling más frecuente cada 15 segundos
+      interval = setInterval(() => fetchWorkOrders(), 15000);
+    }
+    // Si está offline, no hacer polling automático
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [fetchWorkOrders, serverStatus]);
   // Al guardar o editar, refresca la tabla y cierra el formulario
   const handleFormSuccess = () => {
     fetchWorkOrders();
@@ -635,8 +677,7 @@ const WorkOrdersTable: React.FC = () => {
   };
 
   return (
-    <>
-      <style>
+    <>      <style>
         {`
           .parts-tooltip {
             position: relative;
@@ -664,6 +705,28 @@ const WorkOrdersTable: React.FC = () => {
             visibility: visible;
             opacity: 1;
           }
+          
+          @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+          }
+          
+          .reconnect-btn {
+            margin-left: 8px;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 12px;
+            background: #1976d2;
+            color: white;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.2s;
+          }
+          .reconnect-btn:hover {
+            background: #1565c0;
+          }
+          
           .wo-table {
             border-collapse: collapse;
             width: 100%;
@@ -720,8 +783,7 @@ const WorkOrdersTable: React.FC = () => {
           maxWidth: 1400,
           margin: '32px auto'
         }}
-      >
-        <div className="wo-header">
+      >        <div className="wo-header">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
   <div
     style={{
@@ -751,6 +813,65 @@ const WorkOrdersTable: React.FC = () => {
   >
     Work Orders
   </span>
+  {/* Indicador de estado del servidor */}
+  <div style={{ 
+    marginLeft: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '8px 16px',
+    borderRadius: '20px',
+    background: serverStatus === 'online' ? '#e8f5e8' : 
+                serverStatus === 'waking' ? '#fff3e0' : '#ffebee',
+    border: `1px solid ${serverStatus === 'online' ? '#4caf50' : 
+                         serverStatus === 'waking' ? '#ff9800' : '#f44336'}`
+  }}>
+    <div style={{
+      width: 8,
+      height: 8,
+      borderRadius: '50%',
+      background: serverStatus === 'online' ? '#4caf50' : 
+                  serverStatus === 'waking' ? '#ff9800' : '#f44336',
+      marginRight: 8,
+      animation: serverStatus === 'waking' ? 'pulse 1.5s infinite' : 'none'
+    }} />
+    <span style={{
+      fontSize: 12,
+      fontWeight: 600,
+      color: serverStatus === 'online' ? '#2e7d32' : 
+             serverStatus === 'waking' ? '#ef6c00' : '#c62828'
+    }}>    {serverStatus === 'online' ? 'Online' : 
+     serverStatus === 'waking' ? 'Waking up...' : 'Offline'}
+    </span>    {serverStatus === 'offline' && (
+      <button 
+        className="reconnect-btn"
+        onClick={async () => {
+          setRetryCount(0);
+          setServerStatus('waking');
+          setLoading(true);
+          
+          // Intentar despertar con keep-alive primero
+          try {
+            await keepAliveService.manualPing();
+          } catch (e) {
+            console.log('Manual ping failed, proceeding with fetch...');
+          }
+          
+          // Esperar un poco y luego intentar fetch
+          setTimeout(() => {
+            fetchWorkOrders();
+          }, 3000);
+        }}
+        disabled={loading}
+      >
+        Reconnect
+      </button>
+    )}
+    {loading && (
+      <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>
+        Loading...
+      </span>
+    )}
+  </div>
 </div>
         </div>
         {/* FILTROS DERECHA */}
