@@ -3,9 +3,47 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// CORS configuration - DEBE estar ANTES de cualquier middleware
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permite requests sin origin (como Postman) y desde dominios específicos
+    const allowedOrigins = [
+      'https://shopone-1.onrender.com',
+      'https://shopone.onrender.com',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Temporal: permite todos los orígenes
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Access-Control-Allow-Origin'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
+};
+
+// Aplicar CORS antes que cualquier otra cosa
+app.use(cors(corsOptions));
+
+// Middleware adicional para CORS manual
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, Accept, Origin');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Middleware de logging para debug
 app.use((req, res, next) => {
@@ -13,17 +51,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ¡Pon esto antes de cualquier app.use de rutas!
-app.use(cors({ 
-  origin: true, // Permite TODOS los orígenes temporalmente
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-  optionsSuccessStatus: 200
-}));
-
-// Handle preflight requests explícitamente
-app.options('*', cors());
+// Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
