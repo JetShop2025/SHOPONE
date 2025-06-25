@@ -25,6 +25,16 @@ app.use(cors({
 // Handle preflight requests explícitamente
 app.options('*', cors());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    cors: 'enabled for all origins',
+    version: '2.0-optimized'
+  });
+});
+
 // Servir archivos estáticos de React
 // En desarrollo: ../build, En producción: ./build
 const buildPath = path.join(__dirname, '../build');
