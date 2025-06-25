@@ -14,7 +14,6 @@ interface WorkOrderFormProps {
   setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  // Optional props that may be passed from WorkOrdersTable
   trailersWithPendingParts?: any[];
   pendingParts?: any[];
   pendingPartsQty?: any;
@@ -73,7 +72,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         return;
       }
 
-      // Preparar datos para enviar
       const dataToSend = {
         ...workOrder,
         parts: cleanParts,
@@ -95,18 +93,46 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   };
 
+  const handleMechanicChange = (index: number, field: string, value: string) => {
+    const newMechanics = [...(workOrder.mechanics || [])];
+    newMechanics[index] = { ...newMechanics[index], [field]: value };
+    onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
+  };
+
+  const addMechanic = () => {
+    const newMechanics = [...(workOrder.mechanics || []), { name: '', hrs: '' }];
+    onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
+  };
+
+  const removeMechanic = (index: number) => {
+    const newMechanics = (workOrder.mechanics || []).filter((_: any, i: number) => i !== index);
+    onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
+  };
+
+  const handleExtraChange = (optionValue: string, checked: boolean) => {
+    if (checked) {
+      setExtraOptions([...extraOptions, optionValue]);
+    } else {
+      setExtraOptions(extraOptions.filter(opt => opt !== optionValue));
+    }
+  };
+
+  const getTrailerOptionsForBill = (billToCo: string) => {
+    return getTrailerOptions ? getTrailerOptions(billToCo) : [];
+  };
+
   return (
-    <div
-      style={{
-        marginTop: '20px',
-        border: '1px solid #1976d2',
-        borderRadius: 8,
-        padding: '24px',
-        background: '#f5faff',
-        maxWidth: 700,
-        boxShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
-      }}
-    >
+    <div style={{
+      marginTop: '20px',
+      border: '1px solid #1976d2',
+      borderRadius: 8,
+      padding: '24px',
+      background: '#f5faff',
+      maxWidth: 900,
+      maxHeight: '80vh',
+      overflowY: 'auto',
+      boxShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
+    }}>
       <h2 style={{ color: '#1976d2', marginBottom: 16 }}>{title}</h2>
       {loading && (
         <div style={{ color: '#1976d2', fontWeight: 700, marginBottom: 12 }}>
@@ -120,24 +146,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       )}
       
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
           <label style={{ flex: '1 1 200px' }}>
             Bill To Co<span style={{ color: 'red' }}>*</span>
-            <input
-              list="clientes"
+            <select
               name="billToCo"
               value={workOrder.billToCo || ''}
               onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
               required
-              autoComplete="off"
-              placeholder="Escribe o selecciona..."
-            />
-            <datalist id="clientes">
+            >
+              <option value="">Selecciona...</option>
               {billToCoOptions.map(opt => (
-                <option key={opt} value={opt} />
+                <option key={opt} value={opt}>{opt}</option>
               ))}
-            </datalist>
+            </select>
           </label>
           
           <label style={{ flex: '1 1 120px' }}>
@@ -148,24 +171,56 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               value={workOrder.date || ''}
               onChange={onChange}
               required
-              style={{ width: '100%', marginTop: 4 }}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
           </label>
           
           <label style={{ flex: '1 1 120px' }}>
             Trailer
-            <input
-              type="text"
+            <select
               name="trailer"
-              placeholder="Trailer"
               value={workOrder.trailer || ''}
               onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+            >
+              <option value="">Selecciona...</option>
+              {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+          <label style={{ flex: '1 1 150px' }}>
+            Status
+            <select
+              name="status"
+              value={workOrder.status || 'PRE W.O'}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+            >
+              <option value="PRE W.O">PRE W.O</option>
+              <option value="PROCESSING">PROCESSING</option>
+              <option value="APPROVED">APPROVED</option>
+              <option value="FINISHED">FINISHED</option>
+            </select>
+          </label>
+          
+          <label style={{ flex: '1 1 150px' }}>
+            ID CLASSIC
+            <input
+              type="text"
+              name="idClassic"
+              placeholder="ID Classic (opcional)"
+              value={workOrder.idClassic || ''}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
           </label>
         </div>
         
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={{ width: '100%' }}>
             Descripción<span style={{ color: 'red' }}>*</span>
             <textarea
@@ -174,53 +229,160 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               value={workOrder.description || ''}
               onChange={onChange}
               rows={3}
-              style={{ width: '100%', marginTop: 4, resize: 'vertical' }}
+              style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 8 }}
               required
             />
           </label>
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          <strong>Partes</strong>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <strong>Mecánicos</strong>
+            <button
+              type="button"
+              onClick={addMechanic}
+              style={{
+                padding: '4px 8px',
+                background: '#1976d2',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer'
+              }}
+            >
+              + Agregar
+            </button>
+          </div>
+          {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
+            <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Nombre del mecánico"
+                value={mechanic.name || ''}
+                onChange={e => handleMechanicChange(index, 'name', e.target.value)}
+                style={{ flex: 1, padding: 8 }}
+              />
+              <input
+                type="number"
+                placeholder="Horas"
+                value={mechanic.hrs || ''}
+                onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
+                style={{ width: 80, padding: 8 }}
+                step="0.25"
+              />
+              <button
+                type="button"
+                onClick={() => removeMechanic(index)}
+                style={{
+                  padding: '4px 8px',
+                  background: '#d32f2f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {(!workOrder.mechanics || workOrder.mechanics.length === 0) && (
+            <div style={{ color: '#666', fontStyle: 'italic' }}>
+              No hay mecánicos agregados. Haz clic en "Agregar" para añadir uno.
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label>
+            Total HRS (calculado automáticamente)
+            <input
+              type="number"
+              name="totalHrs"
+              value={workOrder.totalHrs || ''}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+              step="0.25"
+              placeholder="Total de horas"
+            />
+          </label>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <strong>Partes</strong>
+            {onAddEmptyPart && (
+              <button
+                type="button"
+                onClick={onAddEmptyPart}
+                style={{
+                  padding: '4px 8px',
+                  background: '#1976d2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                + Agregar Parte
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
             {workOrder.parts && workOrder.parts.map((part: Part, index: number) => (
               <div key={index} style={{
                 border: '1px solid #ccc',
                 borderRadius: 4,
                 padding: 8,
-                minWidth: 180,
-                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4
               }}>
-                <label>
-                  PRT
+                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+                  SKU
+                  <input
+                    list={`inventory-${index}`}
+                    type="text"
+                    value={part.sku || ''}
+                    onChange={e => onPartChange(index, 'sku', e.target.value)}
+                    style={{ width: '100%', marginTop: 2, padding: 4 }}
+                    placeholder="SKU"
+                  />
+                  <datalist id={`inventory-${index}`}>
+                    {inventory.map((item: any) => (
+                      <option key={item.sku} value={item.sku}>
+                        {item.part} - {item.sku}
+                      </option>
+                    ))}
+                  </datalist>
+                </label>
+                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+                  Parte
                   <input
                     type="text"
                     value={part.part || ''}
                     onChange={e => onPartChange(index, 'part', e.target.value)}
-                    style={{ width: '100%', marginTop: 2 }}
-                    placeholder="Parte"
+                    style={{ width: '100%', marginTop: 2, padding: 4 }}
+                    placeholder="Nombre de la parte"
                   />
                 </label>
-                <label>
+                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   Qty
                   <input
                     type="number"
                     value={part.qty || ''}
                     onChange={e => onPartChange(index, 'qty', e.target.value)}
-                    style={{ width: '100%', marginTop: 2 }}
+                    style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="Cantidad"
                   />
                 </label>
-                <label>
+                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   Costo
                   <input
                     type="text"
                     value={part.cost || ''}
                     onChange={e => onPartChange(index, 'cost', e.target.value)}
-                    style={{ width: '100%', marginTop: 2 }}
+                    style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="$0.00"
                   />
                 </label>
@@ -229,35 +391,46 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-          <label style={{ flex: 1 }}>
-            Status<span style={{ color: 'red' }}>*</span>
-            <select
-              name="status"
-              value={workOrder.status || ''}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
-              required
-            >
-              <option value="">Select...</option>
-              <option value="PRE W.O">PRE W.O</option>
-              <option value="PROCESSING">PROCESSING</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="FINISHED">FINISHED</option>
-            </select>
-          </label>
+        <div style={{ marginBottom: 16 }}>
+          <strong>Extras</strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="checkbox"
+                checked={extraOptions.includes('5')}
+                onChange={e => handleExtraChange('5', e.target.checked)}
+              />
+              Emergency 5%
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="checkbox"
+                checked={extraOptions.includes('15shop')}
+                onChange={e => handleExtraChange('15shop', e.target.checked)}
+              />
+              Shop 15%
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="checkbox"
+                checked={extraOptions.includes('15weld')}
+                onChange={e => handleExtraChange('15weld', e.target.checked)}
+              />
+              Weld 15%
+            </label>
+          </div>
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          <label style={{ width: '100%' }}>
-            ID CLASSIC:
+        <div style={{ marginBottom: 16 }}>
+          <label>
+            Total LAB & PARTS
             <input
               type="text"
-              name="idClassic"
-              value={workOrder.idClassic || ''}
+              name="totalLabAndParts"
+              value={workOrder.totalLabAndParts || ''}
               onChange={onChange}
-              style={{ width: '100%', marginTop: 4 }}
-              placeholder="ID Classic (opcional)"
+              style={{ width: '100%', marginTop: 4, padding: 8, fontWeight: 'bold' }}
+              placeholder="$0.00"
             />
           </label>
         </div>
@@ -274,8 +447,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               borderRadius: 6,
               fontWeight: 600,
               fontSize: 16,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
             {loading ? 'Procesando...' : 'Save'}
