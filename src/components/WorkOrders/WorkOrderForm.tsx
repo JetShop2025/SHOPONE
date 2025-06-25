@@ -248,9 +248,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <option value="FINISHED">FINISHED</option>
             </select>
           </label>
-          
-          {/* ID CLASSIC solo aparece al editar (cuando workOrder.id existe) */}
-          {workOrder.id && (
+            {/* ID CLASSIC aparece al editar o cuando el status es FINISHED */}
+          {(workOrder.id || workOrder.status === 'FINISHED') && (
             <label style={{ flex: '1 1 150px' }}>
               ID CLASSIC
               <input
