@@ -11,6 +11,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cors({ 
   origin: [
     'http://localhost:3000',
+    'https://shopone.onrender.com',
     'https://shopone-1.onrender.com'
   ], 
   credentials: true 

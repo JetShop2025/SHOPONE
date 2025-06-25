@@ -6,7 +6,7 @@ const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
 ];
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 
 function getTrailerOptions(billToCo: string): string[] {
   if (billToCo === "GALGRE") return Array.from({length: 54}, (_, i) => `1-${100+i}`);
