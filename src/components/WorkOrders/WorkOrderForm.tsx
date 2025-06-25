@@ -7,7 +7,7 @@ interface WorkOrderFormProps {
   workOrder: any;
   onChange: (e: React.ChangeEvent<any>, index?: number, field?: string) => void;
   onPartChange: (index: number, field: string, value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (data?: any) => Promise<void> | void;
   onCancel: () => void;
   title: string;
   billToCoOptions: string[];
@@ -239,8 +239,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           Procesando, por favor espera...
         </div>
       )}
-      {successMsg && <div>{successMsg}</div>}
-      <form
+      {successMsg && <div>{successMsg}</div>}      <form
         onSubmit={async e => {
           e.preventDefault();
           setLoading(true); // <-- Muestra el loader
@@ -265,42 +264,38 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           }
 
           try {
-            let res;
+            // Preparar datos para enviar
+            const dataToSend = {
+              ...workOrder,
+              totalLabAndParts: cleanTotalLabAndParts,
+              manualTotalEdit,
+              parts: cleanParts,
+              extraOptions,
+              usuario: localStorage.getItem('username') || ''
+            };
+
+            // Si hay ID, es edición, si no es creación
             if (workOrder.id) {
-              res = await axios.put<{ pdfUrl?: string }>(`${API_URL}/work-orders/${workOrder.id}`, {
-                ...workOrder,
-                totalLabAndParts: cleanTotalLabAndParts,
-                manualTotalEdit,
-                parts: cleanParts,
-                extraOptions,
-                usuario: localStorage.getItem('username') || ''
-              });
+              // Para edición, hacer PUT directamente aquí
+              const res = await axios.put<{ pdfUrl?: string }>(`${API_URL}/work-orders/${workOrder.id}`, dataToSend);
               window.alert('¡Orden editada y PDF generado con éxito!');
-            } else {
-              res = await axios.post<{ pdfUrl?: string }>(`${API_URL}/work-orders`, {
-                ...workOrder,
-                totalLabAndParts: cleanTotalLabAndParts,
-                manualTotalEdit,
-                parts: cleanParts,
-                extraOptions,
-                usuario: localStorage.getItem('username') || ''
-              });
-              window.alert('¡Orden creada y PDF generado con éxito!');
-            }
-            setLoading(false); // <-- Oculta el loader
-
-            // Abrir PDF SOLO en nueva pestaña
-            if (res.data.pdfUrl) {
-              window.open(`${API_URL}${res.data.pdfUrl}`, '_blank', 'noopener,noreferrer');
-            }
-
-            onSubmit(); // Esto debe cerrar el formulario/modal y refrescar la tabla
-          } catch (err: any) {
+              
+              // Abrir PDF SOLO en nueva pestaña
+              if (res.data.pdfUrl) {
+                window.open(`${API_URL}${res.data.pdfUrl}`, '_blank', 'noopener,noreferrer');
+              }
+              
+              setLoading(false);
+              onSubmit(); // Esto debe cerrar el formulario/modal y refrescar la tabla            } else {
+              // Para creación, usar la función onSubmit del parent
+              await onSubmit(dataToSend); // Esto ejecutará handleAddWorkOrder
+              setLoading(false);
+            }} catch (err: any) {
             setLoading(false); // <-- Oculta el loader en error también
             if (err.response && err.response.data) {
-              window.alert(err.response.data);
+              window.alert(`Error: ${err.response.data.error || err.response.data}`);
             } else {
-              window.alert('Ocurrió un error al guardar la orden.');
+              window.alert(`Error: ${err.message}`);
             }
           }
         }}

@@ -848,12 +848,11 @@ const WorkOrdersTable: React.FC = () => {
         {/* --- FORMULARIO NUEVA ORDEN --- */}
         {showForm && (
           <div style={modalStyle} onClick={() => setShowForm(false)}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-              <WorkOrderForm
+            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>              <WorkOrderForm
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
-                onSubmit={handleFormSuccess}
+                onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}
                 onCancel={() => setShowForm(false)}
                 title="New Work Order"
                 billToCoOptions={billToCoOptions}
