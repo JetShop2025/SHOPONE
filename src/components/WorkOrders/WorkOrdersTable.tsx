@@ -175,31 +175,43 @@ const WorkOrdersTable: React.FC = () => {
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
-  const [loading, setLoading] = useState(false);
-  // Función para cargar las órdenes
+  const [loading, setLoading] = useState(false);  // Función para cargar las órdenes
   const fetchWorkOrders = useCallback(async () => {
     try {
       const res = await axios.get(`${API_URL}/work-orders`);
       setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error cargando órdenes:', err);
-      // Solo muestra la alerta si hay problemas graves, no para errores de red menores
+      // Si el servidor está dormido (502), intentar reactivarlo
+      if (err?.response?.status === 502 || err?.response?.status === 503) {
+        console.log('Servidor dormido, intentando reactivar...');
+        // Reintentar después de 10 segundos
+        setTimeout(() => {
+          fetchWorkOrders();
+        }, 10000);
+      }
     }
   }, []);
 
-  // Polling cada 5 segundos para ver cambios de otros usuarios
+  // REDUCIR polling de 5 segundos a 30 segundos para no saturar
   useEffect(() => {
     fetchWorkOrders();
-    const interval = setInterval(fetchWorkOrders, 5000);
+    const interval = setInterval(fetchWorkOrders, 30000); // 30 segundos en lugar de 5
     return () => clearInterval(interval);
   }, [fetchWorkOrders]);
-
   // Al guardar o editar, refresca la tabla y cierra el formulario
   const handleFormSuccess = () => {
     fetchWorkOrders();
     setShowForm(false);
     setEditWorkOrder(null);
-  };  useEffect(() => {
+  };
+
+  // Función para buscar parte por SKU en el inventario
+  const findPartBySku = (sku: string) => {
+    return inventory.find(item => 
+      item.sku && item.sku.toLowerCase() === sku.toLowerCase()
+    );
+  };useEffect(() => {
     axios.get(`${API_URL}/inventory`)
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));

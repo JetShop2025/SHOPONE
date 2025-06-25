@@ -56,6 +56,41 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 }) => {
   const [successMsg, setSuccessMsg] = React.useState('');
 
+  // Buscar parte en inventario por SKU
+  const findPartBySku = (sku: string) => {
+    return inventory.find((item: any) => item.sku === sku);
+  };
+
+  // Manejar cambios en las partes con auto-completado
+  const handlePartChange = (index: number, field: string, value: string) => {
+    const newParts = [...(workOrder.parts || [])];
+    newParts[index] = { ...newParts[index], [field]: value };
+
+    // Auto-completado cuando se cambia el SKU
+    if (field === 'sku' && value) {
+      const foundPart = findPartBySku(value);
+      if (foundPart) {
+        newParts[index].part = foundPart.part || foundPart.description || '';
+        newParts[index].cost = foundPart.cost || foundPart.price || '';
+      }
+    }
+
+    // Calcular costo total para esta parte (qty × costo unitario)
+    if (field === 'qty' || field === 'cost') {
+      const qty = parseFloat(field === 'qty' ? value : newParts[index].qty) || 0;
+      const unitCost = parseFloat(String(field === 'cost' ? value : newParts[index].cost).replace(/[^0-9.]/g, '')) || 0;
+      newParts[index].totalCost = qty * unitCost;
+    }
+
+    onChange({ target: { name: 'parts', value: newParts } } as any);
+
+    // Auto-calcular total después de cambiar partes
+    setTimeout(() => {
+      const calculatedTotal = calculateTotalLabAndParts();
+      onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
+    }, 100);
+  };
+
   // Calcular horas totales automáticamente
   const calculateTotalHours = () => {
     if (!workOrder.mechanics || workOrder.mechanics.length === 0) return 0;
@@ -131,11 +166,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
     }
   };
-
   const handleMechanicChange = (index: number, field: string, value: string) => {
     const newMechanics = [...(workOrder.mechanics || [])];
     newMechanics[index] = { ...newMechanics[index], [field]: value };
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
+
+    // Auto-calcular total después de cambiar horas
+    if (field === 'hrs') {
+      setTimeout(() => {
+        const calculatedTotal = calculateTotalLabAndParts();
+        onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
+      }, 100);
+    }
   };
 
   const addMechanic = () => {
@@ -147,13 +189,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const newMechanics = (workOrder.mechanics || []).filter((_: any, i: number) => i !== index);
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
-
   const handleExtraChange = (optionValue: string, checked: boolean) => {
     if (checked) {
       setExtraOptions([...extraOptions, optionValue]);
     } else {
       setExtraOptions(extraOptions.filter(opt => opt !== optionValue));
     }
+
+    // Auto-calcular total después de cambiar extras
+    setTimeout(() => {
+      const calculatedTotal = calculateTotalLabAndParts();
+      onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
+    }, 100);
   };
 
   const getTrailerOptionsForBill = (billToCo: string) => {
@@ -362,19 +409,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 gap: 4
               }}>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  SKU
-                  <input
+                  SKU                  <input
                     list={`inventory-${index}`}
                     type="text"
                     value={part.sku || ''}
-                    onChange={e => onPartChange(index, 'sku', e.target.value)}
+                    onChange={e => handlePartChange(index, 'sku', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="SKU"
                   />
                   <datalist id={`inventory-${index}`}>
                     {inventory.map((item: any) => (
                       <option key={item.sku} value={item.sku}>
-                        {item.part} - {item.sku}
+                        {item.part || item.description} - ${item.cost || item.price || '0.00'}
                       </option>
                     ))}
                   </datalist>
@@ -384,9 +430,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   <input
                     type="text"
                     value={part.part || ''}
-                    onChange={e => onPartChange(index, 'part', e.target.value)}
-                    style={{ width: '100%', marginTop: 2, padding: 4 }}
+                    onChange={e => handlePartChange(index, 'part', e.target.value)}
+                    style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: '#f0f8ff' }}
                     placeholder="Nombre de la parte"
+                    readOnly={!part.part}
                   />
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
@@ -394,25 +441,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   <input
                     type="number"
                     value={part.qty || ''}
-                    onChange={e => onPartChange(index, 'qty', e.target.value)}
+                    onChange={e => handlePartChange(index, 'qty', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="Cantidad"
                   />
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  Costo
+                  Costo Unit.
                   <input
                     type="text"
                     value={part.cost || ''}
-                    onChange={e => onPartChange(index, 'cost', e.target.value)}
+                    onChange={e => handlePartChange(index, 'cost', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="$0.00"
-                  />
-                </label>
+                  />                </label>
+                <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
+                  Total: ${((parseFloat(String(part.qty || '0'))) * (parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0)).toFixed(2)}
+                </div>
               </div>
             ))}
           </div>
-        </div>        <div style={{ marginBottom: 16 }}>
+        </div><div style={{ marginBottom: 16 }}>
           <strong>Extras</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
             <div style={{ color: '#666', fontStyle: 'italic', marginBottom: 8 }}>

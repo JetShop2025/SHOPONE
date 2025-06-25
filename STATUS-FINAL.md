@@ -1,4 +1,53 @@
-# Sistema de Work Orders - Estado Final de Producción
+# 🚨 SISTEMA EN RENDER - PROBLEMAS CRÍTICOS
+
+## ❌ PROBLEMAS ACTUALES (25 Jun 2025):
+
+### 1. **Error de Conexión a Railway DB:**
+```
+Error: connect ETIMEDOUT
+MYSQL_HOST=hopper.proxy.rlwy.net
+MYSQL_PORT=30323
+```
+
+### 2. **Errores Frontend:**
+- GET /work-orders → 500/502/503 errors
+- "Procesando, por favor espera..." se queda colgado
+- No se cargan las Work Orders
+
+### 3. **Archivo Incorrecto:**
+- El sistema puede estar usando workOrders_BACKUP.js (complejo)
+- Necesita usar workOrders.js (simplificado)
+
+## ✅ LO QUE FUNCIONA:
+- ✅ Build exitoso en Render
+- ✅ Servidor corriendo en puerto 10000
+- ✅ Frontend carga correctamente
+- ✅ Login funciona ("Login recibido: LEO 6214")
+
+## 🔧 ACCIONES INMEDIATAS REQUERIDAS:
+
+### 1. **VERIFICAR CREDENCIALES RAILWAY:**
+- Ir a railway.app → Tu proyecto MySQL
+- Copiar las credenciales actuales
+- Actualizar variables de entorno en Render
+
+### 2. **CONFIRMAR ARCHIVO CORRECTO:**
+- Usar workOrders.js (simplificado) 
+- NO usar workOrders_BACKUP.js (complejo)
+
+### 3. **PROBAR CONEXIÓN:**
+- Endpoint: https://shopone.onrender.com/health
+- Endpoint: https://shopone.onrender.com/test-db
+
+## 📊 ARQUITECTURA ACTUAL:
+```
+Frontend (React) ✅ → Render
+Backend (Express) ✅ → Render  
+Database (MySQL) ❌ → Railway (TIMEOUT)
+```
+
+## 🎯 PRÓXIMO PASO:
+**VERIFICAR Y ACTUALIZAR CREDENCIALES DE RAILWAY**
 
 ## ✅ COMPLETADO CON ÉXITO
 
