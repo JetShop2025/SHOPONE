@@ -9,13 +9,31 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ¡Pon esto antes de cualquier app.use de rutas!
 app.use(cors({ 
-  origin: [
-    'http://localhost:3000',
-    'https://shopone.onrender.com',
-    'https://shopone-1.onrender.com'
-  ], 
-  credentials: true 
+  origin: function(origin, callback) {
+    // Permite requests sin origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://shopone.onrender.com',
+      'https://shopone-1.onrender.com'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Temporalmente permite todos los origins para debug
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
+
+// Handle preflight requests explícitamente
+app.options('*', cors());
 
 // Servir archivos estáticos de React
 // En desarrollo: ../build, En producción: ./build
