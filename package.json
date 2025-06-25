@@ -11,17 +11,24 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
+    "@types/file-saver": "^2.0.7",
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "axios": "^1.9.0",
+    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.0",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
+    "multer": "^1.4.5-lts.2",
+    "mysql2": "^3.14.0",
     "node-fetch": "^3.3.2",
+    "pdfkit": "^0.17.0",
     "react": "^19.1.0",
     "react-barcode": "^1.6.1",
     "react-dom": "^19.1.0",
@@ -33,10 +40,12 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "cd backend && node server.js",
+    "dev": "react-scripts start",
+    "build": "react-scripts build && cd backend && npm install",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "heroku-postbuild": "npm run build"
   },
   "eslintConfig": {
     "extends": [
@@ -58,7 +67,6 @@
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
-    "@types/file-saver": "^2.0.7",
     "@types/react-router-dom": "^5.3.3"
   },
   "proxy": "http://localhost:5050"

@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -14,8 +16,12 @@ const corsOptions = {
       'http://localhost:3001'
     ];
     
-    // TEMPORALMENTE PERMITIR TODOS PARA DEBUGGING URGENTE
-    callback(null, true);
+    // En producción, permitir el dominio de Render y localhost para desarrollo
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -50,9 +56,35 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    cors: 'enabled for all origins - emergency mode',
-    version: '2.0-emergency-fix'
+    environment: process.env.NODE_ENV || 'development',
+    cors: 'configured for production',
+    version: '2.1-render-ready',
+    database: {
+      host: process.env.MYSQL_HOST ? 'configured' : 'missing',
+      user: process.env.MYSQL_USER ? 'configured' : 'missing',
+      database: process.env.MYSQL_DATABASE ? 'configured' : 'missing'
+    }
   });
+});
+
+// Database test endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const db = require('./db');
+    const [result] = await db.query('SELECT 1 as test');
+    res.json({ 
+      dbStatus: 'OK', 
+      result: result,
+      env: {
+        host: process.env.MYSQL_HOST || 'not set',
+        user: process.env.MYSQL_USER || 'not set',
+        database: process.env.MYSQL_DATABASE || 'not set',
+        port: process.env.MYSQL_PORT || 'not set'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ dbStatus: 'ERROR', error: err.message });
+  }
 });
 
 // Servir archivos estáticos de React
