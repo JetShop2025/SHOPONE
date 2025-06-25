@@ -176,14 +176,15 @@ const WorkOrdersTable: React.FC = () => {
   const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });  const [showHourmeter, setShowHourmeter] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
 
   // Función para cargar las órdenes con manejo inteligente de errores
-  const fetchWorkOrders = useCallback(async (isRetry = false) => {
-    try {
-      setLoading(true);
+  const fetchWorkOrders = useCallback(async (isRetry = false) => {    try {
+      setFetchingData(true);
       const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });
       setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
       setServerStatus('online');      setRetryCount(0); // Reset retry count on success
@@ -215,11 +216,10 @@ const WorkOrdersTable: React.FC = () => {
       } else {
         setServerStatus('offline');
         if (retryCount >= maxRetries) {
-          console.error('Max reintentos alcanzados, servidor no responde');
-        }
+          console.error('Max reintentos alcanzados, servidor no responde');        }
       }
     } finally {
-      setLoading(false);
+      setFetchingData(false);
     }
   }, [retryCount]);
   // Polling inteligente - ajusta frecuencia según estado del servidor
@@ -841,13 +841,12 @@ const WorkOrdersTable: React.FC = () => {
              serverStatus === 'waking' ? '#ef6c00' : '#c62828'
     }}>    {serverStatus === 'online' ? 'Online' : 
      serverStatus === 'waking' ? 'Waking up...' : 'Offline'}
-    </span>    {serverStatus === 'offline' && (
-      <button 
+    </span>    {serverStatus === 'offline' && (      <button 
         className="reconnect-btn"
         onClick={async () => {
           setRetryCount(0);
           setServerStatus('waking');
-          setLoading(true);
+          setReconnecting(true);
           
           // Intentar despertar con keep-alive primero
           try {
@@ -859,14 +858,15 @@ const WorkOrdersTable: React.FC = () => {
           // Esperar un poco y luego intentar fetch
           setTimeout(() => {
             fetchWorkOrders();
+            setReconnecting(false);
           }, 3000);
         }}
-        disabled={loading}
+        disabled={reconnecting}
       >
-        Reconnect
+        {reconnecting ? 'Reconnecting...' : 'Reconnect'}
       </button>
     )}
-    {loading && (
+    {fetchingData && (
       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>
         Loading...
       </span>
@@ -1110,12 +1110,14 @@ const WorkOrdersTable: React.FC = () => {
                     <WorkOrderForm
                       workOrder={editWorkOrder}
                       onChange={handleWorkOrderChange}
-                      onPartChange={handlePartChange}
-                      onSubmit={async () => {
+                      onPartChange={handlePartChange}                      onSubmit={async () => {
                         try {
+                          setLoading(true);
                           // LIMPIA EL TOTAL ANTES DE ENVIAR
                           const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));
-                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
+                          
+                          // Actualizar la work order
+                          const updateResponse = await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
                             totalLabAndParts: totalLabAndPartsLimpio,
                             manualTotalEdit: true,
@@ -1124,6 +1126,17 @@ const WorkOrdersTable: React.FC = () => {
                             usuario: localStorage.getItem('username') || '',
                             extraOptions,
                           });
+                          
+                          // Generar nuevo PDF tras la edición
+                          try {
+                            console.log('Generando nuevo PDF para Work Order editada...');
+                            await axios.post(`${API_URL}/work-orders/${editWorkOrder.id}/generate-pdf`);
+                            console.log('PDF generado exitosamente tras edición');
+                          } catch (pdfError) {
+                            console.error('Error generando PDF tras edición:', pdfError);
+                            // No interrumpir el flujo si falla el PDF
+                          }
+                          
                           // CIERRA EL MODAL Y LIMPIA ESTADO INMEDIATAMENTE
                           setShowEditForm(false);
                           setEditWorkOrder(null);
@@ -1131,9 +1144,12 @@ const WorkOrdersTable: React.FC = () => {
                           setEditError('');
                           // REFRESCA LA TABLA EN SEGUNDO PLANO
                           fetchWorkOrders();
-                          alert('Order updated successfully.');
+                          alert('Order updated successfully and PDF regenerated.');
                         } catch (err) {
+                          console.error('Error updating order:', err);
                           alert('Error updating order.');
+                        } finally {
+                          setLoading(false);
                         }
                       }}
                       onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}

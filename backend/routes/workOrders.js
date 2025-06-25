@@ -354,8 +354,92 @@ router.get('/:id/pdf', async (req, res) => {
   const fileName = `workorder_${idClassic}.pdf`;
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  res.send(results[0].pdf_file);
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);  res.send(results[0].pdf_file);
+});
+
+// Regenerar PDF para una orden existente
+router.post('/:id/generate-pdf', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Obtener datos de la orden
+    const [results] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
+    if (!results || results.length === 0) {
+      return res.status(404).send('WORK ORDER NOT FOUND');
+    }
+    
+    const order = results[0];
+    const PDFDocument = require('pdfkit');
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Formatear fecha para el PDF
+    const formattedDate = (() => {
+      if (order.date) {
+        const date = new Date(order.date);
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const yyyy = date.getFullYear();
+        return `${mm}-${dd}-${yyyy}`;
+      }
+      return new Date().toLocaleDateString('en-US');
+    })();
+    
+    // Crear PDF
+    const pdfName = `${formattedDate}_${order.idClassic || id}.pdf`;
+    const pdfPath = path.join(__dirname, '../pdfs', pdfName);
+    
+    const doc = new PDFDocument();
+    const stream = fs.createWriteStream(pdfPath);
+    doc.pipe(stream);
+    
+    // Contenido del PDF (mejorado)
+    doc.fontSize(20).text('WORK ORDER - JET SHOP', 50, 50);
+    doc.fontSize(12);
+    doc.text(`Order ID: ${order.idClassic || id}`, 50, 100);
+    doc.text(`Bill To: ${order.billToCo || '-'}`, 50, 120);
+    doc.text(`Trailer: ${order.trailer || '-'}`, 50, 140);
+    doc.text(`Date: ${formattedDate}`, 50, 160);
+    doc.text(`Mechanic: ${order.mechanic || '-'}`, 50, 180);
+    doc.text(`Description: ${order.description || ''}`, 50, 200, { width: 400 });
+    
+    // Partes usadas
+    let yPos = 240;
+    try {
+      const parts = JSON.parse(order.parts || '[]');
+      if (parts.length > 0) {
+        doc.text('PARTS USED:', 50, yPos);
+        yPos += 20;
+        parts.forEach(part => {
+          if (part.sku && part.qty) {
+            doc.text(`- ${part.sku}: ${part.part || ''} (Qty: ${part.qty}, Cost: $${part.cost || '0.00'})`, 60, yPos);
+            yPos += 15;
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Error parsing parts:', e);
+    }
+    
+    // Total
+    yPos += 20;
+    doc.fontSize(14).text(`TOTAL: $${parseFloat(order.totalLabAndParts || 0).toFixed(2)}`, 50, yPos);
+    doc.fontSize(12).text(`Status: ${order.status || 'PENDING'}`, 50, yPos + 30);
+    
+    doc.end();
+    
+    // Esperar a que termine de escribir
+    stream.on('finish', () => {
+      console.log(`PDF regenerado: ${pdfName}`);
+      res.json({ 
+        message: 'PDF regenerated successfully',
+        pdfUrl: `/pdfs/${pdfName}`
+      });
+    });
+    
+  } catch (err) {
+    console.error('Error regenerating PDF:', err);
+    res.status(500).json({ error: 'Error regenerating PDF' });
+  }
 });
 
 module.exports = router;

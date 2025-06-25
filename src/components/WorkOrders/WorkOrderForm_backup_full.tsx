@@ -145,9 +145,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         window.alert('Hay partes con cantidad inválida.');
         setLoading(false);
         return;
-      }
-
-      const dataToSend = {
+      }      const dataToSend = {
         ...workOrder,
         parts: cleanParts,
         extraOptions, // Sin agregar el 5% manualmente, el backend lo hará automáticamente
@@ -168,7 +166,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
     }
   };
-
   const handleMechanicChange = (index: number, field: string, value: string) => {
     const newMechanics = [...(workOrder.mechanics || [])];
     newMechanics[index] = { ...newMechanics[index], [field]: value };
@@ -192,7 +189,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const newMechanics = (workOrder.mechanics || []).filter((_: any, i: number) => i !== index);
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
-
   const handleExtraChange = (optionValue: string, checked: boolean) => {
     if (checked) {
       setExtraOptions([...extraOptions, optionValue]);
@@ -210,6 +206,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const getTrailerOptionsForBill = (billToCo: string) => {
     return getTrailerOptions ? getTrailerOptions(billToCo) : [];
   };
+
   return (
     <div style={{
       marginTop: '20px',
@@ -276,11 +273,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
-            </select>
-          </label>
-        </div>
-
-        {/* Segunda fila - Status, ID Classic (solo en edición) */}
+            </select>          </label>
+        </div>        {/* Segunda fila - Status, ID Classic (solo en edición) */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
           <label style={{ flex: '1 1 150px' }}>
             Status
@@ -296,7 +290,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <option value="FINISHED">FINISHED</option>
             </select>
           </label>
-          {/* ID CLASSIC aparece al editar o cuando el status es FINISHED */}
+            {/* ID CLASSIC aparece al editar o cuando el status es FINISHED */}
           {(workOrder.id || workOrder.status === 'FINISHED') && (
             <label style={{ flex: '1 1 150px' }}>
               ID CLASSIC
@@ -382,8 +376,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <div style={{ color: '#666', fontStyle: 'italic' }}>
               No hay mecánicos agregados. Haz clic en "Agregar" para añadir uno.
             </div>
-          )}
-        </div>
+          )}        </div>
 
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -416,8 +409,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 gap: 4
               }}>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  SKU
-                  <input
+                  SKU                  <input
                     list={`inventory-${index}`}
                     type="text"
                     value={part.sku || ''}
@@ -495,9 +487,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               Weld 15%
             </label>
           </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
+        </div>        <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <label style={{ flex: 1 }}>
               Total LAB & PARTS
