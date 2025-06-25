@@ -91,14 +91,17 @@ router.post('/', async (req, res) => {
     }
     const laborTotal = totalHrsPut * 60;
     const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.cost) || 0), 0);
-    const subtotal = partsTotal + laborTotal;
-
-    let extra = 0;
+    const subtotal = partsTotal + laborTotal;    let extra = 0;
     let extraLabels = [];
     let extraArr = [];
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
+    
+    // SIEMPRE aplicar 5% automático
+    extra += subtotal * 0.05;
+    extraLabels.push('5% Emergency');
+    extraArr.push(subtotal * 0.05);
+    
     extras.forEach(opt => {
-      if (opt === '5') extra += subtotal * 0.05;
       if (opt === '15shop') {
         extraLabels.push('15% Shop Miscellaneous');
         extraArr.push(subtotal * 0.15);
@@ -109,19 +112,18 @@ router.post('/', async (req, res) => {
         extraArr.push(subtotal * 0.15);
         extra += subtotal * 0.15;
       }
-    });
-
-    // Calcula el total final (respeta manual si aplica)
+    });    // Calcula el total final
     let totalLabAndPartsFinal;
     if (
-      (fields.manualTotalEdit === true || fields.manualTotalEdit === 'true') &&
       fields.totalLabAndParts !== undefined &&
       fields.totalLabAndParts !== null &&
       fields.totalLabAndParts !== '' &&
       !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
     ) {
+      // Respeta el valor manual del usuario
       totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
+      // Usa el cálculo automático
       totalLabAndPartsFinal = subtotal + extra;
     }
 

@@ -110,16 +110,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         window.alert('Hay partes con cantidad inválida.');
         setLoading(false);
         return;
-      }      // Agregar automáticamente el 5% extra si no está ya incluido
-      const autoExtraOptions = [...extraOptions];
-      if (!autoExtraOptions.includes('5')) {
-        autoExtraOptions.push('5');
       }      const dataToSend = {
         ...workOrder,
         parts: cleanParts,
-        extraOptions: autoExtraOptions,
+        extraOptions, // Sin agregar el 5% manualmente, el backend lo hará automáticamente
         totalHrs: calculateTotalHours(),
-        totalLabAndParts: calculateTotalLabAndParts(),
         usuario: localStorage.getItem('username') || ''
       };
 
@@ -334,28 +329,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <div style={{ color: '#666', fontStyle: 'italic' }}>
               No hay mecánicos agregados. Haz clic en "Agregar" para añadir uno.
             </div>
-          )}
-        </div>        <div style={{ marginBottom: 16 }}>
-          <label>
-            Total HRS (calculado automáticamente)
-            <input
-              type="number"
-              name="totalHrs"
-              value={calculateTotalHours().toFixed(2)}
-              readOnly
-              style={{ 
-                width: '100%', 
-                marginTop: 4, 
-                padding: 8, 
-                backgroundColor: '#f5f5f5',
-                border: '1px solid #ddd',
-                color: '#666'
-              }}
-              step="0.25"
-              placeholder="Total de horas"
-            />
-          </label>
-        </div>
+          )}        </div>
 
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -462,28 +436,49 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </label>
           </div>
         </div>        <div style={{ marginBottom: 16 }}>
-          <label>
-            Total LAB & PARTS (calculado automáticamente)
-            <input
-              type="text"
-              name="totalLabAndParts"
-              value={`$${calculateTotalLabAndParts().toFixed(2)}`}
-              readOnly
-              style={{ 
-                width: '100%', 
-                marginTop: 4, 
-                padding: 8, 
-                fontWeight: 'bold',
-                backgroundColor: '#f0f8ff',
-                border: '2px solid #1976d2',
-                color: '#1976d2',
-                fontSize: '16px'
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <label style={{ flex: 1 }}>
+              Total LAB & PARTS
+              <input
+                type="text"
+                name="totalLabAndParts"
+                value={workOrder.totalLabAndParts || ''}
+                onChange={onChange}
+                style={{ 
+                  width: '100%', 
+                  marginTop: 4, 
+                  padding: 8, 
+                  fontWeight: 'bold',
+                  backgroundColor: '#ffffff',
+                  border: '2px solid #1976d2',
+                  color: '#1976d2',
+                  fontSize: '16px'
+                }}
+                placeholder="$0.00"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const calculatedTotal = calculateTotalLabAndParts();
+                onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
               }}
-              placeholder="$0.00"
-            />
-          </label>
+              style={{
+                padding: '8px 12px',
+                background: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: '12px',
+                marginTop: 20
+              }}
+            >
+              Calcular Auto
+            </button>
+          </div>
           <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
-            Incluye: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + 5% automático + Extras seleccionados
+            Cálculo sugerido: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + 5% automático + Extras = ${calculateTotalLabAndParts().toFixed(2)}
           </div>
         </div>
 

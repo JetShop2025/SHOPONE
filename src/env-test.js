@@ -1,3 +1,3 @@
 // filepath: c:\Users\jetsh\Downloads\graphical-system-v2\src\env-test.js
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
 console.log('API_URL:', API_URL);

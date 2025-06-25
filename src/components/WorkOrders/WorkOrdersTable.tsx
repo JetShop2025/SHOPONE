@@ -14,7 +14,7 @@ import { useNewWorkOrder } from './useNewWorkOrder';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","CHUSAL"
@@ -199,9 +199,7 @@ const WorkOrdersTable: React.FC = () => {
     fetchWorkOrders();
     setShowForm(false);
     setEditWorkOrder(null);
-  };
-  useEffect(() => {
-    const API_URL = process.env.REACT_APP_API_URL || 'https://shopone-1.onrender.com';
+  };  useEffect(() => {
     axios.get(`${API_URL}/inventory`)
       .then(res => setInventory(res.data as any[]))
       .catch(() => setInventory([]));
