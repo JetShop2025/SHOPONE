@@ -55,12 +55,31 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   onAddEmptyPart
 }) => {
   const [successMsg, setSuccessMsg] = React.useState('');
-
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
-    return inventory.find((item: any) => item.sku === sku);
+    if (!sku || !inventory || inventory.length === 0) return null;
+    
+    // Buscar por SKU exacto (case insensitive)
+    const exactMatch = inventory.find((item: any) => 
+      String(item.sku).toLowerCase() === String(sku).toLowerCase()
+    );
+    
+    if (exactMatch) {
+      console.log('Parte encontrada por SKU:', exactMatch);
+      return exactMatch;
+    }
+    
+    // Si no encuentra coincidencia exacta, buscar que contenga el SKU
+    const partialMatch = inventory.find((item: any) => 
+      String(item.sku).toLowerCase().includes(String(sku).toLowerCase())
+    );
+    
+    if (partialMatch) {
+      console.log('Parte encontrada por coincidencia parcial:', partialMatch);
+    }
+    
+    return partialMatch || null;
   };
-
   // Manejar cambios en las partes con auto-completado
   const handlePartChange = (index: number, field: string, value: string) => {
     const newParts = [...(workOrder.parts || [])];
@@ -71,7 +90,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const foundPart = findPartBySku(value);
       if (foundPart) {
         newParts[index].part = foundPart.part || foundPart.description || '';
-        newParts[index].cost = foundPart.cost || foundPart.price || '';
+        // Formatear el costo correctamente
+        const cost = foundPart.cost || foundPart.price || 0;
+        newParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
+        console.log('Auto-completando parte:', {
+          sku: value,
+          part: newParts[index].part,
+          cost: newParts[index].cost,
+          foundPart
+        });
       }
     }
 
@@ -414,8 +441,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4
-              }}>
-                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+              }}>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   SKU
                   <input
                     list={`inventory-${index}`}
@@ -441,7 +467,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'part', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: '#f0f8ff' }}
                     placeholder="Nombre de la parte"
-                    readOnly={!part.part}
                   />
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
@@ -460,7 +485,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     type="text"
                     value={part.cost || ''}
                     onChange={e => handlePartChange(index, 'cost', e.target.value)}
-                    style={{ width: '100%', marginTop: 2, padding: 4 }}
+                    style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: part.cost ? '#f0f8ff' : '#ffffff' }}
                     placeholder="$0.00"
                   />
                 </label>

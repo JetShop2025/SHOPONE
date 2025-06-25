@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const path = require('path');
 const router = express.Router();
 
 router.use(express.json());
@@ -345,16 +346,44 @@ router.get('/audit-log', async (req, res) => {
 
 // Obtener PDF por ID de orden
 router.get('/:id/pdf', async (req, res) => {
-  const { id } = req.params;
-  const [results] = await db.query('SELECT pdf_file, idClassic FROM work_orders WHERE id = ?', [id]);
-  if (!results || results.length === 0 || !results[0].pdf_file) {
-    return res.status(404).send('PDF NOT FOUND');
+  try {
+    const { id } = req.params;
+    const [results] = await db.query('SELECT date, idClassic FROM work_orders WHERE id = ?', [id]);
+    
+    if (!results || results.length === 0) {
+      return res.status(404).send('WORK ORDER NOT FOUND');
+    }
+    
+    const order = results[0];
+    const date = order.date;
+    
+    // Formatear fecha como MM-DD-YYYY
+    const formattedDate = typeof date === 'string' && date.includes('-') 
+      ? (() => { const [yyyy, mm, dd] = date.split('-'); return `${mm}-${dd}-${yyyy}`; })()
+      : (date.toISOString ? date.toISOString().slice(0, 10) : '');
+    
+    const pdfName = `${formattedDate}_${order.idClassic || id}.pdf`;
+    const pdfPath = path.join(__dirname, '../pdfs', pdfName);
+    
+    // Verificar si el archivo existe
+    const fs = require('fs');
+    if (!fs.existsSync(pdfPath)) {
+      console.log(`PDF no encontrado: ${pdfPath}`);
+      return res.status(404).send('PDF NOT FOUND - File does not exist');
+    }
+    
+    const fileName = `workorder_${order.idClassic || id}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    
+    // Enviar el archivo
+    res.sendFile(pdfPath);
+    
+  } catch (error) {
+    console.error('Error obteniendo PDF:', error);
+    res.status(500).send('ERROR GETTING PDF');
   }
-  const idClassic = results[0].idClassic || id;
-  const fileName = `workorder_${idClassic}.pdf`;
-
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);  res.send(results[0].pdf_file);
 });
 
 // Regenerar PDF para una orden existente
