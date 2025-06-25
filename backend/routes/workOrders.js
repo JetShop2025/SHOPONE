@@ -141,9 +141,7 @@ router.post('/', async (req, res) => {
       JSON.stringify(extraOptions || [])
     ];
     const [result] = await db.query(query, values);
-    const id = result.insertId;
-
-    // **PASO 2: RESPONDER INMEDIATAMENTE - VELOCIDAD**
+    const id = result.insertId;    // **PASO 2: RESPONDER INMEDIATAMENTE - VELOCIDAD**
     const formattedDate = typeof date === 'string' && date.includes('-') 
       ? (() => { const [yyyy, mm, dd] = date.split('-'); return `${mm}-${dd}-${yyyy}`; })()
       : (date.toISOString ? date.toISOString().slice(0, 10) : '');
@@ -156,166 +154,56 @@ router.post('/', async (req, res) => {
     
     res.status(201).json(response);
 
-    // **PASO 3: PROCESOS PESADOS EN BACKGROUND - NO BLOQUEA**
-    setImmediate(async () => {
+    // **PASO 3: PROCESOS SIMPLIFICADOS - SOLO LO ESENCIAL**
+    setTimeout(async () => {
       try {
-        await Promise.all([
-          // Inventario en paralelo
-          (async () => {
-            if (partsArr.length === 0) return;
-            
-            try {
-              const skus = partsArr.map(p => p.sku).filter(Boolean);
-              if (skus.length === 0) return;
-              
-              const [inventoryResults] = await db.query(
-                'SELECT sku, onHand FROM inventory WHERE sku IN (?)',
-                [skus]
-              );
-              
-              const inventoryMap = {};
-              inventoryResults.forEach(item => {
-                inventoryMap[item.sku] = item.onHand;
-              });
-              
-              const updates = [];
-              const logs = [];
-              
-              for (const part of partsArr) {
-                if (part.sku && part.qty && Number(part.qty) > 0) {
-                  const available = inventoryMap[part.sku];
-                  if (available && available >= Number(part.qty)) {
-                    updates.push([Number(part.qty), Number(part.qty), part.sku]);
-                    logs.push({ sku: part.sku, qty: part.qty, wo: id });
-                  }
-                }
-              }
-              
-              if (updates.length > 0) {
-                await Promise.all(
-                  updates.map(update => 
-                    db.query(
-                      'UPDATE inventory SET onHand = onHand - ?, salidasWo = salidasWo + ? WHERE sku = ?',
-                      update
-                    )
-                  )
-                );
-                
-                if (typeof logAccion === 'function') {
-                  await Promise.all(
-                    logs.map(log => 
-                      logAccion(fields.usuario || 'system', 'DEDUCT', 'inventory', log.sku, JSON.stringify({ qty: log.qty, wo: log.wo }))
-                    )
-                  );
-                }
-              }
-            } catch (err) {
-              console.error('ERROR INVENTARIO (async):', err);
-            }
-          })(),
-          
-          // Work order parts en paralelo
-          (async () => {
-            if (partsArr.length === 0) return;
-            
-            try {
-              const workOrderPartsPromises = partsArr.map(part => 
-                db.query(
-                  'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario) VALUES (?, ?, ?, ?, ?, ?)',
-                  [id, part.sku, part.part || '', part.qty, Number(String(part.cost).replace(/[^0-9.]/g, '')), fields.usuario || 'system']
-                )
-              );
-              
-              await Promise.all(workOrderPartsPromises);
-            } catch (err) {
-              console.error('ERROR WORK ORDER PARTS (async):', err);
-            }
-          })(),
-          
-          // PDF simplificado y rápido
-          (async () => {
-            try {
-              const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
-              const pdfPath = path.join(__dirname, '../pdfs', pdfName);
+        // Solo generar PDF básico, sin otras operaciones pesadas
+        const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
+        const pdfPath = path.join(__dirname, '../pdfs', pdfName);
 
-              const doc = new PDFDocument({ margin: 40, size: 'A4' });
-              const stream = fs.createWriteStream(pdfPath);
-              doc.pipe(stream);
+        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        const stream = fs.createWriteStream(pdfPath);
+        doc.pipe(stream);
 
-              // Header rápido
-              doc.font('Courier-Bold').fontSize(24).fillColor('#1976d2').text('INVOICE', { align: 'center' });
-              doc.font('Courier').fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
-              doc.text('740 EL CAMINO REAL', { align: 'right' });
-              doc.text('GREENFIELD, CA 93927', { align: 'right' });
+        // Header simplificado
+        doc.font('Helvetica-Bold').fontSize(24).text('INVOICE', { align: 'center' });
+        doc.font('Helvetica').fontSize(10).text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+        doc.text('740 EL CAMINO REAL', { align: 'right' });
+        doc.text('GREENFIELD, CA 93927', { align: 'right' });
 
-              // Info básica
-              doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-              doc.text('Bill To Co:', 40, 120);
-              doc.text('Trailer:', 40, 140);
-              doc.text('Date:', 40, 160);
-              doc.text('Mechanic:', 400, 140);
-              doc.text('ID CLASSIC:', 400, 160);
+        // Info básica
+        doc.font('Helvetica-Bold').fontSize(10);
+        doc.text('Bill To Co:', 40, 120);
+        doc.text('Trailer:', 40, 140);
+        doc.text('Date:', 40, 160);
+        doc.text('ID:', 400, 140);
 
-              doc.font('Courier').fontSize(10).fillColor('#222');
-              doc.text(billToCo || '-', 120, 120);
-              doc.text(trailer || '-', 120, 140);
-              doc.text(formattedDate || '-', 120, 160);
-              
-              const mechanicToShow = Array.isArray(mechanicsArr) && mechanicsArr.length > 0
-                ? mechanicsArr.map(m => m.name).join(', ')
-                : mechanic;
-              doc.text(mechanicToShow || '-', 480, 140);
-              doc.text(idClassic || '-', 480, 160);
+        doc.font('Helvetica').fontSize(10);
+        doc.text(billToCo || '-', 120, 120);
+        doc.text(trailer || '-', 120, 140);
+        doc.text(formattedDate || '-', 120, 160);
+        doc.text(id || '-', 430, 140);
 
-              // Descripción
-              doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
-              doc.text('Description:', 50, 200);
-              doc.font('Courier').fontSize(11).fillColor('#222');
-              doc.text(description || '', 50, 216, { width: 500 });
+        // Descripción
+        doc.font('Helvetica-Bold').fontSize(11);
+        doc.text('Description:', 50, 200);
+        doc.font('Helvetica').fontSize(11);
+        doc.text(description || '', 50, 216, { width: 500 });
 
-              let y = 260;
-              
-              // Tabla simplificada para velocidad
-              if (partsArr.length > 0) {
-                doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-                doc.text('SKU', 50, y);
-                doc.text('PART', 150, y);
-                doc.text('QTY', 300, y);
-                doc.text('COST', 350, y);
-                doc.text('TOTAL', 450, y);
-                y += 20;
-                
-                doc.font('Courier').fontSize(9).fillColor('#222');
-                partsArr.forEach((p, i) => {
-                  doc.text(p.sku || '-', 50, y);
-                  doc.text(p.part || '-', 150, y);
-                  doc.text(p.qty || '-', 300, y);
-                  doc.text(`$${(p.cost || 0).toFixed(2)}`, 350, y);
-                  doc.text(`$${((p.qty || 0) * (p.cost || 0)).toFixed(2)}`, 450, y);
-                  y += 18;
-                });
-              }
+        // Total
+        doc.font('Helvetica-Bold').fontSize(12);
+        doc.text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 350, 300);
 
-              // Totales
-              y += 20;
-              doc.font('Courier-Bold').fontSize(12).fillColor('#d32f2f');
-              doc.text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 350, y);
-
-              doc.end();
-            } catch (err) {
-              console.error('ERROR PDF (async):', err);
-            }
-          })()
-        ]);
+        doc.end();
         
-        // Log final
+        // Log final SIMPLE
         if (typeof logAccion === 'function') {
           await logAccion(fields.usuario || 'system', 'CREATE', 'work_orders', id, JSON.stringify({ billToCo, trailer }));
         }
       } catch (err) {
-        console.error('Error en background:', err);
+        console.error('Error en background simplificado:', err);
       }
-    });
+    }, 100); // Solo 100ms de delay
 
   } catch (err) {
     console.error('Error creando WO:', err);
