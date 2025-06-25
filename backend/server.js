@@ -18,7 +18,7 @@ const corsOptions = {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
-      callback(null, true); // Temporal: permite todos los orígenes
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
@@ -45,12 +45,6 @@ app.use((req, res, next) => {
   }
 });
 
-// Middleware de logging para debug
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
-  next();
-});
-
 // Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -60,8 +54,8 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    cors: 'enabled for all origins',
-    version: '2.0-optimized'
+    cors: 'restricted to allowed origins',
+    version: '2.0-production'
   });
 });
 
@@ -105,6 +99,6 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`);
-  // Force redeploy - Fix API URL issue - 2025-06-24
+  // Production version - CORS fixed and optimized - 2025-06-25
 });
 
