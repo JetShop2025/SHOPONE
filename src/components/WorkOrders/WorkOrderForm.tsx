@@ -46,7 +46,7 @@ const formatCurrencyInput = (value: string | number) => {
   return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
 
-// Convierte $0.00 a número simple
+// Convierte $0.00 a numero simple
 const parseCurrencyInput = (value: string) => {
   return value.replace(/[^0-9.]/g, '');
 };
