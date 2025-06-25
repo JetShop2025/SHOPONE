@@ -862,7 +862,7 @@ const WorkOrdersTable: React.FC = () => {
                 pendingParts={pendingParts}
                 pendingPartsQty={pendingPartsQty}
                 setPendingPartsQty={setPendingPartsQty}
-                onAddPendingPart={(part, qty) => {
+                onAddPendingPart={(part: any, qty: any) => {
                   setNewWorkOrder(prev => {
                     const emptyIdx = prev.parts.findIndex(p => !p.part);
                     const cantidad = qty || part.qty?.toString() || '1';
