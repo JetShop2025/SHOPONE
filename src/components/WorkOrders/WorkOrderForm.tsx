@@ -1,5 +1,7 @@
 import React from 'react';
 
+export {}; // Force module
+
 interface WorkOrderFormProps {
   workOrder: any;
   onChange: (e: React.ChangeEvent<any>, index?: number, field?: string) => void;
@@ -14,6 +16,7 @@ interface WorkOrderFormProps {
   setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  // Optional props that may be passed from WorkOrdersTable
   trailersWithPendingParts?: any[];
   pendingParts?: any[];
   pendingPartsQty?: any;
@@ -53,6 +56,43 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 }) => {
   const [successMsg, setSuccessMsg] = React.useState('');
 
+  // Calcular horas totales automáticamente
+  const calculateTotalHours = () => {
+    if (!workOrder.mechanics || workOrder.mechanics.length === 0) return 0;
+    return workOrder.mechanics.reduce((total: number, mechanic: any) => {
+      return total + (parseFloat(mechanic.hrs) || 0);
+    }, 0);
+  };
+
+  // Calcular total de partes automáticamente
+  const calculatePartsTotal = () => {
+    if (!workOrder.parts || workOrder.parts.length === 0) return 0;
+    return workOrder.parts.reduce((total: number, part: any) => {
+      const qty = parseFloat(part.qty) || 0;
+      const cost = parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0;
+      return total + (qty * cost);
+    }, 0);
+  };
+
+  // Calcular total LAB & PARTS automáticamente
+  const calculateTotalLabAndParts = () => {
+    const totalHours = calculateTotalHours();
+    const laborTotal = totalHours * 60; // $60 por hora
+    const partsTotal = calculatePartsTotal();
+    const subtotal = laborTotal + partsTotal;
+    
+    // Siempre agregar 5% automático
+    let extraTotal = subtotal * 0.05;
+    
+    // Agregar extras seleccionados
+    extraOptions.forEach(option => {
+      if (option === '15shop') extraTotal += subtotal * 0.15;
+      if (option === '15weld') extraTotal += subtotal * 0.15;
+    });
+    
+    return subtotal + extraTotal;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,12 +110,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         window.alert('Hay partes con cantidad inválida.');
         setLoading(false);
         return;
-      }
-
-      const dataToSend = {
+      }      // Agregar automáticamente el 5% extra si no está ya incluido
+      const autoExtraOptions = [...extraOptions];
+      if (!autoExtraOptions.includes('5')) {
+        autoExtraOptions.push('5');
+      }      const dataToSend = {
         ...workOrder,
         parts: cleanParts,
-        extraOptions,
+        extraOptions: autoExtraOptions,
+        totalHrs: calculateTotalHours(),
+        totalLabAndParts: calculateTotalLabAndParts(),
         usuario: localStorage.getItem('username') || ''
       };
 
@@ -187,10 +231,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
-            </select>
-          </label>
-        </div>
-
+            </select>          </label>
+        </div>        {/* Segunda fila - Status, ID Classic (solo en edición) */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
           <label style={{ flex: '1 1 150px' }}>
             Status
@@ -207,17 +249,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </select>
           </label>
           
-          <label style={{ flex: '1 1 150px' }}>
-            ID CLASSIC
-            <input
-              type="text"
-              name="idClassic"
-              placeholder="ID Classic (opcional)"
-              value={workOrder.idClassic || ''}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-            />
-          </label>
+          {/* ID CLASSIC solo aparece al editar (cuando workOrder.id existe) */}
+          {workOrder.id && (
+            <label style={{ flex: '1 1 150px' }}>
+              ID CLASSIC
+              <input
+                type="text"
+                name="idClassic"
+                placeholder="ID Classic (opcional)"
+                value={workOrder.idClassic || ''}
+                onChange={onChange}
+                style={{ width: '100%', marginTop: 4, padding: 8 }}
+              />
+            </label>
+          )}
         </div>
         
         <div style={{ marginBottom: 16 }}>
@@ -291,17 +336,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               No hay mecánicos agregados. Haz clic en "Agregar" para añadir uno.
             </div>
           )}
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
+        </div>        <div style={{ marginBottom: 16 }}>
           <label>
             Total HRS (calculado automáticamente)
             <input
               type="number"
               name="totalHrs"
-              value={workOrder.totalHrs || ''}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
+              value={calculateTotalHours().toFixed(2)}
+              readOnly
+              style={{ 
+                width: '100%', 
+                marginTop: 4, 
+                padding: 8, 
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ddd',
+                color: '#666'
+              }}
               step="0.25"
               placeholder="Total de horas"
             />
@@ -389,19 +439,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </div>
             ))}
           </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
+        </div>        <div style={{ marginBottom: 16 }}>
           <strong>Extras</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                type="checkbox"
-                checked={extraOptions.includes('5')}
-                onChange={e => handleExtraChange('5', e.target.checked)}
-              />
-              Emergency 5%
-            </label>
+            <div style={{ color: '#666', fontStyle: 'italic', marginBottom: 8 }}>
+              * Se aplica automáticamente un 5% extra a todas las órdenes
+            </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input
                 type="checkbox"
@@ -419,20 +462,30 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               Weld 15%
             </label>
           </div>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
+        </div>        <div style={{ marginBottom: 16 }}>
           <label>
-            Total LAB & PARTS
+            Total LAB & PARTS (calculado automáticamente)
             <input
               type="text"
               name="totalLabAndParts"
-              value={workOrder.totalLabAndParts || ''}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4, padding: 8, fontWeight: 'bold' }}
+              value={`$${calculateTotalLabAndParts().toFixed(2)}`}
+              readOnly
+              style={{ 
+                width: '100%', 
+                marginTop: 4, 
+                padding: 8, 
+                fontWeight: 'bold',
+                backgroundColor: '#f0f8ff',
+                border: '2px solid #1976d2',
+                color: '#1976d2',
+                fontSize: '16px'
+              }}
               placeholder="$0.00"
             />
           </label>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
+            Incluye: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + 5% automático + Extras seleccionados
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
