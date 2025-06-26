@@ -37,8 +37,7 @@ class KeepAliveService {
       this.consecutiveFailures = 0;
       console.log('🔴 Keep-alive service detenido');
     }
-  }
-  // Método público para ping manual - DESHABILITADO PARA OPTIMIZAR MEMORIA
+  }  // Método público para ping manual - DESHABILITADO PARA OPTIMIZAR MEMORIA
   async manualPing(): Promise<boolean> {
     console.log('⚠️ Manual ping deshabilitado para optimizar memoria');
     return true; // Siempre retorna true para no romper el UI
@@ -48,34 +47,12 @@ class KeepAliveService {
     // COMPLETAMENTE DESHABILITADO PARA OPTIMIZAR MEMORIA
     console.log('⚠️ Ping deshabilitado para optimizar memoria');
     return true;
-      if (this.consecutiveFailures >= this.maxFailures) {
-        console.log('🔄 Servidor puede estar dormido, aumentando frecuencia de ping...');
-        this.increasePingFrequency();
-      }
-      
-      return false;
-    }
   }
 
+  // Método deshabilitado pero mantenido para compatibilidad
   private increasePingFrequency() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      // Ping más frecuente por 5 minutos
-      this.intervalId = setInterval(() => {
-        this.ping();
-      }, 2 * 60 * 1000); // 2 minutos
-      
-      // Volver a frecuencia normal después de 5 minutos
-      setTimeout(() => {
-        if (this.intervalId) {
-          clearInterval(this.intervalId);
-          this.intervalId = setInterval(() => {
-            this.ping();
-          }, KEEP_ALIVE_INTERVAL);
-          console.log('🔄 Volviendo a frecuencia normal de keep-alive');
-        }
-      }, 5 * 60 * 1000);
-    }
+    console.log('⚠️ increasePingFrequency deshabilitado para optimizar memoria');
+    return;
   }
 }
 
