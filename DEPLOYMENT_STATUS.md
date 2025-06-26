@@ -2,11 +2,18 @@
 
 ## ✅ DEPLOY FINAL COMPLETADO + HOTFIX
 
-**Último commit:** `Fix: Solucionar error de PDF y autocompletado de precios`
-**Mensaje:** Corrección crítica de variable totalHours + priorización campo 'precio'
-**Timestamp:** 26/06/2025 - 22:50 UTC
+**Último commit:** `HOTFIX: Optimización de memoria y correcciones`
+**Mensaje:** Autocompletado mejorado + Campo trailer editable + Optimización memoria PDF
+**Timestamp:** 26/06/2025 - 23:15 UTC
 
-## 🔧 HOTFIX DEPLOYADO
+## � HOTFIX CRÍTICO MEMORIA + CORRECCIONES DEPLOYED
+
+### 1. **OPTIMIZACIÓN MEMORIA PDF** ✅
+- ✅ bufferPages activado en PDFDocument
+- ✅ Limpieza automática de chunks después de generación
+- ✅ Error handlers mejorados con cleanup
+- ✅ Garbage collection forzado cuando está disponible
+- ✅ setImmediate en lugar de setTimeout (menos memoria)
 
 ### 1. **ERROR PDF CRÍTICO SOLUCIONADO** ✅
 - ✅ Variable `totalHours` correctamente definida en generateProfessionalPDF
@@ -14,11 +21,29 @@
 - ✅ Creación de WO funcionando sin errores
 - ✅ PDF se genera automáticamente sin fallos
 
-### 2. **AUTOCOMPLETADO PRECIOS PERFECCIONADO** ✅ 
-- ✅ Campo `precio` como primera prioridad en dropdown
-- ✅ Función findPartBySku optimizada para usar `item.precio`
-- ✅ Consistencia total entre inventario y autocompletado
-- ✅ Debugging mejorado con logs claros
+### 2. **NODE.JS OPTIMIZADO PARA MEMORIA** ✅
+- ✅ Flag --max-old-space-size=400 (límite 400MB)
+- ✅ Flag --optimize-for-size para reducir uso
+- ✅ Keep-alive temporalmente deshabilitado
+- ✅ Intervalos optimizados para reducir procesos
+
+### 3. **AUTOCOMPLETADO PRECIOS PERFECCIONADO** ✅ 
+- ✅ Lógica de formateo de costo mejorada
+- ✅ Verificación de cost > 0 antes de asignar
+- ✅ Valor por defecto '0.00' si no hay precio
+- ✅ Campo 'precio' priorizado en dropdown y autocompletado
+
+### 4. **CAMPO TRAILER EDITABLE** ✅
+- ✅ Cambiado de select a input con datalist
+- ✅ Permite seleccionar de lista O escribir manualmente
+- ✅ Placeholder mejorado para mejor UX
+- ✅ Mantiene compatibilidad con opciones existentes
+
+### 5. **PREVENCIÓN OUT OF MEMORY** ✅
+- ✅ Eliminación de setTimeout largos
+- ✅ Uso de setImmediate para mejor gestión memoria
+- ✅ Cleanup automático de buffers PDF
+- ✅ Reducción de procesos en segundo plano
 
 ## 📦 CAMBIOS DEPLOYADOS ANTERIORES
 

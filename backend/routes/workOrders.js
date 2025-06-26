@@ -57,7 +57,7 @@ function formatDateForPdf(date) {
   return `${mm}-${dd}-${yyyy}`;
 }
 
-// Función para generar PDF profesional con diseño personalizado - OPTIMIZADA PARA MEMORIA
+// Función para generar PDF profesional - ULTRA OPTIMIZADA PARA MEMORIA
 async function generateProfessionalPDF(order, id) {
   const PDFDocument = require('pdfkit');
   const fs = require('fs');
@@ -65,28 +65,47 @@ async function generateProfessionalPDF(order, id) {
   
   return new Promise(async (resolve, reject) => {
     let doc;
+    const chunks = [];
+    
     try {
+      // Configuración mínima para reducir memoria
       doc = new PDFDocument({ 
         margin: 40,
         size: 'LETTER',
-        bufferPages: true // Optimizar para memoria
+        bufferPages: true,
+        autoFirstPage: true,
+        compress: true // Comprimir PDF
       });
-      const chunks = [];
       
-      // Capturar el PDF en memoria
-      doc.on('data', chunk => chunks.push(chunk));
+      // Handlers optimizados
+      doc.on('data', chunk => {
+        chunks.push(chunk);
+        // Limitar el número de chunks en memoria
+        if (chunks.length > 100) {
+          console.warn('Demasiados chunks PDF, posible memory leak');
+        }
+      });
+      
       doc.on('end', () => {
         try {
           const pdfBuffer = Buffer.concat(chunks);
-          // Limpiar chunks para liberar memoria
+          // Limpiar inmediatamente
           chunks.length = 0;
           resolve(pdfBuffer);
         } catch (error) {
           reject(error);
+        } finally {
+          // Forzar cleanup
+          if (chunks.length > 0) {
+            chunks.splice(0, chunks.length);
+          }
         }
       });
       
       doc.on('error', (error) => {
+        if (chunks.length > 0) {
+          chunks.splice(0, chunks.length);
+        }
         reject(error);
       });
 
@@ -613,52 +632,39 @@ router.post('/', async (req, res) => {
       pdfUrl: `/work-orders/${id}/pdf`
     });
 
-    // Procesar FIFO y PDF en paralelo (sin setTimeout para reducir memoria)
-    setImmediate(async () => {
-      try {
-        console.log(`Iniciando proceso FIFO y PDF para orden ${id}...`);
-        
-        // Obtener los datos completos de la orden recién creada
-        const [orderData] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
-        if (orderData && orderData.length > 0) {
-          
-          // Registrar partes en el sistema FIFO (solo si hay partes)
-          if (partsArr && partsArr.length > 0) {
-            console.log(`Registrando ${partsArr.length} partes en el sistema FIFO...`);
-            for (const part of partsArr) {
-              if (part.sku && part.qty && Number(part.qty) > 0) {
-                try {
-                  const result = await registerPartFifo(
-                    id,
-                    part.sku,
-                    part.part || part.description || '',
-                    part.qty,
-                    part.cost,
-                    fields.usuario || 'SYSTEM'
-                  );
-                  
-                  if (result.success) {
-                    console.log(`✓ Parte ${part.sku} registrada en FIFO exitosamente`);
-                  } else {
-                    console.error(`✗ Error registrando parte ${part.sku}: ${result.error}`);
-                  }
-                } catch (fifoError) {
-                  console.error(`✗ Error registrando parte ${part.sku} en FIFO:`, fifoError.message);
+    // TEMPORALMENTE DESHABILITADO - PDF SOLO SE GENERA CUANDO SE SOLICITA
+    console.log(`✅ Orden ${id} creada exitosamente - PDF se generará bajo demanda`);
+
+    // Procesar SOLO FIFO (SIN PDF AUTOMÁTICO PARA AHORRAR MEMORIA)
+    if (partsArr && partsArr.length > 0) {
+      setImmediate(async () => {
+        try {
+          console.log(`Registrando ${partsArr.length} partes en FIFO para orden ${id}...`);
+          for (const part of partsArr) {
+            if (part.sku && part.qty && Number(part.qty) > 0) {
+              try {
+                const result = await registerPartFifo(
+                  id,
+                  part.sku,
+                  part.part || part.description || '',
+                  part.qty,
+                  part.cost,
+                  fields.usuario || 'SYSTEM'
+                );
+                if (result.success) {
+                  console.log(`✓ Parte ${part.sku} registrada en FIFO`);
                 }
+              } catch (error) {
+                console.error(`✗ Error FIFO ${part.sku}:`, error.message);
               }
             }
           }
-          
-          // Generar PDF con datos FIFO actualizados
-          console.log(`Generando PDF para orden ${id}...`);
-          const pdfBuffer = await generateProfessionalPDF(orderData[0], id);
-          await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
-          console.log(`✓ PDF creado y guardado en BD para orden ${id}`);
+          console.log(`✅ FIFO completado para orden ${id}`);
+        } catch (error) {
+          console.error('✗ Error en proceso FIFO:', error.message);
         }
-      } catch (pdfError) {
-        console.error('✗ Error en proceso FIFO/PDF:', pdfError.message);
-      }
-    });
+      });
+    }
 
   } catch (err) {
     console.error('Error creando WO:', err);
@@ -796,17 +802,16 @@ router.put('/:id', async (req, res) => {
       updateFields.push(fields.idClassic || null);
     }
     updateQuery += ` WHERE id = ?`;
-    updateFields.push(id);    await db.query(updateQuery, updateFields);    // 5. Responder inmediatamente y procesar en segundo plano
+    updateFields.push(id);    await db.query(updateQuery, updateFields);    // 5. Responder inmediatamente
     res.json({ success: true, id });
 
-    // Procesar FIFO y PDF (optimizado para memoria)
-    setImmediate(async () => {
-      try {
-        console.log(`Iniciando actualización FIFO y PDF para orden ${id}...`);
-        
-        // Actualizar partes en el sistema FIFO (solo si hay partes)
-        if (partsArr && partsArr.length > 0) {
-          // Primero eliminar las partes existentes de esta orden
+    // SOLO PROCESAR FIFO (SIN PDF AUTOMÁTICO PARA AHORRAR MEMORIA)
+    if (partsArr && partsArr.length > 0) {
+      setImmediate(async () => {
+        try {
+          console.log(`Actualizando FIFO para orden ${id}...`);
+          
+          // Eliminar partes existentes
           try {
             await db.query('DELETE FROM work_order_parts WHERE work_order_id = ?', [id]);
             console.log(`✓ Partes previas eliminadas para orden ${id}`);
@@ -814,8 +819,7 @@ router.put('/:id', async (req, res) => {
             console.log('No había partes previas para eliminar');
           }
           
-          // Registrar las nuevas partes en FIFO
-          console.log(`Registrando ${partsArr.length} partes actualizadas en FIFO...`);
+          // Registrar nuevas partes en FIFO
           for (const part of partsArr) {
             if (part.sku && part.qty && Number(part.qty) > 0) {
               try {
@@ -827,31 +831,20 @@ router.put('/:id', async (req, res) => {
                   part.cost,
                   fields.usuario || 'SYSTEM'
                 );
-                
                 if (result.success) {
-                  console.log(`✓ Parte ${part.sku} actualizada en FIFO exitosamente`);
-                } else {
-                  console.error(`✗ Error actualizando parte ${part.sku}: ${result.error}`);
+                  console.log(`✓ Parte ${part.sku} actualizada en FIFO`);
                 }
-              } catch (fifoError) {
-                console.error(`✗ Error actualizando parte ${part.sku} en FIFO:`, fifoError.message);
+              } catch (error) {
+                console.error(`✗ Error actualizando ${part.sku}:`, error.message);
               }
             }
           }
+          console.log(`✅ FIFO actualizado para orden ${id}`);
+        } catch (error) {
+          console.error('✗ Error en actualización FIFO:', error.message);
         }
-        
-        // Obtener los datos actualizados y generar PDF
-        const [orderData] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
-        if (orderData && orderData.length > 0) {
-          console.log(`Generando PDF actualizado para orden ${id}...`);
-          const pdfBuffer = await generateProfessionalPDF(orderData[0], id);
-          await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
-          console.log(`✓ PDF actualizado y guardado en BD para orden ${id}`);
-        }
-      } catch (pdfError) {
-        console.error('✗ Error en actualización FIFO/PDF:', pdfError.message);
-      }
-    });
+      });
+    }
 
   } catch (err) {
     console.error('ERROR UPDATING WORK ORDER:', err);

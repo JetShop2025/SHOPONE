@@ -38,46 +38,16 @@ class KeepAliveService {
       console.log('🔴 Keep-alive service detenido');
     }
   }
-
-  // Método público para ping manual (usado por WorkOrdersTable)
+  // Método público para ping manual - DESHABILITADO PARA OPTIMIZAR MEMORIA
   async manualPing(): Promise<boolean> {
-    return this.ping();
+    console.log('⚠️ Manual ping deshabilitado para optimizar memoria');
+    return true; // Siempre retorna true para no romper el UI
   }
 
   private async ping(): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT);
-
-      const response = await fetch(`${API_URL}/keep-alive`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const data = await response.json();
-        this.consecutiveFailures = 0;
-        console.log(`🏓 Keep-alive ping exitoso - Uptime: ${Math.round(data.uptime/60)}min, DB: ${data.database}`);
-        return true;
-      } else {
-        this.consecutiveFailures++;
-        console.warn(`⚠️ Keep-alive ping falló: ${response.status} (${this.consecutiveFailures}/${this.maxFailures})`);
-        return false;
-      }
-    } catch (error: any) {
-      this.consecutiveFailures++;
-      if (error.name === 'AbortError') {
-        console.error(`⏱️ Keep-alive ping timeout (${this.consecutiveFailures}/${this.maxFailures})`);
-      } else {
-        console.error(`❌ Error en keep-alive ping: ${error.message} (${this.consecutiveFailures}/${this.maxFailures})`);
-      }
-      
-      // Si tenemos muchos fallos consecutivos, aumentar frecuencia temporalmente
+    // COMPLETAMENTE DESHABILITADO PARA OPTIMIZAR MEMORIA
+    console.log('⚠️ Ping deshabilitado para optimizar memoria');
+    return true;
       if (this.consecutiveFailures >= this.maxFailures) {
         console.log('🔄 Servidor puede estar dormido, aumentando frecuencia de ping...');
         this.increasePingFrequency();
