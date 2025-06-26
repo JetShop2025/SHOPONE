@@ -525,7 +525,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="SKU"
                   />                  <datalist id={`inventory-${index}`}>
                     {inventory.map((item: any) => {
-                      const cost = item.cost || item.price || item.unitCost || item.unit_cost || 0;
+                      // PRIORIDAD AL CAMPO 'precio' de la tabla inventory
+                      const cost = item.precio || item.cost || item.price || item.unitCost || item.unit_cost || 0;
                       const name = item.part || item.description || item.name || 'Sin nombre';
                       return (
                         <option key={item.sku} value={item.sku}>

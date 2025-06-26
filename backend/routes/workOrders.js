@@ -376,10 +376,12 @@ async function generateProfessionalPDF(order, id) {
       });
       
       yPos += 15;
-      
-      // ================================
+        // ================================
       // RESUMEN FINANCIERO - LADO DERECHO
-      // ================================      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
+      // ================================
+      
+      // Calcular horas totales de los mecánicos
+      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
       const laborTotal = totalHours * 60;
       // SIEMPRE usar el valor exacto de totalLabAndParts de la base de datos
       const grandTotal = Number(order.totalLabAndParts) || 0;
