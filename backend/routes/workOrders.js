@@ -27,8 +27,7 @@ async function generateProfessionalPDF(order, id) {
     try {
       const doc = new PDFDocument({ 
         margin: 50,
-        size: 'LETTER',
-        bufferPages: true
+        size: 'LETTER'
       });
       const chunks = [];
       
@@ -39,87 +38,89 @@ async function generateProfessionalPDF(order, id) {
         resolve(pdfBuffer);
       });
       
-      // Registrar fuente Courier New (similar a monospace)
-      doc.registerFont('CourierNew', 'Courier');
-      
-      // HEADER - Logo real y texto (formato EXACTO al original)
+      // LOGO Y HEADER - EXACTO AL ORIGINAL
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
-          doc.image(logoPath, 60, 60, { width: 120, height: 40 });
+          doc.image(logoPath, 68, 60, { width: 130, height: 45 });
+        } else {
+          // Fallback text logo
+          doc.font('Courier').fontSize(20).fillColor('#2E8B57').text('JET', 68, 65);
+          doc.font('Courier').fontSize(12).fillColor('#2E8B57').text('SHOP', 68, 85);
         }
       } catch (e) {
-        // Fallback si no encuentra el logo
-        doc.font('CourierNew').fontSize(16).fillColor('#2E8B57').text('JET', 60, 65);
-        doc.font('CourierNew').fontSize(10).fillColor('#2E8B57').text('SHOP', 60, 85);
+        doc.font('Courier').fontSize(20).fillColor('#2E8B57').text('JET', 68, 65);
+        doc.font('Courier').fontSize(12).fillColor('#2E8B57').text('SHOP', 68, 85);
       }
       
-      // INVOICE title (posición exacta como el original)
-      doc.font('CourierNew').fontSize(48).fillColor('#4169E1').text('INVOICE', 315, 60);
+      // INVOICE title (EXACTO al original)
+      doc.font('Courier-Bold').fontSize(36).fillColor('#4169E1').text('INVOICE', 315, 60);
       
-      // Información de la empresa (lado derecho, posición exacta)
-      doc.font('CourierNew').fontSize(10).fillColor('#000000');
-      doc.text('JET SHOP, LLC', 520, 65);
-      doc.text('740 EL CAMINO REAL', 520, 78);
-      doc.text('GREENFIELD, CA 93927', 520, 91);      
-      // Customer Info Box (exacto al original con Courier New)
-      doc.rect(65, 145, 315, 85).stroke('#4169E1');
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('Customer:', 75, 155);
-      doc.font('CourierNew').fontSize(11).fillColor('#000000').text(order.billToCo || 'GABGRE', 75, 175);
+      // Información de la empresa (lado derecho, EXACTO al original)
+      doc.font('Courier').fontSize(9).fillColor('#000000');
+      doc.text('JET SHOP, LLC', 580, 68);
+      doc.text('740 EL CAMINO REAL', 580, 78);
+      doc.text('GREENFIELD, CA 93927', 580, 88);
       
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('Trailer:', 75, 195);
-      doc.font('CourierNew').fontSize(11).fillColor('#000000').text(order.trailer || '5-522', 125, 195);
+      // Customer Info Box (EXACTO al original)
+      doc.rect(73, 147, 330, 93).stroke('#4169E1');
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('Customer:', 83, 163);
+      doc.font('Courier').fontSize(11).fillColor('#000000').text(order.billToCo || 'GABGRE', 83, 180);
       
-      // Invoice Info Box (exacto al original)
-      doc.rect(410, 145, 155, 85).stroke('#4169E1');
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('Date:', 420, 155);
-      doc.font('CourierNew').fontSize(11).fillColor('#000000').text(formatDateForPdf(order.date), 460, 155);
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('Trailer:', 83, 200);
+      doc.font('Courier').fontSize(11).fillColor('#000000').text(order.trailer || '5-522', 140, 200);
       
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('Invoice #:', 420, 175);
-      doc.font('CourierNew').fontSize(11).fillColor('#000000').text(String(order.idClassic || id), 485, 175);
+      // Invoice Info Box (EXACTO al original)
+      doc.rect(450, 147, 158, 93).stroke('#4169E1');
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('Date:', 463, 163);
+      doc.font('Courier').fontSize(11).fillColor('#000000').text(formatDateForPdf(order.date), 503, 163);
+      
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('Invoice #:', 463, 183);
+      doc.font('Courier').fontSize(11).fillColor('#000000').text(String(order.idClassic || id), 520, 183);
       
       // Mecánicos (formato exacto)
       const mechanics = Array.isArray(order.mechanics) ? order.mechanics : (order.mechanics ? JSON.parse(order.mechanics) : []);
       if (mechanics.length > 0) {
-        doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('Mechanics:', 420, 195);
+        doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('Mechanics:', 463, 203);
         let mechText = mechanics.map(m => `${m.name || 'WILMER M'} (${m.hrs || '7'})`).join(', ');
-        doc.font('CourierNew').fontSize(9).fillColor('#000000').text(mechText, 420, 210, { width: 130 });
+        doc.font('Courier').fontSize(9).fillColor('#000000').text(mechText, 463, 218, { width: 130 });
       }
       
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('ID CLASSIC:', 420, 220);
-      doc.font('CourierNew').fontSize(11).fillColor('#000000').text(String(order.idClassic || '19097'), 500, 220);      
-      // Descripción (formato exacto con Courier New)
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1').text('Description:', 65, 270);
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('ID CLASSIC:', 463, 223);
+      doc.font('Courier').fontSize(11).fillColor('#000000').text(String(order.idClassic || '19097'), 540, 223);
+      
+      // Descripción (EXACTO al original)
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1').text('Description:', 73, 285);
       const descText = order.description || 'DROVE TO SAN JUAN TO CHECK TRAILER. BATTERY WAS ON THE UNIT. WE REPLACED THE BATTERY WITH A USED BATTERY AND DIDN\'T TURN ON. WE WENT TO SALINAS TO PICK A A NEW ALTERNATOR ON THE UNIT. REPLACE THE ALTERNATOR AND THEN WAITED UNTIL THE UNIT TEMPERATURE DROPPED. THEN WE ADDED 2 LBS OF FREON. BY WILMER';
-      doc.font('CourierNew').fontSize(11).fillColor('#000000').text(descText, 65, 285, { width: 500, lineGap: 2 });
+      doc.font('Courier').fontSize(11).fillColor('#000000').text(descText, 73, 300, { width: 535, lineGap: 2 });
       
-      // Línea horizontal bajo la descripción (como el original)
-      doc.moveTo(65, 340).lineTo(565, 340).stroke('#4169E1');
+      // Línea horizontal bajo la descripción (EXACTO al original)
+      doc.moveTo(73, 373).lineTo(608, 373).stroke('#4169E1');
       
-      // Tabla de partes (FORMATO EXACTO AL ORIGINAL)
-      let yPos = 375;
+      // Tabla de partes (EXACTO AL ORIGINAL)
+      let yPos = 413;      
+      // Header de la tabla (EXACTO AL ORIGINAL)
+      doc.rect(73, yPos, 535, 25).fillAndStroke('#F0F0F0', '#000000');
+      doc.font('Courier-Bold').fontSize(10).fillColor('#000000');
+      doc.text('No.', 84, yPos + 8);
+      doc.text('SKU', 126, yPos + 8);
+      doc.text('DESCRIPTION', 235, yPos + 8);
+      doc.text('U/M', 373, yPos + 8);
+      doc.text('QTY', 422, yPos + 8);
+      doc.text('UNIT', 470, yPos + 8);
+      doc.text('TOTAL', 512, yPos + 8);
+      doc.text('INVOICE', 585, yPos + 8);
+      doc.text('COST', 475, yPos + 18);
       
-      // Header de la tabla (colores y formato exactos como el original)
-      doc.rect(65, yPos, 500, 20).fillAndStroke('#E6E6FA', '#000000');
-      doc.font('CourierNew').fontSize(10).fillColor('#000000');
-      doc.text('No.', 75, yPos + 6);
-      doc.text('SKU', 105, yPos + 6);
-      doc.text('DESCRIPTION', 180, yPos + 6);
-      doc.text('U/M', 340, yPos + 6);
-      doc.text('QTY', 375, yPos + 6);
-      doc.text('UNIT', 410, yPos + 6);
-      doc.text('TOTAL', 450, yPos + 6);
-      doc.text('INVOICE', 510, yPos + 6);
-      doc.text('COST', 415, yPos + 14);
+      yPos += 25;
       
-      yPos += 20;        // Partes (con links FIFO EXACTOS como en el original)
+      // Partes (con links FIFO EXACTOS como en el original)
       const parts = Array.isArray(order.parts) ? order.parts : (order.parts ? JSON.parse(order.parts) : []);
       let subtotalParts = 0;
       
       // Obtener información FIFO de las partes usadas
       let fifoPartsData = [];
       try {
-        // Usar la conexión db directamente
         const [fifoResults] = await db.query(
           'SELECT sku, part_name, qty_used, cost, invoice, invoiceLink FROM work_order_parts WHERE work_order_id = ?',
           [id]
@@ -133,84 +134,85 @@ async function generateProfessionalPDF(order, id) {
       
       parts.forEach((part, index) => {
         if (part.sku && part.qty) {
-          doc.rect(65, yPos, 500, 20).stroke('#000000');
+          doc.rect(73, yPos, 535, 25).stroke('#000000');
           
           const unitCost = Number(part.cost) || 0;
           const qty = Number(part.qty) || 0;
           const total = unitCost * qty;
           subtotalParts += total;
           
-          doc.font('CourierNew').fontSize(9).fillColor('#000000');
-          doc.text(String(index + 1), 75, yPos + 6);
-          doc.text(part.sku || '', 105, yPos + 6);
-          doc.text(part.part || part.description || '', 180, yPos + 6, { width: 150 });
-          doc.text('EA', 350, yPos + 6);
-          doc.text(String(qty), 380, yPos + 6);
-          doc.text(`$${unitCost.toFixed(2)}`, 410, yPos + 6);
-          doc.text(`$${total.toFixed(2)}`, 450, yPos + 6);
+          doc.font('Courier').fontSize(9).fillColor('#000000');
+          doc.text(String(index + 1), 84, yPos + 8);
+          doc.text(part.sku || '', 126, yPos + 8);
+          doc.text(part.part || part.description || '', 190, yPos + 8, { width: 140 });
+          doc.text('EA', 380, yPos + 8);
+          doc.text(String(qty), 430, yPos + 8);
+          doc.text(`$${unitCost.toFixed(2)}`, 470, yPos + 8);
+          doc.text(`$${total.toFixed(2)}`, 512, yPos + 8);
           
           // LINK FUNCIONAL basado en datos FIFO (EXACTO al original)
           const fifoParts = fifoPartsData.filter(fp => fp.sku === part.sku);
           if (fifoParts.length > 0) {
-            // Si hay múltiples entradas FIFO para la misma parte, usar la primera
             const fifoPart = fifoParts[0];
             if (fifoPart.invoiceLink) {
               // Link funcional al invoice real (color azul y subrayado)
-              doc.fillColor('#0000FF').underline(510, yPos + 6, 50, 10);
-              doc.link(510, yPos + 6, 50, 10, fifoPart.invoiceLink);
-              doc.text('Ver Invoice', 510, yPos + 6);
+              doc.fillColor('#0000FF').underline(560, yPos + 8, 40, 12);
+              doc.link(560, yPos + 8, 40, 12, fifoPart.invoiceLink);
+              doc.text('Ver Invoice', 560, yPos + 8);
             } else if (fifoPart.invoice) {
               // Mostrar número de invoice sin link
               doc.fillColor('#0000FF');
-              doc.text(fifoPart.invoice, 510, yPos + 6);
+              doc.text(fifoPart.invoice, 560, yPos + 8);
             } else {
               // Sin datos de invoice
               doc.fillColor('#666666');
-              doc.text('', 510, yPos + 6);
+              doc.text('N/A', 575, yPos + 8);
             }
           } else {
             // No hay datos FIFO disponibles
             doc.fillColor('#666666');
-            doc.text('', 510, yPos + 6);
+            doc.text('N/A', 575, yPos + 8);
           }
           doc.fillColor('#000000');
           
-          yPos += 20;
+          yPos += 25;
         }
       });      
-      // Totales (formato EXACTO al original)
-      yPos += 20;
+      // Totales (EXACTO AL ORIGINAL)
+      yPos += 30;
       
       // Calcular labor exacto como el original
       const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
       const laborTotal = totalHours * 60; // $60/hora
       
-      // Subtotal Parts (posición exacta, color azul)
-      doc.font('CourierNew').fontSize(12).fillColor('#4169E1');
-      doc.text(`Subtotal Parts: $${subtotalParts.toFixed(2)}`, 400, yPos);
+      // Subtotal Parts (posición exacta, color azul como el original)
+      doc.font('Courier-Bold').fontSize(12).fillColor('#4169E1');
+      doc.text(`Subtotal Parts: $${subtotalParts.toFixed(2)}`, 441, yPos);
       
-      // Labor (posición exacta, color azul)
-      doc.text(`Labor: $${laborTotal.toFixed(2)}`, 450, yPos + 20);
+      // Labor (posición exacta, color azul como el original)
+      doc.text(`Labor: $${laborTotal.toFixed(2)}`, 495, yPos + 22);
       
-      // Total final (formato exacto con color rojo como el original)
+      // Total final (EXACTO al original con color rojo)
       const grandTotal = Number(order.totalLabAndParts) || (subtotalParts + laborTotal);
-      doc.font('CourierNew').fontSize(14).fillColor('#FF0000');
-      doc.text(`TOTAL LAB & PARTS: $${grandTotal.toFixed(2)}`, 350, yPos + 50);
+      doc.font('Courier-Bold').fontSize(16).fillColor('#FF0000');
+      doc.text(`TOTAL LAB & PARTS: $${grandTotal.toFixed(2)}`, 386, yPos + 52);
       
-      // Terms & Conditions (exacto al original)
-      doc.font('CourierNew').fontSize(10).fillColor('#000000');
-      doc.text('TERMS & CONDITIONS:', 65, yPos + 100);
-      doc.text('This estimate is not a final bill. pricing could change if job specifications change.', 65, yPos + 120);
-      doc.text('I accept this estimate without any changes', 65, yPos + 150);
-      doc.text('I accept this estimate with the handwritten changes', 65, yPos + 170);
+      // Terms & Conditions (EXACTO al original)
+      doc.font('Courier-Bold').fontSize(10).fillColor('#000000');
+      doc.text('TERMS & CONDITIONS:', 73, yPos + 100);
       
-      // Signature lines (exacto al original)
-      doc.text('NAME: ________________________', 65, yPos + 200);
-      doc.text('SIGNATURE: ________________________', 320, yPos + 200);
+      doc.font('Courier').fontSize(10).fillColor('#000000');
+      doc.text('This estimate is not a final bill. pricing could change if job specifications change.', 73, yPos + 118);
+      doc.text('I accept this estimate without any changes', 73, yPos + 148);
+      doc.text('I accept this estimate with the handwritten changes', 73, yPos + 168);
       
-      // Footer (exacto al original)
-      doc.font('CourierNew').fontSize(14).fillColor('#4169E1');
-      doc.text('Thanks for your business!', 65, yPos + 240);
+      // Signature lines (EXACTO al original)
+      doc.text('NAME: ________________________', 73, yPos + 210);
+      doc.text('SIGNATURE: ________________________', 343, yPos + 210);
+      
+      // Footer (EXACTO al original)
+      doc.font('Courier-Bold').fontSize(14).fillColor('#4169E1');
+      doc.text('Thanks for your business!', 73, yPos + 255);
       
       doc.end();
       

@@ -55,19 +55,24 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   onAddEmptyPart
 }) => {
   const [successMsg, setSuccessMsg] = React.useState('');
-  
-  // Debug: verificar inventario
+    // Debug: verificar inventario
   React.useEffect(() => {
-    console.log('WorkOrderForm - Inventario recibido:', {
+    console.log('📋 WorkOrderForm - Inventario recibido:', {
       inventoryLength: inventory?.length || 0,
-      firstItems: inventory?.slice(0, 3) || [],
-      isArray: Array.isArray(inventory)
+      firstItems: inventory?.slice(0, 2) || [],
+      isArray: Array.isArray(inventory),
+      sampleFields: inventory?.[0] ? Object.keys(inventory[0]) : []
     });
   }, [inventory]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
-    if (!sku || !inventory || inventory.length === 0) return null;
+    if (!sku || !inventory || inventory.length === 0) {
+      console.log('❌ findPartBySku: SKU vacío o inventario no disponible');
+      return null;
+    }
+    
+    console.log('🔍 Buscando SKU:', sku, 'en inventario de', inventory.length, 'items');
     
     // Buscar por SKU exacto (case insensitive)
     const exactMatch = inventory.find((item: any) => 
@@ -75,7 +80,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     );
     
     if (exactMatch) {
-      console.log('Parte encontrada por SKU:', exactMatch);
+      console.log('✅ Parte encontrada por SKU exacto:', {
+        sku: exactMatch.sku,
+        name: exactMatch.part || exactMatch.description || exactMatch.name,
+        cost: exactMatch.cost || exactMatch.price || exactMatch.unitCost || exactMatch.unit_cost,
+        allFields: exactMatch
+      });
       return exactMatch;
     }
     
@@ -85,13 +95,26 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     );
     
     if (partialMatch) {
-      console.log('Parte encontrada por coincidencia parcial:', partialMatch);
+      console.log('⚠️ Parte encontrada por coincidencia parcial:', {
+        sku: partialMatch.sku,
+        name: partialMatch.part || partialMatch.description || partialMatch.name,
+        cost: partialMatch.cost || partialMatch.price || partialMatch.unitCost || partialMatch.unit_cost,
+        allFields: partialMatch
+      });
+      return partialMatch;
     }
     
-    return partialMatch || null;
-  };  // Manejar cambios en las partes con auto-completado
+    console.log('❌ No se encontró parte para SKU:', sku);
+    return null;
+  };// Manejar cambios en las partes con auto-completado
   const handlePartChange = (index: number, field: string, value: string) => {
-    console.log('handlePartChange llamado:', { index, field, value, inventoryLength: inventory.length });
+    console.log('🔧 handlePartChange llamado:', { 
+      index, 
+      field, 
+      value, 
+      inventoryLength: inventory.length,
+      sampleInventoryItem: inventory[0] // Para debug
+    });
     
     const newParts = [...(workOrder.parts || [])];
     newParts[index] = { ...newParts[index], [field]: value };
@@ -99,21 +122,37 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Auto-completado cuando se cambia el SKU
     if (field === 'sku' && value && value.trim() !== '') {
       const foundPart = findPartBySku(value);
-      console.log('Buscando parte con SKU:', value, 'Encontrada:', foundPart);
+      console.log('🔍 Buscando parte con SKU:', value);
+      console.log('📦 Parte encontrada:', foundPart);
       
       if (foundPart) {
-        newParts[index].part = foundPart.part || foundPart.description || '';
-        // Formatear el costo correctamente
-        const cost = foundPart.cost || foundPart.price || 0;
-        newParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
-        console.log('✓ Auto-completando parte:', {
+        // Autocompletar nombre de la parte
+        newParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';
+        
+        // Autocompletar costo - probar múltiples campos posibles
+        let cost = 0;
+        if (foundPart.cost) {
+          cost = foundPart.cost;
+        } else if (foundPart.price) {
+          cost = foundPart.price;
+        } else if (foundPart.unitCost) {
+          cost = foundPart.unitCost;
+        } else if (foundPart.unit_cost) {
+          cost = foundPart.unit_cost;
+        }
+        
+        // Formatear el costo
+        newParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : parseFloat(String(cost)).toFixed(2);
+        
+        console.log('✅ Auto-completando parte:', {
           sku: value,
           part: newParts[index].part,
           cost: newParts[index].cost,
-          foundPart
+          originalCostField: cost,
+          foundPartKeys: Object.keys(foundPart)
         });
       } else {
-        console.log('✗ No se encontró parte para SKU:', value);
+        console.log('❌ No se encontró parte para SKU:', value);
       }
     }
 
@@ -122,6 +161,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const qty = parseFloat(field === 'qty' ? value : newParts[index].qty) || 0;
       const unitCost = parseFloat(String(field === 'cost' ? value : newParts[index].cost).replace(/[^0-9.]/g, '')) || 0;
       newParts[index].totalCost = qty * unitCost;
+      console.log('💰 Calculando total parte:', { qty, unitCost, total: newParts[index].totalCost });
     }
 
     // Siempre actualizar el estado usando onChange
@@ -471,13 +511,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'sku', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="SKU"
-                  />
-                  <datalist id={`inventory-${index}`}>
-                    {inventory.map((item: any) => (
-                      <option key={item.sku} value={item.sku}>
-                        {item.part || item.description} - ${item.cost || item.price || '0.00'}
-                      </option>
-                    ))}
+                  />                  <datalist id={`inventory-${index}`}>
+                    {inventory.map((item: any) => {
+                      const cost = item.cost || item.price || item.unitCost || item.unit_cost || 0;
+                      const name = item.part || item.description || item.name || 'Sin nombre';
+                      return (
+                        <option key={item.sku} value={item.sku}>
+                          {name} - ${typeof cost === 'number' ? cost.toFixed(2) : parseFloat(String(cost)).toFixed(2)}
+                        </option>
+                      );
+                    })}
                   </datalist>
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
@@ -499,14 +542,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="Cantidad"
                   />
-                </label>
-                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+                </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   Costo Unit.
                   <input
                     type="text"
                     value={part.cost || ''}
                     onChange={e => handlePartChange(index, 'cost', e.target.value)}
-                    style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: part.cost ? '#f0f8ff' : '#ffffff' }}
+                    style={{ 
+                      width: '100%', 
+                      marginTop: 2, 
+                      padding: 4, 
+                      backgroundColor: part.cost && parseFloat(String(part.cost)) > 0 ? '#e8f5e8' : '#ffffff',
+                      border: part.cost && parseFloat(String(part.cost)) > 0 ? '2px solid #4caf50' : '1px solid #ccc'
+                    }}
                     placeholder="$0.00"
                   />
                 </label>
