@@ -5,6 +5,18 @@ const router = express.Router();
 
 router.use(express.json());
 
+// Función auxiliar para formatear fecha de manera consistente
+function formatDateForPdf(date) {
+  if (!date) return new Date().toLocaleDateString('en-US').replace(/\//g, '-');
+  
+  const dateObj = new Date(date);
+  // Asegurar que obtenemos la fecha local, no UTC
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  const yyyy = dateObj.getFullYear();
+  return `${mm}-${dd}-${yyyy}`;
+}
+
 async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
   try {
     await db.query(
@@ -130,12 +142,72 @@ router.post('/', async (req, res) => {
       JSON.stringify(extraOptions || [])
     ];
     const [result] = await db.query(query, values);
-    const id = result.insertId;
-
-    // RESPONDER INMEDIATAMENTE SIN PROCESOS PESADOS
-    const formattedDate = typeof date === 'string' && date.includes('-') 
-      ? (() => { const [yyyy, mm, dd] = date.split('-'); return `${mm}-${dd}-${yyyy}`; })()
-      : (date.toISOString ? date.toISOString().slice(0, 10) : '');
+    const id = result.insertId;    // RESPONDER INMEDIATAMENTE SIN PROCESOS PESADOS
+    const formattedDate = formatDateForPdf(date);
+    
+    // Generar PDF automáticamente en segundo plano
+    try {
+      const PDFDocument = require('pdfkit');
+      const fs = require('fs');
+      
+      // Crear PDF
+      const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
+      const pdfPath = path.join(__dirname, '../pdfs', pdfName);
+      
+      const doc = new PDFDocument();
+      const stream = fs.createWriteStream(pdfPath);
+      doc.pipe(stream);
+      
+      // Contenido del PDF
+      doc.fontSize(20).text('WORK ORDER - JET SHOP', 50, 50);
+      doc.fontSize(12);
+      doc.text(`Order ID: ${fields.idClassic || id}`, 50, 100);
+      doc.text(`Bill To: ${billToCo || '-'}`, 50, 120);
+      doc.text(`Trailer: ${trailer || '-'}`, 50, 140);
+      doc.text(`Date: ${formattedDate}`, 50, 160);
+      doc.text(`Mechanic: ${mechanic || '-'}`, 50, 180);
+      doc.text(`Description: ${description || ''}`, 50, 200, { width: 400 });
+      
+      // Mecánicos
+      let yPos = 240;
+      if (mechanicsArr.length > 0) {
+        doc.text('MECHANICS:', 50, yPos);
+        yPos += 20;
+        mechanicsArr.forEach(mech => {
+          if (mech.name && mech.hrs) {
+            doc.text(`- ${mech.name}: ${mech.hrs} hrs`, 60, yPos);
+            yPos += 15;
+          }
+        });
+        yPos += 10;
+      }
+      
+      // Partes usadas
+      if (partsArr.length > 0) {
+        doc.text('PARTS USED:', 50, yPos);
+        yPos += 20;
+        partsArr.forEach(part => {
+          if (part.sku && part.qty) {
+            doc.text(`- ${part.sku}: ${part.part || ''} (Qty: ${part.qty}, Cost: $${part.cost || '0.00'})`, 60, yPos);
+            yPos += 15;
+          }
+        });
+      }
+      
+      // Total
+      yPos += 20;
+      doc.fontSize(14).text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 50, yPos);
+      doc.fontSize(12).text(`Status: ${status || 'PENDING'}`, 50, yPos + 30);
+      
+      doc.end();
+      
+      stream.on('finish', () => {
+        console.log(`PDF creado automáticamente: ${pdfName}`);
+      });
+    } catch (pdfError) {
+      console.error('Error generando PDF automáticamente:', pdfError);
+      // No fallar la operación si el PDF no se puede generar
+    }
     
     res.status(201).json({
       id: id,
@@ -279,9 +351,74 @@ router.put('/:id', async (req, res) => {
       updateFields.push(fields.idClassic || null);
     }
     updateQuery += ` WHERE id = ?`;
-    updateFields.push(id);
+    updateFields.push(id);    await db.query(updateQuery, updateFields);
 
-    await db.query(updateQuery, updateFields);
+    // 5. Generar PDF automáticamente después de actualizar
+    try {
+      const PDFDocument = require('pdfkit');
+      const fs = require('fs');
+      
+      // Formatear fecha para el PDF usando la función auxiliar
+      const formattedDate = formatDateForPdf(date);
+      
+      // Crear PDF
+      const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
+      const pdfPath = path.join(__dirname, '../pdfs', pdfName);
+      
+      const doc = new PDFDocument();
+      const stream = fs.createWriteStream(pdfPath);
+      doc.pipe(stream);
+      
+      // Contenido del PDF (mejorado)
+      doc.fontSize(20).text('WORK ORDER - JET SHOP', 50, 50);
+      doc.fontSize(12);
+      doc.text(`Order ID: ${fields.idClassic || id}`, 50, 100);
+      doc.text(`Bill To: ${billToCo || '-'}`, 50, 120);
+      doc.text(`Trailer: ${trailer || '-'}`, 50, 140);
+      doc.text(`Date: ${formattedDate}`, 50, 160);
+      doc.text(`Mechanic: ${mechanic || '-'}`, 50, 180);
+      doc.text(`Description: ${description || ''}`, 50, 200, { width: 400 });
+      
+      // Mecánicos
+      let yPos = 240;
+      if (mechanicsArr.length > 0) {
+        doc.text('MECHANICS:', 50, yPos);
+        yPos += 20;
+        mechanicsArr.forEach(mech => {
+          if (mech.name && mech.hrs) {
+            doc.text(`- ${mech.name}: ${mech.hrs} hrs`, 60, yPos);
+            yPos += 15;
+          }
+        });
+        yPos += 10;
+      }
+      
+      // Partes usadas
+      if (partsArr.length > 0) {
+        doc.text('PARTS USED:', 50, yPos);
+        yPos += 20;
+        partsArr.forEach(part => {
+          if (part.sku && part.qty) {
+            doc.text(`- ${part.sku}: ${part.part || ''} (Qty: ${part.qty}, Cost: $${part.cost || '0.00'})`, 60, yPos);
+            yPos += 15;
+          }
+        });
+      }
+      
+      // Total
+      yPos += 20;
+      doc.fontSize(14).text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 50, yPos);
+      doc.fontSize(12).text(`Status: ${status || 'PENDING'}`, 50, yPos + 30);
+      
+      doc.end();
+      
+      stream.on('finish', () => {
+        console.log(`PDF actualizado automáticamente: ${pdfName}`);
+      });
+    } catch (pdfError) {
+      console.error('Error generando PDF automáticamente:', pdfError);
+      // No fallar la operación si el PDF no se puede generar
+    }
 
     res.json({ success: true, id });
 
@@ -355,23 +492,21 @@ router.get('/:id/pdf', async (req, res) => {
     }
     
     const order = results[0];
-    const date = order.date;
-    
-    // Formatear fecha como MM-DD-YYYY
-    const formattedDate = typeof date === 'string' && date.includes('-') 
-      ? (() => { const [yyyy, mm, dd] = date.split('-'); return `${mm}-${dd}-${yyyy}`; })()
-      : (date.toISOString ? date.toISOString().slice(0, 10) : '');
-    
-    const pdfName = `${formattedDate}_${order.idClassic || id}.pdf`;
-    const pdfPath = path.join(__dirname, '../pdfs', pdfName);
-    
-    // Verificar si el archivo existe
     const fs = require('fs');
-    if (!fs.existsSync(pdfPath)) {
-      console.log(`PDF no encontrado: ${pdfPath}`);
-      return res.status(404).send('PDF NOT FOUND - File does not exist');
+    const pdfsDir = path.join(__dirname, '../pdfs');
+    
+    // Buscar el archivo PDF que contenga el ID de la orden
+    const pdfFiles = fs.readdirSync(pdfsDir);
+    const matchingPdf = pdfFiles.find(file => 
+      file.endsWith(`_${order.idClassic || id}.pdf`)
+    );
+    
+    if (!matchingPdf) {
+      console.log(`PDF no encontrado para orden ${id}. Archivos disponibles:`, pdfFiles);
+      return res.status(404).send('PDF NOT FOUND - No matching file found');
     }
     
+    const pdfPath = path.join(pdfsDir, matchingPdf);
     const fileName = `workorder_${order.idClassic || id}.pdf`;
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -400,18 +535,8 @@ router.post('/:id/generate-pdf', async (req, res) => {
     const PDFDocument = require('pdfkit');
     const fs = require('fs');
     const path = require('path');
-    
-    // Formatear fecha para el PDF
-    const formattedDate = (() => {
-      if (order.date) {
-        const date = new Date(order.date);
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const yyyy = date.getFullYear();
-        return `${mm}-${dd}-${yyyy}`;
-      }
-      return new Date().toLocaleDateString('en-US');
-    })();
+      // Formatear fecha para el PDF
+    const formattedDate = formatDateForPdf(order.date);
     
     // Crear PDF
     const pdfName = `${formattedDate}_${order.idClassic || id}.pdf`;
