@@ -55,6 +55,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   onAddEmptyPart
 }) => {
   const [successMsg, setSuccessMsg] = React.useState('');
+  
+  // Debug: verificar inventario
+  React.useEffect(() => {
+    console.log('WorkOrderForm - Inventario recibido:', {
+      inventoryLength: inventory?.length || 0,
+      firstItems: inventory?.slice(0, 3) || [],
+      isArray: Array.isArray(inventory)
+    });
+  }, [inventory]);
+  
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
     if (!sku || !inventory || inventory.length === 0) return null;
@@ -79,26 +89,31 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
     
     return partialMatch || null;
-  };
-  // Manejar cambios en las partes con auto-completado
+  };  // Manejar cambios en las partes con auto-completado
   const handlePartChange = (index: number, field: string, value: string) => {
+    console.log('handlePartChange llamado:', { index, field, value, inventoryLength: inventory.length });
+    
     const newParts = [...(workOrder.parts || [])];
     newParts[index] = { ...newParts[index], [field]: value };
 
     // Auto-completado cuando se cambia el SKU
-    if (field === 'sku' && value) {
+    if (field === 'sku' && value && value.trim() !== '') {
       const foundPart = findPartBySku(value);
+      console.log('Buscando parte con SKU:', value, 'Encontrada:', foundPart);
+      
       if (foundPart) {
         newParts[index].part = foundPart.part || foundPart.description || '';
         // Formatear el costo correctamente
         const cost = foundPart.cost || foundPart.price || 0;
         newParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
-        console.log('Auto-completando parte:', {
+        console.log('✓ Auto-completando parte:', {
           sku: value,
           part: newParts[index].part,
           cost: newParts[index].cost,
           foundPart
         });
+      } else {
+        console.log('✗ No se encontró parte para SKU:', value);
       }
     }
 
@@ -109,7 +124,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       newParts[index].totalCost = qty * unitCost;
     }
 
+    // Siempre actualizar el estado usando onChange
     onChange({ target: { name: 'parts', value: newParts } } as any);
+
+    // Llamar a onPartChange si está disponible (para compatibilidad)
+    if (onPartChange) {
+      onPartChange(index, field, value);
+    }
 
     // Auto-calcular total después de cambiar partes
     setTimeout(() => {

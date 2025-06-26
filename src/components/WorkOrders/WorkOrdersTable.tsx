@@ -253,10 +253,18 @@ const WorkOrdersTable: React.FC = () => {
     return inventory.find(item => 
       item.sku && item.sku.toLowerCase() === sku.toLowerCase()
     );
-  };useEffect(() => {
+  };  useEffect(() => {
     axios.get(`${API_URL}/inventory`)
-      .then(res => setInventory(res.data as any[]))
-      .catch(() => setInventory([]));
+      .then(res => {
+        const inventoryData = res.data as any[];
+        setInventory(inventoryData);
+        console.log('Inventario cargado:', inventoryData.length, 'items');
+        console.log('Primeros 3 items del inventario:', inventoryData.slice(0, 3));
+      })
+      .catch(err => {
+        console.error('Error cargando inventario:', err);
+        setInventory([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -333,16 +341,77 @@ const WorkOrdersTable: React.FC = () => {
       }
     }
   };
-
-  // Cambios en partes
+  // Cambios en partes con autocompletado
   const handlePartChange = (index: number, field: string, value: string) => {
+    // Función para buscar parte en inventario por SKU
+    const findPartBySku = (sku: string) => {
+      if (!sku || !inventory || inventory.length === 0) return null;
+      
+      // Buscar por SKU exacto (case insensitive)
+      const exactMatch = inventory.find((item: any) => 
+        String(item.sku).toLowerCase() === String(sku).toLowerCase()
+      );
+      
+      if (exactMatch) {
+        console.log('Parte encontrada por SKU:', exactMatch);
+        return exactMatch;
+      }
+      
+      // Si no encuentra coincidencia exacta, buscar que contenga el SKU
+      const partialMatch = inventory.find((item: any) => 
+        String(item.sku).toLowerCase().includes(String(sku).toLowerCase())
+      );
+      
+      if (partialMatch) {
+        console.log('Parte encontrada por coincidencia parcial:', partialMatch);
+      }
+      
+      return partialMatch || null;
+    };
+
     if (showForm) {
       const updatedParts = [...newWorkOrder.parts];
       updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
+
+      // Auto-completado cuando se cambia el SKU
+      if (field === 'sku' && value) {
+        const foundPart = findPartBySku(value);
+        if (foundPart) {
+          updatedParts[index].part = foundPart.part || foundPart.description || '';
+          // Formatear el costo correctamente
+          const cost = foundPart.cost || foundPart.price || 0;
+          updatedParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
+          console.log('Auto-completando parte en nueva orden:', {
+            sku: value,
+            part: updatedParts[index].part,
+            cost: updatedParts[index].cost,
+            foundPart
+          });
+        }
+      }
+
       setNewWorkOrder((prev: typeof newWorkOrder) => ({ ...prev, parts: updatedParts }));
     } else if (showEditForm && editWorkOrder) {
       const updatedParts = [...editWorkOrder.parts];
       updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
+
+      // Auto-completado cuando se cambia el SKU
+      if (field === 'sku' && value) {
+        const foundPart = findPartBySku(value);
+        if (foundPart) {
+          updatedParts[index].part = foundPart.part || foundPart.description || '';
+          // Formatear el costo correctamente
+          const cost = foundPart.cost || foundPart.price || 0;
+          updatedParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
+          console.log('Auto-completando parte en edición:', {
+            sku: value,
+            part: updatedParts[index].part,
+            cost: updatedParts[index].cost,
+            foundPart
+          });
+        }
+      }
+
       setEditWorkOrder((prev: any) => ({ ...prev, parts: updatedParts }));
     }
   };
