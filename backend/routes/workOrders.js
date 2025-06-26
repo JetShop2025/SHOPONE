@@ -36,25 +36,21 @@ async function generateProfessionalPDF(order, id) {
       doc.on('end', () => {
         const pdfBuffer = Buffer.concat(chunks);
         resolve(pdfBuffer);
-      });
-      
-      // LOGO Y HEADER - EXACTO AL ORIGINAL
+      });      // LOGO Y HEADER - EXACTO AL ORIGINAL
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
           doc.image(logoPath, 68, 60, { width: 130, height: 45 });
         } else {
-          // Fallback text logo
-          doc.font('Courier').fontSize(20).fillColor('#2E8B57').text('JET', 68, 65);
-          doc.font('Courier').fontSize(12).fillColor('#2E8B57').text('SHOP', 68, 85);
+          // Fallback text logo con colores exactos
+          doc.font('Courier-Bold').fontSize(20).fillColor('#2E8B57').text('JET', 68, 65);
+          doc.font('Courier-Bold').fontSize(12).fillColor('#2E8B57').text('SHOP', 68, 85);
         }
       } catch (e) {
-        doc.font('Courier').fontSize(20).fillColor('#2E8B57').text('JET', 68, 65);
-        doc.font('Courier').fontSize(12).fillColor('#2E8B57').text('SHOP', 68, 85);
-      }
-      
-      // INVOICE title (EXACTO al original)
-      doc.font('Courier-Bold').fontSize(36).fillColor('#4169E1').text('INVOICE', 315, 60);
+        doc.font('Courier-Bold').fontSize(20).fillColor('#2E8B57').text('JET', 68, 65);
+        doc.font('Courier-Bold').fontSize(12).fillColor('#2E8B57').text('SHOP', 68, 85);
+      }      // INVOICE title (EXACTO al original - color azul oscuro)
+      doc.font('Courier-Bold').fontSize(36).fillColor('#000080').text('INVOICE', 315, 60);
       
       // Información de la empresa (lado derecho, EXACTO al original)
       doc.font('Courier').fontSize(9).fillColor('#000000');
@@ -96,11 +92,10 @@ async function generateProfessionalPDF(order, id) {
       
       // Línea horizontal bajo la descripción (EXACTO al original)
       doc.moveTo(73, 373).lineTo(608, 373).stroke('#4169E1');
-      
-      // Tabla de partes (EXACTO AL ORIGINAL)
+        // Tabla de partes (EXACTO AL ORIGINAL)
       let yPos = 413;      
-      // Header de la tabla (EXACTO AL ORIGINAL)
-      doc.rect(73, yPos, 535, 25).fillAndStroke('#F0F0F0', '#000000');
+      // Header de la tabla (color lavanda exacto como el original)
+      doc.rect(73, yPos, 535, 25).fillAndStroke('#E6E6FA', '#000000');
       doc.font('Courier-Bold').fontSize(10).fillColor('#000000');
       doc.text('No.', 84, yPos + 8);
       doc.text('SKU', 126, yPos + 8);
@@ -109,7 +104,7 @@ async function generateProfessionalPDF(order, id) {
       doc.text('QTY', 422, yPos + 8);
       doc.text('UNIT', 470, yPos + 8);
       doc.text('TOTAL', 512, yPos + 8);
-      doc.text('INVOICE', 585, yPos + 8);
+      doc.text('INVOICE', 560, yPos + 8);
       doc.text('COST', 475, yPos + 18);
       
       yPos += 25;
@@ -149,28 +144,29 @@ async function generateProfessionalPDF(order, id) {
           doc.text(String(qty), 430, yPos + 8);
           doc.text(`$${unitCost.toFixed(2)}`, 470, yPos + 8);
           doc.text(`$${total.toFixed(2)}`, 512, yPos + 8);
-          
-          // LINK FUNCIONAL basado en datos FIFO (EXACTO al original)
+            // LINK FUNCIONAL basado en datos FIFO (EXACTO al original)
           const fifoParts = fifoPartsData.filter(fp => fp.sku === part.sku);
           if (fifoParts.length > 0) {
             const fifoPart = fifoParts[0];
-            if (fifoPart.invoiceLink) {
+            if (fifoPart.invoiceLink && fifoPart.invoiceLink.trim() !== '') {
               // Link funcional al invoice real (color azul y subrayado)
-              doc.fillColor('#0000FF').underline(560, yPos + 8, 40, 12);
-              doc.link(560, yPos + 8, 40, 12, fifoPart.invoiceLink);
-              doc.text('Ver Invoice', 560, yPos + 8);
-            } else if (fifoPart.invoice) {
+              doc.fillColor('#0000FF').fontSize(9);
+              doc.text('View Invoice', 560, yPos + 8, { 
+                link: fifoPart.invoiceLink,
+                underline: true 
+              });
+            } else if (fifoPart.invoice && fifoPart.invoice.trim() !== '') {
               // Mostrar número de invoice sin link
-              doc.fillColor('#0000FF');
-              doc.text(fifoPart.invoice, 560, yPos + 8);
+              doc.fillColor('#0000FF').fontSize(9);
+              doc.text(String(fifoPart.invoice), 560, yPos + 8);
             } else {
               // Sin datos de invoice
-              doc.fillColor('#666666');
+              doc.fillColor('#666666').fontSize(9);
               doc.text('N/A', 575, yPos + 8);
             }
           } else {
             // No hay datos FIFO disponibles
-            doc.fillColor('#666666');
+            doc.fillColor('#666666').fontSize(9);
             doc.text('N/A', 575, yPos + 8);
           }
           doc.fillColor('#000000');
