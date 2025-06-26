@@ -57,7 +57,7 @@ function formatDateForPdf(date) {
   return `${mm}-${dd}-${yyyy}`;
 }
 
-// Función para generar PDF profesional con diseño PERFECTO y CENTRADO
+// Función para generar PDF profesional con diseño personalizado
 async function generateProfessionalPDF(order, id) {
   const PDFDocument = require('pdfkit');
   const fs = require('fs');
@@ -66,7 +66,7 @@ async function generateProfessionalPDF(order, id) {
   return new Promise(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
-        margin: 50,
+        margin: 40,
         size: 'LETTER'
       });
       const chunks = [];
@@ -78,221 +78,212 @@ async function generateProfessionalPDF(order, id) {
         resolve(pdfBuffer);
       });
 
-      // VARIABLES DE DISEÑO PERFECTAS
+      // VARIABLES DE DISEÑO
       const pageWidth = 612;
       const pageHeight = 792;
-      const margin = 50;
+      const margin = 40;
       const contentWidth = pageWidth - (margin * 2);
       const centerX = pageWidth / 2;
       
-      // COLORES CORPORATIVOS PROFESIONALES
-      const primaryBlue = '#1E3A8A';      // Azul corporativo profundo
-      const accentBlue = '#3B82F6';       // Azul brillante
-      const successGreen = '#059669';     // Verde éxito
-      const darkGray = '#374151';         // Gris oscuro
-      const lightGray = '#F3F4F6';        // Gris claro
-      const borderGray = '#D1D5DB';       // Gris borde
+      // COLORES
+      const primaryBlue = '#1E3A8A';
+      const accentBlue = '#3B82F6';
+      const successGreen = '#059669';
+      const darkGray = '#374151';
+      const lightGray = '#F3F4F6';
+      const borderGray = '#D1D5DB';
       const white = '#FFFFFF';
+      const black = '#000000';
       
       let yPos = margin;
       
       // ================================
-      // HEADER SECTION - PERFECTAMENTE CENTRADO
+      // HEADER SECTION - SIN FONDO
       // ================================
-      
-      // Rectángulo de header con degradado visual
-      doc.rect(margin, yPos, contentWidth, 100).fillColor(lightGray).fill();
-      doc.rect(margin, yPos, contentWidth, 100).strokeColor(primaryBlue).lineWidth(2).stroke();
       
       // Logo lado izquierdo
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
-          doc.image(logoPath, margin + 20, yPos + 20, { width: 100, height: 60 });
+          doc.image(logoPath, margin, yPos, { width: 80, height: 50 });
         } else {
-          // Logo de texto profesional
-          doc.font('Helvetica-Bold').fontSize(28).fillColor(primaryBlue);
-          doc.text('JET SHOP', margin + 20, yPos + 25);
-          doc.font('Helvetica').fontSize(14).fillColor(darkGray);
-          doc.text('LLC', margin + 20, yPos + 55);
+          // Logo de texto
+          doc.font('Courier-Bold').fontSize(18).fillColor(primaryBlue);
+          doc.text('JET SHOP', margin, yPos + 10);
+          doc.font('Courier').fontSize(10).fillColor(darkGray);
+          doc.text('LLC', margin, yPos + 30);
         }
       } catch (e) {
-        doc.font('Helvetica-Bold').fontSize(28).fillColor(primaryBlue);
-        doc.text('JET SHOP', margin + 20, yPos + 25);
-        doc.font('Helvetica').fontSize(14).fillColor(darkGray);
-        doc.text('LLC', margin + 20, yPos + 55);
+        doc.font('Courier-Bold').fontSize(18).fillColor(primaryBlue);
+        doc.text('JET SHOP', margin, yPos + 10);
+        doc.font('Courier').fontSize(10).fillColor(darkGray);
+        doc.text('LLC', margin, yPos + 30);
       }
       
-      // TÍTULO WORK ORDER - CENTRADO PERFECTO
-      doc.font('Helvetica-Bold').fontSize(42).fillColor(accentBlue);
-      const titleText = 'WORK ORDER';
+      // TÍTULO INVOICE - MÁS PEQUEÑO Y CENTRADO
+      doc.font('Courier-Bold').fontSize(24).fillColor(primaryBlue);
+      const titleText = 'INVOICE';
       const titleWidth = doc.widthOfString(titleText);
       const titleX = centerX - (titleWidth / 2);
-      doc.text(titleText, titleX, yPos + 30);
+      doc.text(titleText, titleX, yPos + 15);
       
       // Información de contacto - lado derecho
-      doc.font('Helvetica-Bold').fontSize(11).fillColor(primaryBlue);
-      doc.text('CONTACT INFO', margin + contentWidth - 140, yPos + 15);
-      doc.font('Helvetica').fontSize(9).fillColor(darkGray);
-      doc.text('740 EL CAMINO REAL', margin + contentWidth - 140, yPos + 32);
-      doc.text('GREENFIELD, CA 93927', margin + contentWidth - 140, yPos + 45);
-      doc.text('Phone: (831) 555-0123', margin + contentWidth - 140, yPos + 58);
-      doc.text('Email: info@jetshop.com', margin + contentWidth - 140, yPos + 71);
+      doc.font('Courier').fontSize(8).fillColor(darkGray);
+      doc.text('740 EL CAMINO REAL', margin + contentWidth - 120, yPos + 5);
+      doc.text('GREENFIELD, CA 93927', margin + contentWidth - 120, yPos + 15);
+      doc.text('Phone: (831) 555-0123', margin + contentWidth - 120, yPos + 25);
+      doc.text('Email: info@jetshop.com', margin + contentWidth - 120, yPos + 35);
       
-      yPos += 120;
+      yPos += 70;
       
       // ================================
-      // INFORMACIÓN PRINCIPAL - LAYOUT PERFECTO
+      // INFORMACIÓN PRINCIPAL - FONDO BLANCO
       // ================================
       
-      // Contenedor principal con dos columnas
       const colWidth = (contentWidth - 20) / 2;
       
-      // COLUMNA IZQUIERDA - CUSTOMER INFO
-      doc.rect(margin, yPos, colWidth, 120).fillColor(white).fill();
-      doc.rect(margin, yPos, colWidth, 120).strokeColor(primaryBlue).lineWidth(1.5).stroke();
+      // COLUMNA IZQUIERDA - CUSTOMER INFO (FONDO BLANCO)
+      doc.rect(margin, yPos, colWidth, 80).strokeColor(primaryBlue).lineWidth(1).stroke();
       
       // Header de customer info
-      doc.rect(margin, yPos, colWidth, 30).fillColor(primaryBlue).fill();
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(white);
+      doc.rect(margin, yPos, colWidth, 20).fillColor(primaryBlue).fill();
+      doc.font('Courier-Bold').fontSize(9).fillColor(white);
       const customerHeaderText = 'CUSTOMER INFORMATION';
       const customerHeaderWidth = doc.widthOfString(customerHeaderText);
       const customerHeaderX = margin + (colWidth / 2) - (customerHeaderWidth / 2);
-      doc.text(customerHeaderText, customerHeaderX, yPos + 10);
+      doc.text(customerHeaderText, customerHeaderX, yPos + 6);
       
       // Datos del cliente
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('Customer:', margin + 15, yPos + 45);
-      doc.font('Helvetica').fontSize(10).fillColor(darkGray);
-      doc.text(order.billToCo || 'N/A', margin + 70, yPos + 45, { width: colWidth - 85 });
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Customer:', margin + 8, yPos + 30);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(order.billToCo || 'N/A', margin + 55, yPos + 30, { width: colWidth - 65 });
       
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('Trailer:', margin + 15, yPos + 65);
-      doc.font('Helvetica').fontSize(10).fillColor(darkGray);
-      doc.text(order.trailer || 'N/A', margin + 70, yPos + 65, { width: colWidth - 85 });
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Trailer:', margin + 8, yPos + 45);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(order.trailer || 'N/A', margin + 55, yPos + 45, { width: colWidth - 65 });
       
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('Status:', margin + 15, yPos + 85);
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(successGreen);
-      doc.text(order.status || 'PENDING', margin + 70, yPos + 85);
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Status:', margin + 8, yPos + 60);
+      doc.font('Courier-Bold').fontSize(8).fillColor(successGreen);
+      doc.text(order.status || 'PENDING', margin + 55, yPos + 60);
       
-      // COLUMNA DERECHA - WORK ORDER INFO
+      // COLUMNA DERECHA - WORK ORDER INFO (FONDO BLANCO)
       const rightColX = margin + colWidth + 20;
-      doc.rect(rightColX, yPos, colWidth, 120).fillColor(white).fill();
-      doc.rect(rightColX, yPos, colWidth, 120).strokeColor(primaryBlue).lineWidth(1.5).stroke();
+      doc.rect(rightColX, yPos, colWidth, 80).strokeColor(primaryBlue).lineWidth(1).stroke();
       
       // Header de WO info
-      doc.rect(rightColX, yPos, colWidth, 30).fillColor(primaryBlue).fill();
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(white);
+      doc.rect(rightColX, yPos, colWidth, 20).fillColor(primaryBlue).fill();
+      doc.font('Courier-Bold').fontSize(9).fillColor(white);
       const woHeaderText = 'WORK ORDER DETAILS';
       const woHeaderWidth = doc.widthOfString(woHeaderText);
       const woHeaderX = rightColX + (colWidth / 2) - (woHeaderWidth / 2);
-      doc.text(woHeaderText, woHeaderX, yPos + 10);
+      doc.text(woHeaderText, woHeaderX, yPos + 6);
       
       // Datos de la orden
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('Date:', rightColX + 15, yPos + 45);
-      doc.font('Helvetica').fontSize(10).fillColor(darkGray);
-      doc.text(formatDateForPdf(order.date), rightColX + 70, yPos + 45);
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Date:', rightColX + 8, yPos + 30);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(formatDateForPdf(order.date), rightColX + 55, yPos + 30);
       
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('W.O. #:', rightColX + 15, yPos + 65);
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(accentBlue);
-      doc.text(String(order.idClassic || id), rightColX + 70, yPos + 65);
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('W.O. #:', rightColX + 8, yPos + 45);
+      doc.font('Courier-Bold').fontSize(8).fillColor(accentBlue);
+      doc.text(String(order.idClassic || id), rightColX + 55, yPos + 45);
       
-      // Mecánicos en la columna derecha
+      // Mecánicos
       const mechanics = Array.isArray(order.mechanics) ? order.mechanics : (order.mechanics ? JSON.parse(order.mechanics) : []);
       if (mechanics.length > 0) {
-        doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-        doc.text('Mechanics:', rightColX + 15, yPos + 85);
+        doc.font('Courier-Bold').fontSize(8).fillColor(black);
+        doc.text('Mechanics:', rightColX + 8, yPos + 60);
         
         let mechText = mechanics.map(m => `${m.name || 'Unknown'} (${m.hrs || '0'}h)`).join(', ');
-        doc.font('Helvetica').fontSize(9).fillColor(darkGray);
-        doc.text(mechText, rightColX + 15, yPos + 100, { width: colWidth - 30 });
+        doc.font('Courier').fontSize(7).fillColor(black);
+        doc.text(mechText, rightColX + 8, yPos + 70, { width: colWidth - 16 });
       }
       
-      yPos += 140;
+      yPos += 100;
       
       // ================================
-      // DESCRIPCIÓN - CENTRADA Y ELEGANTE
+      // DESCRIPCIÓN - FONDO BLANCO
       // ================================
       if (order.description) {
-        doc.rect(margin, yPos, contentWidth, 60).fillColor(lightGray).fill();
-        doc.rect(margin, yPos, contentWidth, 60).strokeColor(borderGray).stroke();
+        doc.rect(margin, yPos, contentWidth, 40).strokeColor(borderGray).stroke();
         
-        doc.font('Helvetica-Bold').fontSize(12).fillColor(primaryBlue);
+        doc.font('Courier-Bold').fontSize(9).fillColor(primaryBlue);
         const descHeaderText = 'WORK DESCRIPTION';
         const descHeaderWidth = doc.widthOfString(descHeaderText);
         const descHeaderX = centerX - (descHeaderWidth / 2);
-        doc.text(descHeaderText, descHeaderX, yPos + 10);
+        doc.text(descHeaderText, descHeaderX, yPos + 8);
         
-        doc.font('Helvetica').fontSize(10).fillColor(darkGray);
-        doc.text(order.description, margin + 20, yPos + 35, { 
-          width: contentWidth - 40, 
+        doc.font('Courier').fontSize(8).fillColor(black);
+        doc.text(order.description, margin + 15, yPos + 22, { 
+          width: contentWidth - 30, 
           align: 'left',
-          lineGap: 2
+          lineGap: 1
         });
-        yPos += 80;
+        yPos += 50;
       }
       
       // ================================
-      // TABLA DE PARTES - DISEÑO PERFECTO
+      // TABLA DE PARTES - CON CAMPO U/M
       // ================================
       
       // Título de la tabla
-      doc.font('Helvetica-Bold').fontSize(14).fillColor(primaryBlue);
+      doc.font('Courier-Bold').fontSize(10).fillColor(primaryBlue);
       const partsHeaderText = 'PARTS & MATERIALS';
       const partsHeaderWidth = doc.widthOfString(partsHeaderText);
       const partsHeaderX = centerX - (partsHeaderWidth / 2);
       doc.text(partsHeaderText, partsHeaderX, yPos);
-      yPos += 30;
+      yPos += 20;
       
-      // Header de la tabla con diseño perfecto
-      const tableHeaderHeight = 35;
+      // Header de la tabla
+      const tableHeaderHeight = 25;
       doc.rect(margin, yPos, contentWidth, tableHeaderHeight).fillColor(primaryBlue).fill();
       
-      // Definir anchos de columnas perfectamente calculados
+      // Definir anchos de columnas con U/M
       const colWidths = {
-        num: 30,      // #
-        sku: 80,      // SKU
-        desc: 200,    // DESCRIPTION
-        qty: 50,      // QTY
-        unit: 70,     // UNIT COST
-        total: 70,    // TOTAL
-        invoice: 62   // INVOICE
+        sku: 70,      // SKU
+        desc: 180,    // DESCRIPTION
+        um: 40,       // U/M
+        qty: 40,      // QTY
+        unit: 60,     // UNIT COST
+        total: 60,    // TOTAL
+        invoice: 72   // INVOICE
       };
       
       let tableX = margin;
       
-      // Headers de columnas con texto centrado
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(white);
-      
-      // #
-      doc.text('#', tableX + (colWidths.num / 2) - 5, yPos + 12);
-      tableX += colWidths.num;
+      // Headers de columnas
+      doc.font('Courier-Bold').fontSize(8).fillColor(white);
       
       // SKU
-      doc.text('SKU', tableX + (colWidths.sku / 2) - 10, yPos + 12);
+      doc.text('SKU', tableX + (colWidths.sku / 2) - 10, yPos + 8);
       tableX += colWidths.sku;
       
       // DESCRIPTION
-      doc.text('DESCRIPTION', tableX + (colWidths.desc / 2) - 35, yPos + 12);
+      doc.text('DESCRIPTION', tableX + (colWidths.desc / 2) - 30, yPos + 8);
       tableX += colWidths.desc;
       
+      // U/M
+      doc.text('U/M', tableX + (colWidths.um / 2) - 8, yPos + 8);
+      tableX += colWidths.um;
+      
       // QTY
-      doc.text('QTY', tableX + (colWidths.qty / 2) - 10, yPos + 12);
+      doc.text('QTY', tableX + (colWidths.qty / 2) - 8, yPos + 8);
       tableX += colWidths.qty;
       
       // UNIT COST
-      doc.text('UNIT COST', tableX + (colWidths.unit / 2) - 25, yPos + 12);
+      doc.text('UNIT COST', tableX + (colWidths.unit / 2) - 20, yPos + 8);
       tableX += colWidths.unit;
       
       // TOTAL
-      doc.text('TOTAL', tableX + (colWidths.total / 2) - 15, yPos + 12);
+      doc.text('TOTAL', tableX + (colWidths.total / 2) - 12, yPos + 8);
       tableX += colWidths.total;
       
       // INVOICE
-      doc.text('INVOICE', tableX + (colWidths.invoice / 2) - 20, yPos + 12);
+      doc.text('INVOICE', tableX + (colWidths.invoice / 2) - 15, yPos + 8);
       
       yPos += tableHeaderHeight;
       
@@ -308,10 +299,10 @@ async function generateProfessionalPDF(order, id) {
         console.log('Error getting FIFO data:', e.message);
       }
       
-      // Filas de partes con diseño alternado
+      // Filas de partes
       const parts = Array.isArray(order.parts) ? order.parts : (order.parts ? JSON.parse(order.parts) : []);
       let subtotalParts = 0;
-      const rowHeight = 30;
+      const rowHeight = 20;
       
       parts.forEach((part, index) => {
         if (part.sku && part.qty) {
@@ -326,57 +317,57 @@ async function generateProfessionalPDF(order, id) {
           subtotalParts += total;
           
           // Líneas verticales para separar columnas
-          let lineX = margin + colWidths.num;
-          for (let i = 0; i < 6; i++) {
+          let lineX = margin + colWidths.sku;
+          const widthKeys = Object.keys(colWidths);
+          for (let i = 0; i < widthKeys.length - 1; i++) {
             doc.strokeColor(borderGray).lineWidth(0.5);
             doc.moveTo(lineX, yPos).lineTo(lineX, yPos + rowHeight).stroke();
-            const widthKeys = Object.keys(colWidths);
-            if (i < widthKeys.length - 1) {
+            if (i < widthKeys.length - 2) {
               lineX += colWidths[widthKeys[i + 1]];
             }
           }
           
-          // Contenido de las celdas centrado verticalmente
-          const textY = yPos + (rowHeight / 2) - 5;
+          // Contenido de las celdas
+          const textY = yPos + (rowHeight / 2) - 3;
           tableX = margin;
           
-          doc.font('Helvetica').fontSize(9).fillColor(darkGray);
-          
-          // #
-          doc.text(String(index + 1), tableX + 10, textY);
-          tableX += colWidths.num;
+          doc.font('Courier').fontSize(7).fillColor(black);
           
           // SKU
-          doc.text(part.sku || '', tableX + 5, textY);
+          doc.text(part.sku || '', tableX + 3, textY);
           tableX += colWidths.sku;
           
           // DESCRIPTION
-          doc.text(part.part || part.description || '', tableX + 5, textY, { width: colWidths.desc - 10 });
+          doc.text(part.part || part.description || '', tableX + 3, textY, { width: colWidths.desc - 6 });
           tableX += colWidths.desc;
           
+          // U/M (Unidad de medida - por defecto "EA" para Each)
+          doc.text('EA', tableX + 12, textY);
+          tableX += colWidths.um;
+          
           // QTY
-          doc.text(String(qty), tableX + 15, textY);
+          doc.text(String(qty), tableX + 12, textY);
           tableX += colWidths.qty;
           
           // UNIT COST
-          doc.text(`$${unitCost.toFixed(2)}`, tableX + 10, textY);
+          doc.text(`$${unitCost.toFixed(2)}`, tableX + 5, textY);
           tableX += colWidths.unit;
           
           // TOTAL
-          doc.font('Helvetica-Bold').fontSize(9).fillColor(successGreen);
-          doc.text(`$${total.toFixed(2)}`, tableX + 10, textY);
+          doc.font('Courier-Bold').fontSize(7).fillColor(successGreen);
+          doc.text(`$${total.toFixed(2)}`, tableX + 5, textY);
           tableX += colWidths.total;
           
           // INVOICE LINK
           const fifoParts = fifoPartsData.filter(fp => fp.sku === part.sku);
           if (fifoParts.length > 0 && fifoParts[0].invoiceLink) {
-            doc.fillColor(accentBlue).fontSize(8);
-            doc.text('View PDF', tableX + 10, textY, {
+            doc.fillColor(accentBlue).fontSize(6);
+            doc.text('View PDF', tableX + 8, textY, {
               link: fifoParts[0].invoiceLink,
               underline: true
             });
           } else {
-            doc.fillColor('#9CA3AF').fontSize(8);
+            doc.fillColor('#9CA3AF').fontSize(6);
             doc.text('N/A', tableX + 15, textY);
           }
           
@@ -384,105 +375,82 @@ async function generateProfessionalPDF(order, id) {
         }
       });
       
-      yPos += 30;
+      yPos += 15;
       
       // ================================
-      // RESUMEN FINANCIERO - PERFECTO
-      // ================================
-      
-      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
+      // RESUMEN FINANCIERO - LADO DERECHO
+      // ================================      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
       const laborTotal = totalHours * 60;
-      const grandTotal = Number(order.totalLabAndParts) || (subtotalParts + laborTotal);
+      // SIEMPRE usar el valor exacto de totalLabAndParts de la base de datos
+      const grandTotal = Number(order.totalLabAndParts) || 0;
       
-      // Caja de totales centrada y elegante
-      const summaryBoxWidth = 300;
-      const summaryBoxHeight = 120;
-      const summaryX = centerX - (summaryBoxWidth / 2);
+      // Debug log para verificar valores
+      console.log(`PDF Debug - Orden ${id}:`);
+      console.log(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
+      console.log(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
+      console.log(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
+      console.log(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
+      
+      // Caja de totales en el lado derecho
+      const summaryBoxWidth = 200;
+      const summaryBoxHeight = 80;
+      const summaryX = margin + contentWidth - summaryBoxWidth;
       
       doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).fillColor(lightGray).fill();
-      doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).strokeColor(primaryBlue).lineWidth(2).stroke();
+      doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).strokeColor(primaryBlue).lineWidth(1).stroke();
       
       // Header del resumen
-      doc.rect(summaryX, yPos, summaryBoxWidth, 30).fillColor(primaryBlue).fill();
-      doc.font('Helvetica-Bold').fontSize(14).fillColor(white);
+      doc.rect(summaryX, yPos, summaryBoxWidth, 20).fillColor(primaryBlue).fill();
+      doc.font('Courier-Bold').fontSize(9).fillColor(white);
       const summaryHeaderText = 'FINANCIAL SUMMARY';
       const summaryHeaderWidth = doc.widthOfString(summaryHeaderText);
       const summaryHeaderX = summaryX + (summaryBoxWidth / 2) - (summaryHeaderWidth / 2);
-      doc.text(summaryHeaderText, summaryHeaderX, yPos + 8);
+      doc.text(summaryHeaderText, summaryHeaderX, yPos + 6);
       
       // Líneas de totales
-      doc.font('Helvetica').fontSize(11).fillColor(darkGray);
-      doc.text(`Parts Subtotal:`, summaryX + 20, yPos + 45);
-      doc.text(`$${subtotalParts.toFixed(2)}`, summaryX + summaryBoxWidth - 80, yPos + 45);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(`Parts Subtotal:`, summaryX + 10, yPos + 30);
+      doc.text(`$${subtotalParts.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 30);
       
-      doc.text(`Labor (${totalHours} hrs):`, summaryX + 20, yPos + 65);
-      doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 80, yPos + 65);
+      doc.text(`Labor (${totalHours} hrs):`, summaryX + 10, yPos + 45);
+      doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 45);
       
       // Línea separadora
       doc.strokeColor(primaryBlue).lineWidth(1);
-      doc.moveTo(summaryX + 20, yPos + 85).lineTo(summaryX + summaryBoxWidth - 20, yPos + 85).stroke();
+      doc.moveTo(summaryX + 10, yPos + 60).lineTo(summaryX + summaryBoxWidth - 10, yPos + 60).stroke();
       
       // Total final
-      doc.font('Helvetica-Bold').fontSize(14).fillColor(successGreen);
-      doc.text(`TOTAL:`, summaryX + 20, yPos + 95);
-      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 100, yPos + 95);
-      
-      yPos += 150;
-      
-      // ================================
-      // FOOTER - TÉRMINOS Y FIRMAS
-      // ================================
-      
-      // Verificar si necesitamos nueva página
-      if (yPos > pageHeight - 200) {
-        doc.addPage();
-        yPos = margin;
-      }
-      
-      // Términos y condiciones
-      doc.rect(margin, yPos, contentWidth, 80).fillColor(lightGray).fill();
-      doc.rect(margin, yPos, contentWidth, 80).strokeColor(borderGray).stroke();
-      
-      doc.font('Helvetica-Bold').fontSize(11).fillColor(primaryBlue);
-      const termsHeaderText = 'TERMS & CONDITIONS';
-      const termsHeaderWidth = doc.widthOfString(termsHeaderText);
-      const termsHeaderX = centerX - (termsHeaderWidth / 2);
-      doc.text(termsHeaderText, termsHeaderX, yPos + 10);
-      
-      doc.font('Helvetica').fontSize(9).fillColor(darkGray);
-      doc.text('• This work order is subject to standard terms and conditions.', margin + 20, yPos + 35);
-      doc.text('• Pricing may change if job specifications change.', margin + 20, yPos + 50);
-      doc.text('• Customer approval required for additional work exceeding estimate.', margin + 20, yPos + 65);
+      doc.font('Courier-Bold').fontSize(9).fillColor(successGreen);
+      doc.text(`TOTAL:`, summaryX + 10, yPos + 68);
+      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 70, yPos + 68);
       
       yPos += 100;
       
-      // Sección de firmas
-      const signatureBoxWidth = (contentWidth - 40) / 2;
+      // ================================
+      // TÉRMINOS Y CONDICIONES - SIN FONDO, SIN FIRMAS
+      // ================================
       
-      // Firma del cliente
-      doc.rect(margin, yPos, signatureBoxWidth, 60).strokeColor(borderGray).stroke();
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('CUSTOMER SIGNATURE', margin + 10, yPos + 10);
+      doc.rect(margin, yPos, contentWidth, 50).strokeColor(borderGray).stroke();
       
-      doc.strokeColor(darkGray).lineWidth(1);
-      doc.moveTo(margin + 10, yPos + 40).lineTo(margin + signatureBoxWidth - 10, yPos + 40).stroke();
+      doc.font('Courier-Bold').fontSize(9).fillColor(primaryBlue);
+      const termsHeaderText = 'TERMS & CONDITIONS';
+      const termsHeaderWidth = doc.widthOfString(termsHeaderText);
+      const termsHeaderX = centerX - (termsHeaderWidth / 2);
+      doc.text(termsHeaderText, termsHeaderX, yPos + 8);
       
-      // Fecha
-      doc.rect(margin + signatureBoxWidth + 40, yPos, signatureBoxWidth, 60).strokeColor(borderGray).stroke();
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryBlue);
-      doc.text('DATE', margin + signatureBoxWidth + 50, yPos + 10);
+      doc.font('Courier').fontSize(7).fillColor(black);
+      doc.text('• This estimate is not a final bill, pricing could change if job specifications change.', margin + 15, yPos + 22);
+      doc.text('• I accept this estimate without any changes.', margin + 15, yPos + 32);
+      doc.text('• I accept this estimate with the handwritten changes.', margin + 15, yPos + 42);
       
-      doc.strokeColor(darkGray).lineWidth(1);
-      doc.moveTo(margin + signatureBoxWidth + 50, yPos + 40).lineTo(margin + contentWidth - 10, yPos + 40).stroke();
+      yPos += 60;
       
-      yPos += 80;
-      
-      // Mensaje final centrado y elegante
-      doc.font('Helvetica-Bold').fontSize(16).fillColor(accentBlue);
-      const finalText = 'Thank you for choosing JET SHOP LLC!';
+      // Mensaje final centrado
+      doc.font('Courier-Bold').fontSize(10).fillColor(accentBlue);
+      const finalText = 'Thanks for your business!';
       const finalTextWidth = doc.widthOfString(finalText);
       const finalTextX = centerX - (finalTextWidth / 2);
-      doc.text(finalText, finalTextX, yPos + 20);
+      doc.text(finalText, finalTextX, yPos);
       
       doc.end();
       
