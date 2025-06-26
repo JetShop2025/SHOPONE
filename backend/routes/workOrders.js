@@ -17,6 +17,144 @@ function formatDateForPdf(date) {
   return `${mm}-${dd}-${yyyy}`;
 }
 
+// Función para generar PDF profesional en formato Invoice
+async function generateProfessionalPDF(order, id) {
+  const PDFDocument = require('pdfkit');
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 40 });
+      const chunks = [];
+      
+      // Capturar el PDF en memoria
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => {
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve(pdfBuffer);
+      });
+      
+      // HEADER - Logo y título
+      doc.fontSize(18).fillColor('#2E8B57').text('JET SHOP, LLC', 50, 50);
+      doc.fontSize(30).fillColor('#4169E1').text('INVOICE', 320, 50);
+      
+      // Información de la empresa
+      doc.fontSize(10).fillColor('#000000');
+      doc.text('740 EL CAMINO REAL', 50, 80);
+      doc.text('GREENFIELD, CA 93927', 50, 95);
+      
+      // Recuadros principales
+      // Customer Info Box
+      doc.rect(50, 140, 280, 100).stroke();
+      doc.fontSize(12).fillColor('#4169E1').text('Customer:', 60, 150);
+      doc.fontSize(11).fillColor('#000000').text(order.billToCo || 'N/A', 60, 170);
+      doc.text('Trailer:', 60, 190);
+      doc.text(order.trailer || 'N/A', 120, 190);
+      
+      // Invoice Info Box
+      doc.rect(350, 140, 200, 100).stroke();
+      doc.fontSize(12).fillColor('#4169E1').text('Date:', 360, 150);
+      doc.fontSize(11).fillColor('#000000').text(formatDateForPdf(order.date), 420, 150);
+      doc.fontSize(12).fillColor('#4169E1').text('Invoice #:', 360, 170);
+      doc.fontSize(11).fillColor('#000000').text(String(order.idClassic || id), 430, 170);
+      
+      // Mecánicos
+      const mechanics = Array.isArray(order.mechanics) ? order.mechanics : (order.mechanics ? JSON.parse(order.mechanics) : []);
+      if (mechanics.length > 0) {
+        doc.fontSize(12).fillColor('#4169E1').text('Mechanics:', 360, 190);
+        let mechText = mechanics.map(m => `${m.name || 'N/A'} (${m.hrs || '0'})`).join(', ');
+        doc.fontSize(11).fillColor('#000000').text(mechText, 430, 190, { width: 100 });
+      }
+      
+      doc.fontSize(12).fillColor('#4169E1').text('ID CLASSIC:', 360, 210);
+      doc.fontSize(11).fillColor('#000000').text(String(order.idClassic || id), 430, 210);
+      
+      // Descripción
+      doc.fontSize(12).fillColor('#4169E1').text('Description:', 50, 260);
+      doc.fontSize(11).fillColor('#000000').text(order.description || '', 50, 280, { width: 500 });
+      
+      // Tabla de partes
+      let yPos = 330;
+      
+      // Header de la tabla
+      doc.rect(50, yPos, 500, 25).fillAndStroke('#E6E6FA', '#000000');
+      doc.fontSize(10).fillColor('#000000');
+      doc.text('No.', 60, yPos + 8);
+      doc.text('SKU', 100, yPos + 8);
+      doc.text('DESCRIPTION', 180, yPos + 8);
+      doc.text('U/M', 320, yPos + 8);
+      doc.text('QTY', 360, yPos + 8);
+      doc.text('UNIT COST', 400, yPos + 8);
+      doc.text('TOTAL', 460, yPos + 8);
+      doc.text('INVOICE', 510, yPos + 8);
+      
+      yPos += 25;
+      
+      // Partes
+      const parts = Array.isArray(order.parts) ? order.parts : (order.parts ? JSON.parse(order.parts) : []);
+      let subtotalParts = 0;
+      
+      parts.forEach((part, index) => {
+        if (part.sku && part.qty) {
+          doc.rect(50, yPos, 500, 20).stroke();
+          
+          const unitCost = Number(part.cost) || 0;
+          const qty = Number(part.qty) || 0;
+          const total = unitCost * qty;
+          subtotalParts += total;
+          
+          doc.fontSize(9).fillColor('#000000');
+          doc.text(String(index + 1), 60, yPos + 6);
+          doc.text(part.sku || '', 100, yPos + 6);
+          doc.text(part.part || part.description || '', 180, yPos + 6, { width: 130 });
+          doc.text('EA', 320, yPos + 6);
+          doc.text(String(qty), 360, yPos + 6);
+          doc.text(`$${unitCost.toFixed(2)}`, 400, yPos + 6);
+          doc.text(`$${total.toFixed(2)}`, 460, yPos + 6);
+          doc.text('Ver Invoice', 510, yPos + 6);
+          
+          yPos += 20;
+        }
+      });
+      
+      // Totales
+      yPos += 20;
+      
+      // Calcular labor
+      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
+      const laborTotal = totalHours * 60;
+      
+      doc.fontSize(12).fillColor('#4169E1');
+      doc.text(`Subtotal Parts: $${subtotalParts.toFixed(2)}`, 350, yPos);
+      doc.text(`Labor: $${laborTotal.toFixed(2)}`, 350, yPos + 20);
+      
+      // Total final
+      const grandTotal = Number(order.totalLabAndParts) || (subtotalParts + laborTotal);
+      doc.fontSize(14).fillColor('#FF0000');
+      doc.text(`TOTAL LAB & PARTS: $${grandTotal.toFixed(2)}`, 320, yPos + 50);
+      
+      // Terms & Conditions
+      doc.fontSize(10).fillColor('#000000');
+      doc.text('TERMS & CONDITIONS:', 50, yPos + 100);
+      doc.text('This estimate is not a final bill. pricing could change if job specifications change.', 50, yPos + 120);
+      doc.text('I accept this estimate without any changes', 50, yPos + 150);
+      doc.text('I accept this estimate with the handwritten changes', 50, yPos + 170);
+      
+      // Signature lines
+      doc.text('NAME: ________________________', 50, yPos + 200);
+      doc.text('SIGNATURE: ________________________', 300, yPos + 200);
+      
+      // Footer
+      doc.fontSize(12).fillColor('#4169E1');
+      doc.text('Thanks for your business!', 50, yPos + 240);
+      
+      doc.end();
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
   try {
     await db.query(
@@ -145,74 +283,25 @@ router.post('/', async (req, res) => {
     const id = result.insertId;    // RESPONDER INMEDIATAMENTE SIN PROCESOS PESADOS
     const formattedDate = formatDateForPdf(date);
     
-    // Generar PDF automáticamente en segundo plano
-    try {
-      const PDFDocument = require('pdfkit');
-      const fs = require('fs');
-      
-      // Crear PDF
-      const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
-      const pdfPath = path.join(__dirname, '../pdfs', pdfName);
-      
-      const doc = new PDFDocument();
-      const stream = fs.createWriteStream(pdfPath);
-      doc.pipe(stream);
-      
-      // Contenido del PDF
-      doc.fontSize(20).text('WORK ORDER - JET SHOP', 50, 50);
-      doc.fontSize(12);
-      doc.text(`Order ID: ${fields.idClassic || id}`, 50, 100);
-      doc.text(`Bill To: ${billToCo || '-'}`, 50, 120);
-      doc.text(`Trailer: ${trailer || '-'}`, 50, 140);
-      doc.text(`Date: ${formattedDate}`, 50, 160);
-      doc.text(`Mechanic: ${mechanic || '-'}`, 50, 180);
-      doc.text(`Description: ${description || ''}`, 50, 200, { width: 400 });
-      
-      // Mecánicos
-      let yPos = 240;
-      if (mechanicsArr.length > 0) {
-        doc.text('MECHANICS:', 50, yPos);
-        yPos += 20;
-        mechanicsArr.forEach(mech => {
-          if (mech.name && mech.hrs) {
-            doc.text(`- ${mech.name}: ${mech.hrs} hrs`, 60, yPos);
-            yPos += 15;
-          }
-        });
-        yPos += 10;
+    // Generar PDF automáticamente en segundo plano y guardarlo en la base de datos
+    setTimeout(async () => {
+      try {
+        // Obtener los datos completos de la orden recién creada
+        const [orderData] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
+        if (orderData && orderData.length > 0) {
+          const pdfBuffer = await generateProfessionalPDF(orderData[0], id);
+          await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
+          console.log(`PDF creado y guardado en BD para orden ${id}`);
+        }
+      } catch (pdfError) {
+        console.error('Error generando PDF automáticamente:', pdfError);
       }
-      
-      // Partes usadas
-      if (partsArr.length > 0) {
-        doc.text('PARTS USED:', 50, yPos);
-        yPos += 20;
-        partsArr.forEach(part => {
-          if (part.sku && part.qty) {
-            doc.text(`- ${part.sku}: ${part.part || ''} (Qty: ${part.qty}, Cost: $${part.cost || '0.00'})`, 60, yPos);
-            yPos += 15;
-          }
-        });
-      }
-      
-      // Total
-      yPos += 20;
-      doc.fontSize(14).text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 50, yPos);
-      doc.fontSize(12).text(`Status: ${status || 'PENDING'}`, 50, yPos + 30);
-      
-      doc.end();
-      
-      stream.on('finish', () => {
-        console.log(`PDF creado automáticamente: ${pdfName}`);
-      });
-    } catch (pdfError) {
-      console.error('Error generando PDF automáticamente:', pdfError);
-      // No fallar la operación si el PDF no se puede generar
-    }
+    }, 1000);
     
     res.status(201).json({
       id: id,
       message: 'Work Order created successfully',
-      pdfUrl: `/pdfs/${formattedDate}_${fields.idClassic || id}.pdf`
+      pdfUrl: `/work-orders/${id}/pdf`
     });
 
   } catch (err) {
@@ -353,72 +442,20 @@ router.put('/:id', async (req, res) => {
     updateQuery += ` WHERE id = ?`;
     updateFields.push(id);    await db.query(updateQuery, updateFields);
 
-    // 5. Generar PDF automáticamente después de actualizar
-    try {
-      const PDFDocument = require('pdfkit');
-      const fs = require('fs');
-      
-      // Formatear fecha para el PDF usando la función auxiliar
-      const formattedDate = formatDateForPdf(date);
-      
-      // Crear PDF
-      const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
-      const pdfPath = path.join(__dirname, '../pdfs', pdfName);
-      
-      const doc = new PDFDocument();
-      const stream = fs.createWriteStream(pdfPath);
-      doc.pipe(stream);
-      
-      // Contenido del PDF (mejorado)
-      doc.fontSize(20).text('WORK ORDER - JET SHOP', 50, 50);
-      doc.fontSize(12);
-      doc.text(`Order ID: ${fields.idClassic || id}`, 50, 100);
-      doc.text(`Bill To: ${billToCo || '-'}`, 50, 120);
-      doc.text(`Trailer: ${trailer || '-'}`, 50, 140);
-      doc.text(`Date: ${formattedDate}`, 50, 160);
-      doc.text(`Mechanic: ${mechanic || '-'}`, 50, 180);
-      doc.text(`Description: ${description || ''}`, 50, 200, { width: 400 });
-      
-      // Mecánicos
-      let yPos = 240;
-      if (mechanicsArr.length > 0) {
-        doc.text('MECHANICS:', 50, yPos);
-        yPos += 20;
-        mechanicsArr.forEach(mech => {
-          if (mech.name && mech.hrs) {
-            doc.text(`- ${mech.name}: ${mech.hrs} hrs`, 60, yPos);
-            yPos += 15;
-          }
-        });
-        yPos += 10;
+    // 5. Generar PDF automáticamente después de actualizar y guardarlo en la base de datos
+    setTimeout(async () => {
+      try {
+        // Obtener los datos actualizados
+        const [orderData] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
+        if (orderData && orderData.length > 0) {
+          const pdfBuffer = await generateProfessionalPDF(orderData[0], id);
+          await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
+          console.log(`PDF actualizado y guardado en BD para orden ${id}`);
+        }
+      } catch (pdfError) {
+        console.error('Error generando PDF automáticamente:', pdfError);
       }
-      
-      // Partes usadas
-      if (partsArr.length > 0) {
-        doc.text('PARTS USED:', 50, yPos);
-        yPos += 20;
-        partsArr.forEach(part => {
-          if (part.sku && part.qty) {
-            doc.text(`- ${part.sku}: ${part.part || ''} (Qty: ${part.qty}, Cost: $${part.cost || '0.00'})`, 60, yPos);
-            yPos += 15;
-          }
-        });
-      }
-      
-      // Total
-      yPos += 20;
-      doc.fontSize(14).text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 50, yPos);
-      doc.fontSize(12).text(`Status: ${status || 'PENDING'}`, 50, yPos + 30);
-      
-      doc.end();
-      
-      stream.on('finish', () => {
-        console.log(`PDF actualizado automáticamente: ${pdfName}`);
-      });
-    } catch (pdfError) {
-      console.error('Error generando PDF automáticamente:', pdfError);
-      // No fallar la operación si el PDF no se puede generar
-    }
+    }, 1000);
 
     res.json({ success: true, id });
 
@@ -481,39 +518,55 @@ router.get('/audit-log', async (req, res) => {
   }
 });
 
-// Obtener PDF por ID de orden
+// Obtener PDF por ID de orden (desde base de datos)
 router.get('/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;
-    const [results] = await db.query('SELECT date, idClassic FROM work_orders WHERE id = ?', [id]);
+    const [results] = await db.query('SELECT pdf_file, idClassic FROM work_orders WHERE id = ?', [id]);
     
     if (!results || results.length === 0) {
       return res.status(404).send('WORK ORDER NOT FOUND');
     }
     
     const order = results[0];
-    const fs = require('fs');
-    const pdfsDir = path.join(__dirname, '../pdfs');
     
-    // Buscar el archivo PDF que contenga el ID de la orden
-    const pdfFiles = fs.readdirSync(pdfsDir);
-    const matchingPdf = pdfFiles.find(file => 
-      file.endsWith(`_${order.idClassic || id}.pdf`)
-    );
-    
-    if (!matchingPdf) {
-      console.log(`PDF no encontrado para orden ${id}. Archivos disponibles:`, pdfFiles);
-      return res.status(404).send('PDF NOT FOUND - No matching file found');
+    // Si no hay PDF en la base de datos, generar uno nuevo
+    if (!order.pdf_file) {
+      console.log(`PDF no encontrado para orden ${id}, generando nuevo PDF...`);
+      
+      // Obtener datos completos de la orden para generar PDF
+      const [fullOrder] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
+      if (!fullOrder || fullOrder.length === 0) {
+        return res.status(404).send('WORK ORDER DATA NOT FOUND');
+      }
+      
+      try {
+        // Generar PDF profesional
+        const pdfBuffer = await generateProfessionalPDF(fullOrder[0], id);
+        
+        // Guardar PDF en la base de datos
+        await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
+        
+        // Enviar el PDF generado
+        const fileName = `workorder_${order.idClassic || id}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+        res.send(pdfBuffer);
+        
+        console.log(`PDF generado y guardado para orden ${id}`);
+        return;
+        
+      } catch (pdfError) {
+        console.error('Error generando PDF:', pdfError);
+        return res.status(500).send('ERROR GENERATING PDF');
+      }
     }
     
-    const pdfPath = path.join(pdfsDir, matchingPdf);
+    // Enviar PDF existente desde la base de datos
     const fileName = `workorder_${order.idClassic || id}.pdf`;
-    
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-    
-    // Enviar el archivo
-    res.sendFile(pdfPath);
+    res.send(order.pdf_file);
     
   } catch (error) {
     console.error('Error obteniendo PDF:', error);
@@ -522,6 +575,7 @@ router.get('/:id/pdf', async (req, res) => {
 });
 
 // Regenerar PDF para una orden existente
+// Regenerar PDF para una orden existente (guardado en base de datos)
 router.post('/:id/generate-pdf', async (req, res) => {
   const { id } = req.params;
   try {
@@ -532,63 +586,24 @@ router.post('/:id/generate-pdf', async (req, res) => {
     }
     
     const order = results[0];
-    const PDFDocument = require('pdfkit');
-    const fs = require('fs');
-    const path = require('path');
-      // Formatear fecha para el PDF
-    const formattedDate = formatDateForPdf(order.date);
     
-    // Crear PDF
-    const pdfName = `${formattedDate}_${order.idClassic || id}.pdf`;
-    const pdfPath = path.join(__dirname, '../pdfs', pdfName);
-    
-    const doc = new PDFDocument();
-    const stream = fs.createWriteStream(pdfPath);
-    doc.pipe(stream);
-    
-    // Contenido del PDF (mejorado)
-    doc.fontSize(20).text('WORK ORDER - JET SHOP', 50, 50);
-    doc.fontSize(12);
-    doc.text(`Order ID: ${order.idClassic || id}`, 50, 100);
-    doc.text(`Bill To: ${order.billToCo || '-'}`, 50, 120);
-    doc.text(`Trailer: ${order.trailer || '-'}`, 50, 140);
-    doc.text(`Date: ${formattedDate}`, 50, 160);
-    doc.text(`Mechanic: ${order.mechanic || '-'}`, 50, 180);
-    doc.text(`Description: ${order.description || ''}`, 50, 200, { width: 400 });
-    
-    // Partes usadas
-    let yPos = 240;
     try {
-      const parts = JSON.parse(order.parts || '[]');
-      if (parts.length > 0) {
-        doc.text('PARTS USED:', 50, yPos);
-        yPos += 20;
-        parts.forEach(part => {
-          if (part.sku && part.qty) {
-            doc.text(`- ${part.sku}: ${part.part || ''} (Qty: ${part.qty}, Cost: $${part.cost || '0.00'})`, 60, yPos);
-            yPos += 15;
-          }
-        });
-      }
-    } catch (e) {
-      console.error('Error parsing parts:', e);
-    }
-    
-    // Total
-    yPos += 20;
-    doc.fontSize(14).text(`TOTAL: $${parseFloat(order.totalLabAndParts || 0).toFixed(2)}`, 50, yPos);
-    doc.fontSize(12).text(`Status: ${order.status || 'PENDING'}`, 50, yPos + 30);
-    
-    doc.end();
-    
-    // Esperar a que termine de escribir
-    stream.on('finish', () => {
-      console.log(`PDF regenerado: ${pdfName}`);
+      // Generar PDF profesional
+      const pdfBuffer = await generateProfessionalPDF(order, id);
+      
+      // Guardar PDF en la base de datos
+      await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
+      
+      console.log(`PDF regenerado y guardado en BD para orden ${id}`);
       res.json({ 
-        message: 'PDF regenerated successfully',
-        pdfUrl: `/pdfs/${pdfName}`
+        message: 'PDF regenerated successfully and saved to database',
+        pdfUrl: `/work-orders/${id}/pdf`
       });
-    });
+      
+    } catch (pdfError) {
+      console.error('Error generando PDF:', pdfError);
+      res.status(500).json({ error: 'Error generating PDF' });
+    }
     
   } catch (err) {
     console.error('Error regenerating PDF:', err);
