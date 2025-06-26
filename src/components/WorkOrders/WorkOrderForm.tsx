@@ -127,22 +127,33 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       
       if (foundPart) {
         // Autocompletar nombre de la parte
-        newParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';
-          // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
+        newParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';        // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
         let cost = 0;
+        console.log('🔍 Campos de precio disponibles:', {
+          precio: foundPart.precio,
+          cost: foundPart.cost,
+          price: foundPart.price,
+          allKeys: Object.keys(foundPart)
+        });
+        
         if (foundPart.precio) {
           cost = parseFloat(String(foundPart.precio)) || 0;
+          console.log('💰 Usando campo "precio":', foundPart.precio, '→', cost);
         } else if (foundPart.cost) {
           cost = foundPart.cost;
+          console.log('💰 Usando campo "cost":', foundPart.cost, '→', cost);
         } else if (foundPart.price) {
           cost = foundPart.price;
+          console.log('💰 Usando campo "price":', foundPart.price, '→', cost);
         } else if (foundPart.unitCost) {
           cost = foundPart.unitCost;
+          console.log('💰 Usando campo "unitCost":', foundPart.unitCost, '→', cost);
         } else if (foundPart.unit_cost) {
           cost = foundPart.unit_cost;
-        }
-        
-        // Formatear el costo
+          console.log('💰 Usando campo "unit_cost":', foundPart.unit_cost, '→', cost);
+        } else {
+          console.log('❌ No se encontró ningún campo de precio válido');
+        }        // Formatear el costo
         newParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : parseFloat(String(cost)).toFixed(2);
         
         console.log('✅ Auto-completando parte:', {
