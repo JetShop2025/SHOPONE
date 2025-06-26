@@ -5,6 +5,46 @@ const router = express.Router();
 
 router.use(express.json());
 
+// Función auxiliar para registrar partes en FIFO directamente
+async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario) {
+  let qtyToDeduct = Number(qty_used);
+  const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
+
+  try {
+    // Busca recibos FIFO con partes disponibles
+    const [receives] = await db.query(
+      'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
+      [sku]
+    );
+
+    let totalDeducted = 0;
+    for (const receive of receives) {
+      if (qtyToDeduct <= 0) break;
+      const deductQty = Math.min(receive.qty_remaining, qtyToDeduct);
+
+      // Descuenta del recibo
+      await db.query(
+        'UPDATE receives SET qty_remaining = qty_remaining - ? WHERE id = ?',
+        [deductQty, receive.id]
+      );
+
+      // Registra en work_order_parts
+      await db.query(
+        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, usuario]
+      );
+
+      qtyToDeduct -= deductQty;
+      totalDeducted += deductQty;
+    }
+
+    return { success: true, totalDeducted };
+  } catch (error) {
+    console.error('Error en registerPartFifo:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Función auxiliar para formatear fecha de manera consistente
 function formatDateForPdf(date) {
   if (!date) return new Date().toLocaleDateString('en-US').replace(/\//g, '-');
@@ -17,7 +57,6 @@ function formatDateForPdf(date) {
   return `${mm}-${dd}-${yyyy}`;
 }
 
-// Función para generar PDF profesional en formato Invoice EXACTO
 // Función para generar PDF profesional con diseño PERFECTO y CENTRADO
 async function generateProfessionalPDF(order, id) {
   const PDFDocument = require('pdfkit');
@@ -592,28 +631,23 @@ router.post('/', async (req, res) => {
           if (partsArr && partsArr.length > 0) {
             console.log(`Registrando ${partsArr.length} partes en el sistema FIFO...`);
             for (const part of partsArr) {
-              if (part.sku && part.qty && Number(part.qty) > 0) {
-                try {
+              if (part.sku && part.qty && Number(part.qty) > 0) {                try {
                   console.log(`Registrando parte: ${part.sku}, qty: ${part.qty}`);
                   
-                  // Llamar directamente al endpoint FIFO
-                  const response = await fetch('http://localhost:5050/work-order-parts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      work_order_id: id,
-                      sku: part.sku,
-                      part_name: part.part || part.description || '',
-                      qty_used: part.qty,
-                      cost: part.cost,
-                      usuario: fields.usuario || 'SYSTEM'
-                    })
-                  });
+                  // Llamar directamente a la función FIFO
+                  const result = await registerPartFifo(
+                    id,
+                    part.sku,
+                    part.part || part.description || '',
+                    part.qty,
+                    part.cost,
+                    fields.usuario || 'SYSTEM'
+                  );
                   
-                  if (response.ok) {
+                  if (result.success) {
                     console.log(`✓ Parte ${part.sku} registrada en FIFO exitosamente`);
                   } else {
-                    console.error(`✗ Error HTTP ${response.status} registrando parte ${part.sku}`);
+                    console.error(`✗ Error registrando parte ${part.sku}: ${result.error}`);
                   }
                 } catch (fifoError) {
                   console.error(`✗ Error registrando parte ${part.sku} en FIFO:`, fifoError.message);
@@ -796,27 +830,22 @@ router.put('/:id', async (req, res) => {
           // Registrar las nuevas partes en FIFO
           console.log(`Registrando ${partsArr.length} partes actualizadas en FIFO...`);
           for (const part of partsArr) {
-            if (part.sku && part.qty && Number(part.qty) > 0) {
-              try {
+            if (part.sku && part.qty && Number(part.qty) > 0) {              try {
                 console.log(`Actualizando parte: ${part.sku}, qty: ${part.qty}`);
                 
-                const response = await fetch('http://localhost:5050/work-order-parts', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    work_order_id: id,
-                    sku: part.sku,
-                    part_name: part.part || part.description || '',
-                    qty_used: part.qty,
-                    cost: part.cost,
-                    usuario: fields.usuario || 'SYSTEM'
-                  })
-                });
+                const result = await registerPartFifo(
+                  id,
+                  part.sku,
+                  part.part || part.description || '',
+                  part.qty,
+                  part.cost,
+                  fields.usuario || 'SYSTEM'
+                );
                 
-                if (response.ok) {
+                if (result.success) {
                   console.log(`✓ Parte ${part.sku} actualizada en FIFO exitosamente`);
                 } else {
-                  console.error(`✗ Error HTTP ${response.status} actualizando parte ${part.sku}`);
+                  console.error(`✗ Error actualizando parte ${part.sku}: ${result.error}`);
                 }
               } catch (fifoError) {
                 console.error(`✗ Error actualizando parte ${part.sku} en FIFO:`, fifoError.message);
