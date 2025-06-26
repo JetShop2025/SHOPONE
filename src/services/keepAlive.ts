@@ -1,26 +1,30 @@
 // Keep-alive service para mantener el servidor de Render activo
-// Este archivo se ejecuta en el cliente para hacer ping al servidor
+// TEMPORALMENTE DESHABILITADO PARA OPTIMIZAR MEMORIA
 
-const KEEP_ALIVE_INTERVAL = 8 * 60 * 1000; // 8 minutos (antes de los 15 min de Render)
-const PING_TIMEOUT = 15000; // 15 segundos timeout
+const KEEP_ALIVE_INTERVAL = 15 * 60 * 1000; // 15 minutos (reducido para memoria)
+const PING_TIMEOUT = 10000; // 10 segundos timeout (reducido)
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
 
 class KeepAliveService {
   private intervalId: NodeJS.Timeout | null = null;
   private consecutiveFailures = 0;
-  private maxFailures = 3;
+  private maxFailures = 2; // Reducido para fallar más rápido
 
   start() {
+    // DESHABILITADO TEMPORALMENTE PARA OPTIMIZAR MEMORIA
+    console.log('⚠️ Keep-alive service deshabilitado temporalmente para optimizar memoria');
+    return;
+    
     if (this.intervalId) {
       return; // Ya está ejecutándose
     }
 
-    console.log('🟢 Keep-alive service iniciado (intervalo: 8 min)');
+    console.log('🟢 Keep-alive service iniciado (intervalo: 15 min)');
     
     // Hacer ping inmediatamente
     this.ping();
     
-    // Configurar ping cada 8 minutos
+    // Configurar ping cada 15 minutos
     this.intervalId = setInterval(() => {
       this.ping();
     }, KEEP_ALIVE_INTERVAL);

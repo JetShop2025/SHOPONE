@@ -153,8 +153,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           console.log('💰 Usando campo "unit_cost":', foundPart.unit_cost, '→', cost);
         } else {
           console.log('❌ No se encontró ningún campo de precio válido');
-        }        // Formatear el costo
-        newParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : parseFloat(String(cost)).toFixed(2);
+        }        // Formatear el costo correctamente
+        if (cost > 0) {
+          newParts[index].cost = cost.toFixed(2);
+        } else {
+          newParts[index].cost = '0.00';
+        }
         
         console.log('✅ Auto-completando parte:', {
           sku: value,
@@ -363,20 +367,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
           </label>
-          
-          <label style={{ flex: '1 1 120px' }}>
+            <label style={{ flex: '1 1 120px' }}>
             Trailer
-            <select
+            <input
+              list="trailer-options"
               name="trailer"
               value={workOrder.trailer || ''}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-            >
-              <option value="">Selecciona...</option>
+              placeholder="Selecciona o escribe el trailer..."
+            />
+            <datalist id="trailer-options">
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
-            </select>
+            </datalist>
           </label>
         </div>
 

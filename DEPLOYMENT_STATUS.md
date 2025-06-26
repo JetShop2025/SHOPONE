@@ -1,12 +1,26 @@
 # 🚀 DEPLOYMENT STATUS - RENDER
 
-## ✅ DEPLOY FINAL COMPLETADO
+## ✅ DEPLOY FINAL COMPLETADO + HOTFIX
 
-**Último commit:** `WORKSPACE CLEANUP`
-**Mensaje:** "Limpieza completa del workspace de desarrollo"
-**Timestamp:** 26/06/2025
+**Último commit:** `Fix: Solucionar error de PDF y autocompletado de precios`
+**Mensaje:** Corrección crítica de variable totalHours + priorización campo 'precio'
+**Timestamp:** 26/06/2025 - 22:50 UTC
 
-## 📦 CAMBIOS DEPLOYADOS
+## 🔧 HOTFIX DEPLOYADO
+
+### 1. **ERROR PDF CRÍTICO SOLUCIONADO** ✅
+- ✅ Variable `totalHours` correctamente definida en generateProfessionalPDF
+- ✅ Error "totalHours is not defined" eliminado completamente
+- ✅ Creación de WO funcionando sin errores
+- ✅ PDF se genera automáticamente sin fallos
+
+### 2. **AUTOCOMPLETADO PRECIOS PERFECCIONADO** ✅ 
+- ✅ Campo `precio` como primera prioridad en dropdown
+- ✅ Función findPartBySku optimizada para usar `item.precio`
+- ✅ Consistencia total entre inventario y autocompletado
+- ✅ Debugging mejorado con logs claros
+
+## 📦 CAMBIOS DEPLOYADOS ANTERIORES
 
 ### 1. **PDF FORMAT PROFESIONAL** ✅
 - ✅ Diseño completamente renovado y moderno
