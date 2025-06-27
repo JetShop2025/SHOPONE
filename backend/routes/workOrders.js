@@ -1071,10 +1071,25 @@ router.get('/audit-log', async (req, res) => {
   }
 });
 
-// Obtener PDF por ID de orden (desde base de datos)
+// Obtener PDF por ID de orden (desde base de datos) - DESHABILITADO PARA EVITAR CRASHES
 router.get('/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // TEMPORALMENTE DESHABILITADO - Generar PDFs causa crashes en plan gratuito
+    console.log(`⚠️ Generación de PDF deshabilitada temporalmente para evitar crashes de memoria`);
+    console.log(`📄 Solicitado PDF para orden ${id} - Respuesta: mensaje informativo`);
+    
+    res.status(503).json({
+      error: 'PDF generation temporarily disabled',
+      message: 'Para evitar crashes del sistema, la generación de PDFs está temporalmente deshabilitada. Actualice a un plan de pago para habilitar esta funcionalidad.',
+      workOrderId: id,
+      suggestion: 'Los datos de la orden están disponibles en la interfaz principal.'
+    });
+    
+    return;
+    
+    /* CÓDIGO DESHABILITADO - CAUSA CRASHES EN PLAN GRATUITO
     const [results] = await db.query('SELECT pdf_file, idClassic FROM work_orders WHERE id = ?', [id]);
     
     if (!results || results.length === 0) {
@@ -1120,17 +1135,35 @@ router.get('/:id/pdf', async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
     res.send(order.pdf_file);
+    */
     
   } catch (error) {
-    console.error('Error obteniendo PDF:', error);
-    res.status(500).send('ERROR GETTING PDF');
+    console.error('Error en endpoint PDF:', error);
+    res.status(500).json({ 
+      error: 'PDF endpoint error',
+      message: 'Error accessing PDF functionality'
+    });
   }
 });
 
-// Regenerar PDF para una orden existente
-// Regenerar PDF para una orden existente (guardado en base de datos)
+// Regenerar PDF para una orden existente - DESHABILITADO PARA EVITAR CRASHES
 router.post('/:id/generate-pdf', async (req, res) => {
   const { id } = req.params;
+  
+  // TEMPORALMENTE DESHABILITADO - Generar PDFs causa crashes en plan gratuito
+  console.log(`⚠️ Regeneración de PDF deshabilitada temporalmente para evitar crashes de memoria`);
+  console.log(`📄 Solicitada regeneración de PDF para orden ${id} - Respuesta: mensaje informativo`);
+  
+  res.status(503).json({
+    error: 'PDF generation temporarily disabled',
+    message: 'Para evitar crashes del sistema, la generación de PDFs está temporalmente deshabilitada. Actualice a un plan de pago para habilitar esta funcionalidad.',
+    workOrderId: id,
+    suggestion: 'Los datos de la orden están disponibles en la interfaz principal.'
+  });
+  
+  return;
+  
+  /* CÓDIGO DESHABILITADO - CAUSA CRASHES EN PLAN GRATUITO
   try {
     // Obtener datos de la orden
     const [results] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
@@ -1162,6 +1195,7 @@ router.post('/:id/generate-pdf', async (req, res) => {
     console.error('Error regenerating PDF:', err);
     res.status(500).json({ error: 'Error regenerating PDF' });
   }
+  */
 });
 
 module.exports = router;
