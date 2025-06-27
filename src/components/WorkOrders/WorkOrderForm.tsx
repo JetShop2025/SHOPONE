@@ -78,11 +78,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const exactMatch = inventory.find((item: any) => 
       String(item.sku).toLowerCase() === String(sku).toLowerCase()
     );
-    
-    if (exactMatch) {      console.log('✅ Parte encontrada por SKU exacto:', {
+      if (exactMatch) {      console.log('✅ Parte encontrada por SKU exacto:', {
         sku: exactMatch.sku,
         name: exactMatch.part || exactMatch.description || exactMatch.name,
-        precio: exactMatch.precio, // Campo correcto de inventario
+        precio: exactMatch.precio,
         cost: exactMatch.cost || exactMatch.price || exactMatch.unitCost || exactMatch.unit_cost,
         allFields: exactMatch
       });
@@ -97,7 +96,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (partialMatch) {      console.log('⚠️ Parte encontrada por coincidencia parcial:', {
         sku: partialMatch.sku,
         name: partialMatch.part || partialMatch.description || partialMatch.name,
-        precio: partialMatch.precio, // Campo correcto de inventario
+        precio: partialMatch.precio,
+        cost: partialMatch.cost || partialMatch.price || partialMatch.unitCost || partialMatch.unit_cost,
+        allFields: partialMatch
+      });
+      return partialMatch;
+    }
+    
+    console.log('❌ No se encontró parte para SKU:', sku);
+    console.log('📋 Inventario disponible (primeros 3):', inventory.slice(0, 3).map(item => ({
+      sku: item.sku,
+      precio: item.precio,
+      cost: item.cost
+    })));
+    return null;
         cost: partialMatch.cost || partialMatch.price || partialMatch.unitCost || partialMatch.unit_cost,
         allFields: partialMatch
       });
@@ -133,27 +145,30 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           precio: foundPart.precio,
           cost: foundPart.cost,
           price: foundPart.price,
+          unitCost: foundPart.unitCost,
+          unit_cost: foundPart.unit_cost,
           allKeys: Object.keys(foundPart)
         });
         
-        if (foundPart.precio) {
+        // Prioridad en el orden: precio > cost > price > unitCost > unit_cost
+        if (foundPart.precio !== undefined && foundPart.precio !== null && foundPart.precio !== '') {
           cost = parseFloat(String(foundPart.precio)) || 0;
           console.log('💰 Usando campo "precio":', foundPart.precio, '→', cost);
-        } else if (foundPart.cost) {
-          cost = foundPart.cost;
+        } else if (foundPart.cost !== undefined && foundPart.cost !== null && foundPart.cost !== '') {
+          cost = parseFloat(String(foundPart.cost)) || 0;
           console.log('💰 Usando campo "cost":', foundPart.cost, '→', cost);
-        } else if (foundPart.price) {
-          cost = foundPart.price;
+        } else if (foundPart.price !== undefined && foundPart.price !== null && foundPart.price !== '') {
+          cost = parseFloat(String(foundPart.price)) || 0;
           console.log('💰 Usando campo "price":', foundPart.price, '→', cost);
-        } else if (foundPart.unitCost) {
-          cost = foundPart.unitCost;
+        } else if (foundPart.unitCost !== undefined && foundPart.unitCost !== null && foundPart.unitCost !== '') {
+          cost = parseFloat(String(foundPart.unitCost)) || 0;
           console.log('💰 Usando campo "unitCost":', foundPart.unitCost, '→', cost);
-        } else if (foundPart.unit_cost) {
-          cost = foundPart.unit_cost;
+        } else if (foundPart.unit_cost !== undefined && foundPart.unit_cost !== null && foundPart.unit_cost !== '') {
+          cost = parseFloat(String(foundPart.unit_cost)) || 0;
           console.log('💰 Usando campo "unit_cost":', foundPart.unit_cost, '→', cost);
         } else {
           console.log('❌ No se encontró ningún campo de precio válido');
-        }        // Formatear el costo correctamente
+        }// Formatear el costo correctamente
         if (cost > 0) {
           newParts[index].cost = cost.toFixed(2);
         } else {
@@ -526,9 +541,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     type="text"
                     value={part.sku || ''}
                     onChange={e => handlePartChange(index, 'sku', e.target.value)}
+                    onInput={e => handlePartChange(index, 'sku', (e.target as HTMLInputElement).value)}
+                    onBlur={e => handlePartChange(index, 'sku', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="SKU"
-                  />                  <datalist id={`inventory-${index}`}>
+                  /><datalist id={`inventory-${index}`}>
                     {inventory.map((item: any) => {
                       // PRIORIDAD AL CAMPO 'precio' de la tabla inventory
                       const cost = item.precio || item.cost || item.price || item.unitCost || item.unit_cost || 0;
