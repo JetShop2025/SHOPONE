@@ -156,8 +156,51 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5050;
+
+// MONITOR DE SISTEMA - Logging detallado para diagnóstico
+console.log('🚀 ========================================');
+console.log('🚀 INICIANDO SERVIDOR CON LOGGING DETALLADO');
+console.log('🚀 ========================================');
+console.log(`📊 Node.js Version: ${process.version}`);
+console.log(`📊 Memoria inicial: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+console.log(`📊 Límite de memoria configurado: ${process.memoryUsage().rss / 1024 / 1024}MB`);
+console.log(`📊 Puerto: ${PORT}`);
+console.log(`📊 NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`📊 Garbage Collector disponible: ${global.gc ? 'SÍ' : 'NO'}`);
+
+// Monitor de memoria cada 30 segundos
+setInterval(() => {
+  const memUsage = process.memoryUsage();
+  const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+  const rssMB = Math.round(memUsage.rss / 1024 / 1024);
+  
+  console.log(`📊 [MONITOR] Memoria - Heap: ${heapUsedMB}/${heapTotalMB}MB, RSS: ${rssMB}MB`);
+  
+  // Alerta si la memoria está alta
+  if (heapUsedMB > 250) {
+    console.log(`⚠️ [MONITOR] ALERTA: Memoria alta - ${heapUsedMB}MB`);
+  }
+}, 30000);
+
+// Monitor de errores no capturados
+process.on('uncaughtException', (error) => {
+  console.error('💀 [MONITOR] UNCAUGHT EXCEPTION:', error.message);
+  console.error('💀 [MONITOR] Stack trace:', error.stack);
+  console.error(`📊 [MONITOR] Memoria en crash: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💀 [MONITOR] UNHANDLED REJECTION:', reason);
+  console.error('💀 [MONITOR] Promise:', promise);
+  console.error(`📊 [MONITOR] Memoria en rejection: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+});
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`);
+  console.log(`✅ Servidor corriendo en http://0.0.0.0:${PORT}`);
+  console.log(`📊 Memoria después de iniciar: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  console.log('🔍 SISTEMA LISTO PARA DIAGNÓSTICO DE CRASHES');
+  console.log('🚀 ========================================');
   // Production version - CORS fixed and optimized - 2025-06-25
 });
 

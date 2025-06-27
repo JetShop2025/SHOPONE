@@ -7,40 +7,65 @@ router.use(express.json());
 
 // Función auxiliar para registrar partes en FIFO directamente
 async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario) {
+  const fifoId = `FIFO_${work_order_id}_${sku}_${Date.now()}`;
+  console.log(`🔄 [${fifoId}] Iniciando registro FIFO - SKU: ${sku}, Qty: ${qty_used}`);
+  
   let qtyToDeduct = Number(qty_used);
   const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
+  
+  console.log(`📊 [${fifoId}] Memoria inicial: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 
   try {
+    console.log(`🔍 [${fifoId}] Buscando recibos FIFO disponibles...`);
+    
     // Busca recibos FIFO con partes disponibles
     const [receives] = await db.query(
       'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
       [sku]
     );
+    
+    console.log(`📦 [${fifoId}] Encontrados ${receives.length} recibos disponibles`);
 
     let totalDeducted = 0;
-    for (const receive of receives) {
+    for (let i = 0; i < receives.length; i++) {
+      const receive = receives[i];
       if (qtyToDeduct <= 0) break;
+      
       const deductQty = Math.min(receive.qty_remaining, qtyToDeduct);
+      console.log(`📝 [${fifoId}] Procesando recibo ${i + 1}/${receives.length} - Deduciendo ${deductQty} de ${receive.qty_remaining} disponibles`);
 
       // Descuenta del recibo
       await db.query(
         'UPDATE receives SET qty_remaining = qty_remaining - ? WHERE id = ?',
         [deductQty, receive.id]
       );
+      console.log(`✓ [${fifoId}] Recibo actualizado - ID: ${receive.id}`);
 
       // Registra en work_order_parts
       await db.query(
         'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, usuario]
       );
+      console.log(`✓ [${fifoId}] Parte registrada en work_order_parts`);
 
       qtyToDeduct -= deductQty;
       totalDeducted += deductQty;
+      
+      // Log de memoria cada 10 iteraciones
+      if ((i + 1) % 10 === 0) {
+        console.log(`📊 [${fifoId}] Memoria en iteración ${i + 1}: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+      }
     }
 
+    console.log(`✅ [${fifoId}] FIFO completado - Total deducido: ${totalDeducted}`);
+    console.log(`📊 [${fifoId}] Memoria final: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    
     return { success: true, totalDeducted };
   } catch (error) {
-    console.error('Error en registerPartFifo:', error);
+    console.error(`💀 [${fifoId}] ERROR CRÍTICO en registerPartFifo:`, error.message);
+    console.error(`💀 [${fifoId}] Stack trace:`, error.stack);
+    console.error(`📊 [${fifoId}] Memoria en error: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    
     return { success: false, error: error.message };
   }
 }
@@ -548,8 +573,15 @@ router.get('/', async (req, res) => {
 
 // CREAR ORDEN DE TRABAJO - SIMPLIFICADO EMERGENCIA
 router.post('/', async (req, res) => {
+  const startTime = Date.now();
+  const requestId = `CREATE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  console.log(`🚀 [${requestId}] INICIANDO CREACIÓN DE WORK ORDER`);
+  console.log(`📊 [${requestId}] Memoria inicial: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  
   try {
     const fields = req.body;
+    console.log(`📝 [${requestId}] Datos recibidos - Parts: ${fields.parts?.length || 0}, Trailer: ${fields.trailer}, Mechanic: ${fields.mechanic}`);
     const parts = fields.parts || [];
     const extraOptions = fields.extraOptions || [];
     const billToCo = fields.billToCo || '';
@@ -612,8 +644,9 @@ router.post('/', async (req, res) => {
     } else {
       // Usa el cálculo automático
       totalLabAndPartsFinal = subtotal + extra;
-    }
-
+    }    console.log(`💾 [${requestId}] Preparando inserción en DB...`);
+    console.log(`📊 [${requestId}] Memoria antes de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    
     // INSERTAR EN DB SIMPLE
     const query = `
       INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions)
@@ -624,23 +657,42 @@ router.post('/', async (req, res) => {
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, idClassic,
       JSON.stringify(extraOptions || [])
     ];
+    
+    console.log(`🗄️ [${requestId}] Ejecutando query de inserción...`);
     const [result] = await db.query(query, values);
-    const id = result.insertId;    // RESPONDER INMEDIATAMENTE
+    const id = result.insertId;
+    
+    console.log(`✅ [${requestId}] WO creada exitosamente - ID: ${id}`);
+    console.log(`📊 [${requestId}] Memoria después de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);    // RESPONDER INMEDIATAMENTE
+    console.log(`📤 [${requestId}] Enviando respuesta al cliente...`);
     res.status(201).json({
       id: id,
       message: 'Work Order created successfully',
       pdfUrl: `/work-orders/${id}/pdf`
     });
+    
+    console.log(`⚡ [${requestId}] Respuesta enviada - Tiempo: ${Date.now() - startTime}ms`);
+    console.log(`📊 [${requestId}] Memoria antes de FIFO: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 
     // TEMPORALMENTE DESHABILITADO - PDF SOLO SE GENERA CUANDO SE SOLICITA
     console.log(`✅ Orden ${id} creada exitosamente - PDF se generará bajo demanda`);
 
     // Procesar SOLO FIFO (SIN PDF AUTOMÁTICO PARA AHORRAR MEMORIA)
     if (partsArr && partsArr.length > 0) {
+      console.log(`🔄 [${requestId}] Iniciando proceso FIFO asíncrono para ${partsArr.length} partes...`);
+      
       setImmediate(async () => {
+        const fifoStartTime = Date.now();
+        const fifoId = `FIFO_${id}_${Date.now()}`;
+        
         try {
-          console.log(`Registrando ${partsArr.length} partes en FIFO para orden ${id}...`);
-          for (const part of partsArr) {
+          console.log(`🔄 [${fifoId}] Iniciando procesamiento FIFO`);
+          console.log(`📊 [${fifoId}] Memoria inicial FIFO: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          
+          for (let i = 0; i < partsArr.length; i++) {
+            const part = partsArr[i];
+            console.log(`🔧 [${fifoId}] Procesando parte ${i + 1}/${partsArr.length}: ${part.sku}`);
+            
             if (part.sku && part.qty && Number(part.qty) > 0) {
               try {
                 const result = await registerPartFifo(
@@ -652,23 +704,63 @@ router.post('/', async (req, res) => {
                   fields.usuario || 'SYSTEM'
                 );
                 if (result.success) {
-                  console.log(`✓ Parte ${part.sku} registrada en FIFO`);
+                  console.log(`✓ [${fifoId}] Parte ${part.sku} registrada en FIFO`);
+                } else {
+                  console.error(`✗ [${fifoId}] Error FIFO ${part.sku}: ${result.error}`);
                 }
               } catch (error) {
-                console.error(`✗ Error FIFO ${part.sku}:`, error.message);
+                console.error(`✗ [${fifoId}] Error crítico procesando ${part.sku}:`, error.message);
+                console.error(`💀 [${fifoId}] Stack trace:`, error.stack);
               }
+            } else {
+              console.log(`⚠️ [${fifoId}] Parte saltada (datos inválidos): ${JSON.stringify(part)}`);
+            }
+            
+            // Log de memoria cada 5 partes
+            if ((i + 1) % 5 === 0) {
+              console.log(`📊 [${fifoId}] Memoria en parte ${i + 1}: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
             }
           }
-          console.log(`✅ FIFO completado para orden ${id}`);
+          
+          console.log(`✅ [${fifoId}] FIFO completado - Tiempo: ${Date.now() - fifoStartTime}ms`);
+          console.log(`📊 [${fifoId}] Memoria final FIFO: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          console.log(`🏁 [${requestId}] PROCESO COMPLETO - Tiempo total: ${Date.now() - startTime}ms`);
+          
         } catch (error) {
-          console.error('✗ Error en proceso FIFO:', error.message);
+          console.error(`💀 [${fifoId}] ERROR CRÍTICO EN PROCESO FIFO:`, error.message);
+          console.error(`💀 [${fifoId}] Stack trace completo:`, error.stack);
+          console.error(`📊 [${fifoId}] Memoria en error: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          
+          // Forzar garbage collection si está disponible
+          if (global.gc) {
+            console.log(`🧹 [${fifoId}] Ejecutando garbage collection...`);
+            global.gc();
+            console.log(`📊 [${fifoId}] Memoria después de GC: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          }
         }
       });
+    } else {
+      console.log(`ℹ️ [${requestId}] No hay partes para procesar FIFO`);
+      console.log(`🏁 [${requestId}] PROCESO COMPLETO (sin FIFO) - Tiempo total: ${Date.now() - startTime}ms`);
     }
-
   } catch (err) {
-    console.error('Error creando WO:', err);
-    res.status(500).json({ error: 'Error al crear la orden de trabajo' });
+    console.error(`💀 [${requestId}] ERROR CRÍTICO CREANDO WO:`, err.message);
+    console.error(`💀 [${requestId}] Stack trace:`, err.stack);
+    console.error(`📊 [${requestId}] Memoria en error: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    console.error(`⏱️ [${requestId}] Tiempo hasta error: ${Date.now() - startTime}ms`);
+    
+    // Forzar garbage collection si está disponible
+    if (global.gc) {
+      console.log(`🧹 [${requestId}] Ejecutando garbage collection en error...`);
+      global.gc();
+      console.log(`📊 [${requestId}] Memoria después de GC: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    }
+    
+    res.status(500).json({ 
+      error: 'Error al crear la orden de trabajo',
+      requestId: requestId,
+      errorMessage: err.message
+    });
   }
 });
 
@@ -709,6 +801,12 @@ router.delete('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const fields = req.body;
+  const startTime = Date.now();
+  const requestId = `UPDATE_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  console.log(`🔄 [${requestId}] INICIANDO EDICIÓN DE WORK ORDER ID: ${id}`);
+  console.log(`📊 [${requestId}] Memoria inicial: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  
   const {
     billToCo,
     trailer,
@@ -722,14 +820,21 @@ router.put('/:id', async (req, res) => {
     usuario,
     idClassic
   } = fields;
-
+  
+  console.log(`📝 [${requestId}] Datos recibidos - Parts: ${parts?.length || 0}, Status: ${status}, Trailer: ${trailer}`);
   try {
+    console.log(`🔍 [${requestId}] Verificando que la orden exista...`);
+    
     // 1. Verifica que la orden exista
     const [oldResults] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
     if (!oldResults || oldResults.length === 0) {
+      console.log(`❌ [${requestId}] Orden no encontrada`);
       return res.status(404).send('WORK ORDER NOT FOUND');
     }
-
+    
+    console.log(`✓ [${requestId}] Orden encontrada - Status actual: ${oldResults[0].status}`);
+    console.log(`📊 [${requestId}] Memoria después de consulta: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);    console.log(`🧮 [${requestId}] Procesando y calculando totales...`);
+    
     // 2. Limpia y valida partes
     const partsArr = Array.isArray(parts)
       ? parts
@@ -740,6 +845,8 @@ router.put('/:id', async (req, res) => {
             qty: Number(part.qty) || 0
           }))
       : [];
+      
+    console.log(`🔧 [${requestId}] Partes procesadas: ${partsArr.length} válidas de ${parts?.length || 0} recibidas`);
 
     // 3. Calcula totales
     let totalHrsPut = 0;
@@ -784,7 +891,8 @@ router.put('/:id', async (req, res) => {
     } else {
       // Usa el cálculo automático
       totalLabAndPartsFinal = subtotal + extra;
-    }
+    }    console.log(`💾 [${requestId}] Preparando actualización en DB...`);
+    console.log(`📊 [${requestId}] Memoria antes de actualización: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
@@ -802,25 +910,47 @@ router.put('/:id', async (req, res) => {
       updateFields.push(fields.idClassic || null);
     }
     updateQuery += ` WHERE id = ?`;
-    updateFields.push(id);    await db.query(updateQuery, updateFields);    // 5. Responder inmediatamente
+    updateFields.push(id);
+
+    console.log(`🗄️ [${requestId}] Ejecutando query de actualización...`);
+    await db.query(updateQuery, updateFields);
+    
+    console.log(`✅ [${requestId}] WO actualizada exitosamente`);
+    console.log(`📊 [${requestId}] Memoria después de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);    // 5. Responder inmediatamente
+    console.log(`📤 [${requestId}] Enviando respuesta al cliente...`);
     res.json({ success: true, id });
+    
+    console.log(`⚡ [${requestId}] Respuesta enviada - Tiempo: ${Date.now() - startTime}ms`);
+    console.log(`📊 [${requestId}] Memoria antes de FIFO: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 
     // SOLO PROCESAR FIFO (SIN PDF AUTOMÁTICO PARA AHORRAR MEMORIA)
     if (partsArr && partsArr.length > 0) {
+      console.log(`🔄 [${requestId}] Iniciando actualización FIFO asíncrona para ${partsArr.length} partes...`);
+      
       setImmediate(async () => {
+        const fifoStartTime = Date.now();
+        const fifoId = `FIFO_UPDATE_${id}_${Date.now()}`;
+        
         try {
-          console.log(`Actualizando FIFO para orden ${id}...`);
+          console.log(`🔄 [${fifoId}] Iniciando actualización FIFO`);
+          console.log(`📊 [${fifoId}] Memoria inicial FIFO: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
           
           // Eliminar partes existentes
+          console.log(`🗑️ [${fifoId}] Eliminando partes previas...`);
           try {
             await db.query('DELETE FROM work_order_parts WHERE work_order_id = ?', [id]);
-            console.log(`✓ Partes previas eliminadas para orden ${id}`);
+            console.log(`✓ [${fifoId}] Partes previas eliminadas para orden ${id}`);
           } catch (e) {
-            console.log('No había partes previas para eliminar');
+            console.log(`ℹ️ [${fifoId}] No había partes previas para eliminar`);
           }
           
+          console.log(`📊 [${fifoId}] Memoria después de limpieza: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          
           // Registrar nuevas partes en FIFO
-          for (const part of partsArr) {
+          for (let i = 0; i < partsArr.length; i++) {
+            const part = partsArr[i];
+            console.log(`🔧 [${fifoId}] Actualizando parte ${i + 1}/${partsArr.length}: ${part.sku}`);
+            
             if (part.sku && part.qty && Number(part.qty) > 0) {
               try {
                 const result = await registerPartFifo(
@@ -832,22 +962,58 @@ router.put('/:id', async (req, res) => {
                   fields.usuario || 'SYSTEM'
                 );
                 if (result.success) {
-                  console.log(`✓ Parte ${part.sku} actualizada en FIFO`);
+                  console.log(`✓ [${fifoId}] Parte ${part.sku} actualizada en FIFO`);
+                } else {
+                  console.error(`✗ [${fifoId}] Error FIFO ${part.sku}: ${result.error}`);
                 }
               } catch (error) {
-                console.error(`✗ Error actualizando ${part.sku}:`, error.message);
+                console.error(`✗ [${fifoId}] Error crítico actualizando ${part.sku}:`, error.message);
+                console.error(`💀 [${fifoId}] Stack trace:`, error.stack);
               }
+            } else {
+              console.log(`⚠️ [${fifoId}] Parte saltada (datos inválidos): ${JSON.stringify(part)}`);
+            }
+            
+            // Log de memoria cada 5 partes
+            if ((i + 1) % 5 === 0) {
+              console.log(`📊 [${fifoId}] Memoria en parte ${i + 1}: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
             }
           }
-          console.log(`✅ FIFO actualizado para orden ${id}`);
+          
+          console.log(`✅ [${fifoId}] FIFO actualizado - Tiempo: ${Date.now() - fifoStartTime}ms`);
+          console.log(`📊 [${fifoId}] Memoria final FIFO: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          console.log(`🏁 [${requestId}] ACTUALIZACIÓN COMPLETA - Tiempo total: ${Date.now() - startTime}ms`);
+          
         } catch (error) {
-          console.error('✗ Error en actualización FIFO:', error.message);
+          console.error(`💀 [${fifoId}] ERROR CRÍTICO EN ACTUALIZACIÓN FIFO:`, error.message);
+          console.error(`💀 [${fifoId}] Stack trace completo:`, error.stack);
+          console.error(`📊 [${fifoId}] Memoria en error: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          
+          // Forzar garbage collection si está disponible
+          if (global.gc) {
+            console.log(`🧹 [${fifoId}] Ejecutando garbage collection...`);
+            global.gc();
+            console.log(`📊 [${fifoId}] Memoria después de GC: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+          }
         }
       });
+    } else {
+      console.log(`ℹ️ [${requestId}] No hay partes para procesar FIFO`);
+      console.log(`🏁 [${requestId}] ACTUALIZACIÓN COMPLETA (sin FIFO) - Tiempo total: ${Date.now() - startTime}ms`);
     }
-
   } catch (err) {
-    console.error('ERROR UPDATING WORK ORDER:', err);
+    console.error(`💀 [${requestId}] ERROR CRÍTICO ACTUALIZANDO WO:`, err.message);
+    console.error(`💀 [${requestId}] Stack trace:`, err.stack);
+    console.error(`📊 [${requestId}] Memoria en error: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    console.error(`⏱️ [${requestId}] Tiempo hasta error: ${Date.now() - startTime}ms`);
+    
+    // Forzar garbage collection si está disponible
+    if (global.gc) {
+      console.log(`🧹 [${requestId}] Ejecutando garbage collection en error...`);
+      global.gc();
+      console.log(`📊 [${requestId}] Memoria después de GC: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    }
+    
     res.status(500).send(err?.message || 'ERROR UPDATING WORK ORDER');
   }
 });
