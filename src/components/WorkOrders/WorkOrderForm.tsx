@@ -108,17 +108,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       sku: item.sku,
       precio: item.precio,
       cost: item.cost
-    })));
-    return null;
-        cost: partialMatch.cost || partialMatch.price || partialMatch.unitCost || partialMatch.unit_cost,
-        allFields: partialMatch
-      });
-      return partialMatch;
-    }
-    
-    console.log('❌ No se encontró parte para SKU:', sku);
-    return null;
-  };// Manejar cambios en las partes con auto-completado
+    })));    return null;
+  };
+
+  // Manejar cambios en las partes con auto-completado
   const handlePartChange = (index: number, field: string, value: string) => {
     console.log('🔧 handlePartChange llamado:', { 
       index, 
