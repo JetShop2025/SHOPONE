@@ -78,10 +78,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const exactMatch = inventory.find((item: any) => 
       String(item.sku).toLowerCase() === String(sku).toLowerCase()
     );
-      if (exactMatch) {      console.log('✅ Parte encontrada por SKU exacto:', {
+    
+    if (exactMatch) {      console.log('✅ Parte encontrada por SKU exacto:', {
         sku: exactMatch.sku,
         name: exactMatch.part || exactMatch.description || exactMatch.name,
-        precio: exactMatch.precio,
+        precio: exactMatch.precio, // Campo correcto de inventario
         cost: exactMatch.cost || exactMatch.price || exactMatch.unitCost || exactMatch.unit_cost,
         allFields: exactMatch
       });
@@ -96,7 +97,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (partialMatch) {      console.log('⚠️ Parte encontrada por coincidencia parcial:', {
         sku: partialMatch.sku,
         name: partialMatch.part || partialMatch.description || partialMatch.name,
-        precio: partialMatch.precio,
+        precio: partialMatch.precio, // Campo correcto de inventario
         cost: partialMatch.cost || partialMatch.price || partialMatch.unitCost || partialMatch.unit_cost,
         allFields: partialMatch
       });
@@ -104,14 +105,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
     
     console.log('❌ No se encontró parte para SKU:', sku);
-    console.log('📋 Inventario disponible (primeros 3):', inventory.slice(0, 3).map(item => ({
-      sku: item.sku,
-      precio: item.precio,
-      cost: item.cost
-    })));    return null;
-  };
-
-  // Manejar cambios en las partes con auto-completado
+    return null;
+  };// Manejar cambios en las partes con auto-completado
   const handlePartChange = (index: number, field: string, value: string) => {
     console.log('🔧 handlePartChange llamado:', { 
       index, 
@@ -138,30 +133,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           precio: foundPart.precio,
           cost: foundPart.cost,
           price: foundPart.price,
-          unitCost: foundPart.unitCost,
-          unit_cost: foundPart.unit_cost,
           allKeys: Object.keys(foundPart)
         });
         
-        // Prioridad en el orden: precio > cost > price > unitCost > unit_cost
-        if (foundPart.precio !== undefined && foundPart.precio !== null && foundPart.precio !== '') {
+        if (foundPart.precio) {
           cost = parseFloat(String(foundPart.precio)) || 0;
           console.log('💰 Usando campo "precio":', foundPart.precio, '→', cost);
-        } else if (foundPart.cost !== undefined && foundPart.cost !== null && foundPart.cost !== '') {
-          cost = parseFloat(String(foundPart.cost)) || 0;
+        } else if (foundPart.cost) {
+          cost = foundPart.cost;
           console.log('💰 Usando campo "cost":', foundPart.cost, '→', cost);
-        } else if (foundPart.price !== undefined && foundPart.price !== null && foundPart.price !== '') {
-          cost = parseFloat(String(foundPart.price)) || 0;
+        } else if (foundPart.price) {
+          cost = foundPart.price;
           console.log('💰 Usando campo "price":', foundPart.price, '→', cost);
-        } else if (foundPart.unitCost !== undefined && foundPart.unitCost !== null && foundPart.unitCost !== '') {
-          cost = parseFloat(String(foundPart.unitCost)) || 0;
+        } else if (foundPart.unitCost) {
+          cost = foundPart.unitCost;
           console.log('💰 Usando campo "unitCost":', foundPart.unitCost, '→', cost);
-        } else if (foundPart.unit_cost !== undefined && foundPart.unit_cost !== null && foundPart.unit_cost !== '') {
-          cost = parseFloat(String(foundPart.unit_cost)) || 0;
+        } else if (foundPart.unit_cost) {
+          cost = foundPart.unit_cost;
           console.log('💰 Usando campo "unit_cost":', foundPart.unit_cost, '→', cost);
         } else {
           console.log('❌ No se encontró ningún campo de precio válido');
-        }// Formatear el costo correctamente
+        }        // Formatear el costo correctamente
         if (cost > 0) {
           newParts[index].cost = cost.toFixed(2);
         } else {
@@ -374,14 +366,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
-          </label>
-            <label style={{ flex: '1 1 120px' }}>
+          </label>            <label style={{ flex: '1 1 120px' }}>
             Trailer
             <input
               list="trailer-options"
               name="trailer"
               value={workOrder.trailer || ''}
-              onChange={onChange}
+              onChange={(e) => {
+                // Remover el indicador 🔔 del valor antes de guardarlo
+                const cleanValue = e.target.value.replace(' 🔔', '');
+                onChange({ target: { name: 'trailer', value: cleanValue } } as any);
+              }}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               placeholder="Selecciona o escribe el trailer..."
             />
@@ -389,9 +384,116 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
-            </datalist>
-          </label>
+            </datalist>          </label>
         </div>
+
+        {/* Previsualizador de Partes Pendientes */}
+        {pendingParts && pendingParts.length > 0 && (
+          <div style={{
+            marginBottom: 16,
+            padding: 16,
+            border: '2px solid #4caf50',
+            borderRadius: 8,
+            backgroundColor: '#f1f8e9'
+          }}>
+            <h3 style={{ 
+              color: '#388e3c', 
+              marginBottom: 12, 
+              fontSize: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              🚛 Partes Pendientes para {workOrder.trailer}
+              <span style={{ 
+                fontSize: 12, 
+                background: '#4caf50', 
+                color: 'white', 
+                padding: '2px 8px', 
+                borderRadius: 12 
+              }}>
+                {pendingParts.length} disponible{pendingParts.length !== 1 ? 's' : ''}
+              </span>
+            </h3>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+              gap: 12 
+            }}>
+              {pendingParts.map((part: any) => (
+                <div key={part.id} style={{
+                  background: 'white',
+                  border: '1px solid #c8e6c9',
+                  borderRadius: 6,
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
+                }}>
+                  <div style={{ fontWeight: 'bold', color: '#2e7d32' }}>
+                    {part.sku} - {part.item}
+                  </div>
+                  <div style={{ fontSize: 14, color: '#666' }}>
+                    Cantidad disponible: <strong>{part.qty_remaining}</strong>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      min="1"
+                      max={part.qty_remaining}
+                      value={pendingPartsQty?.[part.id] || '1'}
+                      onChange={(e) => {                        if (setPendingPartsQty) {
+                          setPendingPartsQty((prev: any) => ({
+                            ...prev,
+                            [part.id]: e.target.value
+                          }));
+                        }
+                      }}
+                      style={{
+                        width: '80px',
+                        padding: '4px 8px',
+                        border: '1px solid #ccc',
+                        borderRadius: 4
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onAddPendingPart) {
+                          const qty = parseInt(pendingPartsQty?.[part.id] || '1');
+                          onAddPendingPart(part, qty);
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#4caf50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      ➕ Agregar a WO
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ 
+              marginTop: 12, 
+              padding: 8, 
+              background: '#e8f5e8', 
+              borderRadius: 4, 
+              fontSize: 12, 
+              color: '#2e7d32' 
+            }}>
+              💡 <strong>Tip:</strong> Estas partes ya están asignadas para este trailer. 
+              Al agregarlas, se descontarán automáticamente del inventario.
+            </div>
+          </div>
+        )}
 
         {/* Segunda fila - Status, ID Classic (solo en edición) */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
@@ -534,11 +636,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     type="text"
                     value={part.sku || ''}
                     onChange={e => handlePartChange(index, 'sku', e.target.value)}
-                    onInput={e => handlePartChange(index, 'sku', (e.target as HTMLInputElement).value)}
-                    onBlur={e => handlePartChange(index, 'sku', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="SKU"
-                  /><datalist id={`inventory-${index}`}>
+                  />                  <datalist id={`inventory-${index}`}>
                     {inventory.map((item: any) => {
                       // PRIORIDAD AL CAMPO 'precio' de la tabla inventory
                       const cost = item.precio || item.cost || item.price || item.unitCost || item.unit_cost || 0;

@@ -81,7 +81,51 @@ router.put('/:id/use', async (req, res) => {
     );
     res.sendStatus(200);
   } catch (err) {
-    res.status(500).send('Error');
+    res.status(500).send('Error');  }
+});
+
+// Get pending parts for a specific trailer
+router.get('/pending/:trailer', async (req, res) => {
+  const { trailer } = req.params;
+  
+  try {
+    const [results] = await db.query(
+      `SELECT id, sku, item, destino_trailer, qty_remaining, estatus, costTax
+       FROM receives 
+       WHERE destino_trailer = ? AND estatus = 'PENDING' AND qty_remaining > 0
+       ORDER BY id DESC`,
+      [trailer]
+    );
+    
+    console.log(`📋 Consulta de partes pendientes para trailer ${trailer}:`, {
+      resultsCount: results.length,
+      results: results.map(r => ({ id: r.id, sku: r.sku, qty_remaining: r.qty_remaining }))
+    });
+    
+    res.json(results);
+  } catch (err) {
+    console.error('Error fetching pending parts:', err);
+    res.status(500).json({ error: 'Error fetching pending parts' });
+  }
+});
+
+// Get trailers with pending parts
+router.get('/trailers/with-pending', async (req, res) => {
+  try {
+    const [results] = await db.query(
+      `SELECT DISTINCT destino_trailer
+       FROM receives 
+       WHERE estatus = 'PENDING' AND qty_remaining > 0
+       ORDER BY destino_trailer`
+    );
+    
+    const trailers = results.map(r => r.destino_trailer);
+    console.log('🚛 Trailers con partes pendientes:', trailers);
+    
+    res.json(trailers);
+  } catch (err) {
+    console.error('Error fetching trailers with pending parts:', err);
+    res.status(500).json({ error: 'Error fetching trailers with pending parts' });
   }
 });
 

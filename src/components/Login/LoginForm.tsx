@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import logo from '../../assets/logo.png'; // Ajusta la ruta si tu logo está en otro lugar
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://graphical-system-v2.onrender.com/api';
 
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState('');

@@ -15,7 +15,7 @@ import { keepAliveService } from '../../services/keepAlive';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://graphical-system-v2.onrender.com/api';
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","CHUSAL"
@@ -45,6 +45,15 @@ function getTrailerOptions(billToCo: string): string[] {
   if (billToCo === "RAN100") return Array.from({length: 20}, (_, i) => `4-${(400+i).toString()}`);
   if (billToCo === "GABGRE") return Array.from({length: 30}, (_, i) => `5-${(500+i).toString()}`);
   return [];
+}
+
+// Función para obtener opciones de trailer con indicador de partes pendientes
+function getTrailerOptionsWithPendingIndicator(billToCo: string, trailersWithPending: string[]): string[] {
+  const baseOptions = getTrailerOptions(billToCo);
+  return baseOptions.map(trailer => {
+    const hasPending = trailersWithPending.includes(trailer);
+    return hasPending ? `${trailer} 🔔` : trailer;
+  });
 }
 
 function getWeekRange(weekStr: string) {
@@ -254,26 +263,35 @@ const WorkOrdersTable: React.FC = () => {
       item.sku && item.sku.toLowerCase() === sku.toLowerCase()
     );
   };  useEffect(() => {
+    console.log('🔄 Cargando inventario...');
     axios.get(`${API_URL}/inventory`)
       .then(res => {
         const inventoryData = res.data as any[];
         setInventory(inventoryData);
-        console.log('Inventario cargado:', inventoryData.length, 'items');
-        console.log('Primeros 3 items del inventario:', inventoryData.slice(0, 3));
+        console.log('✅ Inventario cargado:', inventoryData.length, 'items');
+        console.log('📋 Primeros 3 items del inventario:', inventoryData.slice(0, 3));
+        console.log('📋 Campos disponibles en inventory[0]:', inventoryData[0] ? Object.keys(inventoryData[0]) : 'N/A');
+        
+        // Verificar que tenemos campos de precio
+        const withPrice = inventoryData.filter(item => item.precio || item.cost || item.price).length;
+        console.log(`💰 Items con precio: ${withPrice}/${inventoryData.length}`);
       })
       .catch(err => {
-        console.error('Error cargando inventario:', err);
+        console.error('❌ Error cargando inventario:', err);
         setInventory([]);
       });
   }, []);
-
   useEffect(() => {
     // Solo cargar una vez al abrir el formulario
     if (showForm) {
+      console.log('🔄 Cargando trailers con partes pendientes...');
       axios.get(`${API_URL}/receive?estatus=PENDING`)
         .then(res => {
           // Cast explícito para TypeScript
           const receives = res.data as { destino_trailer?: string }[];
+          console.log('📦 Receives PENDING cargados:', receives.length, 'registros');
+          console.log('📦 Primeros 3 receives:', receives.slice(0, 3));
+          
           const trailers = Array.from(
             new Set(
               receives
@@ -281,18 +299,26 @@ const WorkOrdersTable: React.FC = () => {
                 .filter((t): t is string => !!t)
             )
           );
+          console.log('🚛 Trailers con partes pendientes encontrados:', trailers);
           setTrailersWithPendingParts(trailers);
         })
-        .catch(() => setTrailersWithPendingParts([]));
-    }
-  }, [showForm]);
-
+        .catch(err => {
+          console.error('❌ Error cargando receives PENDING:', err);
+          setTrailersWithPendingParts([]);
+        });
+    }  }, [showForm]);
+  
+  // Cargar trailers con partes pendientes al inicializar
+  useEffect(() => {
+    fetchTrailersWithPendingParts();
+  }, []);
+  
   useEffect(() => {
     if (showForm && newWorkOrder.trailer) {
-      axios.get(`${API_URL}/receive?destino_trailer=${newWorkOrder.trailer}&estatus=PENDING`)
-        .then(res => setPendingParts(res.data as any[]))
-        .catch(() => setPendingParts([]));
+      console.log('� Cargando partes pendientes para trailer:', newWorkOrder.trailer);
+      fetchPendingParts(newWorkOrder.trailer);
     } else {
+      console.log('🔄 Limpiando partes pendientes (sin trailer o formulario cerrado)');
       setPendingParts([]);
     }
   }, [showForm, newWorkOrder.trailer]);
@@ -491,7 +517,6 @@ const WorkOrdersTable: React.FC = () => {
       setLoading(false);
     }
   };
-
   // Función para obtener partes pendientes para una traila
   const fetchPendingParts = async (trailer: string) => {
     if (!trailer) {
@@ -499,9 +524,12 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
     try {
-      const res = await axios.get(`${API_URL}/receive?destino_trailer=${trailer}&estatus=PENDING`);
-      setPendingParts(res.data as any[]); // <-- Corrige aquí
-    } catch {
+      console.log(`🔍 Obteniendo partes pendientes para trailer: ${trailer}`);
+      const res = await axios.get(`${API_URL}/receive/pending/${encodeURIComponent(trailer)}`);
+      console.log(`✅ Partes pendientes obtenidas para ${trailer}:`, res.data);
+      setPendingParts(res.data as any[]);
+    } catch (error) {
+      console.error(`❌ Error obteniendo partes pendientes para ${trailer}:`, error);
       setPendingParts([]);
     }
   };
@@ -705,7 +733,6 @@ const WorkOrdersTable: React.FC = () => {
     overflowY: 'auto',
     boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
   };
-
   const addEmptyPart = () => {
     setNewWorkOrder(prev => ({
       ...prev,
@@ -714,6 +741,66 @@ const WorkOrdersTable: React.FC = () => {
         { part: '', sku: '', qty: '', cost: '' }
       ]
     }));
+  };
+
+  // Función para agregar una parte pendiente automáticamente
+  const addPendingPart = (pendingPart: any, qtyToUse: number) => {
+    console.log('🎯 Agregando parte pendiente a WO:', { pendingPart, qtyToUse });
+    
+    // Buscar información completa de la parte en el inventario
+    const inventoryPart = inventory.find(item => 
+      String(item.sku).toLowerCase() === String(pendingPart.sku).toLowerCase()
+    );
+    
+    console.log('📋 Parte encontrada en inventario:', inventoryPart);
+    
+    // Determinar el costo
+    let cost = 0;
+    if (inventoryPart) {
+      // Prioridad: precio > cost > price > unitCost > unit_cost
+      if (inventoryPart.precio !== undefined && inventoryPart.precio !== null && inventoryPart.precio !== '') {
+        cost = parseFloat(String(inventoryPart.precio)) || 0;
+      } else if (inventoryPart.cost !== undefined && inventoryPart.cost !== null && inventoryPart.cost !== '') {
+        cost = parseFloat(String(inventoryPart.cost)) || 0;
+      } else if (inventoryPart.price !== undefined && inventoryPart.price !== null && inventoryPart.price !== '') {
+        cost = parseFloat(String(inventoryPart.price)) || 0;
+      } else if (inventoryPart.unitCost !== undefined && inventoryPart.unitCost !== null && inventoryPart.unitCost !== '') {
+        cost = parseFloat(String(inventoryPart.unitCost)) || 0;
+      } else if (inventoryPart.unit_cost !== undefined && inventoryPart.unit_cost !== null && inventoryPart.unit_cost !== '') {
+        cost = parseFloat(String(inventoryPart.unit_cost)) || 0;
+      }
+    }
+    
+    // Crear nueva parte para agregar
+    const newPart = {
+      sku: pendingPart.sku,
+      part: pendingPart.item || pendingPart.part || inventoryPart?.part || '',
+      qty: qtyToUse.toString(),
+      cost: cost > 0 ? cost.toFixed(2) : '0.00',
+      _pendingPartId: pendingPart.id // Guardar referencia para el procesamiento posterior
+    };
+    
+    console.log('✅ Nueva parte creada:', newPart);
+    
+    // Agregar la parte al formulario
+    setNewWorkOrder(prev => ({
+      ...prev,
+      parts: [
+        ...prev.parts,
+        newPart
+      ]
+    }));
+    
+    // Actualizar la cantidad de partes pendientes localmente
+    setPendingParts(prevPending => 
+      prevPending.map(pp => 
+        pp.id === pendingPart.id 
+          ? { ...pp, qty_remaining: pp.qty_remaining - qtyToUse }
+          : pp
+      ).filter(pp => pp.qty_remaining > 0) // Remover si no quedan unidades
+    );
+    
+    console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO`);
   };
 
   // Función para mostrar el tooltip
@@ -742,6 +829,18 @@ const WorkOrdersTable: React.FC = () => {
         y: e.clientY,
         info: partInfo
       });
+    }
+  };
+  // Función para cargar trailers con partes pendientes
+  const fetchTrailersWithPendingParts = async () => {
+    try {
+      console.log('🔍 Cargando trailers con partes pendientes...');
+      const res = await axios.get(`${API_URL}/receive/trailers/with-pending`);
+      console.log('✅ Trailers con partes pendientes:', res.data);
+      setTrailersWithPendingParts(res.data as string[]);
+    } catch (error) {
+      console.error('❌ Error cargando trailers con partes pendientes:', error);
+      setTrailersWithPendingParts([]);
     }
   };
 
@@ -1053,10 +1152,9 @@ const WorkOrdersTable: React.FC = () => {
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
                 onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}
-                onCancel={() => setShowForm(false)}
-                title="New Work Order"
+                onCancel={() => setShowForm(false)}                title="New Work Order"
                 billToCoOptions={billToCoOptions}
-                getTrailerOptions={getTrailerOptions}
+                getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
                 inventory={inventory}
                 trailersWithPendingParts={trailersWithPendingParts}
                 pendingParts={pendingParts}
@@ -1085,11 +1183,9 @@ const WorkOrdersTable: React.FC = () => {
                             sku: part.sku,
                             qty: cantidad,
                             cost: part.costTax?.toString() || ''
-                          }
-                        ]
+                          }                        ]
                       };
-                    }
-                  });
+                    }                  });
                 }}
                 onAddEmptyPart={addEmptyPart}
                 extraOptions={extraOptions}
@@ -1221,12 +1317,15 @@ const WorkOrdersTable: React.FC = () => {
                           setLoading(false);
                         }
                       }}
-                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}
-                      title="Edit Work Order"
+                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}                      title="Edit Work Order"
                       billToCoOptions={billToCoOptions}
-                      getTrailerOptions={getTrailerOptions}
-                      inventory={inventory}
-                      onAddEmptyPart={addEmptyPart}
+                      getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
+                      inventory={inventory}onAddEmptyPart={addEmptyPart}
+                      onAddPendingPart={addPendingPart}
+                      trailersWithPendingParts={trailersWithPendingParts}
+                      pendingParts={pendingParts}
+                      pendingPartsQty={pendingPartsQty}
+                      setPendingPartsQty={setPendingPartsQty}
                       extraOptions={extraOptions}
                       setExtraOptions={setExtraOptions}
                       loading={loading}

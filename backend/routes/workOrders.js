@@ -6,9 +6,9 @@ const router = express.Router();
 router.use(express.json());
 
 // Función auxiliar para registrar partes en FIFO directamente
-async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario) {
+async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario, pendingPartId = null) {
   const fifoId = `FIFO_${work_order_id}_${sku}_${Date.now()}`;
-  console.log(`🔄 [${fifoId}] Iniciando registro FIFO - SKU: ${sku}, Qty: ${qty_used}`);
+  console.log(`🔄 [${fifoId}] Iniciando registro FIFO - SKU: ${sku}, Qty: ${qty_used}, PendingPartId: ${pendingPartId}`);
   
   let qtyToDeduct = Number(qty_used);
   const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
@@ -18,11 +18,31 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
   try {
     console.log(`🔍 [${fifoId}] Buscando recibos FIFO disponibles...`);
     
-    // Busca recibos FIFO con partes disponibles
-    const [receives] = await db.query(
-      'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
-      [sku]
-    );
+    // Si tenemos un pendingPartId específico, usarlo primero
+    let receives = [];
+    if (pendingPartId) {
+      console.log(`🎯 [${fifoId}] Usando parte pendiente específica ID: ${pendingPartId}`);
+      const [specificReceive] = await db.query(
+        'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE id = ? AND sku = ? AND qty_remaining > 0',
+        [pendingPartId, sku]
+      );
+      receives = specificReceive || [];
+      
+      if (receives.length > 0) {
+        console.log(`✅ [${fifoId}] Parte pendiente específica encontrada, qty disponible: ${receives[0].qty_remaining}`);
+      } else {
+        console.log(`⚠️ [${fifoId}] Parte pendiente específica no disponible, buscando otras...`);
+      }
+    }
+    
+    // Si no encontramos la parte específica o no se proporcionó, buscar otras disponibles
+    if (receives.length === 0) {
+      const [generalReceives] = await db.query(
+        'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
+        [sku]
+      );
+      receives = generalReceives || [];
+    }
     
     console.log(`📦 [${fifoId}] Encontrados ${receives.length} recibos disponibles`);
 
@@ -40,6 +60,16 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
         [deductQty, receive.id]
       );
       console.log(`✓ [${fifoId}] Recibo actualizado - ID: ${receive.id}`);
+
+      // Si el recibo se agota completamente, marcarlo como USED
+      const newQtyRemaining = receive.qty_remaining - deductQty;
+      if (newQtyRemaining <= 0) {
+        await db.query(
+          'UPDATE receives SET estatus = "USED" WHERE id = ?',
+          [receive.id]
+        );
+        console.log(`✅ [${fifoId}] Recibo marcado como USED - ID: ${receive.id}`);
+      }
 
       // Registra en work_order_parts
       await db.query(
@@ -694,14 +724,14 @@ router.post('/', async (req, res) => {
             console.log(`🔧 [${fifoId}] Procesando parte ${i + 1}/${partsArr.length}: ${part.sku}`);
             
             if (part.sku && part.qty && Number(part.qty) > 0) {
-              try {
-                const result = await registerPartFifo(
+              try {                const result = await registerPartFifo(
                   id,
                   part.sku,
                   part.part || part.description || '',
                   part.qty,
                   part.cost,
-                  fields.usuario || 'SYSTEM'
+                  fields.usuario || 'SYSTEM',
+                  part._pendingPartId || null // Pasar el ID de la parte pendiente si existe
                 );
                 if (result.success) {
                   console.log(`✓ [${fifoId}] Parte ${part.sku} registrada en FIFO`);
@@ -952,14 +982,14 @@ router.put('/:id', async (req, res) => {
             console.log(`🔧 [${fifoId}] Actualizando parte ${i + 1}/${partsArr.length}: ${part.sku}`);
             
             if (part.sku && part.qty && Number(part.qty) > 0) {
-              try {
-                const result = await registerPartFifo(
+              try {                const result = await registerPartFifo(
                   id,
                   part.sku,
                   part.part || part.description || '',
                   part.qty,
                   part.cost,
-                  fields.usuario || 'SYSTEM'
+                  fields.usuario || 'SYSTEM',
+                  part._pendingPartId || null // Pasar el ID de la parte pendiente si existe
                 );
                 if (result.success) {
                   console.log(`✓ [${fifoId}] Parte ${part.sku} actualizada en FIFO`);

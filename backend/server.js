@@ -128,9 +128,9 @@ app.use(express.static(finalBuildPath));
 const auditRoutes = require('./routes/audit');
 const trailasRoutes = require('./routes/trailers');
 const workOrdersRouter = require('./routes/workOrders');
-app.use('/work-orders', workOrdersRouter);
+app.use('/api/work-orders', workOrdersRouter);
 
-app.use('/trailas', trailasRoutes);
+app.use('/api/trailas', trailasRoutes);
 app.use('/pdfs', express.static(__dirname + '/pdfs'));
 // Rutas
 const inventoryRoutes = require('./routes/inventory');
@@ -138,12 +138,12 @@ const receiveRoutes = require('./routes/receive');
 const loginRoutes = require('./routes/login');
 const workOrderPartsRoutes = require('./routes/workOrderParts');
 
-app.use('/inventory', inventoryRoutes);
-app.use('/receive', receiveRoutes);
-app.use('/login', loginRoutes);
-app.use('/work-order-parts', workOrderPartsRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/receive', receiveRoutes);
+app.use('/api/login', loginRoutes);
+app.use('/api/work-order-parts', workOrderPartsRoutes);
 
-app.use('/audit', auditRoutes);
+app.use('/api/audit', auditRoutes);
 
 // Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
 app.get('*', (req, res) => {
