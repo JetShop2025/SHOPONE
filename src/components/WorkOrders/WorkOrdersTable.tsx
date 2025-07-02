@@ -15,7 +15,7 @@ import { keepAliveService } from '../../services/keepAlive';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://graphical-system-v2.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","CHUSAL"

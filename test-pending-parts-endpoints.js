@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://graphical-system-v2.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 async function testPendingPartsSystem() {
   console.log('🧪 TESTING PENDING PARTS SYSTEM - COMPLETE FLOW\n');

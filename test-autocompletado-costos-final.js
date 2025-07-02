@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://graphical-system-v2.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 async function testAutocompletadoCostos() {
   console.log('🧪 TESTING AUTOCOMPLETADO DE COSTOS UNITARIOS\n');

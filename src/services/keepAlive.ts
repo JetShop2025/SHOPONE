@@ -3,7 +3,7 @@
 
 const KEEP_ALIVE_INTERVAL = 15 * 60 * 1000; // 15 minutos (reducido para memoria)
 const PING_TIMEOUT = 10000; // 10 segundos timeout (reducido)
-const API_URL = process.env.REACT_APP_API_URL || 'https://graphical-system-v2.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 class KeepAliveService {
   private intervalId: NodeJS.Timeout | null = null;
