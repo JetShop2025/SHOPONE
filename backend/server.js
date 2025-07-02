@@ -38,9 +38,9 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 console.log('✅ [STARTUP] Middleware configurado');
 
-// ENDPOINTS DE DIAGNÓSTICO CRÍTICO - ANTES DE TODO
-app.get('/', (req, res) => {
-  console.log('🏠 [ROOT] Request received');
+// ENDPOINTS DE DIAGNÓSTICO CRÍTICO - CON PREFIJO API
+app.get('/api/status', (req, res) => {
+  console.log('🏠 [STATUS] Request received');
   res.json({ 
     status: 'Server is running',
     message: 'GraphicalSystem Backend v2.1',
@@ -49,18 +49,18 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/test', (req, res) => {
+app.get('/api/test', (req, res) => {
   console.log('🧪 [TEST] Request received');
   res.json({ test: 'OK', cors: 'working', timestamp: new Date().toISOString() });
 });
 
-app.get('/cors-test', (req, res) => {
+app.get('/api/cors-test', (req, res) => {
   console.log('🔍 [CORS-TEST] Request received');
   res.json({ cors: 'working', origin: req.headers.origin, timestamp: new Date().toISOString() });
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
@@ -76,7 +76,7 @@ app.get('/health', (req, res) => {
 });
 
 // Database test endpoint
-app.get('/test-db', async (req, res) => {
+app.get('/api/test-db', async (req, res) => {
   try {
     const db = require('./db');
     const [result] = await db.query('SELECT 1 as test');
@@ -96,7 +96,7 @@ app.get('/test-db', async (req, res) => {
 });
 
 // Keep-alive endpoint para evitar que Render duerma el servidor
-app.get('/keep-alive', async (req, res) => {
+app.get('/api/keep-alive', async (req, res) => {
   console.log(`[${new Date().toISOString()}] Keep-alive ping received from ${req.ip}`);
   
   try {
@@ -131,6 +131,10 @@ app.get('/keep-alive', async (req, res) => {
 const buildPath = path.join(__dirname, '../build');
 const fs = require('fs');
 const finalBuildPath = fs.existsSync(buildPath) ? buildPath : path.join(__dirname, './build');
+
+console.log(`📁 [STATIC] Serving React build from: ${finalBuildPath}`);
+console.log(`📁 [STATIC] Build exists: ${fs.existsSync(finalBuildPath)}`);
+
 app.use(express.static(finalBuildPath));
 
 const auditRoutes = require('./routes/audit');
@@ -156,7 +160,7 @@ app.use('/api/trailer-location', trailerLocationRoutes);
 app.use('/api/audit', auditRoutes);
 
 // CORS Debug endpoint - para diagnosticar problemas de conectividad
-app.all('/api/cors-test', (req, res) => {
+app.all('/api/cors-debug', (req, res) => {
   console.log(`🔍 [CORS-DEBUG] ${req.method} request from ${req.headers.origin}`);
   console.log(`🔍 [CORS-DEBUG] Headers:`, req.headers);
   
@@ -171,24 +175,16 @@ app.all('/api/cors-test', (req, res) => {
   });
 });
 
-// Test endpoint básico sin API prefix
-app.get('/cors-test', (req, res) => {
-  console.log(`🔍 [CORS-BASIC] ${req.method} request from ${req.headers.origin}`);
-  res.json({
-    success: true,
-    message: 'Basic CORS test successful',
-    timestamp: new Date().toISOString(),
-    origin: req.headers.origin
-  });
-});
-
 // Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
 app.get('*', (req, res) => {
+  console.log(`🌐 [REACT] Serving React app for: ${req.url}`);
   const indexPath = path.join(finalBuildPath, 'index.html');
+  
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).send('Build files not found');
+    console.error(`❌ [REACT] Build files not found at: ${finalBuildPath}`);
+    res.status(404).send(`Build files not found. Expected at: ${finalBuildPath}`);
   }
 });
 
