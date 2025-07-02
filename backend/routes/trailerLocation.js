@@ -81,7 +81,7 @@ const momentumApiCall = async (endpoint, method = 'GET', data = null) => {
 };
 
 // Configuración de email
-const emailTransporter = nodemailer.createTransporter({
+const emailTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: 587,
   secure: false,
