@@ -366,12 +366,16 @@ const WorkOrdersTable: React.FC = () => {
         setEditWorkOrder(e);
       }
     }
-  };
-  // Cambios en partes con autocompletado
+  };  // Cambios en partes con autocompletado
   const handlePartChange = (index: number, field: string, value: string) => {
-    // Función para buscar parte en inventario por SKU
+    // Función para buscar parte en inventario por SKU con logging mejorado
     const findPartBySku = (sku: string) => {
-      if (!sku || !inventory || inventory.length === 0) return null;
+      if (!sku || !inventory || inventory.length === 0) {
+        console.log('❌ findPartBySku: SKU vacío o inventario no disponible');
+        return null;
+      }
+      
+      console.log('🔍 Buscando SKU:', sku, 'en inventario de', inventory.length, 'items');
       
       // Buscar por SKU exacto (case insensitive)
       const exactMatch = inventory.find((item: any) => 
@@ -379,7 +383,14 @@ const WorkOrdersTable: React.FC = () => {
       );
       
       if (exactMatch) {
-        console.log('Parte encontrada por SKU:', exactMatch);
+        console.log('✅ Parte encontrada por SKU exacto:', {
+          sku: exactMatch.sku,
+          name: exactMatch.part || exactMatch.description || exactMatch.name,
+          precio: exactMatch.precio,
+          cost: exactMatch.cost,
+          price: exactMatch.price,
+          allFields: Object.keys(exactMatch)
+        });
         return exactMatch;
       }
       
@@ -389,10 +400,18 @@ const WorkOrdersTable: React.FC = () => {
       );
       
       if (partialMatch) {
-        console.log('Parte encontrada por coincidencia parcial:', partialMatch);
+        console.log('⚠️ Parte encontrada por coincidencia parcial:', {
+          sku: partialMatch.sku,
+          name: partialMatch.part || partialMatch.description || partialMatch.name,
+          precio: partialMatch.precio,
+          cost: partialMatch.cost,
+          price: partialMatch.price
+        });
+        return partialMatch;
       }
       
-      return partialMatch || null;
+      console.log('❌ No se encontró parte para SKU:', sku);
+      return null;
     };
 
     if (showForm) {
@@ -400,19 +419,59 @@ const WorkOrdersTable: React.FC = () => {
       updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
 
       // Auto-completado cuando se cambia el SKU
-      if (field === 'sku' && value) {
+      if (field === 'sku' && value && value.trim() !== '') {
         const foundPart = findPartBySku(value);
+        console.log('🔍 Buscando parte con SKU:', value);
+        console.log('📦 Parte encontrada:', foundPart);
+        
         if (foundPart) {
-          updatedParts[index].part = foundPart.part || foundPart.description || '';
+          // Autocompletar nombre de la parte
+          updatedParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';
+          
+          // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
+          let cost = 0;
+          console.log('🔍 Campos de precio disponibles:', {
+            precio: foundPart.precio,
+            cost: foundPart.cost,
+            price: foundPart.price,
+            allKeys: Object.keys(foundPart)
+          });
+          
+          if (foundPart.precio !== undefined && foundPart.precio !== null && foundPart.precio !== '') {
+            cost = parseFloat(String(foundPart.precio)) || 0;
+            console.log('💰 Usando campo "precio":', foundPart.precio, '→', cost);
+          } else if (foundPart.cost !== undefined && foundPart.cost !== null && foundPart.cost !== '') {
+            cost = parseFloat(String(foundPart.cost)) || 0;
+            console.log('💰 Usando campo "cost":', foundPart.cost, '→', cost);
+          } else if (foundPart.price !== undefined && foundPart.price !== null && foundPart.price !== '') {
+            cost = parseFloat(String(foundPart.price)) || 0;
+            console.log('💰 Usando campo "price":', foundPart.price, '→', cost);
+          } else if (foundPart.unitCost !== undefined && foundPart.unitCost !== null && foundPart.unitCost !== '') {
+            cost = parseFloat(String(foundPart.unitCost)) || 0;
+            console.log('💰 Usando campo "unitCost":', foundPart.unitCost, '→', cost);
+          } else if (foundPart.unit_cost !== undefined && foundPart.unit_cost !== null && foundPart.unit_cost !== '') {
+            cost = parseFloat(String(foundPart.unit_cost)) || 0;
+            console.log('💰 Usando campo "unit_cost":', foundPart.unit_cost, '→', cost);
+          } else {
+            console.log('❌ No se encontró ningún campo de precio válido');
+          }
+          
           // Formatear el costo correctamente
-          const cost = foundPart.cost || foundPart.price || 0;
-          updatedParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
-          console.log('Auto-completando parte en nueva orden:', {
+          if (cost > 0) {
+            updatedParts[index].cost = cost.toFixed(2);
+          } else {
+            updatedParts[index].cost = '0.00';
+          }
+          
+          console.log('✅ Auto-completando parte:', {
             sku: value,
             part: updatedParts[index].part,
             cost: updatedParts[index].cost,
-            foundPart
+            originalCostValue: cost,
+            foundPartKeys: Object.keys(foundPart)
           });
+        } else {
+          console.log('❌ No se encontró parte para SKU:', value);
         }
       }
 
@@ -422,14 +481,30 @@ const WorkOrdersTable: React.FC = () => {
       updatedParts[index][field as 'part' | 'sku' | 'qty' | 'cost'] = value;
 
       // Auto-completado cuando se cambia el SKU
-      if (field === 'sku' && value) {
+      if (field === 'sku' && value && value.trim() !== '') {
         const foundPart = findPartBySku(value);
         if (foundPart) {
-          updatedParts[index].part = foundPart.part || foundPart.description || '';
+          // Autocompletar nombre de la parte
+          updatedParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';
+          
+          // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
+          let cost = 0;
+          if (foundPart.precio !== undefined && foundPart.precio !== null && foundPart.precio !== '') {
+            cost = parseFloat(String(foundPart.precio)) || 0;
+          } else if (foundPart.cost !== undefined && foundPart.cost !== null && foundPart.cost !== '') {
+            cost = parseFloat(String(foundPart.cost)) || 0;
+          } else if (foundPart.price !== undefined && foundPart.price !== null && foundPart.price !== '') {
+            cost = parseFloat(String(foundPart.price)) || 0;
+          } else if (foundPart.unitCost !== undefined && foundPart.unitCost !== null && foundPart.unitCost !== '') {
+            cost = parseFloat(String(foundPart.unitCost)) || 0;
+          } else if (foundPart.unit_cost !== undefined && foundPart.unit_cost !== null && foundPart.unit_cost !== '') {
+            cost = parseFloat(String(foundPart.unit_cost)) || 0;
+          }
+          
           // Formatear el costo correctamente
-          const cost = foundPart.cost || foundPart.price || 0;
-          updatedParts[index].cost = typeof cost === 'number' ? cost.toFixed(2) : String(cost);
-          console.log('Auto-completando parte en edición:', {
+          updatedParts[index].cost = cost > 0 ? cost.toFixed(2) : '0.00';
+          
+          console.log('✅ Auto-completando parte en edición:', {
             sku: value,
             part: updatedParts[index].part,
             cost: updatedParts[index].cost,
@@ -742,7 +817,6 @@ const WorkOrdersTable: React.FC = () => {
       ]
     }));
   };
-
   // Función para agregar una parte pendiente automáticamente
   const addPendingPart = (pendingPart: any, qtyToUse: number) => {
     console.log('🎯 Agregando parte pendiente a WO:', { pendingPart, qtyToUse });
@@ -754,27 +828,47 @@ const WorkOrdersTable: React.FC = () => {
     
     console.log('📋 Parte encontrada en inventario:', inventoryPart);
     
-    // Determinar el costo
+    // Determinar el costo usando EXACTAMENTE la misma lógica que WorkOrderForm
     let cost = 0;
     if (inventoryPart) {
-      // Prioridad: precio > cost > price > unitCost > unit_cost
+      console.log('🔍 Campos de precio disponibles:', {
+        precio: inventoryPart.precio,
+        cost: inventoryPart.cost,
+        price: inventoryPart.price,
+        allKeys: Object.keys(inventoryPart)
+      });
+      
+      // PRIORIDAD AL CAMPO 'precio' de la tabla inventory (igual que en WorkOrderForm)
       if (inventoryPart.precio !== undefined && inventoryPart.precio !== null && inventoryPart.precio !== '') {
         cost = parseFloat(String(inventoryPart.precio)) || 0;
+        console.log('💰 Usando campo "precio":', inventoryPart.precio, '→', cost);
       } else if (inventoryPart.cost !== undefined && inventoryPart.cost !== null && inventoryPart.cost !== '') {
         cost = parseFloat(String(inventoryPart.cost)) || 0;
+        console.log('💰 Usando campo "cost":', inventoryPart.cost, '→', cost);
       } else if (inventoryPart.price !== undefined && inventoryPart.price !== null && inventoryPart.price !== '') {
         cost = parseFloat(String(inventoryPart.price)) || 0;
+        console.log('💰 Usando campo "price":', inventoryPart.price, '→', cost);
       } else if (inventoryPart.unitCost !== undefined && inventoryPart.unitCost !== null && inventoryPart.unitCost !== '') {
         cost = parseFloat(String(inventoryPart.unitCost)) || 0;
+        console.log('💰 Usando campo "unitCost":', inventoryPart.unitCost, '→', cost);
       } else if (inventoryPart.unit_cost !== undefined && inventoryPart.unit_cost !== null && inventoryPart.unit_cost !== '') {
         cost = parseFloat(String(inventoryPart.unit_cost)) || 0;
+        console.log('💰 Usando campo "unit_cost":', inventoryPart.unit_cost, '→', cost);
+      } else {
+        console.log('❌ No se encontró ningún campo de precio válido');
+      }
+    } else {
+      // Si no se encuentra en inventario, usar el costo de la parte pendiente
+      if (pendingPart.costTax) {
+        cost = parseFloat(String(pendingPart.costTax)) || 0;
+        console.log('💰 Usando costTax de parte pendiente:', pendingPart.costTax, '→', cost);
       }
     }
     
     // Crear nueva parte para agregar
     const newPart = {
       sku: pendingPart.sku,
-      part: pendingPart.item || pendingPart.part || inventoryPart?.part || '',
+      part: pendingPart.item || pendingPart.part || inventoryPart?.part || inventoryPart?.description || '',
       qty: qtyToUse.toString(),
       cost: cost > 0 ? cost.toFixed(2) : '0.00',
       _pendingPartId: pendingPart.id // Guardar referencia para el procesamiento posterior
@@ -800,7 +894,7 @@ const WorkOrdersTable: React.FC = () => {
       ).filter(pp => pp.qty_remaining > 0) // Remover si no quedan unidades
     );
     
-    console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO`);
+    console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO con costo $${cost.toFixed(2)}`);
   };
 
   // Función para mostrar el tooltip

@@ -6,10 +6,10 @@ const path = require('path');
 const app = express();
 
 // CORS configuration - DEBE estar ANTES de cualquier middleware
-const corsOptions = {
-  origin: function (origin, callback) {
+const corsOptions = {  origin: function (origin, callback) {
     // Permite requests sin origin (como Postman) y desde dominios específicos
     const allowedOrigins = [
+      'https://graphical-system-v2.onrender.com',
       'https://shopone-1.onrender.com',
       'https://shopone.onrender.com',
       'http://localhost:3000',
@@ -137,11 +137,13 @@ const inventoryRoutes = require('./routes/inventory');
 const receiveRoutes = require('./routes/receive');
 const loginRoutes = require('./routes/login');
 const workOrderPartsRoutes = require('./routes/workOrderParts');
+const trailerLocationRoutes = require('./routes/trailerLocation');
 
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/receive', receiveRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/work-order-parts', workOrderPartsRoutes);
+app.use('/api/trailer-location', trailerLocationRoutes);
 
 app.use('/api/audit', auditRoutes);
 

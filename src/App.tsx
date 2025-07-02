@@ -7,6 +7,7 @@ import InventoryList from './components/Inventory/index';
 import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
 import TrailasTable from './components/Trailers/TrailasTable';  
+import TrailerLocation from './components/TrailerLocation/TrailerLocation';
 import './env-test';
 import './services/keepAlive'; // Importar el servicio keep-alive
 
@@ -28,6 +29,7 @@ const App: React.FC = () => {
           <Route path="/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
           <Route path="/audit" element={<PrivateRoute><AuditLogTable /></PrivateRoute>} />
           <Route path="/trailas" element={<PrivateRoute><TrailasTable /></PrivateRoute>} />
+          <Route path="/trailer-location" element={<PrivateRoute><TrailerLocation /></PrivateRoute>} />
         </Routes>
       </Router>
     </>
