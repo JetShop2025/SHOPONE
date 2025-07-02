@@ -5,51 +5,59 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// CORS EXTREMO - PRIMERA LÍNEA DE DEFENSA
+console.log('🚀 [STARTUP] Iniciando servidor...');
+
+// CORS EXTREMO - MÁXIMA COMPATIBILIDAD
 app.use((req, res, next) => {
-  // Headers ultra-permisivos ANTES de cualquier otra cosa
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', '*');
   res.header('Access-Control-Allow-Headers', '*');
   res.header('Access-Control-Max-Age', '86400');
   
-  console.log(`🔥 [EMERGENCY-CORS] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
+  console.log(`� [REQUEST] ${req.method} ${req.url}`);
   
-  // Manejar OPTIONS inmediatamente
   if (req.method === 'OPTIONS') {
-    console.log(`🔥 [EMERGENCY-CORS] OPTIONS handled for ${req.headers.origin}`);
+    console.log(`✅ [OPTIONS] Handled for ${req.url}`);
     return res.status(200).end();
   }
   
   next();
 });
 
-// CORS configuration - ULTRA PERMISIVO para resolver problemas de conectividad
-const corsOptions = {
-  origin: '*', // Permitir TODOS los orígenes explícitamente
-  credentials: false, // Desactivar credentials temporalmente
+// CORS library config
+app.use(cors({
+  origin: '*',
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['*'], // Permitir todos los headers
-  optionsSuccessStatus: 200,
-  preflightContinue: false
-};
+  allowedHeaders: ['*']
+}));
 
-// Aplicar CORS antes que cualquier otra cosa
-app.use(cors(corsOptions));
-
-// Middleware ULTRA AGRESIVO para CORS - Resolver todos los problemas
-app.use((req, res, next) => {
-  // Headers más permisivos posibles
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', '*');
-  res.header('Access-Control-Allow-Headers', '*');
-  
-  next();
-});
-
-// Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+console.log('✅ [STARTUP] Middleware configurado');
+
+// ENDPOINTS DE DIAGNÓSTICO CRÍTICO - ANTES DE TODO
+app.get('/', (req, res) => {
+  console.log('🏠 [ROOT] Request received');
+  res.json({ 
+    status: 'Server is running',
+    message: 'GraphicalSystem Backend v2.1',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+app.get('/test', (req, res) => {
+  console.log('🧪 [TEST] Request received');
+  res.json({ test: 'OK', cors: 'working', timestamp: new Date().toISOString() });
+});
+
+app.get('/cors-test', (req, res) => {
+  console.log('🔍 [CORS-TEST] Request received');
+  res.json({ cors: 'working', origin: req.headers.origin, timestamp: new Date().toISOString() });
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
