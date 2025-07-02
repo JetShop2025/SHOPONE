@@ -5,33 +5,36 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// CORS configuration - SIMPLIFICADO Y MUY PERMISIVO
+// CORS configuration - ULTRA PERMISIVO para resolver problemas de conectividad
 const corsOptions = {
-  origin: true, // Permitir TODOS los orígenes
-  credentials: true,
+  origin: '*', // Permitir TODOS los orígenes explícitamente
+  credentials: false, // Desactivar credentials temporalmente
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-  optionsSuccessStatus: 200
+  allowedHeaders: ['*'], // Permitir todos los headers
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
 
 // Aplicar CORS antes que cualquier otra cosa
 app.use(cors(corsOptions));
 
-// Middleware adicional para CORS - SIMPLIFICADO
+// Middleware ULTRA AGRESIVO para CORS - Resolver todos los problemas
 app.use((req, res, next) => {
+  // Headers más permisivos posibles
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+  res.header('Access-Control-Allow-Methods', '*');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Max-Age', '86400');
   
   console.log(`🔍 [CORS] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
   
   if (req.method === 'OPTIONS') {
-    console.log(`✅ [CORS] Preflight handled for ${req.headers.origin}`);
-    return res.status(200).end();
-  } else {
-    next();
+    console.log(`✅ [CORS] Preflight ULTRA handled for ${req.headers.origin}`);
+    res.status(200).end();
+    return;
   }
+  
+  next();
 });
 
 // Aumenta el límite a 10mb (puedes ajustarlo según tus necesidades)
@@ -133,6 +136,22 @@ app.use('/api/work-order-parts', workOrderPartsRoutes);
 app.use('/api/trailer-location', trailerLocationRoutes);
 
 app.use('/api/audit', auditRoutes);
+
+// CORS Debug endpoint - para diagnosticar problemas de conectividad
+app.all('/api/cors-test', (req, res) => {
+  console.log(`🔍 [CORS-DEBUG] ${req.method} request from ${req.headers.origin}`);
+  console.log(`🔍 [CORS-DEBUG] Headers:`, req.headers);
+  
+  res.json({
+    success: true,
+    message: 'CORS test successful',
+    method: req.method,
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString(),
+    headers: req.headers,
+    cors: 'working'
+  });
+});
 
 // Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
 app.get('*', (req, res) => {
