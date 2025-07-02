@@ -6,7 +6,8 @@ const path = require('path');
 const app = express();
 
 // CORS configuration - DEBE estar ANTES de cualquier middleware
-const corsOptions = {  origin: function (origin, callback) {
+const corsOptions = {
+  origin: function (origin, callback) {
     // Permite requests sin origin (como Postman) y desde dominios específicos
     const allowedOrigins = [
       'https://graphical-system-v2.onrender.com',
@@ -15,11 +16,13 @@ const corsOptions = {  origin: function (origin, callback) {
       'http://localhost:3000',
       'http://localhost:3001'
     ];
-    
-    // En producción, permitir el dominio de Render y localhost para desarrollo
+      // En producción, permitir el dominio de Render y localhost para desarrollo
+    console.log(`🔍 [CORS] Request from origin: ${origin}`);
     if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      console.log(`✅ [CORS] Origin ${origin} ALLOWED`);
       callback(null, true);
     } else {
+      console.log(`❌ [CORS] Origin ${origin} BLOCKED`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -35,12 +38,27 @@ app.use(cors(corsOptions));
 
 // Middleware adicional para CORS manual
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://graphical-system-v2.onrender.com',
+    'https://shopone-1.onrender.com', 
+    'https://shopone.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ];
+  
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, Accept, Origin');
   
+  console.log(`🔍 [CORS MIDDLEWARE] ${req.method} ${req.url} from ${origin}`);
+  
   if (req.method === 'OPTIONS') {
+    console.log(`✅ [CORS] Preflight request handled for ${origin}`);
     res.sendStatus(200);
   } else {
     next();
