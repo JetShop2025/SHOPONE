@@ -5,61 +5,30 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// CORS configuration - DEBE estar ANTES de cualquier middleware
+// CORS configuration - SIMPLIFICADO Y MUY PERMISIVO
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Permite requests sin origin (como Postman) y desde dominios específicos
-    const allowedOrigins = [
-      'https://graphical-system-v2.onrender.com',
-      'https://shopone-1.onrender.com',
-      'https://shopone.onrender.com',
-      'http://localhost:3000',
-      'http://localhost:3001'
-    ];
-      // En producción, permitir el dominio de Render y localhost para desarrollo
-    console.log(`🔍 [CORS] Request from origin: ${origin}`);
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-      console.log(`✅ [CORS] Origin ${origin} ALLOWED`);
-      callback(null, true);
-    } else {
-      console.log(`❌ [CORS] Origin ${origin} BLOCKED`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Permitir TODOS los orígenes
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Access-Control-Allow-Origin'],
-  preflightContinue: false,
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
   optionsSuccessStatus: 200
 };
 
 // Aplicar CORS antes que cualquier otra cosa
 app.use(cors(corsOptions));
 
-// Middleware adicional para CORS manual
+// Middleware adicional para CORS - SIMPLIFICADO
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://graphical-system-v2.onrender.com',
-    'https://shopone-1.onrender.com', 
-    'https://shopone.onrender.com',
-    'http://localhost:3000',
-    'http://localhost:3001'
-  ];
-  
-  if (!origin || allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  }
-  
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
   
-  console.log(`🔍 [CORS MIDDLEWARE] ${req.method} ${req.url} from ${origin}`);
+  console.log(`🔍 [CORS] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
   
   if (req.method === 'OPTIONS') {
-    console.log(`✅ [CORS] Preflight request handled for ${origin}`);
-    res.sendStatus(200);
+    console.log(`✅ [CORS] Preflight handled for ${req.headers.origin}`);
+    return res.status(200).end();
   } else {
     next();
   }
