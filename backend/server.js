@@ -153,6 +153,17 @@ app.all('/api/cors-test', (req, res) => {
   });
 });
 
+// Test endpoint básico sin API prefix
+app.get('/cors-test', (req, res) => {
+  console.log(`🔍 [CORS-BASIC] ${req.method} request from ${req.headers.origin}`);
+  res.json({
+    success: true,
+    message: 'Basic CORS test successful',
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin
+  });
+});
+
 // Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
 app.get('*', (req, res) => {
   const indexPath = path.join(finalBuildPath, 'index.html');
