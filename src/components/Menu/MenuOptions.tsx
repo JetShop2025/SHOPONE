@@ -97,6 +97,24 @@ const MenuOptions: React.FC = () => {
           width: '100%',
           padding: '16px 0',
           marginBottom: 18,
+          background: '#ff9800',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          fontWeight: 700,
+          fontSize: 18,
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
+        }}
+        onClick={() => navigate('/trailer-location')}
+      >
+        🛰️ TRAILER LOCATION
+      </button>
+      <button
+        style={{
+          width: '100%',
+          padding: '16px 0',
+          marginBottom: 18,
           background: '#d32f2f',
           color: '#fff',
           border: 'none',
