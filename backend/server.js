@@ -5,6 +5,25 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
+// CORS EXTREMO - PRIMERA LÍNEA DE DEFENSA
+app.use((req, res, next) => {
+  // Headers ultra-permisivos ANTES de cualquier otra cosa
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', '*');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  console.log(`🔥 [EMERGENCY-CORS] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
+  
+  // Manejar OPTIONS inmediatamente
+  if (req.method === 'OPTIONS') {
+    console.log(`🔥 [EMERGENCY-CORS] OPTIONS handled for ${req.headers.origin}`);
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
 // CORS configuration - ULTRA PERMISIVO para resolver problemas de conectividad
 const corsOptions = {
   origin: '*', // Permitir TODOS los orígenes explícitamente
@@ -24,15 +43,6 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', '*');
   res.header('Access-Control-Allow-Headers', '*');
-  res.header('Access-Control-Max-Age', '86400');
-  
-  console.log(`🔍 [CORS] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
-  
-  if (req.method === 'OPTIONS') {
-    console.log(`✅ [CORS] Preflight ULTRA handled for ${req.headers.origin}`);
-    res.status(200).end();
-    return;
-  }
   
   next();
 });
