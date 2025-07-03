@@ -55,6 +55,20 @@ interface HistoryLocation {
   address: string;
 }
 
+// Interfaces para las respuestas de la API
+interface GPSDataResponse {
+  success: boolean;
+  data: any[];
+  count: number;
+  mock?: boolean;
+}
+
+interface APIResponse {
+  success: boolean;
+  data: any;
+  mock?: boolean;
+}
+
 const TrailerLocation: React.FC = () => {
   const [trailerLocations, setTrailerLocations] = useState<TrailerLocationData[]>([]);
   const [emailRecipients, setEmailRecipients] = useState<EmailRecipient[]>([]);
@@ -80,19 +94,19 @@ const TrailerLocation: React.FC = () => {
   useEffect(() => {
     loadTrailerLocations();
     loadEmailRecipients();
-  }, []);
-  const loadTrailerLocations = async () => {
+  }, []);  const loadTrailerLocations = async () => {
     setLoading(true);
     setErrorMessage('');
     try {
       console.log('🔄 Cargando ubicaciones de trailers desde API...');
-      
       // Usar endpoint real del backend
       const response = await axios.get(`${API_URL}/trailer-location/gps-data`);
       
-      if (response.data && Array.isArray(response.data)) {
+      // El backend devuelve { success: true, data: [...], count: N }
+      const responseData = response.data as GPSDataResponse;
+      if (responseData && responseData.success && Array.isArray(responseData.data)) {
         // Transformar datos del backend al formato del frontend
-        const transformedData: TrailerLocationData[] = response.data.map((item: any) => ({
+        const transformedData: TrailerLocationData[] = responseData.data.map((item: any) => ({
           trailer: item.trailer || item.name || 'N/A',
           location: item.location || 'Ubicación no disponible',
           lastUpdate: item.lastUpdate || new Date().toISOString(),
@@ -104,11 +118,13 @@ const TrailerLocation: React.FC = () => {
         setLastUpdateTime(new Date().toLocaleString());
         console.log(`✅ ${transformedData.length} trailers cargados`);
         
-        if (response.data.some((item: any) => item.mock)) {
+        if (responseData.mock) {
           setErrorMessage('⚠️ Usando datos de prueba - API de Momentum no disponible');
+        } else {
+          setErrorMessage(''); // Limpiar mensaje de error si la carga fue exitosa
         }
       } else {
-        throw new Error('Formato de respuesta inválido');
+        throw new Error('Formato de respuesta inválido - backend no devolvió estructura esperada');
       }
     } catch (error) {
       console.error('❌ Error loading trailer locations:', error);
@@ -244,10 +260,10 @@ const TrailerLocation: React.FC = () => {
   const getTrailerDetail = async (trailerName: string) => {
     setDetailLoading(true);
     try {
-      console.log(`🔍 Obteniendo detalles del trailer ${trailerName}...`);
-        // Buscar el assetId basado en el nombre del trailer
+      console.log(`🔍 Obteniendo detalles del trailer ${trailerName}...`);      // Buscar el assetId basado en el nombre del trailer
       const assetsResponse = await axios.get(`${API_URL}/trailer-location/momentum/assets`);
-      const asset = (assetsResponse.data as any).data?.find((a: any) => a.name === trailerName);
+      const assetsData = assetsResponse.data as APIResponse;
+      const asset = assetsData.data?.find((a: any) => a.name === trailerName);
       
       if (!asset) {
         throw new Error(`Trailer ${trailerName} no encontrado`);
@@ -255,9 +271,10 @@ const TrailerLocation: React.FC = () => {
 
       // Obtener ubicación actual
       const locationResponse = await axios.get(`${API_URL}/trailer-location/momentum/location/${asset.assetId}`);
+      const locationData = locationResponse.data as APIResponse;
       
-      if (locationResponse.data && (locationResponse.data as any).success) {
-        const detailData = (locationResponse.data as any).data;
+      if (locationData && locationData.success) {
+        const detailData = locationData.data;
         setSelectedTrailerDetail({
           ...detailData,
           trailer: trailerName
@@ -278,10 +295,10 @@ const TrailerLocation: React.FC = () => {
   // Función para obtener estadísticas de un trailer
   const getTrailerStatistics = async (trailerName: string, startDate: string, endDate: string) => {
     try {
-      console.log(`📊 Obteniendo estadísticas del trailer ${trailerName}...`);
-        // Buscar el assetId basado en el nombre del trailer
+      console.log(`📊 Obteniendo estadísticas del trailer ${trailerName}...`);        // Buscar el assetId basado en el nombre del trailer
       const assetsResponse = await axios.get(`${API_URL}/trailer-location/momentum/assets`);
-      const asset = (assetsResponse.data as any).data?.find((a: any) => a.name === trailerName);
+      const assetsData = assetsResponse.data as APIResponse;
+      const asset = assetsData.data?.find((a: any) => a.name === trailerName);
       
       if (!asset) {
         throw new Error(`Trailer ${trailerName} no encontrado`);
@@ -291,9 +308,10 @@ const TrailerLocation: React.FC = () => {
       const statsResponse = await axios.get(
         `${API_URL}/trailer-location/momentum/statistics/${asset.assetId}?startDate=${startDate}&endDate=${endDate}`
       );
+      const statsData = statsResponse.data as APIResponse;
       
-      if (statsResponse.data && (statsResponse.data as any).success) {
-        setTrailerStatistics((statsResponse.data as any).data);
+      if (statsData && statsData.success) {
+        setTrailerStatistics(statsData.data);
         console.log(`✅ Estadísticas obtenidas para trailer ${trailerName}`);
       } else {
         throw new Error('No se pudieron obtener las estadísticas');
@@ -307,10 +325,10 @@ const TrailerLocation: React.FC = () => {
   // Función para obtener historial de ubicaciones
   const getTrailerHistory = async (trailerName: string, startDate: string, endDate: string, limit: number = 100) => {
     try {
-      console.log(`📅 Obteniendo historial del trailer ${trailerName}...`);
-        // Buscar el assetId basado en el nombre del trailer
+      console.log(`📅 Obteniendo historial del trailer ${trailerName}...`);        // Buscar el assetId basado en el nombre del trailer
       const assetsResponse = await axios.get(`${API_URL}/trailer-location/momentum/assets`);
-      const asset = (assetsResponse.data as any).data?.find((a: any) => a.name === trailerName);
+      const assetsData = assetsResponse.data as APIResponse;
+      const asset = assetsData.data?.find((a: any) => a.name === trailerName);
       
       if (!asset) {
         throw new Error(`Trailer ${trailerName} no encontrado`);
@@ -320,10 +338,11 @@ const TrailerLocation: React.FC = () => {
       const historyResponse = await axios.get(
         `${API_URL}/trailer-location/momentum/history/${asset.assetId}?startDate=${startDate}&endDate=${endDate}&limit=${limit}`
       );
+      const historyData = historyResponse.data as APIResponse;
       
-      if (historyResponse.data && (historyResponse.data as any).success) {
-        setTrailerHistory((historyResponse.data as any).data);
-        console.log(`✅ ${(historyResponse.data as any).data.length} registros de historial obtenidos para trailer ${trailerName}`);
+      if (historyData && historyData.success) {
+        setTrailerHistory(historyData.data);
+        console.log(`✅ ${historyData.data.length} registros de historial obtenidos para trailer ${trailerName}`);
       } else {
         throw new Error('No se pudo obtener el historial');
       }
