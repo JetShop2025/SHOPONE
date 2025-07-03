@@ -83,6 +83,16 @@ interface APIResponse {
   mock?: boolean;
 }
 
+interface LocationResponse {
+  assetId: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  lastUpdate?: string;
+  location?: string;
+}
+
 const TrailerLocation: React.FC = () => {
   const [trailerLocations, setTrailerLocations] = useState<TrailerLocationData[]>([]);
   const [allMomentumAssets, setAllMomentumAssets] = useState<MomentumAsset[]>([]);
@@ -341,18 +351,18 @@ const loadTrailerLocations = async () => {
     try {
       console.log(`🔄 Obteniendo ubicaciones GPS de ${selectedAssets.length} trailers...`);
       
-      const locationPromises = selectedAssets.map(async (asset) => {
-        try {
+      const locationPromises = selectedAssets.map(async (asset) => {        try {
           const response = await axios.get(`${API_URL}/trailer-location/momentum/location/${asset.assetId}`);
+          const locationData = response.data as LocationResponse;
           return {
             assetId: asset.assetId,
             name: asset.name,
             status: asset.status,
-            location: response.data.coordinates ? 
-              `Lat: ${response.data.coordinates.lat}, Lng: ${response.data.coordinates.lng}` : 
+            location: locationData.coordinates ? 
+              `Lat: ${locationData.coordinates.lat}, Lng: ${locationData.coordinates.lng}` : 
               'Sin ubicación disponible',
-            coordinates: response.data.coordinates,
-            lastUpdate: response.data.lastUpdate || new Date().toISOString()
+            coordinates: locationData.coordinates,
+            lastUpdate: locationData.lastUpdate || new Date().toISOString()
           };
         } catch (error) {
           console.error(`❌ Error obteniendo ubicación de ${asset.name}:`, error);
