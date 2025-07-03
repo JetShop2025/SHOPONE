@@ -9,37 +9,79 @@ router.use(express.json());
 
 // Configuración de Momentum API (actualizada con nuevas rutas)
 const MOMENTUM_CONFIG = {
-  baseURL: 'https://api.momentum.com', // URL base de Momentum
-  tenantId: process.env.MOMENTUM_TENANT_ID || 'your-tenant-id',
-  apiKey: process.env.MOMENTUM_API_KEY || 'your-api-key',
+  baseURL: process.env.MOMENTUM_BASE_URL || 'https://api.momentum.com',
+  tenantId: process.env.MOMENTUM_TENANT_ID,
+  apiKey: process.env.MOMENTUM_API_KEY,
   username: process.env.MOMENTUM_USERNAME,
   password: process.env.MOMENTUM_PASSWORD,
+  jwtToken: process.env.MOMENTUM_JWT_TOKEN,
   token: null,
   tokenExpiry: null,
   headers: {
-    'Authorization': `Bearer ${process.env.MOMENTUM_JWT_TOKEN}`,
     'Content-Type': 'application/json'
   }
+};
+
+// Verificar si tenemos las credenciales necesarias
+const hasMomentumCredentials = () => {
+  const hasUsernamePassword = MOMENTUM_CONFIG.username && MOMENTUM_CONFIG.password && MOMENTUM_CONFIG.tenantId;
+  const hasJwtToken = MOMENTUM_CONFIG.jwtToken;
+  const hasApiKey = MOMENTUM_CONFIG.apiKey && MOMENTUM_CONFIG.tenantId;
+  
+  console.log('🔐 Verificando credenciales de Momentum:');
+  console.log(`   - Username/Password: ${hasUsernamePassword ? '✅' : '❌'}`);
+  console.log(`   - JWT Token: ${hasJwtToken ? '✅' : '❌'}`);
+  console.log(`   - API Key: ${hasApiKey ? '✅' : '❌'}`);
+  console.log(`   - Tenant ID: ${MOMENTUM_CONFIG.tenantId ? '✅' : '❌'}`);
+  
+  return hasUsernamePassword || hasJwtToken || hasApiKey;
 };
 
 // Función para autenticarse con Momentum (actualizada)
 const authenticateMomentum = async () => {
   try {
-    const response = await axios.post(`${MOMENTUM_CONFIG.baseURL}/v1/signin`, {
-      username: MOMENTUM_CONFIG.username,
-      password: MOMENTUM_CONFIG.password
-    });
-    
-    if (response.data && response.data.token) {
-      MOMENTUM_CONFIG.token = response.data.token;
+    // Si ya tenemos un JWT token configurado, usarlo directamente
+    if (MOMENTUM_CONFIG.jwtToken) {
+      console.log('🔑 Usando JWT token configurado');
+      MOMENTUM_CONFIG.token = MOMENTUM_CONFIG.jwtToken;
       MOMENTUM_CONFIG.tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 horas
-      MOMENTUM_CONFIG.headers.Authorization = `Bearer ${response.data.token}`;
-      console.log('✅ Autenticación con Momentum exitosa');
-      return response.data.token;
+      MOMENTUM_CONFIG.headers.Authorization = `Bearer ${MOMENTUM_CONFIG.jwtToken}`;
+      return MOMENTUM_CONFIG.jwtToken;
     }
+
+    // Si tenemos username/password, autenticar
+    if (MOMENTUM_CONFIG.username && MOMENTUM_CONFIG.password) {
+      console.log('🔑 Autenticando con username/password...');
+      
+      const response = await axios.post(`${MOMENTUM_CONFIG.baseURL}/v1/signin`, {
+        username: MOMENTUM_CONFIG.username,
+        password: MOMENTUM_CONFIG.password
+      }, {
+        headers: MOMENTUM_CONFIG.headers
+      });
+      
+      if (response.data && response.data.token) {
+        MOMENTUM_CONFIG.token = response.data.token;
+        MOMENTUM_CONFIG.tokenExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 horas
+        MOMENTUM_CONFIG.headers.Authorization = `Bearer ${response.data.token}`;
+        console.log('✅ Autenticación con Momentum exitosa');
+        return response.data.token;
+      }
+    }
+
+    // Si tenemos API key, configurar headers
+    if (MOMENTUM_CONFIG.apiKey) {
+      console.log('🔑 Usando API Key configurada');
+      MOMENTUM_CONFIG.headers.Authorization = `Bearer ${MOMENTUM_CONFIG.apiKey}`;
+      // O dependiendo del formato que use Momentum:
+      // MOMENTUM_CONFIG.headers['X-API-Key'] = MOMENTUM_CONFIG.apiKey;
+      return MOMENTUM_CONFIG.apiKey;
+    }
+
+    console.error('❌ No hay credenciales de Momentum configuradas');
     return null;
   } catch (error) {
-    console.error('❌ Error autenticando con Momentum:', error.message);
+    console.error('❌ Error autenticando con Momentum:', error.response?.data || error.message);
     return null;
   }
 };
@@ -55,6 +97,11 @@ const ensureValidToken = async () => {
 // Función para hacer llamadas a la API de Momentum
 const momentumApiCall = async (endpoint, method = 'GET', data = null) => {
   try {
+    // Verificar credenciales antes de hacer la llamada
+    if (!hasMomentumCredentials()) {
+      throw new Error('No hay credenciales de Momentum configuradas');
+    }
+
     const token = await ensureValidToken();
     if (!token) {
       throw new Error('No se pudo autenticar con Momentum');
@@ -66,18 +113,30 @@ const momentumApiCall = async (endpoint, method = 'GET', data = null) => {
       headers: {
         ...MOMENTUM_CONFIG.headers,
         'Authorization': `Bearer ${token}`
-      }
+      },
+      timeout: 10000 // 10 segundos timeout
     };
 
     if (data && (method === 'POST' || method === 'PUT')) {
       config.data = data;
     }
 
+    console.log(`📡 Llamada a Momentum API: ${method} ${endpoint}`);
     const response = await axios(config);
+    console.log(`✅ Respuesta de Momentum: ${response.status}`);
+    
     return response.data;
   } catch (error) {
-    console.error(`❌ Error en llamada a Momentum API ${endpoint}:`, error.message);
-    throw error;  }
+    console.error(`❌ Error en llamada a Momentum API ${endpoint}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      url: error.config?.url
+    });
+    
+    // Relanzar el error para que el endpoint lo maneje
+    throw error;
+  }
 };
 
 // Configuración de email
@@ -108,13 +167,34 @@ router.get('/momentum/assets', async (req, res) => {
   try {
     console.log('📍 Obteniendo lista de assets desde Momentum API...');
     
+    // Verificar credenciales antes de hacer la llamada
+    if (!hasMomentumCredentials()) {
+      console.log('⚠️ No hay credenciales de Momentum - usando datos de prueba');
+      
+      const mockAssets = [
+        { assetId: 'asset-3300', name: '3-300', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString() },
+        { assetId: 'asset-3301', name: '3-301', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString() },
+        { assetId: 'asset-1100', name: '1-100', type: 'TRAILER', status: 'MAINTENANCE', lastUpdate: new Date().toISOString() },
+        { assetId: 'asset-1101', name: '1-101', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString() },
+        { assetId: 'asset-201', name: '2-01', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString() }
+      ];
+      
+      return res.json({
+        success: true,
+        data: mockAssets,
+        count: mockAssets.length,
+        mock: true,
+        message: 'Usando datos de prueba - Configure las credenciales de Momentum en las variables de entorno'
+      });
+    }
+    
     const assetsData = await momentumApiCall(`/v1/tenant/${MOMENTUM_CONFIG.tenantId}/asset`);
     
     // Transformar datos para nuestro frontend
     const transformedAssets = assetsData.map(asset => ({
-      assetId: asset.id,
+      assetId: asset.id || asset.assetId,
       name: asset.name,
-      type: asset.type,
+      type: asset.type || 'TRAILER',
       status: asset.status || 'ACTIVE',
       lastUpdate: asset.lastUpdate || new Date().toISOString()
     }));
@@ -123,13 +203,14 @@ router.get('/momentum/assets', async (req, res) => {
     res.json({
       success: true,
       data: transformedAssets,
-      count: transformedAssets.length
+      count: transformedAssets.length,
+      mock: false
     });
     
   } catch (error) {
     console.error('❌ Error obteniendo assets desde Momentum:', error.message);
     
-    // Fallback a datos mock
+    // Fallback a datos mock con información del error
     const mockAssets = [
       { assetId: 'asset-3300', name: '3-300', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString() },
       { assetId: 'asset-3301', name: '3-301', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString() },
@@ -140,10 +221,133 @@ router.get('/momentum/assets', async (req, res) => {
       success: true,
       data: mockAssets,
       count: mockAssets.length,
-      mock: true
+      mock: true,
+      error: error.message,
+      message: 'Error conectando con Momentum - usando datos de prueba'
+    });  }
+});
+
+// 🔧 ENDPOINT DIAGNÓSTICO: Verificar configuración de Momentum
+router.get('/momentum/diagnostics', async (req, res) => {
+  try {
+    console.log('🔧 Ejecutando diagnóstico de Momentum...');
+    
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      momentum: {
+        baseURL: MOMENTUM_CONFIG.baseURL,
+        hasTenantId: !!MOMENTUM_CONFIG.tenantId,
+        hasUsername: !!MOMENTUM_CONFIG.username,
+        hasPassword: !!MOMENTUM_CONFIG.password,
+        hasJwtToken: !!MOMENTUM_CONFIG.jwtToken,
+        hasApiKey: !!MOMENTUM_CONFIG.apiKey,
+        hasCredentials: hasMomentumCredentials(),
+        tenantIdMasked: MOMENTUM_CONFIG.tenantId ? `${MOMENTUM_CONFIG.tenantId.substring(0, 4)}****` : null
+      },
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        hasMomentumTenantId: !!process.env.MOMENTUM_TENANT_ID,
+        hasMomentumUsername: !!process.env.MOMENTUM_USERNAME,
+        hasMomentumPassword: !!process.env.MOMENTUM_PASSWORD,
+        hasMomentumJwtToken: !!process.env.MOMENTUM_JWT_TOKEN,
+        hasMomentumApiKey: !!process.env.MOMENTUM_API_KEY
+      },
+      connectivity: {
+        canAuthenticate: false,
+        lastError: null
+      }
+    };
+
+    // Intentar autenticación si tenemos credenciales
+    if (hasMomentumCredentials()) {
+      try {
+        const token = await authenticateMomentum();
+        diagnostics.connectivity.canAuthenticate = !!token;
+        diagnostics.connectivity.hasToken = !!token;
+        
+        if (token) {
+          console.log('✅ Autenticación exitosa en diagnóstico');
+          
+          // Intentar hacer una llamada simple a la API
+          try {
+            await momentumApiCall(`/v1/tenant/${MOMENTUM_CONFIG.tenantId}/asset`, 'GET');
+            diagnostics.connectivity.canCallApi = true;
+          } catch (apiError) {
+            diagnostics.connectivity.canCallApi = false;
+            diagnostics.connectivity.apiError = apiError.message;
+          }
+        }
+      } catch (authError) {
+        diagnostics.connectivity.canAuthenticate = false;
+        diagnostics.connectivity.lastError = authError.message;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: diagnostics,
+      recommendations: generateRecommendations(diagnostics)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      data: {
+        timestamp: new Date().toISOString(),
+        hasBasicConfig: !!MOMENTUM_CONFIG.baseURL
+      }
     });
   }
 });
+
+// Función para generar recomendaciones basadas en el diagnóstico
+function generateRecommendations(diagnostics) {
+  const recommendations = [];
+  
+  if (!diagnostics.momentum.hasCredentials) {
+    recommendations.push({
+      type: 'critical',
+      message: 'No hay credenciales de Momentum configuradas',
+      action: 'Configure MOMENTUM_TENANT_ID, MOMENTUM_USERNAME, MOMENTUM_PASSWORD o MOMENTUM_JWT_TOKEN en las variables de entorno'
+    });
+  }
+  
+  if (!diagnostics.momentum.hasTenantId) {
+    recommendations.push({
+      type: 'critical',
+      message: 'Falta MOMENTUM_TENANT_ID',
+      action: 'Configure la variable de entorno MOMENTUM_TENANT_ID con su ID de tenant de Momentum'
+    });
+  }
+  
+  if (diagnostics.momentum.hasCredentials && !diagnostics.connectivity.canAuthenticate) {
+    recommendations.push({
+      type: 'error',
+      message: 'No se puede autenticar con Momentum',
+      action: 'Verifique que las credenciales sean correctas y que la URL base sea válida'
+    });
+  }
+  
+  if (diagnostics.connectivity.canAuthenticate && !diagnostics.connectivity.canCallApi) {
+    recommendations.push({
+      type: 'warning',
+      message: 'Autenticación exitosa pero no se puede acceder a la API',
+      action: 'Verifique que el tenant ID sea correcto y que tenga permisos para acceder a los assets'
+    });
+  }
+  
+  if (diagnostics.momentum.hasCredentials && diagnostics.connectivity.canAuthenticate && diagnostics.connectivity.canCallApi) {
+    recommendations.push({
+      type: 'success',
+      message: 'Configuración de Momentum correcta',
+      action: 'El sistema está listo para usar datos reales de Momentum'
+    });
+  }
+  
+  return recommendations;
+}
 
 // 🚀 ENDPOINT 2: Obtener ubicación actual de un asset específico
 router.get('/momentum/location/:assetId', async (req, res) => {

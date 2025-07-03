@@ -116,14 +116,21 @@
             <p>Este test verifica el endpoint <code>/send-report</code> con trailers seleccionados</p>
             <button class="btn btn-success" onclick="sendTestReport()">📧 Enviar Reporte de Prueba</button>
             <div id="email-response" class="response"></div>
-        </div>
-
-        <!-- Test 4: Estado de conectividad -->
+        </div>        <!-- Test 4: Estado de conectividad -->
         <div class="test-section">
             <h3>🔗 Test 4: Estado de Conectividad</h3>
             <p>Verificar conectividad con backend y APIs</p>
             <button class="btn btn-primary" onclick="checkConnectivity()">🔗 Verificar Conectividad</button>
             <div id="connectivity-response" class="response"></div>
+        </div>
+
+        <!-- Test 5: Diagnóstico de Momentum -->
+        <div class="test-section">
+            <h3>🔧 Test 5: Diagnóstico de Momentum</h3>
+            <p>Verificar configuración y credenciales de Momentum GPS</p>
+            <button class="btn btn-warning" onclick="runMomentumDiagnostics()">🔧 Ejecutar Diagnóstico</button>
+            <div id="momentum-diagnostics" class="response"></div>
+            <div id="momentum-recommendations" style="margin-top: 10px;"></div>
         </div>
     </div>
 
@@ -294,13 +301,52 @@
                 log('connectivity-response', `✅ Recipients: ${recipientsData.length} encontrados`);
             } catch (error) {
                 log('connectivity-response', `❌ Recipients error: ${error.message}`, true);
-            }
-        }
+            }        }
 
-        // Auto-inicializar algunas pruebas
+        async function runMomentumDiagnostics() {
+            log('momentum-diagnostics', '🔧 Ejecutando diagnóstico de Momentum...');
+            
+            try {
+                const response = await fetch(`${API_URL}/trailer-location/momentum/diagnostics`);
+                const data = await response.json();
+                
+                log('momentum-diagnostics', `✅ Diagnóstico completado:`);
+                log('momentum-diagnostics', JSON.stringify(data, null, 2));
+                
+                // Mostrar recomendaciones de forma más legible
+                if (data.recommendations && data.recommendations.length > 0) {
+                    const recommendationsDiv = document.getElementById('momentum-recommendations');
+                    recommendationsDiv.innerHTML = '<h4>📋 Recomendaciones:</h4>';
+                    
+                    data.recommendations.forEach(rec => {
+                        const color = {
+                            'critical': '#f44336',
+                            'error': '#ff9800', 
+                            'warning': '#ff9800',
+                            'success': '#4caf50'
+                        }[rec.type] || '#666';
+                        
+                        recommendationsDiv.innerHTML += `
+                            <div style="margin: 8px 0; padding: 10px; border-left: 4px solid ${color}; background: #f9f9f9;">
+                                <strong style="color: ${color};">${rec.type.toUpperCase()}:</strong> ${rec.message}<br>
+                                <small style="color: #666;"><strong>Acción:</strong> ${rec.action}</small>
+                            </div>
+                        `;
+                    });
+                } else {
+                    document.getElementById('momentum-recommendations').innerHTML = '';
+                }
+                
+            } catch (error) {
+                log('momentum-diagnostics', `❌ Error en diagnóstico: ${error.message}`, true);
+            }
+        }        // Auto-inicializar algunas pruebas
         window.onload = function() {
             log('connectivity-response', '🚀 Página cargada - Lista para pruebas');
             checkConnectivity();
+            setTimeout(() => {
+                runMomentumDiagnostics();
+            }, 1000);
         };
     </script>
 </body>
