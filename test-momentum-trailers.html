@@ -122,15 +122,22 @@
             <p>Verificar conectividad con backend y APIs</p>
             <button class="btn btn-primary" onclick="checkConnectivity()">🔗 Verificar Conectividad</button>
             <div id="connectivity-response" class="response"></div>
-        </div>
-
-        <!-- Test 5: Diagnóstico de Momentum -->
+        </div>        <!-- Test 5: Diagnóstico de Momentum -->
         <div class="test-section">
             <h3>🔧 Test 5: Diagnóstico de Momentum</h3>
             <p>Verificar configuración y credenciales de Momentum GPS</p>
             <button class="btn btn-warning" onclick="runMomentumDiagnostics()">🔧 Ejecutar Diagnóstico</button>
             <div id="momentum-diagnostics" class="response"></div>
             <div id="momentum-recommendations" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- Test 6: Probar Endpoints de Momentum -->
+        <div class="test-section">
+            <h3>🧪 Test 6: Probar Endpoints Múltiples</h3>
+            <p>Probar diferentes endpoints de Momentum para encontrar los que funcionan</p>
+            <button class="btn btn-primary" onclick="testMomentumEndpoints()">🧪 Probar Endpoints</button>
+            <div id="endpoints-results" class="response"></div>
+            <div id="endpoints-summary" style="margin-top: 10px;"></div>
         </div>
     </div>
 
@@ -336,11 +343,77 @@
                 } else {
                     document.getElementById('momentum-recommendations').innerHTML = '';
                 }
-                
-            } catch (error) {
+                  } catch (error) {
                 log('momentum-diagnostics', `❌ Error en diagnóstico: ${error.message}`, true);
             }
-        }        // Auto-inicializar algunas pruebas
+        }
+
+        async function testMomentumEndpoints() {
+            log('endpoints-results', '🧪 Probando múltiples endpoints de Momentum...');
+            
+            try {
+                const response = await fetch(`${API_URL}/trailer-location/momentum/test-endpoints`);
+                const data = await response.json();
+                
+                log('endpoints-results', `✅ Test completado: ${data.successfulTests}/${data.totalTests} endpoints funcionando`);
+                
+                if (data.allResults) {
+                    // Mostrar resultados detallados
+                    data.allResults.forEach(result => {
+                        const status = result.status === 'SUCCESS' ? '✅' : '❌';
+                        const info = result.status === 'SUCCESS' ? 
+                            `(${result.dataType}${result.dataCount ? `, ${result.dataCount} items` : ''})` :
+                            `(${result.httpStatus || 'Error'}: ${result.error})`;
+                        
+                        log('endpoints-results', `${status} ${result.name}: ${result.endpoint} ${info}`);
+                    });
+                }
+
+                // Mostrar resumen y recomendaciones
+                if (data.bestEndpoint) {
+                    const summaryDiv = document.getElementById('endpoints-summary');
+                    summaryDiv.innerHTML = `
+                        <h4>📊 Resumen de Resultados:</h4>
+                        <div style="margin: 8px 0; padding: 10px; border-left: 4px solid #4caf50; background: #f9f9f9;">
+                            <strong style="color: #4caf50;">MEJOR ENDPOINT ENCONTRADO:</strong><br>
+                            <code>${data.bestEndpoint.endpoint}</code><br>
+                            <small>Tipo: ${data.bestEndpoint.dataType}, Items: ${data.bestEndpoint.dataCount}</small>
+                        </div>
+                    `;
+
+                    if (data.workingEndpoints && data.workingEndpoints.length > 0) {
+                        summaryDiv.innerHTML += `
+                            <div style="margin: 8px 0; padding: 10px; border-left: 4px solid #2196f3; background: #f9f9f9;">
+                                <strong style="color: #2196f3;">ENDPOINTS FUNCIONALES:</strong><br>
+                                ${data.workingEndpoints.map(ep => `<code>${ep}</code>`).join('<br>')}
+                            </div>
+                        `;
+                    }
+
+                    if (data.recommendations && data.recommendations.length > 0) {
+                        data.recommendations.forEach(rec => {
+                            const color = rec.type === 'success' ? '#4caf50' : '#ff9800';
+                            summaryDiv.innerHTML += `
+                                <div style="margin: 8px 0; padding: 10px; border-left: 4px solid ${color}; background: #f9f9f9;">
+                                    <strong style="color: ${color};">${rec.message}</strong><br>
+                                    <small style="color: #666;"><strong>Acción:</strong> ${rec.action}</small>
+                                </div>
+                            `;
+                        });
+                    }
+                } else {
+                    document.getElementById('endpoints-summary').innerHTML = `
+                        <div style="margin: 8px 0; padding: 10px; border-left: 4px solid #f44336; background: #f9f9f9;">
+                            <strong style="color: #f44336;">No se encontraron endpoints funcionales</strong><br>
+                            <small>Verifique las credenciales y contacte a Momentum para confirmar endpoints correctos</small>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                log('endpoints-results', `❌ Error probando endpoints: ${error.message}`, true);
+            }
+        }// Auto-inicializar algunas pruebas
         window.onload = function() {
             log('connectivity-response', '🚀 Página cargada - Lista para pruebas');
             checkConnectivity();

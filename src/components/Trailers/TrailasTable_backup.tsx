@@ -4,7 +4,6 @@ import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 const clientes = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
-
 const modalStyle: React.CSSProperties = {
   position: 'fixed',
   top: 0, left: 0, right: 0, bottom: 0,
@@ -15,7 +14,6 @@ const modalStyle: React.CSSProperties = {
   zIndex: 1000,
   backdropFilter: 'blur(8px)'
 };
-
 const modalContentStyle: React.CSSProperties = {
   background: 'white',
   borderRadius: 20,
@@ -28,7 +26,6 @@ const modalContentStyle: React.CSSProperties = {
   border: '1px solid rgba(255,255,255,0.2)',
   position: 'relative'
 };
-
 const clientePrefijos: Record<string, string> = {
   GALGRE: '1-',
   JETGRE: '2-',
@@ -166,7 +163,6 @@ const TrailasTable: React.FC = () => {
       setPdfError(woId);
     }
   };
-
   return (
     <div style={{ 
       maxWidth: 1200, 
@@ -209,9 +205,7 @@ const TrailasTable: React.FC = () => {
         <div style={{ marginLeft: 'auto', fontSize: 14, color: '#666' }}>
           Gestión de Rentas y Órdenes de Trabajo
         </div>
-      </div>
-
-      {/* Panel de trailer seleccionado - Diseño moderno */}
+      </div>      {/* Panel de trailer seleccionado - Diseño moderno */}
       {selected && (
         <div style={{
           background: 'white',
@@ -330,9 +324,7 @@ const TrailasTable: React.FC = () => {
             </button>
           </div>
         </div>
-      )}
-
-      {/* Tablas agrupadas por cliente - Diseño moderno */}
+      )}      {/* Tablas agrupadas por cliente - Diseño moderno */}
       {clientes.map(cliente => (
         <div key={cliente} style={{
           marginBottom: 20,
@@ -406,96 +398,91 @@ const TrailasTable: React.FC = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {trailasPorCliente(cliente).map(traila => {
-                    // Cálculo de colores para vencidas y por vencer
-                    let alertStyle: React.CSSProperties = {};
-                    let alertBadge = '';
-                    
-                    if (traila.fechaEntrega) {
-                      const hoy = dayjs();
-                      const entrega = dayjs(traila.fechaEntrega);
-                      const diff = entrega.diff(hoy, 'day');
-                      if (diff < 0) {
-                        alertStyle.background = '#ffebee';
-                        alertStyle.borderLeft = '4px solid #f44336';
-                        alertBadge = '⚠️ VENCIDA';
-                      } else if (diff <= 3) {
-                        alertStyle.background = '#fff8e1';
-                        alertStyle.borderLeft = '4px solid #ff9800';
-                        alertBadge = '⏰ POR VENCER';
-                      }
+                <tbody>                {trailasPorCliente(cliente).map(traila => {
+                  // Cálculo de colores para vencidas y por vencer
+                  let alertStyle: React.CSSProperties = {};
+                  let alertBadge = '';
+                  
+                  if (traila.fechaEntrega) {
+                    const hoy = dayjs();
+                    const entrega = dayjs(traila.fechaEntrega);
+                    const diff = entrega.diff(hoy, 'day');
+                    if (diff < 0) {
+                      alertStyle.background = '#ffebee';
+                      alertStyle.borderLeft = '4px solid #f44336';
+                      alertBadge = '⚠️ VENCIDA';
+                    } else if (diff <= 3) {
+                      alertStyle.background = '#fff8e1';
+                      alertStyle.borderLeft = '4px solid #ff9800';
+                      alertBadge = '⏰ POR VENCER';
                     }
-                    
-                    return (
-                      <tr
-                        key={traila.nombre}
-                        style={{
-                          ...alertStyle,
-                          background: selected?.nombre === traila.nombre ? '#e3f2fd' : alertStyle.background,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          borderBottom: '1px solid #f0f0f0'
-                        }}
-                        onClick={() => setSelected(traila)}
-                        onMouseEnter={(e) => {
-                          if (selected?.nombre !== traila.nombre) {
-                            e.currentTarget.style.background = '#f8f9fa';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selected?.nombre !== traila.nombre) {
-                            e.currentTarget.style.background = (alertStyle.background as string) || 'white';
-                          }
-                        }}
-                      >
-                        <td style={{
-                          padding: '16px 20px',
-                          fontWeight: 600,
-                          color: '#1976d2',
-                          fontSize: 16
+                  }
+                  
+                  return (
+                    <tr
+                      key={traila.nombre}                      style={{
+                        ...alertStyle,
+                        background: selected?.nombre === traila.nombre ? '#e3f2fd' : (alertStyle.background as string),
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}
+                      onClick={() => setSelected(traila)}
+                      onMouseEnter={(e) => {
+                        if (selected?.nombre !== traila.nombre) {
+                          e.currentTarget.style.background = '#f8f9fa';
+                        }
+                      }}                      onMouseLeave={(e) => {
+                        if (selected?.nombre !== traila.nombre) {
+                          e.currentTarget.style.background = (alertStyle.background as string) || 'white';
+                        }
+                      }}
+                    >
+                      <td style={{
+                        padding: '16px 20px',
+                        fontWeight: 600,
+                        color: '#1976d2',
+                        fontSize: 16
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{traila.nombre}</span>
+                          {alertBadge && (
+                            <span style={{
+                              fontSize: 12,
+                              padding: '2px 6px',
+                              background: alertBadge.includes('VENCIDA') ? '#ffcdd2' : '#ffe0b2',
+                              color: alertBadge.includes('VENCIDA') ? '#c62828' : '#ef6c00',
+                              borderRadius: 8,
+                              fontWeight: 600
+                            }}>
+                              {alertBadge}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '6px 12px',
+                          borderRadius: 16,
+                          background: traila.estatus === 'RENTADA' 
+                            ? 'linear-gradient(135deg, #ffebee, #ffcdd2)' 
+                            : 'linear-gradient(135deg, #e8f5e8, #c8e6c9)',
+                          color: traila.estatus === 'RENTADA' ? '#c62828' : '#2e7d32',
+                          fontWeight: 700,
+                          fontSize: 14,
+                          border: `2px solid ${traila.estatus === 'RENTADA' ? '#ef5350' : '#66bb6a'}`
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span>{traila.nombre}</span>
-                            {alertBadge && (
-                              <span style={{
-                                fontSize: 12,
-                                padding: '2px 6px',
-                                background: alertBadge.includes('VENCIDA') ? '#ffcdd2' : '#ffe0b2',
-                                color: alertBadge.includes('VENCIDA') ? '#c62828' : '#ef6c00',
-                                borderRadius: 8,
-                                fontWeight: 600
-                              }}>
-                                {alertBadge}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px 20px' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '6px 12px',
-                            borderRadius: 16,
-                            background: traila.estatus === 'RENTADA' 
-                              ? 'linear-gradient(135deg, #ffebee, #ffcdd2)' 
-                              : 'linear-gradient(135deg, #e8f5e8, #c8e6c9)',
-                            color: traila.estatus === 'RENTADA' ? '#c62828' : '#2e7d32',
-                            fontWeight: 700,
-                            fontSize: 14,
-                            border: `2px solid ${traila.estatus === 'RENTADA' ? '#ef5350' : '#66bb6a'}`
-                          }}>
-                            {traila.estatus === 'RENTADA' ? '🔴' : '🟢'}
-                            {traila.estatus === 'RENTADA' ? 'RENTADO' : 'DISPONIBLE'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          {traila.estatus === 'RENTADA' ? '🔴' : '🟢'}
+                          {traila.estatus === 'RENTADA' ? 'RENTADO' : 'DISPONIBLE'}                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       ))}
@@ -745,9 +732,7 @@ const TrailasTable: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Modal para entrega - Diseño moderno */}
+      )}      {/* Modal para entrega - Diseño moderno */}
       {showEntregaModal && (
         <div style={modalStyle} onClick={() => setShowEntregaModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
@@ -939,9 +924,7 @@ const TrailasTable: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Modal historial de rentas - Diseño moderno */}
+      )}      {/* Modal historial de rentas - Diseño moderno */}
       {showRentasModal && (
         <div style={modalStyle} onClick={() => setShowRentasModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
@@ -1109,9 +1092,7 @@ const TrailasTable: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Modal historial de Work Orders - Diseño moderno */}
+      )}      {/* Modal historial de Work Orders - Diseño moderno */}
       {showWorkOrdersModal && selected && (
         <div style={modalStyle} onClick={() => setShowWorkOrdersModal(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>

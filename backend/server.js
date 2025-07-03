@@ -175,16 +175,221 @@ app.all('/api/cors-debug', (req, res) => {
   });
 });
 
-// Catch-all handler: envía de vuelta React's index.html file para cualquier ruta no API
+// Ruta especial para servir el React app desde el backend (para Render)
+app.get('/app', (req, res) => {
+  const reactAppPath = path.join(__dirname, '../src/index.tsx');
+  
+  // Si no tenemos build, servir una página que cargue el desarrollo
+  const fallbackHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sistema Gráfico V2 - Modernizado</title>
+    <style>
+        body { margin: 0; font-family: 'Courier New', monospace; }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .header h1 { color: #1976d2; font-size: 36px; margin: 0; }
+        .status { 
+            background: #e8f5e8; 
+            color: #2e7d32; 
+            padding: 16px; 
+            border-radius: 12px; 
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+        .login-form {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus { outline: none; border-color: #1976d2; }
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #1976d2, #1565c0);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .nav-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 30px;
+        }
+        .nav-link {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            text-align: center;
+            text-decoration: none;
+            color: #1976d2;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .nav-link:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚛 SISTEMA GRÁFICO V2</h1>
+            <p>Sistema Modernizado - Deploy en Render</p>
+        </div>
+        
+        <div class="status">
+            ✅ Backend funcionando correctamente • UI/UX Modernizada • Trailer Control Actualizado
+        </div>
+        
+        <div class="login-form">
+            <h2 style="text-align: center; color: #1976d2; margin-bottom: 20px;">🔐 Acceso al Sistema</h2>
+            <form onsubmit="login(event)">
+                <div class="form-group">
+                    <label>👤 Usuario:</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>🔐 Contraseña:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn">🚀 INGRESAR</button>
+            </form>
+            <div id="message" style="margin-top: 15px; text-align: center;"></div>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/api/test" class="nav-link">🧪 Test API</a>
+            <a href="/api/health" class="nav-link">💚 Health Check</a>
+            <a href="/api/trailas" class="nav-link">🚛 Trailers API</a>
+            <a href="/api/work-orders" class="nav-link">🔧 Work Orders</a>
+        </div>
+    </div>
+    
+    <script>
+        async function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            
+            messageDiv.innerHTML = '<div style="color: #1976d2;">🔄 Validando...</div>';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (response.ok) {
+                    messageDiv.innerHTML = '<div style="color: #2e7d32;">✅ Acceso autorizado</div>';
+                    localStorage.setItem('username', username);
+                    localStorage.setItem('isAuthenticated', 'true');
+                    setTimeout(() => showMainMenu(), 1000);
+                } else {
+                    messageDiv.innerHTML = '<div style="color: #d32f2f;">❌ Credenciales incorrectas</div>';
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '<div style="color: #d32f2f;">❌ Error de conexión</div>';
+            }
+        }
+        
+        function showMainMenu() {
+            document.querySelector('.container').innerHTML = \`
+                <div class="header">
+                    <h1>🚛 MENÚ PRINCIPAL</h1>
+                    <p>Sistema Gráfico V2 - Modernizado</p>
+                </div>
+                <div class="nav-links">
+                    <a href="#" onclick="loadComponent('trailas')" class="nav-link">
+                        🚛 TRAILER CONTROL<br><small>Gestión de rentas modernizada</small>
+                    </a>
+                    <a href="#" onclick="loadComponent('work-orders')" class="nav-link">
+                        🔧 WORK ORDERS<br><small>Órdenes de trabajo</small>
+                    </a>
+                    <a href="#" onclick="loadComponent('inventory')" class="nav-link">
+                        📦 INVENTARIO<br><small>Control de partes</small>
+                    </a>
+                    <a href="#" onclick="loadComponent('trailer-location')" class="nav-link">
+                        📍 TRAILER LOCATION<br><small>Ubicación de trailers</small>
+                    </a>
+                    <a href="#" onclick="loadComponent('audit')" class="nav-link">
+                        📊 AUDITORÍA<br><small>Logs del sistema</small>
+                    </a>
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button onclick="logout()" style="background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                        🚪 Cerrar Sesión
+                    </button>
+                </div>
+            \`;
+        }
+        
+        function loadComponent(component) {
+            alert('🎉 Componente ' + component + ' se cargaría aquí.\\n\\nEn el deploy completo de React, estos enlaces abrirían las interfaces modernizadas.');
+        }
+        
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+        
+        // Verificar si ya está logueado
+        if (localStorage.getItem('isAuthenticated') === 'true') {
+            showMainMenu();
+        }
+    </script>
+</body>
+</html>`;
+  
+  res.send(fallbackHTML);
+});
+
+// Catch-all handler: send back React's index.html file for SPA routing
 app.get('*', (req, res) => {
-  console.log(`🌐 [REACT] Serving React app for: ${req.url}`);
   const indexPath = path.join(finalBuildPath, 'index.html');
   
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    console.error(`❌ [REACT] Build files not found at: ${finalBuildPath}`);
-    res.status(404).send(`Build files not found. Expected at: ${finalBuildPath}`);
+    // Si no hay build, redirigir a la app del backend
+    res.redirect('/app');
   }
 });
 

@@ -9,7 +9,7 @@ router.use(express.json());
 
 // Configuración de Momentum API (actualizada con nuevas rutas)
 const MOMENTUM_CONFIG = {
-  baseURL: process.env.MOMENTUM_BASE_URL || 'https://api.momentum.com',
+  baseURL: process.env.MOMENTUM_BASE_URL || 'https://api.momentumiot.com',
   tenantId: process.env.MOMENTUM_TENANT_ID,
   apiKey: process.env.MOMENTUM_API_KEY,
   username: process.env.MOMENTUM_USERNAME,
@@ -187,15 +187,19 @@ router.get('/momentum/assets', async (req, res) => {
         message: 'Usando datos de prueba - Configure las credenciales de Momentum en las variables de entorno'
       });
     }
-    
-    const assetsData = await momentumApiCall(`/v1/tenant/${MOMENTUM_CONFIG.tenantId}/asset`);
+      // Usar el endpoint principal confirmado del Swagger
+    const assetsData = await momentumApiCall(`/v1/webapp/tenant/${MOMENTUM_CONFIG.tenantId}/asset`);
     
     // Transformar datos para nuestro frontend
     const transformedAssets = assetsData.map(asset => ({
-      assetId: asset.id || asset.assetId,
+      assetId: asset.id || asset.deviceId,
       name: asset.name,
+      uniqueId: asset.uniqueId,
+      internalId: asset.internalId,
+      locationId: asset.locationId, // ← Importante para obtener GPS
       type: asset.type || 'TRAILER',
       status: asset.status || 'ACTIVE',
+      isJobsiteTrackable: asset.isJobsiteTrackable,
       lastUpdate: asset.lastUpdate || new Date().toISOString()
     }));
     
@@ -345,30 +349,189 @@ function generateRecommendations(diagnostics) {
       action: 'El sistema está listo para usar datos reales de Momentum'
     });
   }
+    return recommendations;
+}
+
+// 🧪 ENDPOINT DE PRUEBA: Probar múltiples endpoints de Momentum
+router.get('/momentum/test-endpoints', async (req, res) => {
+  try {
+    console.log('🧪 Probando múltiples endpoints de Momentum...');
+    
+    if (!hasMomentumCredentials()) {
+      return res.json({
+        success: false,
+        message: 'No hay credenciales configuradas',
+        tests: []
+      });
+    }    // Lista de endpoints confirmados del Swagger oficial de Momentum
+    const endpointsToTest = [
+      // Assets/Trailers endpoints (confirmados del Swagger)
+      { name: 'Assets (webapp)', endpoint: `/v1/webapp/tenant/${MOMENTUM_CONFIG.tenantId}/asset`, method: 'GET' },
+      { name: 'Assets (basic)', endpoint: `/v1/tenant/${MOMENTUM_CONFIG.tenantId}/asset`, method: 'GET' },
+      
+      // Location endpoints (confirmados del Swagger)  
+      { name: 'Locations (webapp)', endpoint: `/v1/webapp/tenant/${MOMENTUM_CONFIG.tenantId}/location`, method: 'GET' },
+      { name: 'Locations (basic)', endpoint: `/v1/tenant/${MOMENTUM_CONFIG.tenantId}/location`, method: 'GET' },
+      
+      // Otros endpoints del Swagger
+      { name: 'Users', endpoint: `/v1/tenant/${MOMENTUM_CONFIG.tenantId}/user`, method: 'GET' },
+      { name: 'Tenant Info', endpoint: `/v1/tenant/${MOMENTUM_CONFIG.tenantId}`, method: 'GET' },
+      
+      // Status endpoints generales
+      { name: 'Health Check', endpoint: `/health`, method: 'GET' },
+      { name: 'Status', endpoint: `/status`, method: 'GET' },
+      { name: 'Version', endpoint: `/version`, method: 'GET' },
+    ];
+
+    const results = [];
+    
+    // Primero intentar autenticar
+    let token = null;
+    try {
+      token = await authenticateMomentum();
+    } catch (authError) {
+      return res.json({
+        success: false,
+        message: 'Error de autenticación',
+        authError: authError.message,
+        tests: []
+      });
+    }
+
+    // Probar cada endpoint
+    for (const test of endpointsToTest) {
+      try {
+        console.log(`   Probando: ${test.endpoint}`);
+        
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        };
+
+        // También probar con API key si está disponible
+        if (MOMENTUM_CONFIG.apiKey) {
+          headers['X-API-Key'] = MOMENTUM_CONFIG.apiKey;
+          headers['API-Key'] = MOMENTUM_CONFIG.apiKey;
+        }
+
+        const response = await axios({
+          method: test.method,
+          url: `${MOMENTUM_CONFIG.baseURL}${test.endpoint}`,
+          headers: headers,
+          timeout: 5000
+        });
+
+        results.push({
+          name: test.name,
+          endpoint: test.endpoint,
+          status: 'SUCCESS',
+          httpStatus: response.status,
+          dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
+          dataCount: Array.isArray(response.data) ? response.data.length : null,
+          sampleData: Array.isArray(response.data) ? 
+            response.data.slice(0, 1).map(item => Object.keys(item)) : 
+            (typeof response.data === 'object' ? Object.keys(response.data) : null)
+        });
+
+      } catch (error) {
+        results.push({
+          name: test.name,
+          endpoint: test.endpoint,
+          status: 'ERROR',
+          httpStatus: error.response?.status,
+          error: error.message,
+          errorData: error.response?.data
+        });
+      }
+    }
+
+    // Analizar resultados
+    const successfulTests = results.filter(r => r.status === 'SUCCESS');
+    const workingEndpoints = successfulTests.map(r => r.endpoint);
+    
+    res.json({
+      success: true,
+      totalTests: results.length,
+      successfulTests: successfulTests.length,
+      workingEndpoints,
+      bestEndpoint: successfulTests.find(r => r.dataCount > 0),
+      allResults: results,
+      recommendations: generateEndpointRecommendations(successfulTests)
+    });
+
+  } catch (error) {
+    console.error('❌ Error en test de endpoints:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+function generateEndpointRecommendations(successfulTests) {
+  const recommendations = [];
+  
+  const assetsEndpoints = successfulTests.filter(t => 
+    t.name.toLowerCase().includes('asset') || 
+    t.name.toLowerCase().includes('vehicle') ||
+    t.name.toLowerCase().includes('fleet')
+  );
+  
+  if (assetsEndpoints.length > 0) {
+    const bestAssetEndpoint = assetsEndpoints.find(e => e.dataCount > 0) || assetsEndpoints[0];
+    recommendations.push({
+      type: 'success',
+      message: `Endpoint de assets encontrado: ${bestAssetEndpoint.endpoint}`,
+      action: `Usar ${bestAssetEndpoint.endpoint} para obtener lista de trailers`
+    });
+  } else {
+    recommendations.push({
+      type: 'warning',
+      message: 'No se encontró endpoint funcional para assets/trailers',
+      action: 'Contactar a Momentum para confirmar endpoints correctos'
+    });
+  }
   
   return recommendations;
 }
 
-// 🚀 ENDPOINT 2: Obtener ubicación actual de un asset específico
+// 🚀 ENDPOINT 2: Obtener ubicación actual de un asset específico (usando locationId)
 router.get('/momentum/location/:assetId', async (req, res) => {
   try {
     const { assetId } = req.params;
     console.log(`📍 Obteniendo ubicación actual del asset ${assetId}...`);
     
-    const locationData = await momentumApiCall(`/v1/webapp/tenant/${MOMENTUM_CONFIG.tenantId}/asset/${assetId}/trip/current`);
+    // Paso 1: Obtener el asset para conseguir su locationId
+    const assetData = await momentumApiCall(`/v1/webapp/tenant/${MOMENTUM_CONFIG.tenantId}/asset`);
+    const asset = assetData.find(a => (a.id || a.deviceId) === assetId);
+    
+    if (!asset || !asset.locationId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Asset no encontrado o sin locationId asignado'
+      });
+    }
+    
+    // Paso 2: Obtener la ubicación usando el locationId (endpoint confirmado)
+    const locationData = await momentumApiCall(`/v1/webapp/tenant/${MOMENTUM_CONFIG.tenantId}/location/${asset.locationId}`);
     
     // Transformar datos para nuestro frontend
     const transformedLocation = {
       assetId: assetId,
-      location: locationData.currentLocation || 'Ubicación no disponible',
-      coordinates: {
-        lat: locationData.latitude || 0,
-        lng: locationData.longitude || 0
+      assetName: asset.name,
+      locationId: asset.locationId,
+      location: locationData.name || 'Ubicación no disponible',
+      coordinates: locationData.coordinates || null, // Formato exacto de Momentum
+      address: {
+        line1: locationData.line1,
+        city: locationData.city,
+        state: locationData.state,
+        postalCode: locationData.postalCode,
+        country: locationData.country
       },
-      speed: locationData.speed || 0,
-      direction: locationData.direction || 0,
-      lastUpdate: locationData.timestamp || new Date().toISOString(),
-      status: locationData.status || 'ACTIVE'
+      locationType: locationData.locationType,
+      lastUpdate: new Date().toISOString(),
+      status: 'ACTIVE'
     };
     
     console.log(`✅ Ubicación obtenida para asset ${assetId}`);
