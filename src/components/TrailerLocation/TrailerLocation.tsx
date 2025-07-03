@@ -14,6 +14,20 @@ interface TrailerLocationData {
   };
 }
 
+interface MomentumAsset {
+  assetId: string;
+  name: string;
+  type: string;
+  status: string;
+  lastUpdate: string;
+  selected?: boolean;
+  location?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+}
+
 interface EmailRecipient {
   id: number;
   name: string;
@@ -71,6 +85,7 @@ interface APIResponse {
 
 const TrailerLocation: React.FC = () => {
   const [trailerLocations, setTrailerLocations] = useState<TrailerLocationData[]>([]);
+  const [allMomentumAssets, setAllMomentumAssets] = useState<MomentumAsset[]>([]);
   const [emailRecipients, setEmailRecipients] = useState<EmailRecipient[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTrailers, setSelectedTrailers] = useState<string[]>([]);
@@ -90,11 +105,61 @@ const TrailerLocation: React.FC = () => {
   const [trailerHistory, setTrailerHistory] = useState<HistoryLocation[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [showAssetSelection, setShowAssetSelection] = useState(false);
   useEffect(() => {
-    loadTrailerLocations();
+    loadAllMomentumAssets();
     loadEmailRecipients();
-  }, []);  const loadTrailerLocations = async () => {
+  }, []);
+
+  // Nueva función para cargar TODAS las unidades/trailers de Momentum
+  const loadAllMomentumAssets = async () => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      console.log('🔄 Cargando TODAS las unidades de Momentum...');
+      const response = await axios.get(`${API_URL}/trailer-location/momentum/assets`);
+      
+      const responseData = response.data as GPSDataResponse;
+      if (responseData && responseData.success && Array.isArray(responseData.data)) {
+        const transformedAssets: MomentumAsset[] = responseData.data.map((asset: any) => ({
+          assetId: asset.assetId || asset.id,
+          name: asset.name,
+          type: asset.type || 'TRAILER',
+          status: asset.status || 'ACTIVE',
+          lastUpdate: asset.lastUpdate || new Date().toISOString(),
+          selected: false,
+          location: 'Obtener ubicación...',
+          coordinates: undefined
+        }));
+        
+        setAllMomentumAssets(transformedAssets);
+        console.log(`✅ ${transformedAssets.length} unidades de Momentum cargadas`);
+        
+        if (responseData.mock) {
+          setErrorMessage('⚠️ Usando datos de prueba - API de Momentum no disponible');
+        } else {
+          setErrorMessage('');
+        }
+      } else {
+        throw new Error('Formato de respuesta inválido');
+      }
+    } catch (error) {
+      console.error('❌ Error loading Momentum assets:', error);
+      setErrorMessage('Error cargando unidades de Momentum. Usando datos de prueba.');
+      
+      // Fallback a datos básicos
+      setAllMomentumAssets([
+        { assetId: 'asset-3300', name: '3-300', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString(), selected: false, location: 'Datos de prueba' },
+        { assetId: 'asset-3301', name: '3-301', type: 'TRAILER', status: 'ACTIVE', lastUpdate: new Date().toISOString(), selected: false, location: 'Datos de prueba' },
+        { assetId: 'asset-1100', name: '1-100', type: 'TRAILER', status: 'MAINTENANCE', lastUpdate: new Date().toISOString(), selected: false, location: 'Datos de prueba' }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+const loadTrailerLocations = async () => {
     setLoading(true);
     setErrorMessage('');
     try {
@@ -235,8 +300,126 @@ const TrailerLocation: React.FC = () => {
       setEmailRecipients([...emailRecipients, mockNewRecipient]);
       setNewRecipient({ name: '', email: '', trailers: [] });
       setShowAddRecipient(false);
-      alert('⚠️ Destinatario agregado en modo local (error de conexión)');
+      alert('⚠️ Destinatario agregado en modo local (error de conexión)');    }
+  };
+
+  // Nuevas funciones para manejo de selección de trailers de Momentum
+  const toggleAssetSelection = (assetId: string) => {
+    setAllMomentumAssets(prev => 
+      prev.map(asset => 
+        asset.assetId === assetId 
+          ? { ...asset, selected: !asset.selected }
+          : asset
+      )
+    );
+  };
+
+  const selectAllAssets = () => {
+    setAllMomentumAssets(prev => 
+      prev.map(asset => ({ ...asset, selected: true }))
+    );
+  };
+
+  const deselectAllAssets = () => {
+    setAllMomentumAssets(prev => 
+      prev.map(asset => ({ ...asset, selected: false }))
+    );
+  };
+
+  // Obtener ubicaciones GPS en tiempo real de los trailers seleccionados
+  const getSelectedTrailerLocations = async () => {
+    const selectedAssets = allMomentumAssets.filter(asset => asset.selected);
+    
+    if (selectedAssets.length === 0) {
+      alert('Por favor seleccione al menos un trailer');
+      return;
     }
+
+    setLoadingLocations(true);
+    setErrorMessage('');
+    
+    try {
+      console.log(`🔄 Obteniendo ubicaciones GPS de ${selectedAssets.length} trailers...`);
+      
+      const locationPromises = selectedAssets.map(async (asset) => {
+        try {
+          const response = await axios.get(`${API_URL}/trailer-location/momentum/location/${asset.assetId}`);
+          return {
+            assetId: asset.assetId,
+            name: asset.name,
+            status: asset.status,
+            location: response.data.coordinates ? 
+              `Lat: ${response.data.coordinates.lat}, Lng: ${response.data.coordinates.lng}` : 
+              'Sin ubicación disponible',
+            coordinates: response.data.coordinates,
+            lastUpdate: response.data.lastUpdate || new Date().toISOString()
+          };
+        } catch (error) {
+          console.error(`❌ Error obteniendo ubicación de ${asset.name}:`, error);
+          return {
+            assetId: asset.assetId,
+            name: asset.name,
+            status: 'ERROR',
+            location: 'Error obteniendo ubicación',
+            coordinates: undefined,
+            lastUpdate: new Date().toISOString()
+          };
+        }
+      });
+
+      const locationResults = await Promise.all(locationPromises);
+      
+      // Actualizar las ubicaciones en allMomentumAssets
+      setAllMomentumAssets(prev => 
+        prev.map(asset => {
+          const locationData = locationResults.find(r => r.assetId === asset.assetId);
+          return locationData ? 
+            { ...asset, location: locationData.location, coordinates: locationData.coordinates } : 
+            asset;
+        })
+      );
+
+      // Convertir a formato compatible con el sistema de emails existente
+      const trailerLocationData: TrailerLocationData[] = locationResults.map(result => ({
+        trailer: result.name,
+        location: result.location,
+        lastUpdate: result.lastUpdate,
+        status: (result.status as 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE') || 'ACTIVE',
+        coordinates: result.coordinates
+      }));
+
+      setTrailerLocations(trailerLocationData);
+      setLastUpdateTime(new Date().toLocaleString());
+      
+      console.log(`✅ Ubicaciones obtenidas para ${locationResults.length} trailers`);
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo ubicaciones:', error);
+      setErrorMessage('Error obteniendo ubicaciones GPS. Verifique la conexión con Momentum.');
+    } finally {
+      setLoadingLocations(false);
+    }
+  };
+
+  // Enviar correo solo con los trailers seleccionados
+  const sendSelectedTrailerReport = async () => {
+    const selectedAssets = allMomentumAssets.filter(asset => asset.selected);
+    const selectedTrailerNames = selectedAssets.map(asset => asset.name);
+    
+    if (selectedAssets.length === 0) {
+      alert('Por favor seleccione al menos un trailer');
+      return;
+    }
+
+    // Primero obtener ubicaciones actualizadas
+    await getSelectedTrailerLocations();
+    
+    // Luego enviar el reporte con solo los trailers seleccionados
+    const selectedTrailerData = trailerLocations.filter(t => 
+      selectedTrailerNames.includes(t.trailer)
+    );
+
+    await sendLocationReport(emailRecipients.filter(r => r.active), selectedTrailerNames);
   };
 
   const toggleTrailerSelection = (trailer: string) => {
@@ -476,6 +659,164 @@ const TrailerLocation: React.FC = () => {
               </select>
             )}
           </div>        </div>
+      </div>
+
+      {/* Nueva Sección: Selección de Trailers de Momentum */}
+      <div style={{
+        background: 'white',
+        padding: 20,
+        borderRadius: 12,
+        marginBottom: 24,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, color: '#333', fontSize: 18, fontWeight: 600 }}>
+            🚛 Seleccionar Trailers de Momentum ({allMomentumAssets.filter(a => a.selected).length} seleccionados)
+          </h3>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={selectAllAssets}
+              style={{
+                padding: '8px 16px',
+                background: '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                cursor: 'pointer'
+              }}
+            >
+              Seleccionar Todos
+            </button>
+            <button
+              onClick={deselectAllAssets}
+              style={{
+                padding: '8px 16px',
+                background: '#757575',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                cursor: 'pointer'
+              }}
+            >
+              Deseleccionar Todos
+            </button>
+            <button
+              onClick={getSelectedTrailerLocations}
+              disabled={allMomentumAssets.filter(a => a.selected).length === 0 || loadingLocations}
+              style={{
+                padding: '8px 16px',
+                background: '#ff9800',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                cursor: allMomentumAssets.filter(a => a.selected).length === 0 || loadingLocations ? 'not-allowed' : 'pointer',
+                opacity: allMomentumAssets.filter(a => a.selected).length === 0 || loadingLocations ? 0.6 : 1
+              }}
+            >
+              {loadingLocations ? 'Obteniendo GPS...' : '📍 Obtener Ubicaciones'}
+            </button>
+            <button
+              onClick={sendSelectedTrailerReport}
+              disabled={allMomentumAssets.filter(a => a.selected).length === 0 || loading}
+              style={{
+                padding: '8px 16px',
+                background: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                cursor: allMomentumAssets.filter(a => a.selected).length === 0 || loading ? 'not-allowed' : 'pointer',
+                opacity: allMomentumAssets.filter(a => a.selected).length === 0 || loading ? 0.6 : 1
+              }}
+            >
+              📧 Enviar Seleccionados
+            </button>
+          </div>
+        </div>
+
+        {/* Grid de Trailers de Momentum */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 12,
+          maxHeight: '400px',
+          overflowY: 'auto',
+          padding: '8px',
+          border: '1px solid #e0e0e0',
+          borderRadius: 8,
+          background: '#fafafa'
+        }}>
+          {allMomentumAssets.map((asset) => (
+            <div
+              key={asset.assetId}
+              onClick={() => toggleAssetSelection(asset.assetId)}
+              style={{
+                padding: 12,
+                border: `2px solid ${asset.selected ? '#4caf50' : '#e0e0e0'}`,
+                borderRadius: 8,
+                background: asset.selected ? '#e8f5e8' : 'white',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                position: 'relative'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={asset.selected}
+                    readOnly
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <strong style={{ color: '#333', fontSize: 14 }}>{asset.name}</strong>
+                </div>
+                <span style={{
+                  padding: '2px 6px',
+                  background: asset.status === 'ACTIVE' ? '#4caf50' : asset.status === 'MAINTENANCE' ? '#ff9800' : '#757575',
+                  color: 'white',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 600
+                }}>
+                  {asset.status}
+                </span>
+              </div>
+              
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                <strong>Tipo:</strong> {asset.type}
+              </div>
+              
+              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                <strong>Ubicación:</strong> {asset.location || 'No disponible'}
+              </div>
+              
+              <div style={{ fontSize: 10, color: '#999' }}>
+                Actualizado: {new Date(asset.lastUpdate).toLocaleString()}
+              </div>
+              
+              {asset.coordinates && (
+                <div style={{ fontSize: 10, color: '#2196f3', marginTop: 4 }}>
+                  📍 GPS: {asset.coordinates.lat.toFixed(4)}, {asset.coordinates.lng.toFixed(4)}
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {allMomentumAssets.length === 0 && (
+            <div style={{
+              gridColumn: '1 / -1',
+              textAlign: 'center',
+              padding: 40,
+              color: '#666',
+              fontSize: 14
+            }}>
+              {loading ? 'Cargando trailers de Momentum...' : 'No hay trailers disponibles'}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error Message */}

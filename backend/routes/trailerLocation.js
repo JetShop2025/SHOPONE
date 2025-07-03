@@ -676,31 +676,9 @@ function generateLocationReport(trailerData) {
           </div>
         </div>
       </div>
-    </body>
-    </html>
+    </body>    </html>
   `;
 }
-
-// Obtener lista de assets desde Momentum
-router.get('/momentum/assets', async (req, res) => {
-  try {
-    const token = await authenticateMomentum();
-    if (!token) {
-      return res.status(503).json({ error: 'No se pudo conectar con Momentum API' });
-    }
-    
-    const response = await axios.get(
-      `${MOMENTUM_CONFIG.baseURL}/v1/tenant/${MOMENTUM_CONFIG.tenantId}/asset`,
-      { headers: MOMENTUM_CONFIG.headers }
-    );
-    
-    console.log('📋 Assets obtenidos de Momentum:', response.data.length);
-    res.json(response.data);
-  } catch (error) {
-    console.error('❌ Error obteniendo assets:', error);
-    res.status(500).json({ error: 'Error obteniendo assets de Momentum' });
-  }
-});
 
 // Obtener ubicación actual de un trailer específico
 router.get('/momentum/location/:assetId', async (req, res) => {
@@ -970,5 +948,198 @@ if (process.env.NODE_ENV === 'production') {
   
   console.log('⏰ Programación de envío automático iniciada (8:00 AM diario)');
 }
+
+// 🚛 ENDPOINTS PARA GESTIÓN DE TRAILERS LOCALES
+
+// Obtener todos los trailers desde la base de datos local
+router.get('/trailers', async (req, res) => {
+  try {
+    console.log('📋 Obteniendo lista de trailers desde base de datos local...');
+    
+    const [trailers] = await db.query(`
+      SELECT 
+        id,
+        trailer_number,
+        asset_id,
+        status,
+        last_known_location,
+        last_latitude,
+        last_longitude,
+        last_update,
+        notes
+      FROM trailers 
+      ORDER BY trailer_number
+    `);
+    
+    const transformedTrailers = trailers.map(trailer => ({
+      id: trailer.id,
+      trailer: trailer.trailer_number,
+      assetId: trailer.asset_id,
+      status: trailer.status,
+      location: trailer.last_known_location || 'Ubicación no disponible',
+      coordinates: {
+        lat: trailer.last_latitude || 0,
+        lng: trailer.last_longitude || 0
+      },
+      lastUpdate: trailer.last_update,
+      notes: trailer.notes
+    }));
+    
+    console.log(`✅ ${transformedTrailers.length} trailers obtenidos desde BD local`);
+    res.json({
+      success: true,
+      data: transformedTrailers,
+      count: transformedTrailers.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo trailers desde BD:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error obteniendo trailers de la base de datos',
+      details: error.message 
+    });
+  }
+});
+
+// Agregar nuevo trailer
+router.post('/trailers', async (req, res) => {
+  const { trailer_number, asset_id, status, location, coordinates, notes, usuario } = req.body;
+  
+  try {
+    console.log(`➕ Agregando nuevo trailer: ${trailer_number}`);
+    
+    const [result] = await db.query(`
+      INSERT INTO trailers (
+        trailer_number, 
+        asset_id, 
+        status, 
+        last_known_location, 
+        last_latitude, 
+        last_longitude,
+        notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [
+      trailer_number,
+      asset_id || `asset-${trailer_number}`,
+      status || 'ACTIVE',
+      location || 'Ubicación no disponible',
+      coordinates?.lat || 0,
+      coordinates?.lng || 0,
+      notes || ''
+    ]);
+    
+    const newTrailer = {
+      id: result.insertId,
+      trailer: trailer_number,
+      assetId: asset_id || `asset-${trailer_number}`,
+      status: status || 'ACTIVE',
+      location: location || 'Ubicación no disponible',
+      coordinates: coordinates || { lat: 0, lng: 0 },
+      lastUpdate: new Date().toISOString(),
+      notes: notes || ''
+    };
+    
+    await logAccion(usuario || 'system', 'CREATE', 'trailers', result.insertId, 
+      `Trailer agregado: ${trailer_number}`);
+    
+    console.log(`✅ Trailer ${trailer_number} agregado exitosamente`);
+    res.json({
+      success: true,
+      data: newTrailer
+    });
+    
+  } catch (error) {
+    console.error('❌ Error agregando trailer:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error agregando trailer',
+      details: error.message 
+    });
+  }
+});
+
+// Actualizar ubicación de un trailer
+router.put('/trailers/:id/location', async (req, res) => {
+  const { id } = req.params;
+  const { location, coordinates, status, usuario } = req.body;
+  
+  try {
+    console.log(`📍 Actualizando ubicación del trailer ID: ${id}`);
+    
+    await db.query(`
+      UPDATE trailers 
+      SET 
+        last_known_location = ?,
+        last_latitude = ?,
+        last_longitude = ?,
+        status = ?,
+        last_update = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [
+      location,
+      coordinates?.lat || 0,
+      coordinates?.lng || 0,
+      status || 'ACTIVE',
+      id
+    ]);
+    
+    // Insertar en historial
+    await db.query(`
+      INSERT INTO trailer_location_history (
+        trailer_id, latitude, longitude, address
+      ) VALUES (?, ?, ?, ?)
+    `, [id, coordinates?.lat || 0, coordinates?.lng || 0, location]);
+    
+    await logAccion(usuario || 'system', 'UPDATE', 'trailers', id, 
+      `Ubicación actualizada: ${location}`);
+    
+    console.log(`✅ Ubicación actualizada para trailer ID: ${id}`);
+    res.json({
+      success: true,
+      message: 'Ubicación actualizada exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error actualizando ubicación:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error actualizando ubicación',
+      details: error.message 
+    });
+  }
+});
+
+// Eliminar trailer
+router.delete('/trailers/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuario } = req.body;
+  
+  try {
+    console.log(`🗑️ Eliminando trailer ID: ${id}`);
+    
+    // Obtener info del trailer antes de eliminar
+    const [trailer] = await db.query('SELECT trailer_number FROM trailers WHERE id = ?', [id]);
+    
+    await db.query('DELETE FROM trailers WHERE id = ?', [id]);
+    
+    await logAccion(usuario || 'system', 'DELETE', 'trailers', id, 
+      `Trailer eliminado: ${trailer[0]?.trailer_number || id}`);
+    
+    console.log(`✅ Trailer ID ${id} eliminado exitosamente`);
+    res.json({
+      success: true,
+      message: 'Trailer eliminado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error eliminando trailer:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error eliminando trailer',
+      details: error.message 
+    });
+  }
+});
 
 module.exports = router;
