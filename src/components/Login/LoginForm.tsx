@@ -20,15 +20,21 @@ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
   setError('');
+  
+  console.log('Login attempt with API_URL:', API_URL);
+  console.log('Full URL:', `${API_URL}/login`);
+  
   try {
     const res = await axios.post<{ success: boolean }>(`${API_URL}/login`, { username, password });
+    console.log('Login response:', res.data);
     if (res.data.success) {
       localStorage.setItem('username', username);
       navigate('/menu', { replace: true });
     } else {
       setError('INCORRECT USERNAME OR PASSWORD');
     }
-  } catch {
+  } catch (error) {
+    console.error('Login error:', error);
     setError('CONNECTION ERROR');
   }
   setLoading(false);

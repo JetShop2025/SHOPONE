@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Debug Test</title>
+</head>
+<body>
+    <h1>Login API Debug Test</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testStatus()">Test Status</button>
+    <div id="result"></div>
+
+    <script>
+        async function testStatus() {
+            try {
+                console.log('Testing status endpoint...');
+                const response = await fetch('https://shopone.onrender.com/api/status');
+                const data = await response.text();
+                document.getElementById('result').innerHTML = `<h3>Status Response:</h3><pre>${data}</pre>`;
+                console.log('Status response:', data);
+            } catch (error) {
+                console.error('Status error:', error);
+                document.getElementById('result').innerHTML = `<h3>Status Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+
+        async function testLogin() {
+            try {
+                console.log('Testing login endpoint...');
+                const response = await fetch('https://shopone.onrender.com/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `<h3>Login Response:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                console.log('Login response:', data);
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('result').innerHTML = `<h3>Login Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
