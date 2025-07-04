@@ -55,7 +55,9 @@ const TrailasTable: React.FC = () => {
     fecha_devolucion: '',
     observaciones: '',
     condicion: ''
-  });  // Fetch data
+  });
+
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -106,41 +108,61 @@ const TrailasTable: React.FC = () => {
   // Handle rental
   const handleRental = async () => {
     if (!selectedTraila || !rentalForm.cliente || !rentalForm.fecha_renta) {
-      alert('Por favor complete todos los campos requeridos');
+      alert('Please complete all required fields');
       return;
     }
 
     try {
-      await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalForm);
+      await axios.put(`${API_URL}/trailas/${selectedTraila.id}`, {
+        ...selectedTraila,
+        estatus: 'RENTADO',
+        cliente: rentalForm.cliente,
+        fecha_renta: rentalForm.fecha_renta,
+        fecha_devolucion: rentalForm.fecha_devolucion
+      });
+      
       setShowRentalModal(false);
       setRentalForm({ cliente: '', fecha_renta: '', fecha_devolucion: '', observaciones: '' });
+      
       // Refresh data
       const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
       setTrailas(response.data || []);
     } catch (error) {
       console.error('Error renting trailer:', error);
-      alert('Error al rentar el trailer');
+      alert('Error renting trailer');
     }
   };
 
   // Handle return
-  const handleReturn = async (traila: Traila) => {
-    if (window.confirm('¿Está seguro que desea devolver este trailer?')) {
-      try {
-        await axios.put(`${API_URL}/trailas/${traila.id}/return`);
-        // Refresh data
-        const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
-        setTrailas(response.data || []);
-      } catch (error) {
-        console.error('Error returning trailer:', error);
-        alert('Error al devolver el trailer');
-      }
+  const handleReturn = async () => {
+    if (!selectedTraila || !returnForm.fecha_devolucion) {
+      alert('Please complete all required fields');
+      return;
+    }
+
+    try {
+      await axios.put(`${API_URL}/trailas/${selectedTraila.id}`, {
+        ...selectedTraila,
+        estatus: 'DISPONIBLE',
+        cliente: '',
+        fecha_renta: '',
+        fecha_devolucion: returnForm.fecha_devolucion
+      });
+      
+      setShowReturnModal(false);
+      setReturnForm({ fecha_devolucion: '', observaciones: '', condicion: '' });
+      
+      // Refresh data
+      const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
+      setTrailas(response.data || []);
+    } catch (error) {
+      console.error('Error returning trailer:', error);
+      alert('Error returning trailer');
     }
   };
 
-  // Get status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (estatus: string) => {
+    switch (estatus) {
       case 'DISPONIBLE': return '#4caf50';
       case 'RENTADO': return '#ff9800';
       case 'MANTENIMIENTO': return '#f44336';
@@ -148,77 +170,61 @@ const TrailasTable: React.FC = () => {
     }
   };
 
-  // Get status badge
-  const StatusBadge = ({ status }: { status: string }) => (
-    <span style={{
-      padding: '4px 12px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: '600',
-      color: 'white',
-      backgroundColor: getStatusColor(status),
-      textTransform: 'uppercase'
-    }}>
-      {status}
-    </span>
-  );
+  const getStatusText = (estatus: string) => {
+    switch (estatus) {
+      case 'DISPONIBLE': return 'Available';
+      case 'RENTADO': return 'Rented';
+      case 'MANTENIMIENTO': return 'Maintenance';
+      default: return estatus;
+    }
+  };
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
-      }}>
+      <div style={{ padding: '20px', textAlign: 'center' }}>
         <div style={{
-          background: 'white',
-          padding: '40px',
-          borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e3f2fd',
-            borderTop: '4px solid #1976d2',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }}></div>
-          <p style={{ color: '#1976d2', fontSize: '18px', margin: 0 }}>Cargando trailers...</p>
-        </div>
+          width: '60px',
+          height: '60px',
+          border: '6px solid #f3f3f3',
+          borderTop: '6px solid #1976d2',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '20px auto'
+        }}></div>
+        <p style={{ color: '#666', fontSize: '16px' }}>Loading trailers...</p>
+        <style>
+          {`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}
+        </style>
       </div>
     );
   }
 
+  const uniqueClients = getUniqueClients();
+
   return (
-    <div style={{
-      maxWidth: '1400px',
-      margin: '0 auto',
-      padding: '24px',
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
-    }}>
+    <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '32px',
+        alignItems: 'center',
+        marginBottom: '24px',
         background: 'white',
         padding: '24px',
-        borderRadius: '16px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: '#1976d2',
+            width: '60px',
+            height: '60px',
+            background: 'linear-gradient(135deg, #1976d2, #42a5f5)',
+            borderRadius: '12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -237,7 +243,7 @@ const TrailasTable: React.FC = () => {
               TRAILER CONTROL
             </h1>
             <p style={{ margin: '4px 0 0 0', color: '#666', fontSize: '14px' }}>
-              Sistema de Control de Trailers - {filteredTrailas.length} trailers
+              Trailer Management System - {filteredTrailas.length} trailers
             </p>
           </div>
         </div>
@@ -258,7 +264,7 @@ const TrailasTable: React.FC = () => {
             onMouseOver={(e) => e.currentTarget.style.background = '#1565c0'}
             onMouseOut={(e) => e.currentTarget.style.background = '#1976d2'}
           >
-            🔄 Actualizar
+            🔄 Refresh
           </button>
         </div>
       </div>
@@ -274,11 +280,11 @@ const TrailasTable: React.FC = () => {
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <label style={{ fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>
-              Filtrar por Estado:
+              Filter by Client:
             </label>
             <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+              value={selectedClient}
+              onChange={(e) => setSelectedClient(e.target.value)}
               style={{
                 padding: '8px 12px',
                 border: '2px solid #e0e0e0',
@@ -287,20 +293,20 @@ const TrailasTable: React.FC = () => {
                 minWidth: '150px'
               }}
             >
-              <option value="ALL">Todos</option>
-              <option value="DISPONIBLE">Disponible</option>
-              <option value="RENTADO">Rentado</option>
-              <option value="MANTENIMIENTO">Mantenimiento</option>
+              <option value="ALL">All Clients</option>
+              {uniqueClients.map(client => (
+                <option key={client} value={client}>{client}</option>
+              ))}
             </select>
           </div>
           
           <div style={{ flex: 1, minWidth: '200px' }}>
             <label style={{ fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>
-              Buscar:
+              Search:
             </label>
             <input
               type="text"
-              placeholder="Buscar por nombre o cliente..."
+              placeholder="Search by name or client..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -329,65 +335,74 @@ const TrailasTable: React.FC = () => {
               borderRadius: '12px',
               padding: '20px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              border: '1px solid #f0f0f0',
-              transition: 'all 0.2s ease'
+              border: '1px solid #e0e0e0',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+              e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            {/* Trailer Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                color: '#1976d2',
-                margin: '0'
-              }}>
-                {traila.nombre}
-              </h3>
-              <StatusBadge status={traila.estatus} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#333' }}>
+                  {traila.nombre}
+                </h3>
+                <span
+                  style={{
+                    background: getStatusColor(traila.estatus),
+                    color: 'white',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}
+                >
+                  {getStatusText(traila.estatus)}
+                </span>
+              </div>
+              <div style={{ fontSize: '24px' }}>🚛</div>
             </div>
 
-            {/* Trailer Info */}
             <div style={{ marginBottom: '16px' }}>
               {traila.cliente && (
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600', color: '#666' }}>Cliente: </span>
-                  <span style={{ color: '#333' }}>{traila.cliente}</span>
-                </div>
+                <p style={{ margin: '4px 0', color: '#666', fontSize: '14px' }}>
+                  <strong>Client:</strong> {traila.cliente}
+                </p>
               )}
               {traila.fecha_renta && (
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600', color: '#666' }}>Fecha Renta: </span>
-                  <span style={{ color: '#333' }}>{dayjs(traila.fecha_renta).format('DD/MM/YYYY')}</span>
-                </div>
+                <p style={{ margin: '4px 0', color: '#666', fontSize: '14px' }}>
+                  <strong>Rental Date:</strong> {dayjs(traila.fecha_renta).format('MM/DD/YYYY')}
+                </p>
               )}
               {traila.fecha_devolucion && (
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600', color: '#666' }}>Fecha Devolución: </span>
-                  <span style={{ color: '#333' }}>{dayjs(traila.fecha_devolucion).format('DD/MM/YYYY')}</span>
-                </div>
+                <p style={{ margin: '4px 0', color: '#666', fontSize: '14px' }}>
+                  <strong>Return Date:</strong> {dayjs(traila.fecha_devolucion).format('MM/DD/YYYY')}
+                </p>
+              )}
+              {traila.tipo && (
+                <p style={{ margin: '4px 0', color: '#666', fontSize: '14px' }}>
+                  <strong>Type:</strong> {traila.tipo}
+                </p>
               )}
               {traila.ubicacion && (
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600', color: '#666' }}>Ubicación: </span>
-                  <span style={{ color: '#333' }}>{traila.ubicacion}</span>
-                </div>
+                <p style={{ margin: '4px 0', color: '#666', fontSize: '14px' }}>
+                  <strong>Location:</strong> {traila.ubicacion}
+                </p>
               )}
             </div>
 
-            {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {traila.estatus === 'DISPONIBLE' && (
                 <button
                   onClick={() => {
                     setSelectedTraila(traila);
+                    setRentalForm({ cliente: '', fecha_renta: '', fecha_devolucion: '', observaciones: '' });
                     setShowRentalModal(true);
                   }}
                   style={{
@@ -401,13 +416,17 @@ const TrailasTable: React.FC = () => {
                     fontWeight: '600'
                   }}
                 >
-                  📋 Rentar
+                  🏠 Rent
                 </button>
               )}
-              
+
               {traila.estatus === 'RENTADO' && (
                 <button
-                  onClick={() => handleReturn(traila)}
+                  onClick={() => {
+                    setSelectedTraila(traila);
+                    setReturnForm({ fecha_devolucion: dayjs().format('YYYY-MM-DD'), observaciones: '', condicion: '' });
+                    setShowReturnModal(true);
+                  }}
                   style={{
                     padding: '8px 16px',
                     background: '#ff9800',
@@ -419,7 +438,7 @@ const TrailasTable: React.FC = () => {
                     fontWeight: '600'
                   }}
                 >
-                  ↩️ Devolver
+                  ↩️ Return
                 </button>
               )}
 
@@ -439,7 +458,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                📊 Historial
+                📊 History
               </button>
 
               <button
@@ -458,7 +477,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                🔧 O.T.
+                🔧 W.O.
               </button>
             </div>
           </div>
@@ -474,7 +493,7 @@ const TrailasTable: React.FC = () => {
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
         }}>
           <p style={{ fontSize: '18px', color: '#666', margin: '0' }}>
-            No se encontraron trailers con los filtros seleccionados
+            No trailers found with the selected filters
           </p>
         </div>
       )}
@@ -503,12 +522,12 @@ const TrailasTable: React.FC = () => {
             overflow: 'auto'
           }}>
             <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Rentar Trailer: {selectedTraila.nombre}
+              Rent Trailer: {selectedTraila.nombre}
             </h2>
             
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Cliente *
+                Client *
               </label>
               <select
                 value={rentalForm.cliente}
@@ -520,18 +539,17 @@ const TrailasTable: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '14px'
                 }}
-                required
               >
-                <option value="">Seleccionar cliente...</option>
-                {clientes.map(cliente => (
-                  <option key={cliente} value={cliente}>{cliente}</option>
+                <option value="">Select a client...</option>
+                {rentalClients.map(client => (
+                  <option key={client} value={client}>{client}</option>
                 ))}
               </select>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Fecha de Renta *
+                Rental Date *
               </label>
               <input
                 type="date"
@@ -544,13 +562,12 @@ const TrailasTable: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '14px'
                 }}
-                required
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Fecha de Devolución Estimada
+                Expected Return Date
               </label>
               <input
                 type="date"
@@ -568,12 +585,12 @@ const TrailasTable: React.FC = () => {
 
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Observaciones
+                Notes
               </label>
               <textarea
                 value={rentalForm.observaciones}
                 onChange={(e) => setRentalForm({...rentalForm, observaciones: e.target.value})}
-                placeholder="Observaciones adicionales..."
+                placeholder="Additional notes..."
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -592,14 +609,14 @@ const TrailasTable: React.FC = () => {
                 style={{
                   padding: '12px 24px',
                   background: '#f5f5f5',
-                  color: '#666',
+                  color: '#333',
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontWeight: '600'
                 }}
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={handleRental}
@@ -613,7 +630,140 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Confirmar Renta
+                Rent Trailer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Modal */}
+      {showReturnModal && selectedTraila && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '32px',
+            borderRadius: '16px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
+              Return Trailer: {selectedTraila.nombre}
+            </h2>
+            
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#f5f5f5', borderRadius: '8px' }}>
+              <p style={{ margin: '0', fontSize: '14px', color: '#666' }}>
+                <strong>Current Client:</strong> {selectedTraila.cliente}
+              </p>
+              {selectedTraila.fecha_renta && (
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#666' }}>
+                  <strong>Rented on:</strong> {dayjs(selectedTraila.fecha_renta).format('MM/DD/YYYY')}
+                </p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Return Date *
+              </label>
+              <input
+                type="date"
+                value={returnForm.fecha_devolucion}
+                onChange={(e) => setReturnForm({...returnForm, fecha_devolucion: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Condition
+              </label>
+              <select
+                value={returnForm.condicion}
+                onChange={(e) => setReturnForm({...returnForm, condicion: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">Select condition...</option>
+                <option value="EXCELLENT">Excellent</option>
+                <option value="GOOD">Good</option>
+                <option value="FAIR">Fair</option>
+                <option value="POOR">Poor - Needs Maintenance</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Return Notes
+              </label>
+              <textarea
+                value={returnForm.observaciones}
+                onChange={(e) => setReturnForm({...returnForm, observaciones: e.target.value})}
+                placeholder="Condition notes, damages, maintenance needed..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowReturnModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  background: '#f5f5f5',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReturn}
+                style={{
+                  padding: '12px 24px',
+                  background: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Return Trailer
               </button>
             </div>
           </div>
@@ -644,11 +794,11 @@ const TrailasTable: React.FC = () => {
             overflow: 'auto'
           }}>
             <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Historial de Rentas: {selectedTraila.nombre}
+              Rental History: {selectedTraila.nombre}
             </h2>
             
             <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-              <p>Historial de rentas estará disponible próximamente</p>
+              <p>Rental history will be available soon</p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -664,7 +814,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Cerrar
+                Close
               </button>
             </div>
           </div>
@@ -695,11 +845,11 @@ const TrailasTable: React.FC = () => {
             overflow: 'auto'
           }}>
             <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Órdenes de Trabajo: {selectedTraila.nombre}
+              Work Orders: {selectedTraila.nombre}
             </h2>
             
             <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-              <p>Historial de órdenes de trabajo estará disponible próximamente</p>
+              <p>Work order history will be available soon</p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -715,22 +865,12 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Cerrar
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* CSS for loading animation */}
-      <style>
-        {`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}
-      </style>
     </div>
   );
 };
