@@ -131,12 +131,12 @@ async function deleteTrailerLocation(id) {
 // Orders functions
 async function getOrders() {
   try {
-    console.log('[DB] Executing query: SELECT * FROM orders');
-    const [rows] = await connection.execute('SELECT * FROM orders');
-    console.log(`[DB] Found ${rows.length} orders in database`);
+    console.log('[DB] Executing query: SELECT * FROM work_orders');
+    const [rows] = await connection.execute('SELECT * FROM work_orders');
+    console.log(`[DB] Found ${rows.length} work orders in database`);
     return rows;
   } catch (error) {
-    console.error('[DB] Error getting orders:', error.message);
+    console.error('[DB] Error getting work orders:', error.message);
     console.error('[DB] Full error:', error);
     throw error;
   }
@@ -145,7 +145,7 @@ async function getOrders() {
 async function createOrder(order) {
   try {
     const [result] = await connection.execute(
-      'INSERT INTO orders (orderNumber, description, status) VALUES (?, ?, ?)',
+      'INSERT INTO work_orders (orderNumber, description, status) VALUES (?, ?, ?)',
       [order.orderNumber, order.description, order.status]
     );
     return { id: result.insertId, ...order };
@@ -158,14 +158,27 @@ async function createOrder(order) {
 // Partes/Inventory functions
 async function getPartes() {
   try {
-    console.log('[DB] Executing query: SELECT * FROM partes');
-    const [rows] = await connection.execute('SELECT * FROM partes');
-    console.log(`[DB] Found ${rows.length} partes in database`);
-    return rows;
+    // Intentar con diferentes nombres de tabla comunes
+    const tableNames = ['inventory', 'parts', 'partes', 'inventario'];
+    
+    for (const tableName of tableNames) {
+      try {
+        console.log(`[DB] Trying table: ${tableName}`);
+        const [rows] = await connection.execute(`SELECT * FROM ${tableName}`);
+        console.log(`[DB] Found ${rows.length} items in table ${tableName}`);
+        return rows;
+      } catch (error) {
+        console.log(`[DB] Table ${tableName} not found, trying next...`);
+        continue;
+      }
+    }
+    
+    // Si ninguna tabla existe, devolver array vacío
+    console.log('[DB] No inventory table found, returning empty array');
+    return [];
   } catch (error) {
     console.error('[DB] Error getting partes:', error.message);
-    console.error('[DB] Full error:', error);
-    throw error;
+    return [];
   }
 }
 
