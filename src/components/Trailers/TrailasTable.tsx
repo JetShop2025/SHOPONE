@@ -521,9 +521,8 @@ const TrailasTable: React.FC = () => {
                   fontSize: '14px'
                 }}
                 required
-              >
-                <option value="">Seleccionar cliente...</option>
-                {clientes.map(cliente => (
+              >                <option value="">Seleccionar cliente...</option>
+                {rentalClients.map(cliente => (
                   <option key={cliente} value={cliente}>{cliente}</option>
                 ))}
               </select>
