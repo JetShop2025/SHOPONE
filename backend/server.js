@@ -55,19 +55,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// LOGIN ENDPOINT
-app.post('/api/login', (req, res) => {
+// LOGIN ENDPOINT - USANDO BASE DE DATOS
+app.post('/api/login', async (req, res) => {
   console.log('[LOGIN] Login attempt:', req.body);
   const { username, password } = req.body;
   
-  if (username === 'admin' && password === 'admin') {
-    res.json({ 
-      success: true, 
-      token: 'mock-token-123',
-      user: { username: 'admin', role: 'admin' }
-    });
-  } else {
-    res.status(401).json({ success: false, error: 'Invalid credentials' });
+  try {
+    // Consultar usuarios en la base de datos
+    const users = await db.getUsers();
+    console.log('[LOGIN] Checking against database users...');
+    
+    const user = users.find(u => u.username === username && u.password === password);
+    
+    if (user) {
+      console.log('[LOGIN] User authenticated:', user.username);
+      res.json({ 
+        success: true, 
+        token: `token-${user.id}-${Date.now()}`,
+        user: { 
+          username: user.username, 
+          role: user.role || 'user',
+          id: user.id 
+        }
+      });
+    } else {
+      console.log('[LOGIN] Invalid credentials for:', username);
+      res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
+  } catch (error) {
+    console.error('[LOGIN] Database error:', error);
+    res.status(500).json({ success: false, error: 'Database error' });
   }
 });
 

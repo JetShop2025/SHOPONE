@@ -209,6 +209,21 @@ async function getPendingParts() {
   }
 }
 
+// Users functions (para login)
+async function getUsers() {
+  try {
+    const [rows] = await connection.execute('SELECT * FROM users');
+    return rows;
+  } catch (error) {
+    console.error('[DB] Error getting users:', error.message);
+    // Si no existe la tabla users, devolver usuarios por defecto
+    return [
+      { id: 1, username: 'LEO', password: '6214', role: 'admin' },
+      { id: 2, username: 'admin', password: 'admin', role: 'admin' }
+    ];
+  }
+}
+
 // PDF Generation (mock)
 async function generatePDF(data) {
   console.log('PDF generation requested:', data);
@@ -233,5 +248,6 @@ module.exports = {
   updateParte,
   deleteParte,
   getPendingParts,
+  getUsers,
   generatePDF
 };
