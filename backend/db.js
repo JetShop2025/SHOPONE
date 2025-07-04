@@ -131,10 +131,13 @@ async function deleteTrailerLocation(id) {
 // Orders functions
 async function getOrders() {
   try {
+    console.log('[DB] Executing query: SELECT * FROM orders');
     const [rows] = await connection.execute('SELECT * FROM orders');
+    console.log(`[DB] Found ${rows.length} orders in database`);
     return rows;
   } catch (error) {
     console.error('[DB] Error getting orders:', error.message);
+    console.error('[DB] Full error:', error);
     throw error;
   }
 }
@@ -155,10 +158,13 @@ async function createOrder(order) {
 // Partes/Inventory functions
 async function getPartes() {
   try {
+    console.log('[DB] Executing query: SELECT * FROM partes');
     const [rows] = await connection.execute('SELECT * FROM partes');
+    console.log(`[DB] Found ${rows.length} partes in database`);
     return rows;
   } catch (error) {
     console.error('[DB] Error getting partes:', error.message);
+    console.error('[DB] Full error:', error);
     throw error;
   }
 }
