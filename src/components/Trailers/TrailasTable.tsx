@@ -37,10 +37,10 @@ const TrailasTable: React.FC = () => {
   const [showReturnModal, setShowReturnModal] = useState<boolean>(false);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState<boolean>(false);
-  
-  // Client-based filtering
+    // Client-based filtering
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filter, setFilter] = useState<string>('ALL');
 
   // Rental form state
   const [rentalForm, setRentalForm] = useState({
@@ -94,13 +94,13 @@ const TrailasTable: React.FC = () => {
       .sort();
     return clients;
   };
-
-  // Filter trailers by selected client and search term
+  // Filter trailers by selected client, status filter and search term
   const filteredTrailas = Array.isArray(trailas) ? trailas.filter(traila => {
     const matchesClient = selectedClient === 'ALL' || traila.cliente === selectedClient;
+    const matchesStatus = filter === 'ALL' || traila.estatus === filter;
     const matchesSearch = traila.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (traila.cliente || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesClient && matchesSearch;
+    return matchesClient && matchesStatus && matchesSearch;
   }) : [];
 
   // Handle rental
