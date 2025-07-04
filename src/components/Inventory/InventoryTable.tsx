@@ -1,6 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import Barcode from 'react-barcode';
+
+// Simple barcode component fallback
+const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
+  <div style={{ 
+    fontFamily: 'monospace', 
+    fontSize: '12px', 
+    border: '1px solid #ccc', 
+    padding: '4px',
+    backgroundColor: '#f9f9f9',
+    display: 'inline-block'
+  }}>
+    {value}
+  </div>
+);
 
 type PartType = {
   sku: string;
@@ -111,14 +124,21 @@ const InventoryTable: React.FC = () => {
   const [editPart, setEditPart] = useState<PartType>({ ...emptyPart });
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
   const [skuSearch, setSkuSearch] = useState('');
-
   // Fetch inventory
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
-      axios.get(`${API_URL}/inventory`)
-        .then(res => { if (isMounted) setInventory(res.data as any[]); })
-        .catch(() => { if (isMounted) setInventory([]); });
+      axios.get(`${API_URL}/inventory`)        .then(res => { 
+          if (isMounted) {
+            // Asegurar que siempre sea un array
+            const inventoryData = Array.isArray(res.data) ? res.data : [];
+            setInventory(inventoryData);
+          }
+        })
+        .catch(error => { 
+          console.error('Error fetching inventory:', error);
+          if (isMounted) setInventory([]); 
+        });
     };
     fetchData();
     const interval = setInterval(fetchData, 4000);
@@ -160,14 +180,13 @@ const InventoryTable: React.FC = () => {
       precio: newPart.precio ? Number(newPart.precio) : 0,
       usuario: localStorage.getItem('username') || '',
       invoiceLink: newPart.invoiceLink || ''
-    };
-
-    try {
+    };    try {
       await axios.post(`${API_URL}/inventory`, data);
       setShowForm(false);
       setNewPart({ ...emptyPart });
       const res = await axios.get(`${API_URL}/inventory`);
-      setInventory(res.data as any[]);
+      const inventoryData = Array.isArray(res.data) ? res.data : [];
+      setInventory(inventoryData);
     } catch (err: any) {
       setAddError(err.response?.data?.error || 'Error adding part');
     }
@@ -183,11 +202,11 @@ const InventoryTable: React.FC = () => {
         url: `${API_URL}/inventory/${part.sku}`,
         method: 'DELETE',
         data: { usuario: localStorage.getItem('username') || '' }
-      });
-      setShowDeleteForm(false);
+      });      setShowDeleteForm(false);
       setSelectedSku(null);
       const res = await axios.get(`${API_URL}/inventory`);
-      setInventory(res.data as any[]);
+      const inventoryData = Array.isArray(res.data) ? res.data : [];
+      setInventory(inventoryData);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error deleting part');
     }
@@ -201,19 +220,19 @@ const InventoryTable: React.FC = () => {
       await axios.put(`${API_URL}/inventory/${editPart.sku}`, {
         ...editPart,
         usuario: localStorage.getItem('username') || ''
-      });
-      setShowEditForm(false);
+      });      setShowEditForm(false);
       setEditPart({ ...emptyPart });
       setSelectedSku(null);
       const res = await axios.get(`${API_URL}/inventory`);
-      setInventory(res.data as any[]);
+      const inventoryData = Array.isArray(res.data) ? res.data : [];
+      setInventory(inventoryData);
     } catch (err: any) {
       setEditError(err.response?.data?.error || 'Error editing part');
     }
   };
-
-  // Filtro por SKU
-  const filteredInventory = inventory.filter(item =>
+  // Filtro por SKU - Asegurar que inventory sea siempre un array
+  const safeInventory = Array.isArray(inventory) ? inventory : [];
+  const filteredInventory = safeInventory.filter(item =>
     item.sku?.toLowerCase().includes(skuSearch.toLowerCase())
   );
 
@@ -571,20 +590,11 @@ const InventoryTable: React.FC = () => {
                     fontSize: 12
                   }}
                   onClick={() => setSelectedSku(item.sku)}
-                >
-                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
+                >                  <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', wordBreak: 'break-all', maxWidth: 120 }}>{item.sku}</td>
                   <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 90, overflow: 'hidden' }}>
                     {item.barCodes && (
                       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-                        <Barcode
-                          value={item.barCodes.toString()}
-                          width={1}
-                          height={18}
-                          fontSize={8}
-                          margin={0}
-                          displayValue={false}
-                          background="#fff"
-                        />
+                        <BarcodeComponent value={item.barCodes.toString()} />
                       </div>
                     )}
                   </td>

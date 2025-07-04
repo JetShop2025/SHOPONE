@@ -43,7 +43,6 @@ const TrailasTable: React.FC = () => {
     fecha_devolucion: '',
     observaciones: ''
   });
-
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -53,8 +52,14 @@ const TrailasTable: React.FC = () => {
           axios.get<Traila[]>(`${API_URL}/trailas`),
           axios.get<WorkOrder[]>(`${API_URL}/work-orders`)
         ]);
-        setTrailas(trailasRes.data || []);
-        setWorkOrders(workOrdersRes.data || []);
+        
+        // Ensure data is always an array
+        const trailasData = Array.isArray(trailasRes.data) ? trailasRes.data : [];
+        const workOrdersData = Array.isArray(workOrdersRes.data) ? workOrdersRes.data : [];
+        
+        setTrailas(trailasData);
+        setWorkOrders(workOrdersData);
+        console.log(`✅ Loaded ${trailasData.length} trailas and ${workOrdersData.length} work orders`);
       } catch (error) {
         console.error('Error fetching data:', error);
         setTrailas([]);
@@ -68,14 +73,13 @@ const TrailasTable: React.FC = () => {
     const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
   }, []);
-
-  // Filter and search logic
-  const filteredTrailas = trailas.filter(traila => {
+  // Filter and search logic with safety check
+  const filteredTrailas = Array.isArray(trailas) ? trailas.filter(traila => {
     const matchesFilter = filter === 'ALL' || traila.estatus === filter;
     const matchesSearch = traila.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (traila.cliente || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
-  });
+  }) : [];
 
   // Handle rental
   const handleRental = async () => {

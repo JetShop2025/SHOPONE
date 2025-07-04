@@ -266,12 +266,11 @@ const WorkOrdersTable: React.FC = () => {
     console.log('🔄 Cargando inventario...');
     axios.get(`${API_URL}/inventory`)
       .then(res => {
-        const inventoryData = res.data as any[];
+        const inventoryData = Array.isArray(res.data) ? res.data : [];
         setInventory(inventoryData);
         console.log('✅ Inventario cargado:', inventoryData.length, 'items');
         console.log('📋 Primeros 3 items del inventario:', inventoryData.slice(0, 3));
         console.log('📋 Campos disponibles en inventory[0]:', inventoryData[0] ? Object.keys(inventoryData[0]) : 'N/A');
-        
         // Verificar que tenemos campos de precio
         const withPrice = inventoryData.filter(item => item.precio || item.cost || item.price).length;
         console.log(`💰 Items con precio: ${withPrice}/${inventoryData.length}`);

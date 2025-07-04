@@ -227,6 +227,55 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
+// INVENTORY ENDPOINTS (alias for partes)
+app.get('/api/inventory', async (req, res) => {
+  try {
+    console.log('[GET] /api/inventory - Fetching all inventory items');
+    const partes = await db.getPartes();
+    console.log(`[GET] /api/inventory - Found ${partes.length} items`);
+    res.json(partes);
+  } catch (error) {
+    console.error('[ERROR] GET /api/inventory:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory' });
+  }
+});
+
+app.post('/api/inventory', async (req, res) => {
+  try {
+    console.log('[POST] /api/inventory - Creating inventory item:', req.body);
+    const parte = await db.createParte(req.body);
+    console.log('[POST] /api/inventory - Created item:', parte);
+    res.json(parte);
+  } catch (error) {
+    console.error('[ERROR] POST /api/inventory:', error);
+    res.status(500).json({ error: 'Failed to create inventory item' });
+  }
+});
+
+app.put('/api/inventory/:id', async (req, res) => {
+  try {
+    console.log(`[PUT] /api/inventory/${req.params.id} - Updating inventory item:`, req.body);
+    const parte = await db.updateParte(req.params.id, req.body);
+    console.log(`[PUT] /api/inventory/${req.params.id} - Updated item:`, parte);
+    res.json(parte);
+  } catch (error) {
+    console.error(`[ERROR] PUT /api/inventory/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update inventory item' });
+  }
+});
+
+app.delete('/api/inventory/:id', async (req, res) => {
+  try {
+    console.log(`[DELETE] /api/inventory/${req.params.id} - Deleting inventory item`);
+    await db.deleteParte(req.params.id);
+    console.log(`[DELETE] /api/inventory/${req.params.id} - Deleted successfully`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error(`[ERROR] DELETE /api/inventory/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to delete inventory item' });
+  }
+});
+
 // PARTS ENDPOINTS
 app.get('/api/partes', async (req, res) => {
   try {
@@ -249,6 +298,49 @@ app.post('/api/partes', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] POST /api/partes:', error);
     res.status(500).json({ error: 'Failed to create part' });
+  }
+});
+
+// RECEIVE ENDPOINTS (for parts receiving system)
+app.get('/api/receive', async (req, res) => {
+  try {
+    const { estatus } = req.query;
+    console.log(`[GET] /api/receive - Fetching receive data with status: ${estatus}`);
+    const pendingParts = await db.getPendingParts();
+    console.log(`[GET] /api/receive - Found ${pendingParts.length} pending parts`);
+    res.json(pendingParts);
+  } catch (error) {
+    console.error('[ERROR] GET /api/receive:', error);
+    res.status(500).json({ error: 'Failed to fetch receive data' });
+  }
+});
+
+app.get('/api/receive/pending/:trailer', async (req, res) => {
+  try {
+    const { trailer } = req.params;
+    console.log(`[GET] /api/receive/pending/${trailer} - Fetching pending parts for trailer`);
+    const pendingParts = await db.getPendingParts();
+    // Filter by trailer if needed
+    const filtered = pendingParts.filter(part => part.trailer === trailer);
+    console.log(`[GET] /api/receive/pending/${trailer} - Found ${filtered.length} pending parts`);
+    res.json(filtered);
+  } catch (error) {
+    console.error(`[ERROR] GET /api/receive/pending/${req.params.trailer}:`, error);
+    res.status(500).json({ error: 'Failed to fetch pending parts for trailer' });
+  }
+});
+
+app.get('/api/receive/trailers/with-pending', async (req, res) => {
+  try {
+    console.log('[GET] /api/receive/trailers/with-pending - Fetching trailers with pending parts');
+    const pendingParts = await db.getPendingParts();
+    // Get unique trailers that have pending parts
+    const trailersWithPending = [...new Set(pendingParts.map(part => part.trailer).filter(Boolean))];
+    console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithPending.length} trailers`);
+    res.json(trailersWithPending);
+  } catch (error) {
+    console.error('[ERROR] GET /api/receive/trailers/with-pending:', error);
+    res.status(500).json({ error: 'Failed to fetch trailers with pending parts' });
   }
 });
 
@@ -275,6 +367,80 @@ app.post('/api/generate-pdf', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] POST /api/generate-pdf:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
+// TRAILAS ENDPOINTS (alias for trailers)
+app.get('/api/trailas', async (req, res) => {
+  try {
+    console.log('[GET] /api/trailas - Fetching all trailas');
+    const trailers = await db.getTrailers();
+    console.log(`[GET] /api/trailas - Found ${trailers.length} trailas`);
+    res.json(trailers);
+  } catch (error) {
+    console.error('[ERROR] GET /api/trailas:', error);
+    res.status(500).json({ error: 'Failed to fetch trailas' });
+  }
+});
+
+app.post('/api/trailas', async (req, res) => {
+  try {
+    console.log('[POST] /api/trailas - Creating traila:', req.body);
+    const traila = await db.createTrailer(req.body);
+    console.log('[POST] /api/trailas - Created traila:', traila);
+    res.json(traila);
+  } catch (error) {
+    console.error('[ERROR] POST /api/trailas:', error);
+    res.status(500).json({ error: 'Failed to create traila' });
+  }
+});
+
+app.put('/api/trailas/:id', async (req, res) => {
+  try {
+    console.log(`[PUT] /api/trailas/${req.params.id} - Updating traila:`, req.body);
+    const traila = await db.updateTrailer(req.params.id, req.body);
+    console.log(`[PUT] /api/trailas/${req.params.id} - Updated traila:`, traila);
+    res.json(traila);
+  } catch (error) {
+    console.error(`[ERROR] PUT /api/trailas/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update traila' });
+  }
+});
+
+app.delete('/api/trailas/:id', async (req, res) => {
+  try {
+    console.log(`[DELETE] /api/trailas/${req.params.id} - Deleting traila`);
+    await db.deleteTrailer(req.params.id);
+    console.log(`[DELETE] /api/trailas/${req.params.id} - Deleted successfully`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error(`[ERROR] DELETE /api/trailas/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to delete traila' });
+  }
+});
+
+// WORK ORDERS ENDPOINTS
+app.get('/api/work-orders', async (req, res) => {
+  try {
+    console.log('[GET] /api/work-orders - Fetching all work orders');
+    const orders = await db.getOrders();
+    console.log(`[GET] /api/work-orders - Found ${orders.length} work orders`);
+    res.json(orders);
+  } catch (error) {
+    console.error('[ERROR] GET /api/work-orders:', error);
+    res.status(500).json({ error: 'Failed to fetch work orders' });
+  }
+});
+
+app.post('/api/work-orders', async (req, res) => {
+  try {
+    console.log('[POST] /api/work-orders - Creating work order:', req.body);
+    const order = await db.createOrder(req.body);
+    console.log('[POST] /api/work-orders - Created work order:', order);
+    res.json(order);
+  } catch (error) {
+    console.error('[ERROR] POST /api/work-orders:', error);
+    res.status(500).json({ error: 'Failed to create work order' });
   }
 });
 
