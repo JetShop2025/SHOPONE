@@ -1,3 +1,6 @@
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -5,6 +8,12 @@ const path = require('path');
 const app = express();
 
 console.log('[STARTUP] Starting server with database connection...');
+console.log('[ENV] Database config:', {
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  database: process.env.MYSQL_DATABASE,
+  port: process.env.MYSQL_PORT
+});
 
 // Import database functions
 const db = require('./db');
