@@ -188,7 +188,7 @@ async function createParte(parte) {
       parte.sku || null,
       parte.barCodes || null,
       parte.category || null,
-      parte.item || parte.part || null,  // Use 'item' to match your table structure
+      parte.part || null,  // Use 'part' for inventory table
       parte.provider || null,
       parte.brand || null,
       parte.um || null,
@@ -203,7 +203,7 @@ async function createParte(parte) {
 
     // Use the real table name that exists in your database
     const [result] = await connection.execute(
-      'INSERT INTO inventory (sku, barCodes, category, item, provider, brand, um, area, imagen, precio, onHand, receive, salidasWo, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, onHand, receive, salidasWo, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     return { id: result.insertId, ...parte };
@@ -220,7 +220,7 @@ async function updateParte(id, parte) {
       parte.sku || null,
       parte.barCodes || null,
       parte.category || null,
-      parte.item || parte.part || null,  // Use 'item' to match your table structure
+      parte.part || null,  // Use 'part' for inventory table
       parte.provider || null,
       parte.brand || null,
       parte.um || null,
@@ -235,7 +235,7 @@ async function updateParte(id, parte) {
     ];
 
     await connection.execute(
-      'UPDATE inventory SET sku=?, barCodes=?, category=?, item=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, onHand=?, receive=?, salidasWo=?, invoiceLink=? WHERE id=?',
+      'UPDATE inventory SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, onHand=?, receive=?, salidasWo=?, invoiceLink=? WHERE id=?',
       safeValues
     );
     return { id, ...parte };
