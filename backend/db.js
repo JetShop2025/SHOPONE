@@ -162,7 +162,6 @@ async function createWorkOrderPart(workOrderPart) {
     
     const [result] = await connection.execute(
       'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost) VALUES (?, ?, ?, ?, ?)',
-
       [
         workOrderPart.work_order_id,
         workOrderPart.sku || null,
@@ -176,6 +175,43 @@ async function createWorkOrderPart(workOrderPart) {
     return { id: result.insertId, ...workOrderPart };
   } catch (error) {
     console.error('[DB] Error creating work order part:', error.message);
+    throw error;
+  }
+}
+
+async function deductInventory(partsToDeduct) {
+  try {
+    console.log('[DB] Deducting inventory for parts:', partsToDeduct);
+    
+    for (const part of partsToDeduct) {
+      // Get current inventory for this SKU
+      const [currentRows] = await connection.execute(
+        'SELECT * FROM inventory WHERE sku = ?',
+        [part.sku]
+      );
+      
+      if (currentRows.length > 0) {
+        const currentPart = currentRows[0];
+        const currentOnHand = Number(currentPart.onHand) || 0;
+        const qtyToDeduct = Number(part.qty) || 0;
+        const newOnHand = Math.max(0, currentOnHand - qtyToDeduct); // Don't go below 0
+        
+        // Update the inventory
+        await connection.execute(
+          'UPDATE inventory SET onHand = ?, salidasWo = COALESCE(salidasWo, 0) + ? WHERE sku = ?',
+          [newOnHand, qtyToDeduct, part.sku]
+        );
+        
+        console.log(`[DB] Updated inventory for ${part.sku}: ${currentOnHand} -> ${newOnHand} (deducted ${qtyToDeduct})`);
+      } else {
+        console.warn(`[DB] SKU ${part.sku} not found in inventory, skipping deduction`);
+      }
+    }
+    
+    console.log('[DB] Successfully deducted inventory');
+    return { success: true, deducted: partsToDeduct.length };
+  } catch (error) {
+    console.error('[DB] Error deducting inventory:', error.message);
     throw error;
   }
 }
@@ -410,11 +446,11 @@ module.exports = {
   deleteTrailer,
   getTrailerLocations,
   createTrailerLocation,
-  updateTrailerLocation,
-  deleteTrailerLocation,
+  updateTrailerLocation,  deleteTrailerLocation,
   getOrders,
   createOrder,
   createWorkOrderPart,
+  deductInventory,
   getPartes,
   createParte,
   updateParte,

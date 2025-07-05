@@ -356,6 +356,18 @@ app.post('/api/work-order-parts', async (req, res) => {
   }
 });
 
+app.post('/api/inventory/deduct', async (req, res) => {
+  try {
+    console.log('[POST] /api/inventory/deduct - Deducting inventory:', req.body);
+    const result = await db.deductInventory(req.body.parts || []);
+    console.log('[POST] /api/inventory/deduct - Successfully deducted inventory:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('[ERROR] POST /api/inventory/deduct:', error);
+    res.status(500).json({ error: 'Failed to deduct inventory in database' });
+  }
+});
+
 // RECEIVE / PENDING PARTS ENDPOINTS - USING REAL DATABASE
 app.get('/api/receive', async (req, res) => {
   try {
