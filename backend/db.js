@@ -183,8 +183,7 @@ async function getPartes() {
 }
 
 async function createParte(parte) {
-  try {
-    // Convert undefined values to null for MySQL compatibility
+  try {    // Convert undefined values to null for MySQL compatibility
     const safeValues = [
       parte.sku || null,
       parte.barCodes || null,
@@ -196,13 +195,12 @@ async function createParte(parte) {
       parte.area || null,
       parte.imagen || null,
       parte.precio || null,
-      parte.cantidad || null,
       parte.onHand || null
     ];
 
     // Use the real table name that exists in your database
     const [result] = await connection.execute(
-      'INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, cantidad, onHand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, onHand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     return { id: result.insertId, ...parte };
@@ -226,14 +224,13 @@ async function updateParte(id, parte) {
       parte.area || null,
       parte.imagen || null,
       parte.precio || null,
-      parte.cantidad || null,
       parte.onHand || null,
       id,
       id
     ];
 
     await connection.execute(
-      'UPDATE inventory SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, cantidad=?, onHand=? WHERE id=? OR sku=?',
+      'UPDATE inventory SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, onHand=? WHERE id=? OR sku=?',
       safeValues
     );
     return { id, ...parte };
@@ -269,9 +266,9 @@ async function createPendingPart(pendingPart) {
   try {
     console.log('[DB] Creating pending part in receives table:', pendingPart);
     
-    // Map the fields from the frontend to the receives table structure (without usuario column)
+    // Map the fields from the frontend to the receives table structure
     const [result] = await connection.execute(
-      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, fecha, estatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, fecha, estatus, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         pendingPart.sku || null,
         pendingPart.category || null,
@@ -285,7 +282,8 @@ async function createPendingPart(pendingPart) {
         pendingPart.costTax || null,
         pendingPart.totalPOClassic || null,
         pendingPart.fecha || new Date().toISOString().split('T')[0],
-        pendingPart.estatus || 'PENDING'
+        pendingPart.estatus || 'PENDING',
+        pendingPart.invoiceLink || null
       ]
     );
     
