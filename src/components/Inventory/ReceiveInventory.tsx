@@ -102,9 +102,7 @@ const ReceiveInventory: React.FC = () => {
 
     // Guarda el recibo
     const data = { ...form, usuario: localStorage.getItem('username') || '' };   
-    await axios.post(`${API_URL}/receive`, data);
-
-    // ACTUALIZA onHand Y precio EN UNA SOLA PETICIÓN
+    await axios.post(`${API_URL}/receive`, data);    // ACTUALIZA onHand Y precio EN UNA SOLA PETICIÓN
     if (form.sku && form.qty) {
       const invRes = await axios.get(`${API_URL}/inventory`);
       const inventoryList = invRes.data as any[];
@@ -112,8 +110,9 @@ const ReceiveInventory: React.FC = () => {
       const currentOnHand = part && part.onHand ? Number(part.onHand) : 0;
       const newOnHand = currentOnHand + Number(form.qty);
 
-      if (part) {
-        await axios.put(`${API_URL}/inventory/${form.sku}`, {
+      if (part && part.id) {
+        // Use the numeric ID for the PUT request
+        await axios.put(`${API_URL}/inventory/${part.id}`, {
           ...part,
           onHand: newOnHand,
           precio: newPrice || part.precio,

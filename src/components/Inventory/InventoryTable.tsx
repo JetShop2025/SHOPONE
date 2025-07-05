@@ -16,6 +16,7 @@ const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
 );
 
 type PartType = {
+  id?: number; // Primary key from database
   sku: string;
   barCodes: string;
   category: string;
@@ -29,7 +30,7 @@ type PartType = {
   cantidad?: string;
   onHand?: string;
   invoiceLink?: string;
-  [key: string]: string | undefined;
+  [key: string]: string | number | undefined;
 };
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
@@ -52,6 +53,7 @@ const columns = [
 ];
 
 const emptyPart: PartType = {
+  id: undefined, // Will be set by database on creation
   sku: '', barCodes: '', category: '', part: '', provider: '', brand: '', um: '',
   area: '', imagen: '', precio: '', cantidad: '', onHand: ''
 };
@@ -191,18 +193,18 @@ const InventoryTable: React.FC = () => {
       setAddError(err.response?.data?.error || 'Error adding part');
     }
   };
-
   // Delete Part
   const handleDeletePart = async () => {
     if (deletePassword !== '6214' || !selectedSku) return;
     const part = inventory.find(p => p.sku === selectedSku);
     if (!part) return;
     try {
+      // Use the numeric ID for the DELETE request
       await axios.request({
-        url: `${API_URL}/inventory/${part.sku}`,
+        url: `${API_URL}/inventory/${part.id}`,
         method: 'DELETE',
         data: { usuario: localStorage.getItem('username') || '' }
-      });      setShowDeleteForm(false);
+      });setShowDeleteForm(false);
       setSelectedSku(null);
       const res = await axios.get(`${API_URL}/inventory`);
       const inventoryData = Array.isArray(res.data) ? res.data : [];
@@ -211,16 +213,16 @@ const InventoryTable: React.FC = () => {
       alert(err.response?.data?.error || 'Error deleting part');
     }
   };
-
   // Edit Part
   const handleEditPart = async (e: React.FormEvent) => {
     e.preventDefault();
     setEditError('');
     try {
-      await axios.put(`${API_URL}/inventory/${editPart.sku}`, {
+      // Use the numeric ID for the PUT request
+      await axios.put(`${API_URL}/inventory/${editPart.id}`, {
         ...editPart,
         usuario: localStorage.getItem('username') || ''
-      });      setShowEditForm(false);
+      });setShowEditForm(false);
       setEditPart({ ...emptyPart });
       setSelectedSku(null);
       const res = await axios.get(`${API_URL}/inventory`);
