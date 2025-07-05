@@ -219,6 +219,26 @@ async function updateOrder(id, order) {
   }
 }
 
+async function deleteOrder(id) {
+  try {
+    console.log('[DB] Deleting work order with ID:', id);
+    
+    // First delete related work order parts
+    await connection.execute('DELETE FROM work_order_parts WHERE work_order_id = ?', [id]);
+    console.log('[DB] Deleted related work order parts for order:', id);
+    
+    // Then delete the work order itself
+    const [result] = await connection.execute('DELETE FROM work_orders WHERE id = ?', [id]);
+    
+    console.log('[DB] Successfully deleted work order with ID:', id);
+    return { success: true, deletedId: id };
+  } catch (error) {
+    console.error('[DB] Error deleting work order:', error.message);
+    console.error('[DB] Full error details:', error);
+    throw error;
+  }
+}
+
 // Work Order Parts functions
 async function createWorkOrderPart(workOrderPart) {
   try {
@@ -514,6 +534,7 @@ module.exports = {
   getOrders,
   createOrder,
   updateOrder,
+  deleteOrder,
   createWorkOrderPart,
   deductInventory,
   getPartes,

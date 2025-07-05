@@ -556,9 +556,7 @@ const WorkOrdersTable: React.FC = () => {
         usuario: localStorage.getItem('username') || ''
       });
       const data = res.data as { id: number, pdfUrl?: string };
-      const newWorkOrderId = data.id;
-
-      // REGISTRA PARTES USADAS EN work_order_parts
+      const newWorkOrderId = data.id;      // REGISTRA PARTES USADAS EN work_order_parts
       for (const part of partesParaGuardar) {
         await axios.post(`${API_URL}/work-order-parts`, {
           work_order_id: newWorkOrderId,
@@ -568,6 +566,19 @@ const WorkOrdersTable: React.FC = () => {
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
           usuario: localStorage.getItem('username') || ''
         });
+      }
+
+      // MARCA PARTES PENDIENTES COMO USADAS
+      const partesConPendingId = datosOrden.parts.filter((p: any) => p._pendingPartId);
+      for (const part of partesConPendingId) {
+        try {
+          await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
+            usuario: localStorage.getItem('username') || ''
+          });
+          console.log(`✅ Parte pendiente ${part._pendingPartId} marcada como USED`);
+        } catch (error) {
+          console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED:`, error);
+        }
       }
 
       // Muestra mensaje de éxito
@@ -1393,8 +1404,7 @@ const WorkOrdersTable: React.FC = () => {
                           setLoading(true);
                           // LIMPIA EL TOTAL ANTES DE ENVIAR
                           const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));
-                          
-                          // Actualizar la work order
+                            // Actualizar la work order
                           const updateResponse = await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
                             totalLabAndParts: totalLabAndPartsLimpio,
@@ -1404,6 +1414,19 @@ const WorkOrdersTable: React.FC = () => {
                             usuario: localStorage.getItem('username') || '',
                             extraOptions,
                           });
+
+                          // MARCA PARTES PENDIENTES COMO USADAS (si se agregaron nuevas partes pendientes)
+                          const partesConPendingId = editWorkOrder.parts.filter((p: any) => p._pendingPartId);
+                          for (const part of partesConPendingId) {
+                            try {
+                              await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
+                                usuario: localStorage.getItem('username') || ''
+                              });
+                              console.log(`✅ Parte pendiente ${part._pendingPartId} marcada como USED en edición`);
+                            } catch (error) {
+                              console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED en edición:`, error);
+                            }
+                          }
                           
                           // Generar nuevo PDF tras la edición
                           try {

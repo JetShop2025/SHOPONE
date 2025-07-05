@@ -356,6 +356,18 @@ app.put('/api/work-orders/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/work-orders/:id', async (req, res) => {
+  try {
+    console.log('[DELETE] /api/work-orders/:id - Deleting from database:', req.params.id);
+    const result = await db.deleteOrder(req.params.id);
+    console.log('[DELETE] /api/work-orders/:id - Deleted from database:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('[ERROR] DELETE /api/work-orders/:id:', error);
+    res.status(500).json({ error: 'Failed to delete work order from database' });
+  }
+});
+
 app.post('/api/work-order-parts', async (req, res) => {
   try {
     console.log('[POST] /api/work-order-parts - Creating in database:', req.body);
@@ -414,6 +426,22 @@ app.put('/api/receive/:id', async (req, res) => {
   } catch (error) {
     console.error(`[ERROR] PUT /api/receive/${req.params.id}:`, error);
     res.status(500).json({ error: 'Failed to update pending part in database' });
+  }
+});
+
+app.put('/api/receive/:id/mark-used', async (req, res) => {
+  try {
+    console.log(`[PUT] /api/receive/${req.params.id}/mark-used - Marking as USED:`, req.body);
+    const updatedPart = await db.updatePendingPart(req.params.id, { 
+      ...req.body, 
+      estatus: 'USED',
+      usuario: req.body.usuario || ''
+    });
+    console.log(`[PUT] /api/receive/${req.params.id}/mark-used - Marked as USED:`, updatedPart);
+    res.json(updatedPart);
+  } catch (error) {
+    console.error(`[ERROR] PUT /api/receive/${req.params.id}/mark-used:`, error);
+    res.status(500).json({ error: 'Failed to mark pending part as used' });
   }
 });
 
