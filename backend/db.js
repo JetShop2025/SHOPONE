@@ -147,8 +147,8 @@ async function createOrder(order) {
     console.log('[DB] Creating order with data:', order);
     
     // Convert undefined values to null for MySQL compatibility
+    // Remove orderNumber as it doesn't exist in the database table
     const safeValues = [
-      order.orderNumber || null,
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
@@ -163,7 +163,7 @@ async function createOrder(order) {
     ];
 
     const [result] = await connection.execute(
-      'INSERT INTO work_orders (orderNumber, billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, mechanics, extraOptions, parts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, mechanics, extraOptions, parts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     
