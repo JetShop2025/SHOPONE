@@ -144,13 +144,34 @@ async function getOrders() {
 
 async function createOrder(order) {
   try {
+    console.log('[DB] Creating order with data:', order);
+    
+    // Convert undefined values to null for MySQL compatibility
+    const safeValues = [
+      order.orderNumber || null,
+      order.billToCo || null,
+      order.trailer || null,
+      order.mechanic || null,
+      order.date || null,
+      order.description || null,
+      order.totalHrs || null,
+      order.totalLabAndParts || null,
+      order.status || 'PRE W.O',
+      JSON.stringify(order.mechanics || []),
+      JSON.stringify(order.extraOptions || []),
+      JSON.stringify(order.parts || [])
+    ];
+
     const [result] = await connection.execute(
-      'INSERT INTO work_orders (orderNumber, description, status) VALUES (?, ?, ?)',
-      [order.orderNumber, order.description, order.status]
+      'INSERT INTO work_orders (orderNumber, billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, mechanics, extraOptions, parts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      safeValues
     );
+    
+    console.log('[DB] Successfully created work order with ID:', result.insertId);
     return { id: result.insertId, ...order };
   } catch (error) {
     console.error('[DB] Error creating order:', error.message);
+    console.error('[DB] Full error details:', error);
     throw error;
   }
 }
