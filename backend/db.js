@@ -184,9 +184,26 @@ async function getPartes() {
 
 async function createParte(parte) {
   try {
+    // Convert undefined values to null for MySQL compatibility
+    const safeValues = [
+      parte.sku || null,
+      parte.barCodes || null,
+      parte.category || null,
+      parte.part || null,
+      parte.provider || null,
+      parte.brand || null,
+      parte.um || null,
+      parte.area || null,
+      parte.imagen || null,
+      parte.precio || null,
+      parte.cantidad || null,
+      parte.onHand || null
+    ];
+
+    // Use the real table name that exists in your database
     const [result] = await connection.execute(
-      'INSERT INTO partes (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, cantidad, onHand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [parte.sku, parte.barCodes, parte.category, parte.part, parte.provider, parte.brand, parte.um, parte.area, parte.imagen, parte.precio, parte.cantidad, parte.onHand]
+      'INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, cantidad, onHand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      safeValues
     );
     return { id: result.insertId, ...parte };
   } catch (error) {
@@ -197,9 +214,27 @@ async function createParte(parte) {
 
 async function updateParte(id, parte) {
   try {
+    // Convert undefined values to null for MySQL compatibility
+    const safeValues = [
+      parte.sku || null,
+      parte.barCodes || null,
+      parte.category || null,
+      parte.part || null,
+      parte.provider || null,
+      parte.brand || null,
+      parte.um || null,
+      parte.area || null,
+      parte.imagen || null,
+      parte.precio || null,
+      parte.cantidad || null,
+      parte.onHand || null,
+      id,
+      id
+    ];
+
     await connection.execute(
-      'UPDATE partes SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, cantidad=?, onHand=? WHERE id=? OR sku=?',
-      [parte.sku, parte.barCodes, parte.category, parte.part, parte.provider, parte.brand, parte.um, parte.area, parte.imagen, parte.precio, parte.cantidad, parte.onHand, id, id]
+      'UPDATE inventory SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, cantidad=?, onHand=? WHERE id=? OR sku=?',
+      safeValues
     );
     return { id, ...parte };
   } catch (error) {
@@ -210,7 +245,7 @@ async function updateParte(id, parte) {
 
 async function deleteParte(id) {
   try {
-    await connection.execute('DELETE FROM partes WHERE id=? OR sku=?', [id, id]);
+    await connection.execute('DELETE FROM inventory WHERE id=? OR sku=?', [id, id]);
   } catch (error) {
     console.error('[DB] Error deleting parte:', error.message);
     throw error;
@@ -235,12 +270,12 @@ async function getPendingParts() {
       }
     }
     
-    // If no table exists, return empty array
-    console.log('[DB] No pending parts table found, returning empty array');
-    return [];
+    // If no table exists, throw error - NO MOCK DATA
+    console.error('[DB] No pending parts table found in database');
+    throw new Error('Pending parts table does not exist in database');
   } catch (error) {
     console.error('[DB] Error getting pending parts:', error.message);
-    return [];
+    throw error;
   }
 }
 
@@ -280,37 +315,12 @@ async function createPendingPart(pendingPart) {
       }
     }
     
-    // If no table exists, create a mock response to avoid frontend errors
-    console.log('[DB] No pending parts table found, returning mock success response');
-    return {
-      id: Date.now(), // Use timestamp as mock ID
-      sku: pendingPart.sku || '',
-      part: pendingPart.part || '',
-      provider: pendingPart.provider || '',
-      brand: pendingPart.brand || '',
-      trailer: pendingPart.trailer || '',
-      orderNumber: pendingPart.orderNumber || '',
-      quantity: pendingPart.quantity || 1,
-      usuario: pendingPart.usuario || '',
-      created_at: new Date().toISOString(),
-      status: 'PENDING'
-    };
+    // If no table exists, throw error - NO MOCK DATA
+    console.error('[DB] No pending parts table found in database');
+    throw new Error('Pending parts table does not exist in database');
   } catch (error) {
     console.error('[DB] Error creating pending part:', error.message);
-    // Return mock response to avoid frontend crashes
-    return {
-      id: Date.now(),
-      sku: pendingPart.sku || '',
-      part: pendingPart.part || '',
-      provider: pendingPart.provider || '',
-      brand: pendingPart.brand || '',
-      trailer: pendingPart.trailer || '',
-      orderNumber: pendingPart.orderNumber || '',
-      quantity: pendingPart.quantity || 1,
-      usuario: pendingPart.usuario || '',
-      created_at: new Date().toISOString(),
-      status: 'PENDING'
-    };
+    throw error;
   }
 }
 
@@ -321,18 +331,20 @@ async function getUsers() {
     return rows;
   } catch (error) {
     console.error('[DB] Error getting users:', error.message);
-    // Si no existe la tabla users, devolver usuarios por defecto
-    return [
-      { id: 1, username: 'LEO', password: '6214', role: 'admin' },
-      { id: 2, username: 'admin', password: 'admin', role: 'admin' }
-    ];
+    throw error;
   }
 }
 
-// PDF Generation (mock)
+// PDF Generation (real database function)
 async function generatePDF(data) {
-  console.log('PDF generation requested:', data);
-  return '/path/to/generated/pdf.pdf';
+  try {
+    console.log('[DB] PDF generation requested:', data);
+    // This should connect to a real PDF generation service or database function
+    throw new Error('PDF generation not implemented - requires real database implementation');
+  } catch (error) {
+    console.error('[DB] Error generating PDF:', error.message);
+    throw error;
+  }
 }
 
 module.exports = {
