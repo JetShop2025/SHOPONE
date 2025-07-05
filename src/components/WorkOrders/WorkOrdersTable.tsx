@@ -806,15 +806,25 @@ const WorkOrdersTable: React.FC = () => {
     maxHeight: '80vh',
     overflowY: 'auto',
     boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
-  };
-  const addEmptyPart = () => {
-    setNewWorkOrder(prev => ({
-      ...prev,
-      parts: [
-        ...prev.parts,
-        { part: '', sku: '', qty: '', cost: '' }
-      ]
-    }));
+  };  const addEmptyPart = () => {    if (showEditForm && editWorkOrder) {
+      // Agregar parte vacía al editWorkOrder
+      setEditWorkOrder((prev: any) => ({
+        ...prev,
+        parts: [
+          ...(prev.parts || []),
+          { part: '', sku: '', qty: '', cost: '' }
+        ]
+      }));
+    } else {
+      // Agregar parte vacía al newWorkOrder
+      setNewWorkOrder(prev => ({
+        ...prev,
+        parts: [
+          ...prev.parts,
+          { part: '', sku: '', qty: '', cost: '' }
+        ]
+      }));
+    }
   };
   // Función para agregar una parte pendiente automáticamente
   const addPendingPart = (pendingPart: any, qtyToUse: number) => {
@@ -872,17 +882,27 @@ const WorkOrdersTable: React.FC = () => {
       cost: cost > 0 ? cost.toFixed(2) : '0.00',
       _pendingPartId: pendingPart.id // Guardar referencia para el procesamiento posterior
     };
+      console.log('✅ Nueva parte creada:', newPart);
     
-    console.log('✅ Nueva parte creada:', newPart);
-    
-    // Agregar la parte al formulario
-    setNewWorkOrder(prev => ({
-      ...prev,
-      parts: [
-        ...prev.parts,
-        newPart
-      ]
-    }));
+    // Agregar la parte al formulario correspondiente
+    if (showEditForm && editWorkOrder) {      // Agregar al editWorkOrder
+      setEditWorkOrder((prev: any) => ({
+        ...prev,
+        parts: [
+          ...(prev.parts || []),
+          newPart
+        ]
+      }));
+    } else {
+      // Agregar al newWorkOrder
+      setNewWorkOrder(prev => ({
+        ...prev,
+        parts: [
+          ...prev.parts,
+          newPart
+        ]
+      }));
+    }
     
     // Actualizar la cantidad de partes pendientes localmente
     setPendingParts(prevPending => 

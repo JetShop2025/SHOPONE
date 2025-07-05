@@ -134,7 +134,16 @@ async function getOrders() {
     console.log('[DB] Executing query: SELECT * FROM work_orders');
     const [rows] = await connection.execute('SELECT * FROM work_orders');
     console.log(`[DB] Found ${rows.length} work orders in database`);
-    return rows;
+    
+    // Parse JSON fields
+    const parsedRows = rows.map(row => ({
+      ...row,
+      parts: row.parts ? JSON.parse(row.parts) : [],
+      mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
+      extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
+    }));
+    
+    return parsedRows;
   } catch (error) {
     console.error('[DB] Error getting work orders:', error.message);
     console.error('[DB] Full error:', error);
@@ -171,6 +180,40 @@ async function createOrder(order) {
     return { id: result.insertId, ...order };
   } catch (error) {
     console.error('[DB] Error creating order:', error.message);
+    console.error('[DB] Full error details:', error);
+    throw error;
+  }
+}
+
+async function updateOrder(id, order) {
+  try {
+    console.log('[DB] Updating order with ID:', id, 'and data:', order);
+    
+    // Convert undefined values to null for MySQL compatibility
+    const safeValues = [
+      order.billToCo || null,
+      order.trailer || null,
+      order.mechanic || null,
+      order.date || null,
+      order.description || null,
+      order.totalHrs || null,
+      order.totalLabAndParts || null,
+      order.status || 'PRE W.O',
+      JSON.stringify(order.mechanics || []),
+      JSON.stringify(order.extraOptions || []),
+      JSON.stringify(order.parts || []),
+      id
+    ];
+
+    const [result] = await connection.execute(
+      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
+      safeValues
+    );
+    
+    console.log('[DB] Successfully updated work order with ID:', id);
+    return { id, ...order };
+  } catch (error) {
+    console.error('[DB] Error updating order:', error.message);
     console.error('[DB] Full error details:', error);
     throw error;
   }
@@ -470,6 +513,7 @@ module.exports = {
   updateTrailerLocation,  deleteTrailerLocation,
   getOrders,
   createOrder,
+  updateOrder,
   createWorkOrderPart,
   deductInventory,
   getPartes,

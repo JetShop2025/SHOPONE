@@ -344,6 +344,18 @@ app.post('/api/work-orders', async (req, res) => {
   }
 });
 
+app.put('/api/work-orders/:id', async (req, res) => {
+  try {
+    console.log('[PUT] /api/work-orders/:id - Updating in database:', req.params.id, req.body);
+    const updatedOrder = await db.updateOrder(req.params.id, req.body);
+    console.log('[PUT] /api/work-orders/:id - Updated in database:', updatedOrder);
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('[ERROR] PUT /api/work-orders/:id:', error);
+    res.status(500).json({ error: 'Failed to update work order in database' });
+  }
+});
+
 app.post('/api/work-order-parts', async (req, res) => {
   try {
     console.log('[POST] /api/work-order-parts - Creating in database:', req.body);
