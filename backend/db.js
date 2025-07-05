@@ -188,19 +188,22 @@ async function createParte(parte) {
       parte.sku || null,
       parte.barCodes || null,
       parte.category || null,
-      parte.part || null,
+      parte.item || parte.part || null,  // Use 'item' to match your table structure
       parte.provider || null,
       parte.brand || null,
       parte.um || null,
       parte.area || null,
       parte.imagen || null,
       parte.precio || null,
-      parte.onHand || null
+      parte.onHand || null,
+      parte.receive || null,  // Add receive column
+      parte.salidasWo || null,  // Add salidasWo column
+      parte.invoiceLink || null  // Add invoiceLink column
     ];
 
     // Use the real table name that exists in your database
     const [result] = await connection.execute(
-      'INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, onHand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO inventory (sku, barCodes, category, item, provider, brand, um, area, imagen, precio, onHand, receive, salidasWo, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     return { id: result.insertId, ...parte };
@@ -217,7 +220,7 @@ async function updateParte(id, parte) {
       parte.sku || null,
       parte.barCodes || null,
       parte.category || null,
-      parte.part || null,
+      parte.item || parte.part || null,  // Use 'item' to match your table structure
       parte.provider || null,
       parte.brand || null,
       parte.um || null,
@@ -225,12 +228,14 @@ async function updateParte(id, parte) {
       parte.imagen || null,
       parte.precio || null,
       parte.onHand || null,
-      id,
+      parte.receive || null,  // Add receive column
+      parte.salidasWo || null,  // Add salidasWo column  
+      parte.invoiceLink || null,  // Add invoiceLink column
       id
     ];
 
     await connection.execute(
-      'UPDATE inventory SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, onHand=? WHERE id=? OR sku=?',
+      'UPDATE inventory SET sku=?, barCodes=?, category=?, item=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, onHand=?, receive=?, salidasWo=?, invoiceLink=? WHERE id=?',
       safeValues
     );
     return { id, ...parte };
@@ -242,7 +247,7 @@ async function updateParte(id, parte) {
 
 async function deleteParte(id) {
   try {
-    await connection.execute('DELETE FROM inventory WHERE id=? OR sku=?', [id, id]);
+    await connection.execute('DELETE FROM inventory WHERE id=?', [id]);
   } catch (error) {
     console.error('[DB] Error deleting parte:', error.message);
     throw error;
