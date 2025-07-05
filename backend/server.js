@@ -464,6 +464,12 @@ app.post('/api/generate-pdf', (req, res) => {
   res.json({ success: true, pdfPath: `/pdfs/${pdfName}` });
 });
 
+app.post('/api/work-orders/:id/generate-pdf', (req, res) => {
+  console.log(`[POST] /api/work-orders/${req.params.id}/generate-pdf:`, req.body);
+  const pdfName = `work_order_${req.params.id}_${Date.now()}.pdf`;
+  res.json({ success: true, pdfPath: `/pdfs/${pdfName}` });
+});
+
 // STATIC FILES - Build de React
 app.use(express.static(path.join(__dirname, '../build')));
 

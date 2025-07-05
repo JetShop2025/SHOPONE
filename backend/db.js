@@ -154,8 +154,7 @@ async function getOrders() {
 async function createOrder(order) {
   try {
     console.log('[DB] Creating order with data:', order);
-    
-    // Convert undefined values to null for MySQL compatibility
+      // Convert undefined values to null for MySQL compatibility
     // Remove orderNumber as it doesn't exist in the database table
     const safeValues = [
       order.billToCo || null,
@@ -166,13 +165,14 @@ async function createOrder(order) {
       order.totalHrs || null,
       order.totalLabAndParts || null,
       order.status || 'PRE W.O',
+      order.idClassic || null,
       JSON.stringify(order.mechanics || []),
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(order.parts || [])
     ];
 
     const [result] = await connection.execute(
-      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, mechanics, extraOptions, parts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     
@@ -188,8 +188,7 @@ async function createOrder(order) {
 async function updateOrder(id, order) {
   try {
     console.log('[DB] Updating order with ID:', id, 'and data:', order);
-    
-    // Convert undefined values to null for MySQL compatibility
+      // Convert undefined values to null for MySQL compatibility
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
@@ -199,6 +198,7 @@ async function updateOrder(id, order) {
       order.totalHrs || null,
       order.totalLabAndParts || null,
       order.status || 'PRE W.O',
+      order.idClassic || null,
       JSON.stringify(order.mechanics || []),
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(order.parts || []),
@@ -206,7 +206,7 @@ async function updateOrder(id, order) {
     ];
 
     const [result] = await connection.execute(
-      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
+      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
       safeValues
     );
     
