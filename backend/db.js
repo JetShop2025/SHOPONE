@@ -255,71 +255,51 @@ async function deleteParte(id) {
 // Pending Parts functions
 async function getPendingParts() {
   try {
-    // Try different possible table names for pending parts
-    const tableNames = ['pending_parts', 'partes_pendientes', 'receive_parts', 'parts_to_receive'];
-    
-    for (const tableName of tableNames) {
-      try {
-        console.log(`[DB] Trying pending parts table: ${tableName}`);
-        const [rows] = await connection.execute(`SELECT * FROM ${tableName}`);
-        console.log(`[DB] Found ${rows.length} pending parts in table ${tableName}`);
-        return rows;
-      } catch (error) {
-        console.log(`[DB] Table ${tableName} not found, trying next...`);
-        continue;
-      }
-    }
-    
-    // If no table exists, throw error - NO MOCK DATA
-    console.error('[DB] No pending parts table found in database');
-    throw new Error('Pending parts table does not exist in database');
+    console.log('[DB] Getting pending parts from receives table');
+    const [rows] = await connection.execute('SELECT * FROM receives WHERE estatus = "PENDING"');
+    console.log(`[DB] Found ${rows.length} pending parts in receives table`);
+    return rows;
   } catch (error) {
-    console.error('[DB] Error getting pending parts:', error.message);
+    console.error('[DB] Error getting pending parts from receives table:', error.message);
     throw error;
   }
 }
 
 async function createPendingPart(pendingPart) {
   try {
-    // Try different possible table names for pending parts
-    const tableNames = ['pending_parts', 'partes_pendientes', 'receive_parts', 'parts_to_receive'];
+    console.log('[DB] Creating pending part in receives table:', pendingPart);
     
-    for (const tableName of tableNames) {
-      try {
-        console.log(`[DB] Trying to insert into table: ${tableName}`);
-        const [result] = await connection.execute(
-          `INSERT INTO ${tableName} (sku, part, provider, brand, trailer, orderNumber, quantity, usuario, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-          [
-            pendingPart.sku || '',
-            pendingPart.part || '',
-            pendingPart.provider || '',
-            pendingPart.brand || '',
-            pendingPart.trailer || '',
-            pendingPart.orderNumber || '',
-            pendingPart.quantity || 1,
-            pendingPart.usuario || ''
-          ]
-        );
-        
-        // Return the created record
-        const [newRecord] = await connection.execute(
-          `SELECT * FROM ${tableName} WHERE id = ?`,
-          [result.insertId]
-        );
-        
-        console.log(`[DB] Successfully created pending part in table ${tableName}`);
-        return newRecord[0];
-      } catch (error) {
-        console.log(`[DB] Failed to insert into table ${tableName}, trying next...`);
-        continue;
-      }
-    }
+    // Map the fields from the frontend to the receives table structure
+    const [result] = await connection.execute(
+      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, fecha, estatus, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        pendingPart.sku || null,
+        pendingPart.category || null,
+        pendingPart.item || pendingPart.part || null,
+        pendingPart.provider || null,
+        pendingPart.brand || null,
+        pendingPart.um || null,
+        pendingPart.destino_trailer || pendingPart.trailer || null,
+        pendingPart.invoice || null,
+        pendingPart.qty || pendingPart.quantity || 1,
+        pendingPart.costTax || null,
+        pendingPart.totalPOClassic || null,
+        pendingPart.fecha || new Date().toISOString().split('T')[0],
+        pendingPart.estatus || 'PENDING',
+        pendingPart.usuario || null
+      ]
+    );
     
-    // If no table exists, throw error - NO MOCK DATA
-    console.error('[DB] No pending parts table found in database');
-    throw new Error('Pending parts table does not exist in database');
+    // Return the created record
+    const [newRecord] = await connection.execute(
+      'SELECT * FROM receives WHERE id = ?',
+      [result.insertId]
+    );
+    
+    console.log('[DB] Successfully created pending part in receives table');
+    return newRecord[0];
   } catch (error) {
-    console.error('[DB] Error creating pending part:', error.message);
+    console.error('[DB] Error creating pending part in receives table:', error.message);
     throw error;
   }
 }
