@@ -269,9 +269,9 @@ async function createPendingPart(pendingPart) {
   try {
     console.log('[DB] Creating pending part in receives table:', pendingPart);
     
-    // Map the fields from the frontend to the receives table structure
+    // Map the fields from the frontend to the receives table structure (without usuario column)
     const [result] = await connection.execute(
-      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, fecha, estatus, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, fecha, estatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         pendingPart.sku || null,
         pendingPart.category || null,
@@ -285,8 +285,7 @@ async function createPendingPart(pendingPart) {
         pendingPart.costTax || null,
         pendingPart.totalPOClassic || null,
         pendingPart.fecha || new Date().toISOString().split('T')[0],
-        pendingPart.estatus || 'PENDING',
-        pendingPart.usuario || null
+        pendingPart.estatus || 'PENDING'
       ]
     );
     
