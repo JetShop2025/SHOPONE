@@ -369,15 +369,15 @@ app.get('/api/receive', async (req, res) => {
   }
 });
 
-app.get('/api/pending-parts', async (req, res) => {
+app.post('/api/receive', async (req, res) => {
   try {
-    console.log('[GET] /api/pending-parts - Fetching from database');
-    const pendingParts = await db.getPendingParts();
-    console.log(`[GET] /api/pending-parts - Found ${pendingParts.length} pending parts from database`);
-    res.json(pendingParts);
+    console.log('[POST] /api/receive - Creating pending part in database:', req.body);
+    const newPendingPart = await db.createPendingPart(req.body);
+    console.log('[POST] /api/receive - Created pending part in database:', newPendingPart);
+    res.json(newPendingPart);
   } catch (error) {
-    console.error('[ERROR] GET /api/pending-parts:', error);
-    res.status(500).json({ error: 'Failed to fetch pending parts from database' });
+    console.error('[ERROR] POST /api/receive:', error);
+    res.status(500).json({ error: 'Failed to create pending part in database' });
   }
 });
 
