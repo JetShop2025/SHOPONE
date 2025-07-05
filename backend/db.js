@@ -155,6 +155,31 @@ async function createOrder(order) {
   }
 }
 
+// Work Order Parts functions
+async function createWorkOrderPart(workOrderPart) {
+  try {
+    console.log('[DB] Creating work order part:', workOrderPart);
+    
+    const [result] = await connection.execute(
+      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost) VALUES (?, ?, ?, ?, ?)',
+
+      [
+        workOrderPart.work_order_id,
+        workOrderPart.sku || null,
+        workOrderPart.part_name || null,
+        workOrderPart.qty_used || 1,
+        workOrderPart.cost || 0
+      ]
+    );
+    
+    console.log('[DB] Successfully created work order part');
+    return { id: result.insertId, ...workOrderPart };
+  } catch (error) {
+    console.error('[DB] Error creating work order part:', error.message);
+    throw error;
+  }
+}
+
 // Partes/Inventory functions
 async function getPartes() {
   try {
@@ -306,6 +331,53 @@ async function createPendingPart(pendingPart) {
   }
 }
 
+async function updatePendingPart(id, pendingPart) {
+  try {
+    console.log('[DB] Updating pending part in receives table, id:', id, 'data:', pendingPart);
+    
+    // Convert undefined values to null for MySQL compatibility
+    const safeValues = [
+      pendingPart.sku || null,
+      pendingPart.category || null,
+      pendingPart.item || pendingPart.part || null,
+      pendingPart.provider || null,
+      pendingPart.brand || null,
+      pendingPart.um || null,
+      pendingPart.destino_trailer || pendingPart.trailer || null,
+      pendingPart.invoice || null,
+      pendingPart.qty || pendingPart.quantity || 1,
+      pendingPart.costTax || null,
+      pendingPart.totalPOClassic || null,
+      pendingPart.fecha || new Date().toISOString().split('T')[0],
+      pendingPart.estatus || 'PENDING',
+      pendingPart.invoiceLink || null,
+      id
+    ];
+
+    await connection.execute(
+      'UPDATE receives SET sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, qty=?, costTax=?, totalPOClassic=?, fecha=?, estatus=?, invoiceLink=? WHERE id=?',
+      safeValues
+    );
+    
+    console.log('[DB] Successfully updated pending part in receives table');
+    return { id, ...pendingPart };
+  } catch (error) {
+    console.error('[DB] Error updating pending part in receives table:', error.message);
+    throw error;
+  }
+}
+
+async function deletePendingPart(id) {
+  try {
+    console.log('[DB] Deleting pending part from receives table, id:', id);
+    await connection.execute('DELETE FROM receives WHERE id=?', [id]);
+    console.log('[DB] Successfully deleted pending part from receives table');
+  } catch (error) {
+    console.error('[DB] Error deleting pending part from receives table:', error.message);
+    throw error;
+  }
+}
+
 // Users functions (para login)
 async function getUsers() {
   try {
@@ -342,12 +414,15 @@ module.exports = {
   deleteTrailerLocation,
   getOrders,
   createOrder,
+  createWorkOrderPart,
   getPartes,
   createParte,
   updateParte,
   deleteParte,
   getPendingParts,
   createPendingPart,
+  updatePendingPart,
+  deletePendingPart,
   getUsers,
   generatePDF
 };

@@ -344,15 +344,15 @@ app.post('/api/work-orders', async (req, res) => {
   }
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/work-order-parts', async (req, res) => {
   try {
-    console.log('[POST] /api/orders - Creating in database:', req.body);
-    const newOrder = await db.createOrder(req.body);
-    console.log('[POST] /api/orders - Created in database:', newOrder);
-    res.json(newOrder);
+    console.log('[POST] /api/work-order-parts - Creating in database:', req.body);
+    const newWorkOrderPart = await db.createWorkOrderPart(req.body);
+    console.log('[POST] /api/work-order-parts - Created in database:', newWorkOrderPart);
+    res.json(newWorkOrderPart);
   } catch (error) {
-    console.error('[ERROR] POST /api/orders:', error);
-    res.status(500).json({ error: 'Failed to create order in database' });
+    console.error('[ERROR] POST /api/work-order-parts:', error);
+    res.status(500).json({ error: 'Failed to create work order part in database' });
   }
 });
 
@@ -381,11 +381,36 @@ app.post('/api/receive', async (req, res) => {
   }
 });
 
+app.put('/api/receive/:id', async (req, res) => {
+  try {
+    console.log(`[PUT] /api/receive/${req.params.id} - Updating in database:`, req.body);
+    const updatedPart = await db.updatePendingPart(req.params.id, req.body);
+    console.log(`[PUT] /api/receive/${req.params.id} - Updated in database:`, updatedPart);
+    res.json(updatedPart);
+  } catch (error) {
+    console.error(`[ERROR] PUT /api/receive/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update pending part in database' });
+  }
+});
+
+app.delete('/api/receive/:id', async (req, res) => {
+  try {
+    console.log(`[DELETE] /api/receive/${req.params.id} - Deleting from database`);
+    await db.deletePendingPart(req.params.id);
+    console.log(`[DELETE] /api/receive/${req.params.id} - Deleted from database`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error(`[ERROR] DELETE /api/receive/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to delete pending part from database' });
+  }
+});
+
 app.get('/api/receive/pending/:trailer', async (req, res) => {
   try {
     console.log(`[GET] /api/receive/pending/${req.params.trailer} - Fetching from database`);
     const pendingParts = await db.getPendingParts();
-    const filtered = pendingParts.filter(part => part.trailer === req.params.trailer);
+    // Filter by destino_trailer field (not trailer)
+    const filtered = pendingParts.filter(part => part.destino_trailer === req.params.trailer);
     console.log(`[GET] /api/receive/pending/${req.params.trailer} - Found ${filtered.length} pending parts from database`);
     res.json(filtered);
   } catch (error) {
@@ -398,7 +423,8 @@ app.get('/api/receive/trailers/with-pending', async (req, res) => {
   try {
     console.log('[GET] /api/receive/trailers/with-pending - Fetching from database');
     const pendingParts = await db.getPendingParts();
-    const trailersWithPending = [...new Set(pendingParts.map(part => part.trailer).filter(Boolean))];
+    // Use destino_trailer field instead of trailer
+    const trailersWithPending = [...new Set(pendingParts.map(part => part.destino_trailer).filter(Boolean))];
     console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithPending.length} trailers from database`);
     res.json(trailersWithPending);
   } catch (error) {
