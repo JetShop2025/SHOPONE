@@ -9,8 +9,25 @@ const billToCoOptions = [
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 function getTrailerOptions(billToCo: string): string[] {
-  if (billToCo === "GALGRE") return Array.from({length: 54}, (_, i) => `1-${100+i}`);
-  if (billToCo === "JETGRE") return Array.from({length: 16}, (_, i) => `2-${(i+1).toString().padStart(3, '0')}`);
+  if (billToCo === "GALGRE") {
+    const especiales = [
+      "1-100 TRK",
+      "1-103 TRK",
+      "1-101 TRK",
+      "1-102 TRK",
+      "1-105 TRK",
+      "1-106 TRK",
+      "1-107 TRK",
+      "1-111 TRK"
+    ];
+    const normales = Array.from({length: 54}, (_, i) => `1-${100+i}`);
+    return [...especiales, ...normales];
+  }
+  if (billToCo === "JETGRE") {
+    const especiales = ["2-01 TRK"];
+    const normales = Array.from({length: 16}, (_, i) => `2-${(i+1).toString().padStart(3, '0')}`);
+    return [...especiales, ...normales];
+  }
   if (billToCo === "PRIGRE") return Array.from({length: 24}, (_, i) => `3-${(300+i).toString()}`);
   if (billToCo === "RAN100") return Array.from({length: 20}, (_, i) => `4-${(400+i).toString()}`);
   if (billToCo === "GABGRE") return Array.from({length: 30}, (_, i) => `5-${(500+i).toString()}`);
