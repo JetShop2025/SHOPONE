@@ -1357,6 +1357,7 @@ const WorkOrdersTable: React.FC = () => {
                           const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));                          // Actualizar la work order
                           await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
+                            totalHrs: editWorkOrder.totalHrs, // Asegurar que se envíe el campo totalHrs
                             totalLabAndParts: totalLabAndPartsLimpio,
                             manualTotalEdit: true,
                             date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
