@@ -151,6 +151,42 @@ async function getOrders() {
   }
 }
 
+// Get work orders by trailer ID
+async function getOrdersByTrailer(trailerId) {
+  try {
+    console.log('[DB] Executing query: SELECT * FROM work_orders WHERE trailerNumber = ?', trailerId);
+    const [rows] = await connection.execute('SELECT * FROM work_orders WHERE trailerNumber = ?', [trailerId]);
+    console.log(`[DB] Found ${rows.length} work orders for trailer ${trailerId}`);
+    
+    // Parse JSON fields
+    const parsedRows = rows.map(row => ({
+      ...row,
+      parts: row.parts ? JSON.parse(row.parts) : [],
+      mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
+      extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
+    }));
+    
+    return parsedRows;
+  } catch (error) {
+    console.error('[DB] Error getting work orders by trailer:', error.message);
+    throw error;
+  }
+}
+
+// Get rental history for a trailer
+async function getRentalHistory(trailerName) {
+  try {
+    console.log('[DB] Executing query: SELECT * FROM rental_history WHERE trailer_name = ?', trailerName);
+    const [rows] = await connection.execute('SELECT * FROM rental_history WHERE trailer_name = ? ORDER BY fecha_renta DESC', [trailerName]);
+    console.log(`[DB] Found ${rows.length} rental records for trailer ${trailerName}`);
+    return rows;
+  } catch (error) {
+    console.error('[DB] Error getting rental history:', error.message);
+    // If rental_history table doesn't exist, return empty array
+    return [];
+  }
+}
+
 async function createOrder(order) {
   try {
     console.log('[DB] Creating order with data:', order);
@@ -530,8 +566,11 @@ module.exports = {
   deleteTrailer,
   getTrailerLocations,
   createTrailerLocation,
-  updateTrailerLocation,  deleteTrailerLocation,
+  updateTrailerLocation,
+  deleteTrailerLocation,
   getOrders,
+  getOrdersByTrailer,
+  getRentalHistory,
   createOrder,
   updateOrder,
   deleteOrder,

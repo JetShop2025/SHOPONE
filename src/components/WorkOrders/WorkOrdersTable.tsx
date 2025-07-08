@@ -945,48 +945,46 @@ const WorkOrdersTable: React.FC = () => {
           }
           .reconnect-btn:hover {
             background: #1565c0;
-          }
-            .wo-table {
+          }            .wo-table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 1600px;
+            min-width: 1750px;
             background: #fff;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(25,118,210,0.07);
             font-size: 11px;
-          }          .wo-table th, .wo-table td {
+          }.wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
             padding: 2px 4px;
             font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
-          }
-          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 40px; } /* ID */
-          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 80px; } /* ID CLASSIC */
-          .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 70px; } /* Bill To Co */
-          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 80px; } /* Trailer */
-          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 80px; } /* Mechanic */
-          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 90px; } /* Date */
-          .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 200px; white-space: normal; } /* Description */
-          .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 60px; } /* PRT1 */
-          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 40px; } /* Qty1 */
-          .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 60px; } /* Costo1 */
-          .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 60px; } /* PRT2 */
-          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 40px; } /* Qty2 */
-          .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 60px; } /* Costo2 */
-          .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 60px; } /* PRT3 */
-          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 40px; } /* Qty3 */
-          .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 60px; } /* Costo3 */
-          .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 60px; } /* PRT4 */
-          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 40px; } /* Qty4 */
-          .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 60px; } /* Costo4 */
-          .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 60px; } /* PRT5 */
-          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 40px; } /* Qty5 */
-          .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 60px; } /* Costo5 */
-          .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 70px; } /* Total HRS */
-          .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 100px; } /* Total LAB & PRTS */
-          .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 90px; } /* Status */
+          }          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
+          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
+          .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
+          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
+          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
+          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */
+          .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 220px; white-space: normal; } /* Description */
+          .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 65px; } /* PRT1 */
+          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */
+          .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 65px; } /* Costo1 */
+          .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 65px; } /* PRT2 */
+          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */
+          .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 65px; } /* Costo2 */
+          .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 65px; } /* PRT3 */
+          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */
+          .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 65px; } /* Costo3 */
+          .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 65px; } /* PRT4 */
+          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */
+          .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 65px; } /* Costo4 */
+          .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 65px; } /* PRT5 */
+          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */
+          .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 65px; } /* Costo5 */
+          .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 75px; } /* Total HRS */
+          .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
+          .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 95px; } /* Status */
           .wo-table th {
             background: #1976d2;
             color: #fff;
@@ -1016,12 +1014,11 @@ const WorkOrdersTable: React.FC = () => {
         `}
       </style>
       <div
-        style={{
-          padding: '32px',
+        style={{          padding: '32px',
           background: 'linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%)',
           borderRadius: 16,
           boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',
-          maxWidth: 1400,
+          maxWidth: 1800,
           margin: '32px auto'
         }}
       >        <div className="wo-header">

@@ -33,10 +33,11 @@ const TrailasTable: React.FC = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTraila, setSelectedTraila] = useState<Traila | null>(null);
-  const [showRentalModal, setShowRentalModal] = useState<boolean>(false);
-  const [showReturnModal, setShowReturnModal] = useState<boolean>(false);
+  const [showRentalModal, setShowRentalModal] = useState<boolean>(false);  const [showReturnModal, setShowReturnModal] = useState<boolean>(false);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState<boolean>(false);
+  const [rentalHistory, setRentalHistory] = useState<any[]>([]);
+  const [workOrderHistory, setWorkOrderHistory] = useState<any[]>([]);
     // Client-based filtering
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -421,12 +422,18 @@ const TrailasTable: React.FC = () => {
                 >
                   ↩️ Devolver
                 </button>
-              )}
-
-              <button
-                onClick={() => {
+              )}              <button
+                onClick={async () => {
                   setSelectedTraila(traila);
-                  setShowHistoryModal(true);
+                  try {
+                    const response = await axios.get(`${API_URL}/trailas/${traila.nombre}/rental-history`);
+                    setRentalHistory(Array.isArray(response.data) ? response.data : []);
+                    setShowHistoryModal(true);
+                  } catch (error) {
+                    console.error('Error fetching rental history:', error);
+                    setRentalHistory([]);
+                    setShowHistoryModal(true);
+                  }
                 }}
                 style={{
                   padding: '8px 16px',
@@ -440,12 +447,18 @@ const TrailasTable: React.FC = () => {
                 }}
               >
                 📊 Historial
-              </button>
-
-              <button
-                onClick={() => {
+              </button>              <button
+                onClick={async () => {
                   setSelectedTraila(traila);
-                  setShowWorkOrderModal(true);
+                  try {
+                    const response = await axios.get(`${API_URL}/work-orders/trailer/${traila.nombre}`);
+                    setWorkOrderHistory(Array.isArray(response.data) ? response.data : []);
+                    setShowWorkOrderModal(true);
+                  } catch (error) {
+                    console.error('Error fetching work order history:', error);
+                    setWorkOrderHistory([]);
+                    setShowWorkOrderModal(true);
+                  }
                 }}
                 style={{
                   padding: '8px 16px',
@@ -458,7 +471,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                🔧 O.T.
+                🔧 W.O
               </button>
             </div>
           </div>
@@ -505,12 +518,12 @@ const TrailasTable: React.FC = () => {
             <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
               Rentar Trailer: {selectedTraila.nombre}
             </h2>
-            
-            <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
                 Cliente *
               </label>
-              <select
+              <input
+                type="text"
                 value={rentalForm.cliente}
                 onChange={(e) => setRentalForm({...rentalForm, cliente: e.target.value})}
                 style={{
@@ -520,12 +533,9 @@ const TrailasTable: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '14px'
                 }}
+                placeholder="Ingrese el nombre del cliente..."
                 required
-              >                <option value="">Seleccionar cliente...</option>
-                {rentalClients.map(cliente => (
-                  <option key={cliente} value={cliente}>{cliente}</option>
-                ))}
-              </select>
+              />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -641,14 +651,38 @@ const TrailasTable: React.FC = () => {
             maxWidth: '800px',
             maxHeight: '90vh',
             overflow: 'auto'
-          }}>
-            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
+          }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
               Historial de Rentas: {selectedTraila.nombre}
             </h2>
             
-            <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-              <p>Historial de rentas estará disponible próximamente</p>
-            </div>
+            {rentalHistory.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f5f5f5' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Cliente</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha Renta</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha Devolución</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rentalHistory.map((rental, index) => (
+                      <tr key={index}>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.cliente}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_renta}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_devolucion || 'No devuelto'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.observaciones || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                <p>No hay historial de rentas para este trailer</p>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
@@ -692,14 +726,46 @@ const TrailasTable: React.FC = () => {
             maxWidth: '800px',
             maxHeight: '90vh',
             overflow: 'auto'
-          }}>
-            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Órdenes de Trabajo: {selectedTraila.nombre}
+          }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
+              Historial de Work Orders: {selectedTraila.nombre}
             </h2>
             
-            <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-              <p>Historial de órdenes de trabajo estará disponible próximamente</p>
-            </div>
+            {workOrderHistory.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f5f5f5' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID Classic</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Mecánico</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Descripción</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Total</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workOrderHistory.map((wo, index) => (
+                      <tr key={index}>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.date ? wo.date.slice(0, 10) : '-'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.mechanic || '-'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                          {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
+                        </td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                <p>No hay work orders para este trailer</p>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
