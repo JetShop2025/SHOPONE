@@ -111,6 +111,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       sampleFields: inventory?.[0] ? Object.keys(inventory[0]) : []
     });
   }, [inventory]);
+  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o extras
+  // SOLO para nuevas órdenes (no para edición)
+  React.useEffect(() => {
+    // Si no hay ID, es una nueva orden, entonces auto-calcular
+    if (!workOrder.id) {
+      const calculatedTotal = calculateTotalLabAndParts();
+      const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
+      
+      // Solo actualizar si el valor calculado es diferente al actual
+      if (workOrder.totalLabAndParts !== formattedTotal) {
+        onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
+      }
+    }
+  }, [workOrder.parts, workOrder.mechanics, extraOptions, workOrder.id]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -228,18 +242,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
 
     // Siempre actualizar el estado usando onChange
-    onChange({ target: { name: 'parts', value: newParts } } as any);
-
-    // Llamar a onPartChange si está disponible (para compatibilidad)
+    onChange({ target: { name: 'parts', value: newParts } } as any);    // Llamar a onPartChange si está disponible (para compatibilidad)
     if (onPartChange) {
       onPartChange(index, field, value);
     }
-
-    // Auto-calcular total después de cambiar partes
-    setTimeout(() => {
-      const calculatedTotal = calculateTotalLabAndParts();
-      onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
-    }, 100);
   };
 
   // Calcular horas totales automáticamente
@@ -296,13 +302,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         window.alert('Hay partes con cantidad inválida.');
         setLoading(false);
         return;
-      }
-
-      const dataToSend = {
+      }      const dataToSend = {
         ...workOrder,
         parts: cleanParts,
         extraOptions, // Sin agregar el 5% manualmente, el backend lo hará automáticamente
-        totalHrs: calculateTotalHours(),
+        totalHrs: calculateTotalHours(), // Asegurar que se envíen las horas actuales
         usuario: localStorage.getItem('username') || ''
       };
 
@@ -319,19 +323,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
     }
   };
-
   const handleMechanicChange = (index: number, field: string, value: string) => {
     const newMechanics = [...(workOrder.mechanics || [])];
     newMechanics[index] = { ...newMechanics[index], [field]: value };
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
-
-    // Auto-calcular total después de cambiar horas
-    if (field === 'hrs') {
-      setTimeout(() => {
-        const calculatedTotal = calculateTotalLabAndParts();
-        onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
-      }, 100);
-    }
   };
 
   const addMechanic = () => {
@@ -343,19 +338,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const newMechanics = (workOrder.mechanics || []).filter((_: any, i: number) => i !== index);
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
-
   const handleExtraChange = (optionValue: string, checked: boolean) => {
     if (checked) {
       setExtraOptions([...extraOptions, optionValue]);
     } else {
       setExtraOptions(extraOptions.filter(opt => opt !== optionValue));
     }
-
-    // Auto-calcular total después de cambiar extras
-    setTimeout(() => {
-      const calculatedTotal = calculateTotalLabAndParts();
-      onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
-    }, 100);
   };
 
   const getTrailerOptionsForBill = (billToCo: string) => {
@@ -754,8 +742,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     }}
                     placeholder="$0.00"
                   />
-                </label>
-                <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
+                </label>                <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
                   Total: ${((parseFloat(String(part.qty || '0'))) * (parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0)).toFixed(2)}
                 </div>
               </div>
