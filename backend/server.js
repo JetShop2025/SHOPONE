@@ -326,10 +326,45 @@ app.get('/api/work-orders/trailer/:trailerId', async (req, res) => {
     console.log('[GET] /api/work-orders/trailer/:trailerId - Fetching from database:', req.params.trailerId);
     const orders = await db.getOrdersByTrailer(req.params.trailerId);
     console.log(`[GET] /api/work-orders/trailer/:trailerId - Found ${orders.length} work orders for trailer ${req.params.trailerId}`);
-    res.json(orders);
-  } catch (error) {
+    res.json(orders);  } catch (error) {
     console.error('[ERROR] GET /api/work-orders/trailer/:trailerId:', error);
     res.status(500).json({ error: 'Failed to fetch work orders for trailer from database' });
+  }
+});
+
+app.post('/api/work-orders', async (req, res) => {
+  try {
+    console.log('[POST] /api/work-orders - Creating in database:', req.body);
+    const newOrder = await db.createOrder(req.body);
+    console.log('[POST] /api/work-orders - Created in database:', newOrder);
+    res.json(newOrder);
+  } catch (error) {
+    console.error('[ERROR] POST /api/work-orders:', error);
+    res.status(500).json({ error: 'Failed to create work order in database' });
+  }
+});
+
+app.put('/api/work-orders/:id', async (req, res) => {
+  try {
+    console.log('[PUT] /api/work-orders/:id - Updating in database:', req.params.id, req.body);
+    const updatedOrder = await db.updateOrder(req.params.id, req.body);
+    console.log('[PUT] /api/work-orders/:id - Updated in database:', updatedOrder);
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('[ERROR] PUT /api/work-orders/:id:', error);
+    res.status(500).json({ error: 'Failed to update work order in database' });
+  }
+});
+
+app.delete('/api/work-orders/:id', async (req, res) => {
+  try {
+    console.log('[DELETE] /api/work-orders/:id - Deleting from database:', req.params.id);
+    const result = await db.deleteOrder(req.params.id);
+    console.log('[DELETE] /api/work-orders/:id - Deleted from database:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('[ERROR] DELETE /api/work-orders/:id:', error);
+    res.status(500).json({ error: 'Failed to delete work order from database' });
   }
 });
 

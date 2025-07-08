@@ -154,8 +154,8 @@ async function getOrders() {
 // Get work orders by trailer ID
 async function getOrdersByTrailer(trailerId) {
   try {
-    console.log('[DB] Executing query: SELECT * FROM work_orders WHERE trailerNumber = ?', trailerId);
-    const [rows] = await connection.execute('SELECT * FROM work_orders WHERE trailerNumber = ?', [trailerId]);
+    console.log('[DB] Executing query: SELECT * FROM work_orders WHERE trailer = ?', trailerId);
+    const [rows] = await connection.execute('SELECT * FROM work_orders WHERE trailer = ?', [trailerId]);
     console.log(`[DB] Found ${rows.length} work orders for trailer ${trailerId}`);
     
     // Parse JSON fields

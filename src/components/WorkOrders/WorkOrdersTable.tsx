@@ -642,10 +642,15 @@ const WorkOrdersTable: React.FC = () => {
       }));
     }
   }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);
-
   useEffect(() => {
     if (showEditForm && editWorkOrder) {
-      // Calcula el subtotal de partes y labor
+      // Si la orden ya tiene un totalLabAndParts válido, no recalcular
+      if (editWorkOrder.totalLabAndParts && !isNaN(parseFloat(editWorkOrder.totalLabAndParts))) {
+        // No recalcular, mantener el total existente
+        return;
+      }
+      
+      // Solo recalcular si no hay total o está vacío
       const partsCost = editWorkOrder.parts.reduce((sum: number, p: any) => sum + (parseFloat(p.cost) || 0), 0);
       const totalHrs = parseFloat(editWorkOrder.totalHrs) || 0;
       const laborTotal = totalHrs * 60;
