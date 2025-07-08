@@ -8,6 +8,15 @@ const API_URL = process.env.REACT_APP_API_URL || 'https://shipone-onrender.com/a
 const rentalClients = ['AMAZON', 'WALMART', 'HOME DEPOT', 'FEDEX', 'UPS', 'TARGET'];
 const regularClients = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
 
+// Client-specific trailer ranges
+const clientTrailerRanges: { [key: string]: { min: number; max: number } } = {
+  'GALGRE': { min: 1, max: 99 },
+  'JETGRE': { min: 100, max: 199 },
+  'PRIGRE': { min: 200, max: 299 },
+  'RAN100': { min: 300, max: 399 },
+  'GABGRE': { min: 400, max: 499 }
+};
+
 interface Traila {
   id: number;
   nombre: string;
@@ -37,11 +46,11 @@ const TrailasTable: React.FC = () => {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState<boolean>(false);
   const [rentalHistory, setRentalHistory] = useState<any[]>([]);
-  const [workOrderHistory, setWorkOrderHistory] = useState<any[]>([]);
-    // Client-based filtering
+  const [workOrderHistory, setWorkOrderHistory] = useState<any[]>([]);  // Client-based filtering
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filter, setFilter] = useState<string>('ALL');
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
 
   // Rental form state
   const [rentalForm, setRentalForm] = useState({
@@ -84,7 +93,6 @@ const TrailasTable: React.FC = () => {
 
     fetchData();
   }, []);
-
   // Get unique clients from trailers
   const getUniqueClients = () => {
     if (!Array.isArray(trailas)) return [];
@@ -94,6 +102,48 @@ const TrailasTable: React.FC = () => {
       .filter((cliente, index, self) => self.indexOf(cliente) === index)
       .sort();
     return clients;
+  };
+
+  // Get trailers for a specific client within their range
+  const getClientTrailersInRange = (clientName: string) => {
+    if (!Array.isArray(trailas)) return [];
+    
+    const range = clientTrailerRanges[clientName];
+    if (!range) return [];
+    
+    return trailas.filter(traila => {
+      // Check if trailer belongs to this client
+      if (traila.cliente !== clientName) return false;
+      
+      // Extract number from trailer name (e.g., "T-150" -> 150)
+      const trailerNumber = extractTrailerNumber(traila.nombre);
+      if (trailerNumber === null) return false;
+      
+      // Check if number is in range
+      return trailerNumber >= range.min && trailerNumber <= range.max;
+    });
+  };
+
+  // Extract trailer number from name
+  const extractTrailerNumber = (trailerName: string): number | null => {
+    if (!trailerName) return null;
+    
+    // Try to extract number from various formats: "T-150", "150", "3-150", etc.
+    const match = trailerName.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  // Toggle client expansion
+  const toggleClientExpansion = (clientName: string) => {
+    setExpandedClients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clientName)) {
+        newSet.delete(clientName);
+      } else {
+        newSet.add(clientName);
+      }
+      return newSet;
+    });
   };
   // Filter trailers by selected client, status filter and search term
   const filteredTrailas = Array.isArray(trailas) ? trailas.filter(traila => {
@@ -335,185 +385,238 @@ const TrailasTable: React.FC = () => {
           </div>
         </div>
       </div>      {/* Trailers by Client Groups */}
-      {selectedClient === 'ALL' ? (
-        // Show grouped by client
-        getUniqueClients().map(client => {
-          const clientTrailers = filteredTrailas.filter(traila => traila.cliente === client);
-          if (clientTrailers.length === 0) return null;
+      {selectedClient === 'ALL' ? (        // Show grouped by client with collapsible functionality
+        regularClients.map(client => {
+          const clientTrailersInRange = getClientTrailersInRange(client);
+          const filteredClientTrailers = clientTrailersInRange.filter(traila => {
+            const matchesFilter = filter === 'ALL' || traila.estatus === filter;
+            const matchesSearch = searchTerm === '' || 
+              traila.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (traila.cliente && traila.cliente.toLowerCase().includes(searchTerm.toLowerCase()));
+            return matchesFilter && matchesSearch;
+          });
+          
+          const isExpanded = expandedClients.has(client);
+          const range = clientTrailerRanges[client];
           
           return (
-            <div key={client} style={{ marginBottom: '32px' }}>
-              <h3 style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: '#1976d2',
-                marginBottom: '16px',
-                padding: '16px',
-                background: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-              }}>
-                {client} ({clientTrailers.length} trailers)
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                gap: '20px'
-              }}>
-                {clientTrailers.map((traila) => (
-                  <div
-                    key={traila.id}
-                    style={{
-                      background: 'white',
-                      borderRadius: '12px',
-                      padding: '20px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                      border: '1px solid #f0f0f0',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-                    }}
-                  >
-                    {/* Trailer Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                      <h3 style={{
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        color: '#1976d2',
-                        margin: '0'
-                      }}>
-                        {traila.nombre}
-                      </h3>
-                      <StatusBadge status={traila.estatus} />
-                    </div>
-
-                    {/* Trailer Info */}
-                    <div style={{ marginBottom: '16px' }}>
-                      {traila.fecha_renta && (
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ fontWeight: '600', color: '#666' }}>Fecha Renta: </span>
-                          <span style={{ color: '#333' }}>{dayjs(traila.fecha_renta).format('DD/MM/YYYY')}</span>
-                        </div>
-                      )}
-                      {traila.fecha_devolucion && (
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ fontWeight: '600', color: '#666' }}>Fecha Devolución: </span>
-                          <span style={{ color: '#333' }}>{dayjs(traila.fecha_devolucion).format('DD/MM/YYYY')}</span>
-                        </div>
-                      )}
-                      {traila.ubicacion && (
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ fontWeight: '600', color: '#666' }}>Ubicación: </span>
-                          <span style={{ color: '#333' }}>{traila.ubicacion}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {traila.estatus === 'DISPONIBLE' && (
-                        <button
-                          onClick={() => {
-                            setSelectedTraila(traila);
-                            setShowRentalModal(true);
-                          }}
-                          style={{
-                            padding: '8px 16px',
-                            background: '#4caf50',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}
-                        >
-                          📋 Rentar
-                        </button>
-                      )}
-                      
-                      {traila.estatus === 'RENTADO' && (
-                        <button
-                          onClick={() => handleReturn(traila)}
-                          style={{
-                            padding: '8px 16px',
-                            background: '#ff9800',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}
-                        >
-                          ↩️ Devolver
-                        </button>
-                      )}
-
-                      <button
-                        onClick={async () => {
-                          setSelectedTraila(traila);
-                          try {
-                            const response = await axios.get(`${API_URL}/trailas/${traila.nombre}/rental-history`);
-                            setRentalHistory(Array.isArray(response.data) ? response.data : []);
-                            setShowHistoryModal(true);
-                          } catch (error) {
-                            console.error('Error fetching rental history:', error);
-                            setRentalHistory([]);
-                            setShowHistoryModal(true);
-                          }
-                        }}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#2196f3',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}
-                      >
-                        📊 Historial
-                      </button>
-
-                      <button
-                        onClick={async () => {
-                          setSelectedTraila(traila);
-                          try {
-                            const response = await axios.get(`${API_URL}/work-orders/trailer/${traila.nombre}`);
-                            setWorkOrderHistory(Array.isArray(response.data) ? response.data : []);
-                            setShowWorkOrderModal(true);
-                          } catch (error) {
-                            console.error('Error fetching work order history:', error);
-                            setWorkOrderHistory([]);
-                            setShowWorkOrderModal(true);
-                          }
-                        }}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#9c27b0',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}
-                      >
-                        🔧 W.O
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            <div key={client} style={{ marginBottom: '24px' }}>
+              <div
+                onClick={() => toggleClientExpansion(client)}
+                style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#1976d2',
+                  marginBottom: '16px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#f8f9fa';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'white';
+                }}
+              >
+                <div>
+                  <span style={{ marginRight: '12px' }}>
+                    {isExpanded ? '▼' : '▶'}
+                  </span>
+                  {client}
+                  <span style={{ 
+                    fontSize: '14px', 
+                    color: '#666', 
+                    fontWeight: '400',
+                    marginLeft: '8px'
+                  }}>
+                    ({filteredClientTrailers.length} trailers • Rango: {range.min}-{range.max})
+                  </span>
+                </div>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  {filteredClientTrailers.filter(t => t.estatus === 'DISPONIBLE').length} disponibles
+                </div>
               </div>
+              
+              {isExpanded && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                  gap: '20px',
+                  marginTop: '16px'
+                }}>
+                  {filteredClientTrailers.map((traila) => (
+                    <div
+                      key={traila.id}
+                      style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '20px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        border: '1px solid #f0f0f0',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                      }}
+                    >
+                      {/* Trailer Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          color: '#1976d2',
+                          margin: '0'
+                        }}>
+                          {traila.nombre}
+                        </h3>
+                        <StatusBadge status={traila.estatus} />
+                      </div>
+
+                      {/* Trailer Info */}
+                      <div style={{ marginBottom: '16px' }}>
+                        {traila.fecha_renta && (
+                          <div style={{ marginBottom: '8px' }}>
+                            <span style={{ fontWeight: '600', color: '#666' }}>Fecha Renta: </span>
+                            <span style={{ color: '#333' }}>{dayjs(traila.fecha_renta).format('DD/MM/YYYY')}</span>
+                          </div>
+                        )}
+                        {traila.fecha_devolucion && (
+                          <div style={{ marginBottom: '8px' }}>
+                            <span style={{ fontWeight: '600', color: '#666' }}>Fecha Devolución: </span>
+                            <span style={{ color: '#333' }}>{dayjs(traila.fecha_devolucion).format('DD/MM/YYYY')}</span>
+                          </div>
+                        )}
+                        {traila.ubicacion && (
+                          <div style={{ marginBottom: '8px' }}>
+                            <span style={{ fontWeight: '600', color: '#666' }}>Ubicación: </span>
+                            <span style={{ color: '#333' }}>{traila.ubicacion}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {traila.estatus === 'DISPONIBLE' && (
+                          <button
+                            onClick={() => {
+                              setSelectedTraila(traila);
+                              setShowRentalModal(true);
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              background: '#4caf50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            📋 Rentar
+                          </button>
+                        )}
+                        
+                        {traila.estatus === 'RENTADO' && (
+                          <button
+                            onClick={() => handleReturn(traila)}
+                            style={{
+                              padding: '8px 16px',
+                              background: '#ff9800',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            ↩️ Devolver
+                          </button>
+                        )}
+
+                        <button
+                          onClick={async () => {
+                            setSelectedTraila(traila);
+                            try {
+                              const response = await axios.get(`${API_URL}/trailas/${traila.nombre}/rental-history`);
+                              setRentalHistory(Array.isArray(response.data) ? response.data : []);
+                              setShowHistoryModal(true);
+                            } catch (error) {
+                              console.error('Error fetching rental history:', error);
+                              setRentalHistory([]);
+                              setShowHistoryModal(true);
+                            }
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#2196f3',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          📊 Historial
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            setSelectedTraila(traila);
+                            try {
+                              const response = await axios.get(`${API_URL}/work-orders/trailer/${traila.nombre}`);
+                              setWorkOrderHistory(Array.isArray(response.data) ? response.data : []);
+                              setShowWorkOrderModal(true);
+                            } catch (error) {
+                              console.error('Error fetching work order history:', error);
+                              setWorkOrderHistory([]);
+                              setShowWorkOrderModal(true);
+                            }
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#9c27b0',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          🔧 W.O
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {filteredClientTrailers.length === 0 && (
+                    <div style={{
+                      gridColumn: '1 / -1',
+                      textAlign: 'center',
+                      padding: '40px',
+                      color: '#666',
+                      fontSize: '16px'
+                    }}>
+                      No se encontraron trailers para {client} en el rango {range.min}-{range.max}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })

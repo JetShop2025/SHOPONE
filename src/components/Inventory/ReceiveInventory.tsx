@@ -111,14 +111,12 @@ const ReceiveInventory: React.FC = () => {
     }));
   };
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Calcula el nuevo precio con 10% extra
+    e.preventDefault();    // Calcula el nuevo precio con 10% extra
     const newPrice = form.costTax ? (Number(form.costTax) * 1.1).toFixed(2) : '';
 
     // Guarda el recibo
-    const data = { ...form, usuario: localStorage.getItem('username') || '' };   
-    await axios.post(`${API_URL}/receive`, data);    
+    const data = { ...form, usuario: localStorage.getItem('username') || '' };
+    await axios.post(`${API_URL}/receive`, data);
     
     // ACTUALIZA onHand, precio e invoice SOLO SI HAY CAMBIOS
     if (form.sku && form.qty) {
@@ -205,8 +203,7 @@ const ReceiveInventory: React.FC = () => {
       setEditForm({ ...found });
     } else {
       setEditForm({ id: value });
-    }
-  };
+    }  };
 
   // NUEVO: handleEdit y handleDelete para selección por fila
   const handleEdit = () => {
@@ -215,11 +212,23 @@ const ReceiveInventory: React.FC = () => {
     if (pwd === '6214') {
       const found = receives.find(r => r.id === selectedRow);
       if (found) {
-        // Asegura que billToCo tenga valor, ya sea en camelCase o snake_case
-        setEditId(found.id);
-        setEditForm({
-          ...found,
-          billToCo: found.billToCo || found.bill_to_co || ''
+        setEditId(found.id);        setEditForm({
+          id: found.id,
+          sku: found.sku || '',
+          category: found.category || '',
+          item: found.item || '',
+          provider: found.provider || '',
+          brand: found.brand || '',
+          um: found.um || '',
+          billToCo: found.billToCo || found.bill_to_co || '',
+          destino_trailer: found.destino_trailer || '',
+          invoice: found.invoice || '',
+          invoiceLink: found.invoiceLink || '',
+          qty: found.qty || '',
+          costTax: found.costTax || '',
+          totalPOClassic: found.totalPOClassic || '',
+          fecha: found.fecha ? new Date(found.fecha).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          estatus: found.estatus || 'PENDING'
         });
         setShowEditForm(true);
       }
@@ -239,7 +248,7 @@ const ReceiveInventory: React.FC = () => {
             method: 'DELETE',
             data: { usuario: localStorage.getItem('username') || '' }
           });
-          setReceives(receives.filter(r => r.id !== selectedRow));
+          setReceives(receives.filter((r: any) => r.id !== selectedRow));
           setSelectedRow(null);
           alert('Receipt deleted successfully');
         } catch {
@@ -250,8 +259,7 @@ const ReceiveInventory: React.FC = () => {
       alert('Incorrect password');
     }
   };
-
-  const filteredReceives = receives.filter(r => {
+  const filteredReceives = receives.filter((r: any) => {
     // Filtro por provider
     const providerOk = providerFilter ? r.provider === providerFilter : true;
     // Filtro por mes
@@ -463,14 +471,13 @@ const ReceiveInventory: React.FC = () => {
                   fontSize: 26,
                   marginBottom: 20,
                   letterSpacing: 1
-                }}>Edit Receipt</h2>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                  <input name="sku" value={editForm.sku} onChange={e => setEditForm({ ...editForm, sku: e.target.value })} placeholder="SKU" required style={inputStyle} />
-                  <input name="category" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} placeholder="Category" style={inputStyle} />
-                  <input name="item" value={editForm.item} onChange={e => setEditForm({ ...editForm, item: e.target.value })} placeholder="Item" style={inputStyle} />
-                  <input name="provider" value={editForm.provider} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
-                  <input name="brand" value={editForm.brand} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
-                  <input name="um" value={editForm.um} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
+                }}>Edit Receipt</h2>                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                  <input name="sku" value={editForm.sku || ''} onChange={e => setEditForm({ ...editForm, sku: e.target.value })} placeholder="SKU" required style={inputStyle} />
+                  <input name="category" value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} placeholder="Category" style={inputStyle} />
+                  <input name="item" value={editForm.item || ''} onChange={e => setEditForm({ ...editForm, item: e.target.value })} placeholder="Item" style={inputStyle} />
+                  <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
+                  <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
+                  <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
                   {/* Bill To Co solo lectura */}
                   <input
                     name="billToCo"
@@ -482,7 +489,7 @@ const ReceiveInventory: React.FC = () => {
                   {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
                     <select
                       name="destino_trailer"
-                      value={editForm.destino_trailer}
+                      value={editForm.destino_trailer || ''}
                       onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
                       style={inputStyle}
                       required
@@ -496,17 +503,19 @@ const ReceiveInventory: React.FC = () => {
                     <input
                       type="text"
                       name="destino_trailer"
-                      value={editForm.destino_trailer}
+                      value={editForm.destino_trailer || ''}
                       onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
                       placeholder="Destination Trailer"
                       style={inputStyle}
                       required
                     />
                   )}
-                  <input name="qty" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
-                  <input name="costTax" value={editForm.costTax} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
-                  <input name="totalPOClassic" value={editForm.totalPOClassic} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
-                  <input name="fecha" value={editForm.fecha} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} type="date" required style={inputStyle} />
+                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
+                  <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />
+                  <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
+                  <input name="costTax" value={editForm.costTax || ''} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
+                  <input name="totalPOClassic" value={editForm.totalPOClassic || ''} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
+                  <input name="fecha" value={editForm.fecha || ''} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} type="date" required style={inputStyle} />
                 </div>
                 <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                   <button type="submit" style={primaryBtn}>Save</button>
@@ -601,8 +610,7 @@ const ReceiveInventory: React.FC = () => {
                 }}
               >
                 {r.estatus}
-              </td>
-            </tr>
+              </td>            </tr>
           ))}
         </tbody>
       </table>

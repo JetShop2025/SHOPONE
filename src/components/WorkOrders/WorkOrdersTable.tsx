@@ -181,9 +181,21 @@ const WorkOrdersTable: React.FC = () => {
   const maxRetries = 3;
   // Función para cargar las órdenes con manejo inteligente de errores
   const fetchWorkOrders = useCallback(async (isRetry = false) => {
-    try {
-      setFetchingData(true);
-      const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });      setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
+    try {      setFetchingData(true);
+      const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });
+      const fetchedOrders = Array.isArray(res.data) ? (res.data as any[]) : [];
+      console.log('✅ Órdenes actualizadas:', fetchedOrders.length);
+      
+      // Log para debugging del problema de totalHrs
+      if (fetchedOrders.length > 0) {
+        console.log('🔍 Primer orden después de fetch:', {
+          id: fetchedOrders[0].id,
+          totalHrs: fetchedOrders[0].totalHrs,
+          totalLabAndParts: fetchedOrders[0].totalLabAndParts
+        });
+      }
+      
+      setWorkOrders(fetchedOrders);
       setServerStatus('online');
       setRetryCount(0); // Reset retry count on success
     } catch (err: any) {
@@ -1387,15 +1399,17 @@ const WorkOrdersTable: React.FC = () => {
                           } catch (pdfError) {
                             console.error('Error generando PDF tras edición:', pdfError);
                             // No interrumpir el flujo si falla el PDF
-                          }
+                          }                          // REFRESCA LA TABLA INMEDIATAMENTE CON AWAIT
+                          console.log('📋 Refrescando tabla después de actualizar WO...');
+                          await fetchWorkOrders();
+                          console.log('✅ Tabla refrescada exitosamente');
                           
-                          // CIERRA EL MODAL Y LIMPIA ESTADO INMEDIATAMENTE
+                          // CIERRA EL MODAL Y LIMPIA ESTADO DESPUÉS DE REFRESCAR
                           setShowEditForm(false);
                           setEditWorkOrder(null);
                           setEditId('');
                           setEditError('');
-                          // REFRESCA LA TABLA EN SEGUNDO PLANO
-                          fetchWorkOrders();
+                          
                           alert('Order updated successfully and PDF regenerated.');
                         } catch (err) {
                           console.error('Error updating order:', err);

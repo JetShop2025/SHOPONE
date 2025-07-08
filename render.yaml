@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: graphical-system-v2
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MYSQL_HOST
+        fromSecret: MYSQL_HOST
+      - key: MYSQL_USER
+        fromSecret: MYSQL_USER
+      - key: MYSQL_PASSWORD
+        fromSecret: MYSQL_PASSWORD
+      - key: MYSQL_DATABASE
+        fromSecret: MYSQL_DATABASE
+      - key: MYSQL_PORT
+        fromSecret: MYSQL_PORT

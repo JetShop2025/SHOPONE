@@ -1,0 +1,13 @@
+node_modules
+backend/node_modules
+npm-debug.log
+.env
+backend/.env
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+uploads
+backend/uploads
+backend/pdfs
