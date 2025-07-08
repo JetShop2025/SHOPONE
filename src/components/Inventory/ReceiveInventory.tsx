@@ -110,7 +110,6 @@ const ReceiveInventory: React.FC = () => {
       ...(name === 'billToCo' ? { destino_trailer: '' } : {})
     }));
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,22 +118,58 @@ const ReceiveInventory: React.FC = () => {
 
     // Guarda el recibo
     const data = { ...form, usuario: localStorage.getItem('username') || '' };   
-    await axios.post(`${API_URL}/receive`, data);    // ACTUALIZA onHand Y precio EN UNA SOLA PETICIÓN
+    await axios.post(`${API_URL}/receive`, data);    
+    
+    // ACTUALIZA onHand, precio e invoice SOLO SI HAY CAMBIOS
     if (form.sku && form.qty) {
       const invRes = await axios.get(`${API_URL}/inventory`);
       const inventoryList = invRes.data as any[];
       const part = inventoryList.find((p: any) => p.sku === form.sku);
-      const currentOnHand = part && part.onHand ? Number(part.onHand) : 0;
-      const newOnHand = currentOnHand + Number(form.qty);
-
+      
       if (part && part.id) {
-        // Use the numeric ID for the PUT request
-        await axios.put(`${API_URL}/inventory/${part.id}`, {
-          ...part,
-          onHand: newOnHand,
-          precio: newPrice || part.precio,
-          usuario: localStorage.getItem('username') || ''
-        });
+        const currentOnHand = part.onHand ? Number(part.onHand) : 0;
+        const newOnHand = currentOnHand + Number(form.qty);
+        
+        // Verificar si hay cambios en precio o invoice
+        const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
+        const shouldUpdatePrice = newPrice && newPrice !== currentPrice;
+        const shouldUpdateInvoice = form.invoice && form.invoice !== part.invoice;
+        
+        // Solo actualizar si hay cambios reales
+        if (shouldUpdatePrice || shouldUpdateInvoice || newOnHand !== currentOnHand) {
+          const updateData = {
+            ...part,
+            onHand: newOnHand,
+            usuario: localStorage.getItem('username') || ''
+          };
+          
+          // Actualizar precio solo si es diferente
+          if (shouldUpdatePrice) {
+            updateData.precio = newPrice;
+            console.log(`🔄 Actualizando precio de ${form.sku}: ${currentPrice} → ${newPrice}`);
+          }
+          
+          // Actualizar invoice solo si es diferente
+          if (shouldUpdateInvoice) {
+            updateData.invoice = form.invoice;
+            console.log(`🔄 Actualizando invoice de ${form.sku}: ${part.invoice || 'N/A'} → ${form.invoice}`);
+          }
+          
+          await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
+          
+          // Log de cambios realizados
+          if (shouldUpdatePrice && shouldUpdateInvoice) {
+            console.log(`✅ Actualizado SKU ${form.sku}: precio y invoice actualizados`);
+          } else if (shouldUpdatePrice) {
+            console.log(`✅ Actualizado SKU ${form.sku}: precio actualizado`);
+          } else if (shouldUpdateInvoice) {
+            console.log(`✅ Actualizado SKU ${form.sku}: invoice actualizado`);
+          } else {
+            console.log(`✅ Actualizado SKU ${form.sku}: solo cantidad en stock`);
+          }
+        } else {
+          console.log(`ℹ️ No hay cambios para SKU ${form.sku} - precio e invoice ya están actualizados`);
+        }
       }
     }
 

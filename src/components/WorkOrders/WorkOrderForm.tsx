@@ -2,6 +2,18 @@ import React from 'react';
 
 export {}; // Force module
 
+// Lista de mecánicos predefinidos
+const MECHANICS_LIST = [
+  'ADAN R',
+  'WILMER M', 
+  'LUIS E',
+  'ULISES M',
+  'ALEX M',
+  'MIGUEL R',
+  'GUSTAVO M',
+  'DAVID C'
+];
+
 interface WorkOrderFormProps {
   workOrder: any;
   onChange: (e: React.ChangeEvent<any>, index?: number, field?: string) => void;
@@ -53,8 +65,43 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   setPendingPartsQty,
   onAddPendingPart,
   onAddEmptyPart
-}) => {
-  const [successMsg, setSuccessMsg] = React.useState('');
+}) => {  const [successMsg, setSuccessMsg] = React.useState('');
+  const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
+  
+  // Function to hide tooltip
+  const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
+  // Function to show tooltip with part info
+  const showTooltipForPart = (event: React.MouseEvent | React.FocusEvent, sku: string) => {
+    const partInfo = findPartBySku(sku);
+    if (partInfo) {
+      // For MouseEvent, use clientX/clientY. For FocusEvent, use element position
+      let x = 0;
+      let y = 0;
+      
+      if ('clientX' in event && 'clientY' in event) {
+        // MouseEvent
+        x = event.clientX;
+        y = event.clientY;
+      } else {
+        // FocusEvent - get element position
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        x = rect.left + rect.width / 2;
+        y = rect.top;
+      }
+      
+      setTooltip({
+        visible: true,
+        x: x,
+        y: y,
+        info: {
+          part: partInfo.part || partInfo.description || partInfo.name || 'Sin nombre',
+          precio: partInfo.precio || partInfo.cost || partInfo.price || 0,
+          onHand: partInfo.onHand || partInfo.quantity || partInfo.qty || 0,
+          um: partInfo.um || partInfo.unit || 'UN'
+        }
+      });
+    }
+  };
     // Debug: verificar inventario
   React.useEffect(() => {
     console.log('📋 WorkOrderForm - Inventario recibido:', {
@@ -500,12 +547,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 150px' }}>
             Status
             <select
-              name="status"
-              value={workOrder.status || 'PRE W.O'}
+              name="status"              value={workOrder.status || 'PROCESSING'}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             >
-              <option value="PRE W.O">PRE W.O</option>
               <option value="PROCESSING">PROCESSING</option>
               <option value="APPROVED">APPROVED</option>
               <option value="FINISHED">FINISHED</option>
@@ -559,16 +604,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             >
               + Agregar
             </button>
-          </div>
-          {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
+          </div>          {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
             <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-              <input
-                type="text"
-                placeholder="Nombre del mecánico"
+              <select
                 value={mechanic.name || ''}
                 onChange={e => handleMechanicChange(index, 'name', e.target.value)}
-                style={{ flex: 1, padding: 8 }}
-              />
+                style={{ 
+                  flex: 1, 
+                  padding: 8, 
+                  borderRadius: 4, 
+                  border: '1px solid #ccc',
+                  fontSize: 14,
+                  backgroundColor: '#fff'
+                }}
+              >
+                <option value="">Seleccionar mecánico...</option>
+                {MECHANICS_LIST.map(mechanicName => (
+                  <option key={mechanicName} value={mechanicName}>
+                    {mechanicName}
+                  </option>
+                ))}
+              </select>
               <input
                 type="number"
                 placeholder="Horas"
@@ -635,10 +691,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     list={`inventory-${index}`}
                     type="text"
                     value={part.sku || ''}
-                    onChange={e => handlePartChange(index, 'sku', e.target.value)}
+                    onChange={e => handlePartChange(index, 'sku', e.target.value)}                    onFocus={(e) => {
+                      const target = e.target as HTMLInputElement;
+                      if (target.value) {
+                        showTooltipForPart(e, target.value);
+                      }
+                    }}
+                    onMouseEnter={(e) => {
+                      const target = e.target as HTMLInputElement;
+                      if (target.value) {
+                        showTooltipForPart(e, target.value);
+                      }
+                    }}
+                    onMouseLeave={hideTooltip}
+                    onBlur={hideTooltip}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="SKU"
-                  />                  <datalist id={`inventory-${index}`}>
+                  /><datalist id={`inventory-${index}`}>
                     {inventory.map((item: any) => {
                       // PRIORIDAD AL CAMPO 'precio' de la tabla inventory
                       const cost = item.precio || item.cost || item.price || item.unitCost || item.unit_cost || 0;
@@ -799,9 +868,33 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             }}
           >
             Cancel
-          </button>
-        </div>
+          </button>        </div>
       </form>
+      
+      {/* Tooltip para mostrar información de la parte */}
+      {tooltip.visible && tooltip.info && (
+        <div
+          style={{
+            position: 'fixed',
+            top: tooltip.y + 10,
+            left: tooltip.x + 10,
+            background: '#fff',
+            border: '1px solid #1976d2',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            padding: 16,
+            zIndex: 9999,
+            minWidth: 220
+          }}
+          onClick={hideTooltip}
+        >
+          <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
+          <div><b>Part Name:</b> {tooltip.info.part}</div>
+          <div><b>Price:</b> {tooltip.info.precio ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}</div>
+          <div><b>On Hand:</b> {tooltip.info.onHand}</div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
+        </div>
+      )}
     </div>
   );
 };

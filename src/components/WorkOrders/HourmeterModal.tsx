@@ -90,76 +90,297 @@ const HourmeterModal: React.FC<{
   });
 
   if (!show) return null;
-
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+      background: 'rgba(0,0,0,0.4)', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      zIndex: 1000,
+      backdropFilter: 'blur(4px)'
     }}
       onClick={onClose}
     >
       <div style={{
-        background: '#fff', borderRadius: 16, padding: 32, minWidth: 400, maxWidth: 520, maxHeight: '80vh',
-        overflowY: 'auto', boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fffe 100%)', 
+        borderRadius: 20, 
+        padding: 40, 
+        minWidth: 600, 
+        maxWidth: 800, 
+        maxHeight: '85vh',
+        overflowY: 'auto', 
+        boxShadow: '0 20px 60px rgba(25,118,210,0.15), 0 8px 32px rgba(0,0,0,0.1)',
+        border: '1px solid rgba(25,118,210,0.1)'
       }}
         onClick={e => e.stopPropagation()}
       >
-        <h2 style={{ color: '#1976d2', marginBottom: 16 }}>Hourmeter Report</h2>
-        <div style={{ marginBottom: 16 }}>
-          <label>
-            Semana:&nbsp;
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: 32,
+          borderBottom: '2px solid #e3f2fd',
+          paddingBottom: 20
+        }}>
+          <h2 style={{ 
+            color: '#1976d2', 
+            marginBottom: 8,
+            fontSize: 28,
+            fontWeight: 700,
+            letterSpacing: '0.5px'
+          }}>📊 Hourmeter Report</h2>
+          <p style={{
+            color: '#666',
+            fontSize: 14,
+            margin: 0,
+            fontStyle: 'italic'
+          }}>Reporte detallado de horas por mecánico</p>
+        </div>
+
+        <div style={{ 
+          marginBottom: 28,
+          display: 'flex',
+          gap: 20,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #f8fbff 0%, #e3f2fd 100%)',
+          borderRadius: 12,
+          border: '1px solid #e1f5fe'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ 
+              fontWeight: 600, 
+              color: '#1976d2',
+              fontSize: 14,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              📅 Semana:
+            </label>
             <input
               type="week"
               value={week}
               onChange={e => setWeek(e.target.value)}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '2px solid #e3f2fd',
+                fontSize: 14,
+                fontWeight: 500,
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                background: '#fff'
+              }}
             />
-          </label>
-          <label style={{ marginLeft: 16 }}>
-            Mecánico:&nbsp;
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ 
+              fontWeight: 600, 
+              color: '#1976d2',
+              fontSize: 14,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              👨‍🔧 Mecánico:
+            </label>
             <select
               value={mechanic}
               onChange={e => setMechanic(e.target.value)}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '2px solid #e3f2fd',
+                fontSize: 14,
+                fontWeight: 500,
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                background: '#fff',
+                minWidth: 150
+              }}
             >
               <option value="">Todos</option>
               {mechanics.map(mec =>
                 <option key={mec} value={mec}>{mec}</option>
               )}
             </select>
-          </label>
+          </div>
+          
           <button
-            className="wo-btn"
-            style={{ marginLeft: 16 }}
             onClick={onClose}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: '0 4px 12px rgba(25,118,210,0.2)',
+              marginTop: 'auto'
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(25,118,210,0.3)';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(25,118,210,0.2)';
+            }}
           >
-            Cerrar
+            ✕ Cerrar
           </button>
         </div>
-        <div style={{ marginTop: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: '#f5faff', borderRadius: 8 }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Mecánico</th>
-                <th># W.O.</th>
-                <th>Total Hrs</th>
-                <th>Total LAB & PRTS</th>
-                <th>Dead Hours</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(mechanicStats).map(([mec, stats]) => (
-                <tr key={mec}>
-                  <td>{mec}</td>
-                  <td>{stats.orders?.size || 0}</td>
-                  <td>{Number(stats.totalHrs || 0).toFixed(2)}</td>
-                  <td>{Number(stats.totalLabAndParts || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                  <td>{Number(stats.deadHours || 0).toFixed(2)}</td>
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 16,
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(25,118,210,0.08)',
+            border: '1px solid #e3f2fd'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ 
+                  background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                  color: '#fff'
+                }}>
+                  <th style={{ 
+                    textAlign: 'left', 
+                    padding: '18px 20px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>👨‍🔧 Mecánico</th>
+                  <th style={{ 
+                    textAlign: 'center', 
+                    padding: '18px 12px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>📋 # W.O.</th>
+                  <th style={{ 
+                    textAlign: 'center', 
+                    padding: '18px 12px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>⏰ Total Hrs</th>
+                  <th style={{ 
+                    textAlign: 'center', 
+                    padding: '18px 12px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>💰 Total LAB & PRTS</th>
+                  <th style={{ 
+                    textAlign: 'center', 
+                    padding: '18px 12px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>🔴 Dead Hours</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ marginTop: 12, fontSize: 13, color: '#888' }}>
-            {filtered.length === 0 && 'No hay datos para la selección.'}
+              </thead>
+              <tbody>
+                {Object.entries(mechanicStats).map(([mec, stats], index) => (
+                  <tr key={mec} style={{
+                    background: index % 2 === 0 ? '#fafbff' : '#fff',
+                    borderBottom: '1px solid #f0f4f8',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={e => {
+                    e.currentTarget.style.background = '#e3f2fd';
+                    e.currentTarget.style.transform = 'scale(1.01)';
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.background = index % 2 === 0 ? '#fafbff' : '#fff';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}>
+                    <td style={{ 
+                      padding: '16px 20px',
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#1976d2'
+                    }}>{mec}</td>
+                    <td style={{ 
+                      textAlign: 'center',
+                      padding: '16px 12px',
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#2e7d32'
+                    }}>{stats.orders?.size || 0}</td>
+                    <td style={{ 
+                      textAlign: 'center',
+                      padding: '16px 12px',
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#f57c00'
+                    }}>{Number(stats.totalHrs || 0).toFixed(2)}</td>
+                    <td style={{ 
+                      textAlign: 'center',
+                      padding: '16px 12px',
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#388e3c'
+                    }}>{Number(stats.totalLabAndParts || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                    <td style={{ 
+                      textAlign: 'center',
+                      padding: '16px 12px',
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#d32f2f'
+                    }}>{Number(stats.deadHours || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          
+          {filtered.length === 0 && (
+            <div style={{ 
+              marginTop: 24, 
+              textAlign: 'center',
+              padding: '24px',
+              background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
+              borderRadius: 12,
+              border: '1px solid #ffcc02',
+              color: '#e65100',
+              fontSize: 16,
+              fontWeight: 600
+            }}>
+              📊 No hay datos para la selección actual
+            </div>
+          )}
+          
+          {Object.keys(mechanicStats).length > 0 && (
+            <div style={{
+              marginTop: 20,
+              padding: '16px',
+              background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)',
+              borderRadius: 12,
+              border: '1px solid #4caf50',
+              textAlign: 'center'
+            }}>
+              <span style={{
+                color: '#2e7d32',
+                fontSize: 14,
+                fontWeight: 600
+              }}>
+                ✅ Mostrando datos de {Object.keys(mechanicStats).length} mecánico(s) | {filtered.length} órdenes encontradas
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

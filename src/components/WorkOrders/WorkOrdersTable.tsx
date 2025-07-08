@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, MouseEvent } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
 import dayjs from 'dayjs';
@@ -7,7 +7,6 @@ import weekOfYear from 'dayjs/plugin/weekOfYear';
 import 'dayjs/locale/es';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
@@ -63,12 +62,7 @@ function getWeekRange(weekStr: string) {
   return { start, end };
 }
 
-const STATUS_OPTIONS = [
-  "PRE W.O",
-  "PROCESSING",
-  "APPROVED",
-  "FINISHED"
-];
+const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
 
 const buttonBase = {
   padding: '10px 28px',
@@ -82,42 +76,42 @@ const buttonBase = {
 };
 
 const primaryBtn = {
-  ...buttonBase,
   background: '#1976d2',
   color: '#fff',
+  border: 'none',
+  padding: '8px 16px',
+  borderRadius: '6px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  marginRight: '8px',
+  fontSize: '14px'
 };
 
 const dangerBtn = {
-  ...buttonBase,
   background: '#d32f2f',
   color: '#fff',
+  border: 'none',
+  padding: '8px 16px',
+  borderRadius: '6px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  marginRight: '8px',
+  fontSize: '14px'
 };
 
 const secondaryBtn = {
-  ...buttonBase,
   background: '#fff',
   color: '#1976d2',
   border: '1px solid #1976d2',
+  padding: '8px 16px',
+  borderRadius: '6px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  marginRight: '8px',
+  fontSize: '14px'
 };
 
-const mainTitleStyle = {
-  color: '#1976d2',
-  fontWeight: 800,
-  fontSize: 32,
-  marginBottom: 24,
-  letterSpacing: 2,
-  fontFamily: 'Segoe UI, Arial, sans-serif',
-};
-
-const sectionTitleStyle = {
-  color: '#1976d2',
-  fontWeight: 700,
-  fontSize: 22,
-  marginBottom: 16,
-};
-
-const formatCurrency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+// Removed unused style constants
 
 function calcularTotalWO(order: any) {
   // Si el usuario editó el total manualmente, respétalo
@@ -167,36 +161,31 @@ const WorkOrdersTable: React.FC = () => {
   const [editPassword, setEditPassword] = useState('');
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [showDeleteForm, setShowDeleteForm] = useState(false);
   const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteDate, setDeleteDate] = useState('');
   const [selectedWeek, setSelectedWeek] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [idClassicFilter, setIdClassicFilter] = useState('');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [multiDeleteEnabled, setMultiDeleteEnabled] = useState(false);
   const [inventory, setInventory] = useState<any[]>([]);
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
   const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [extraOptions, setExtraOptions] = React.useState<string[]>([]);
-  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });  const [showHourmeter, setShowHourmeter] = useState(false);
+  const [extraOptions, setExtraOptions] = React.useState<string[]>([]);  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
+  const [showHourmeter, setShowHourmeter] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
-
   // Función para cargar las órdenes con manejo inteligente de errores
-  const fetchWorkOrders = useCallback(async (isRetry = false) => {    try {
+  const fetchWorkOrders = useCallback(async (isRetry = false) => {
+    try {
       setFetchingData(true);
-      const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });
-      setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
-      setServerStatus('online');      setRetryCount(0); // Reset retry count on success
+      const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });      setWorkOrders(Array.isArray(res.data) ? (res.data as any[]) : []);
+      setServerStatus('online');
+      setRetryCount(0); // Reset retry count on success
     } catch (err: any) {
       console.error('Error cargando órdenes:', err);
       
@@ -250,19 +239,10 @@ const WorkOrdersTable: React.FC = () => {
       if (interval) clearInterval(interval);
     };
   }, [fetchWorkOrders, serverStatus]);
-  // Al guardar o editar, refresca la tabla y cierra el formulario
-  const handleFormSuccess = () => {
-    fetchWorkOrders();
-    setShowForm(false);
-    setEditWorkOrder(null);
-  };
-
-  // Función para buscar parte por SKU en el inventario
-  const findPartBySku = (sku: string) => {
-    return inventory.find(item => 
-      item.sku && item.sku.toLowerCase() === sku.toLowerCase()
-    );
-  };  useEffect(() => {
+  
+  // Functions removed - handleFormSuccess and findPartBySku were unused
+  
+  useEffect(() => {
     console.log('🔄 Cargando inventario...');
     axios.get(`${API_URL}/inventory`)
       .then(res => {
@@ -303,9 +283,9 @@ const WorkOrdersTable: React.FC = () => {
         })
         .catch(err => {
           console.error('❌ Error cargando receives PENDING:', err);
-          setTrailersWithPendingParts([]);
-        });
-    }  }, [showForm]);
+          setTrailersWithPendingParts([]);        });
+    }
+  }, [showForm]);
   
   // Cargar trailers con partes pendientes al inicializar
   useEffect(() => {
@@ -618,16 +598,7 @@ const WorkOrdersTable: React.FC = () => {
       setPendingParts([]);
     }
   };
-
   const partesSeleccionadas = pendingParts.filter(p => selectedPendingParts.includes(p.id));
-  const partesWO = [
-    ...partesSeleccionadas.map(p => ({
-      part: p.sku,
-      qty: p.qty,
-      cost: '' // o algún valor si tienes el costo
-    })),
-    ...newWorkOrder.parts.filter(p => !p.part) // rellena los espacios vacíos si quieres
-  ];
 
   useEffect(() => {
     if (showForm) {
@@ -655,10 +626,9 @@ const WorkOrdersTable: React.FC = () => {
         ...prev,
         parts: nuevasPartes
       }));
-    }
-    // Solo ejecuta cuando cambia la selección o las partes pendientes
+    }    // Solo ejecuta cuando cambia la selección o las partes pendientes
     // eslint-disable-next-line
-  }, [selectedPendingParts, pendingParts, showForm]);
+  }, [selectedPendingParts, pendingParts, showForm, setNewWorkOrder]);
 
   // Calcula el total cada vez que cambian las partes o las horas
   useEffect(() => {
@@ -671,7 +641,7 @@ const WorkOrdersTable: React.FC = () => {
         totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
       }));
     }
-  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm]);
+  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);
 
   useEffect(() => {
     if (showEditForm && editWorkOrder) {
@@ -768,36 +738,7 @@ const WorkOrdersTable: React.FC = () => {
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), 'work_orders.xlsx');
   };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    const columns = [
-      'ID', 'Bill To Co', 'Trailer', 'Mechanic', 'Date', 'Description', 'Status', 'Total HRS', 'Total LAB & PRTS',
-      ...[1,2,3,4,5].flatMap(i => [`PRT${i}`, `Qty${i}`, `Costo${i}`])
-    ];
-    const rows = filteredOrders.map(order => [
-      order.id,
-      order.billToCo,
-      order.trailer,
-      order.mechanic,
-      order.date?.slice(0, 10),
-      order.description,
-      order.status,
-      order.totalHrs,
-      calcularTotalWO(order),
-      ...order.parts.slice(0, 5).flatMap((part: any) => [
-        part?.sku || '',
-        part?.qty || '',
-        part?.cost || ''
-      ])
-    ]);
-    doc.autoTable({
-      head: [columns],
-      body: rows,
-      styles: { fontSize: 8 }
-    });
-    doc.save('work_orders.pdf');
-  };
+  // exportToPDF function removed - was unused
 
   const modalStyle: React.CSSProperties = {
     position: 'fixed',
@@ -926,20 +867,7 @@ const WorkOrdersTable: React.FC = () => {
     
     console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO con costo $${cost.toFixed(2)}`);
   };
-
-  // Función para mostrar el tooltip
-  const handlePartClick = (e: MouseEvent, sku: string) => {
-    e.stopPropagation();
-    const partInfo = inventory.find(i => i.sku === sku);
-    if (partInfo) {
-      setTooltip({
-        visible: true,
-        x: e.clientX,
-        y: e.clientY,
-        info: partInfo
-      });
-    }
-  };
+  // handlePartClick function removed - was unused
 
   // Función para ocultar el tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
@@ -1055,8 +983,7 @@ const WorkOrdersTable: React.FC = () => {
           .wo-row-finished {
             background: #ffd600 !important; /* Amarillo fuerte */
             color: #333 !important;
-          }
-          .wo-row-processing, .wo-row-pre {
+          }          .wo-row-processing {
             background: #fff !important; /* Blanco */
             color: #1976d2 !important;
           }
@@ -1403,9 +1330,8 @@ const WorkOrdersTable: React.FC = () => {
                         try {
                           setLoading(true);
                           // LIMPIA EL TOTAL ANTES DE ENVIAR
-                          const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));
-                            // Actualizar la work order
-                          const updateResponse = await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
+                          const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));                          // Actualizar la work order
+                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
                             ...editWorkOrder,
                             totalLabAndParts: totalLabAndPartsLimpio,
                             manualTotalEdit: true,
@@ -1499,13 +1425,11 @@ const WorkOrdersTable: React.FC = () => {
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>
-  {filteredOrders.map((order, index) => {
+            <tbody>  {filteredOrders.map((order, index) => {
     let rowClass = '';
     if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
     else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
     else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
-    else if (order.status === 'PRE W.O') rowClass = 'wo-row-pre';
 
     const hasMoreParts = order.parts && order.parts.length > 5;
 
