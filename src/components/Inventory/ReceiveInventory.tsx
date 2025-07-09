@@ -406,8 +406,8 @@ const ReceiveInventory: React.FC = () => {
                 marginBottom: 20,
                 letterSpacing: 1
               }}>Add Receipt</h2>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} autoComplete="off" />
-                <input name="category" value={form.category} onChange={handleChange} placeholder="Category" style={inputStyle} autoComplete="off" />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
+                <input name="category" value={form.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
                 {/* Autocomplete para Item */}
                 <input
                   name="item"
@@ -417,16 +417,15 @@ const ReceiveInventory: React.FC = () => {
                   list="items-list"
                   style={inputStyle}
                   required
-                  autoComplete="off"
                 />
                 <datalist id="items-list">
                   {inventory.map((part: any) => (
                     <option key={part.sku} value={part.part} />
                   ))}
                 </datalist>
-                <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} autoComplete="off" />
-                <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} autoComplete="off" />
-                <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} autoComplete="off" />
+                <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
+                <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
+                <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} />
                 <select name="billToCo" value={form.billToCo} onChange={handleChange} required style={inputStyle}>
                   <option value="">Bill To Co</option>
                   {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -457,15 +456,10 @@ const ReceiveInventory: React.FC = () => {
                 )}                {/* Campo para número de invoice */}
                 <input
                   type="text"
-                  name="invoice"
-                  value={form.invoice}
+                  name="invoice"                  value={form.invoice}
                   onChange={handleChange}
                   placeholder="Número de Invoice"
                   style={inputStyle}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
                 />                {/* Campo para link de OneDrive */}
                 <input
                   name="invoiceLink"
@@ -474,13 +468,9 @@ const ReceiveInventory: React.FC = () => {
                   placeholder="Invoice Link (OneDrive, etc.)"
                   style={inputStyle}
                   required
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                />                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} autoComplete="off" />
-                <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} autoComplete="off" />
-                <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} autoComplete="off" />
+                />                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} />
+                <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} />
+                <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} />
                 <input name="fecha" value={form.fecha} onChange={handleChange} type="date" required style={inputStyle} />
               </div>
               <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
@@ -572,18 +562,20 @@ const ReceiveInventory: React.FC = () => {
                   <input name="item" value={editForm.item || ''} onChange={e => setEditForm({ ...editForm, item: e.target.value })} placeholder="Item" style={inputStyle} />
                   <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
-                  <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
-                    {/* Bill To Co - editable con el valor original */}
-                  <select
+                  <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />                  {/* Bill To Co - lista editable que permite texto personalizado */}
+                  <input
                     name="billToCo"
                     value={editForm.billToCo || ''}
                     onChange={e => setEditForm({ ...editForm, billToCo: e.target.value, destino_trailer: '' })}
+                    placeholder="Bill To Co"
                     style={inputStyle}
                     required
-                  >
-                    <option value="">Bill To Co</option>
+                    list="billToCo-options"
+                    title="Selecciona de la lista o escribe un valor personalizado"
+                  />
+                  <datalist id="billToCo-options">
                     {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                  </datalist>
                   {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
                     <select
                       name="destino_trailer"
@@ -675,14 +667,31 @@ const ReceiveInventory: React.FC = () => {
               }}
               onClick={() => setSelectedRow(r.id)}
             >
-              <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.id}</td>
-              <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
+              <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>{r.id}</td>              <td style={{ padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #e3eaf2' }}>
                 {r.fecha || r.date ? (() => {
-                  const date = new Date(r.fecha || r.date);
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const year = date.getFullYear();
-                  return `${month}-${day}-${year}`;
+                  const dateStr = r.fecha || r.date;
+                  console.log('📅 Fecha raw de BD:', dateStr);
+                  
+                  // Si es string formato YYYY-MM-DD, convertir directamente
+                  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+                    const [year, month, day] = dateStr.split('T')[0].split('-');
+                    const formattedDate = `${month}-${day}-${year}`;
+                    console.log('📅 Fecha formateada:', formattedDate);
+                    return formattedDate;
+                  }
+                  
+                  // Si es timestamp, convertir a fecha
+                  const date = new Date(dateStr);
+                  if (!isNaN(date.getTime())) {
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const year = date.getFullYear();
+                    const formattedDate = `${month}-${day}-${year}`;
+                    console.log('📅 Fecha formateada desde timestamp:', formattedDate);
+                    return formattedDate;
+                  }
+                  
+                  return dateStr; // Fallback
                 })() : ''}
               </td>
               <td style={{ padding: '8px 6px', borderRight: '1px solid #e3eaf2' }}>{r.sku}</td>
