@@ -2,6 +2,15 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 // Force deploy - Invoice link and date fixes v0.1.2
 
+// Función para obtener fecha local correcta
+const getLocalDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
 ];
@@ -71,13 +80,7 @@ const ReceiveInventory: React.FC = () => {
     qty: '',
     costTax: '',
     totalPOClassic: '',
-    fecha: (() => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    })(), // Fecha local correcta sin timezone offset
+    fecha: getLocalDate(), // Usar función para fecha actual
     estatus: 'PENDING'
   });
   const [editId, setEditId] = useState<number | null>(null);
@@ -171,19 +174,9 @@ const ReceiveInventory: React.FC = () => {
         await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
           console.log(`✅ Actualizado SKU ${form.sku}: onHand=${newOnHand}${shouldUpdatePrice ? ', precio actualizado' : ''}${shouldUpdateInvoiceLink ? ', invoiceLink actualizado' : ''}`);
       }
-    }
-
-    setShowForm(false);
+    }    setShowForm(false);
     
-    // Función para obtener fecha local correcta
-    const getLocalDate = () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    
+    // Reset form con fecha actual
     setForm({
       sku: '',
       category: '',
@@ -311,7 +304,14 @@ const ReceiveInventory: React.FC = () => {
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
           }}
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            // Actualizar fecha cuando se abre el formulario
+            setForm(prev => ({
+              ...prev,
+              fecha: getLocalDate()
+            }));
+            setShowForm(true);
+          }}
         >
           Add Receipt
         </button>
@@ -554,15 +554,17 @@ const ReceiveInventory: React.FC = () => {
                   <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
                   <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
-                  
-                  {/* Bill To Co - mostrar el valor original como solo lectura */}
-                  <input
+                    {/* Bill To Co - editable con el valor original */}
+                  <select
                     name="billToCo"
                     value={editForm.billToCo || ''}
-                    readOnly
-                    style={{...inputStyle, backgroundColor: '#f0f0f0', color: '#666'}}
-                    placeholder="Bill To Co (Read Only)"
-                  />
+                    onChange={e => setEditForm({ ...editForm, billToCo: e.target.value, destino_trailer: '' })}
+                    style={inputStyle}
+                    required
+                  >
+                    <option value="">Bill To Co</option>
+                    {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
                   {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
                     <select
                       name="destino_trailer"
