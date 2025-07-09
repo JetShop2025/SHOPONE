@@ -57,8 +57,7 @@ const modalContentStyle: React.CSSProperties = {
 const ReceiveInventory: React.FC = () => {
   const [receives, setReceives] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
+  const [showForm, setShowForm] = useState(false);  const [form, setForm] = useState({
     sku: '',
     category: '',
     item: '',
@@ -72,7 +71,7 @@ const ReceiveInventory: React.FC = () => {
     qty: '',
     costTax: '',
     totalPOClassic: '',
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: dayjs().format('YYYY-MM-DD'), // Usar dayjs para evitar problemas de zona horaria
     estatus: 'PENDING'
   });
   const [editId, setEditId] = useState<number | null>(null);
@@ -117,8 +116,7 @@ const ReceiveInventory: React.FC = () => {
     // Guarda el recibo
     const data = { ...form, usuario: localStorage.getItem('username') || '' };
     await axios.post(`${API_URL}/receive`, data);
-    
-    // ACTUALIZA onHand, precio e invoice SOLO SI HAY CAMBIOS
+      // ACTUALIZA onHand, precio e invoice SOLO SI HAY CAMBIOS
     if (form.sku && form.qty) {
       const invRes = await axios.get(`${API_URL}/inventory`);
       const inventoryList = invRes.data as any[];
@@ -131,7 +129,17 @@ const ReceiveInventory: React.FC = () => {
         // Verificar si hay cambios en precio o invoice
         const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
         const shouldUpdatePrice = newPrice && newPrice !== currentPrice;
-        const shouldUpdateInvoice = form.invoice && form.invoice !== part.invoice;
+        
+        // Mejorar comparación de invoice - normalizar valores undefined/null/vacío
+        const currentInvoice = part.invoice || '';
+        const newInvoice = form.invoice || '';
+        const shouldUpdateInvoice = newInvoice && newInvoice.trim() !== '' && newInvoice.trim() !== currentInvoice.trim();
+        
+        console.log(`🔍 Comparando invoices para SKU ${form.sku}:`, {
+          currentInvoice: currentInvoice || 'N/A',
+          newInvoice: newInvoice || 'N/A',
+          shouldUpdate: shouldUpdateInvoice
+        });
         
         // Solo actualizar si hay cambios reales
         if (shouldUpdatePrice || shouldUpdateInvoice || newOnHand !== currentOnHand) {
@@ -144,13 +152,13 @@ const ReceiveInventory: React.FC = () => {
           // Actualizar precio solo si es diferente
           if (shouldUpdatePrice) {
             updateData.precio = newPrice;
-            console.log(`🔄 Actualizando precio de ${form.sku}: ${currentPrice} → ${newPrice}`);
+            console.log(`💰 Actualizando precio de ${form.sku}: ${currentPrice} → ${newPrice}`);
           }
           
-          // Actualizar invoice solo si es diferente
+          // Actualizar invoice - SIEMPRE actualizar si se proporciona un invoice en el receive
           if (shouldUpdateInvoice) {
             updateData.invoice = form.invoice;
-            console.log(`🔄 Actualizando invoice de ${form.sku}: ${part.invoice || 'N/A'} → ${form.invoice}`);
+            console.log(`📄 Actualizando invoice de ${form.sku}: "${currentInvoice || 'N/A'}" → "${form.invoice}"`);
           }
           
           await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
@@ -171,8 +179,7 @@ const ReceiveInventory: React.FC = () => {
       }
     }
 
-    setShowForm(false);
-    setForm({
+    setShowForm(false);    setForm({
       sku: '',
       category: '',
       item: '',
@@ -186,7 +193,7 @@ const ReceiveInventory: React.FC = () => {
       qty: '',
       costTax: '',
       totalPOClassic: '',
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: dayjs().format('YYYY-MM-DD'), // Usar dayjs para evitar problemas de zona horaria
       estatus: 'PENDING'
     });
     const res = await axios.get(`${API_URL}/receive`);
@@ -227,7 +234,7 @@ const ReceiveInventory: React.FC = () => {
           qty: found.qty || '',
           costTax: found.costTax || '',
           totalPOClassic: found.totalPOClassic || '',
-          fecha: found.fecha ? new Date(found.fecha).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          fecha: found.fecha || dayjs().format('YYYY-MM-DD'), // Preservar fecha exacta sin convertir
           estatus: found.estatus || 'PENDING'
         });
         setShowEditForm(true);
@@ -457,10 +464,72 @@ const ReceiveInventory: React.FC = () => {
       {showEditForm && (
         <div style={modalStyle} onClick={() => setShowEditForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            {editForm && (
-              <form onSubmit={async e => {
+            {editForm && (              <form onSubmit={async e => {
                 e.preventDefault();
+                
+                // Obtener datos originales antes de la edición
+                const originalReceive = receives.find(r => r.id === editForm.id);
+                
+                // Actualizar el receive
                 await axios.put(`${API_URL}/receive/${editForm.id}`, { ...editForm, usuario: localStorage.getItem('username') || '' });
+                
+                // ACTUALIZAR INVENTARIO MASTER SI HAY CAMBIOS EN COSTO O INVOICE
+                if (editForm.sku && (editForm.costTax || editForm.invoice)) {
+                  const invRes = await axios.get(`${API_URL}/inventory`);
+                  const inventoryList = invRes.data as any[];
+                  const part = inventoryList.find((p: any) => p.sku === editForm.sku);
+                  
+                  if (part && part.id) {
+                    // Calcula el nuevo precio con 10% extra si cambió el costo
+                    const newPrice = editForm.costTax ? (Number(editForm.costTax) * 1.1).toFixed(2) : '';
+                    
+                    // Verificar si hay cambios en precio o invoice
+                    const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
+                    const shouldUpdatePrice = newPrice && newPrice !== currentPrice && 
+                                            editForm.costTax !== originalReceive?.costTax;
+                    
+                    // Mejorar comparación de invoice
+                    const currentInvoice = part.invoice || '';
+                    const newInvoice = editForm.invoice || '';
+                    const shouldUpdateInvoice = newInvoice && newInvoice.trim() !== '' && 
+                                              newInvoice.trim() !== currentInvoice.trim() &&
+                                              editForm.invoice !== originalReceive?.invoice;
+                    
+                    console.log(`🔍 Editando receive - comparando datos para SKU ${editForm.sku}:`, {
+                      shouldUpdatePrice,
+                      shouldUpdateInvoice,
+                      oldCost: originalReceive?.costTax,
+                      newCost: editForm.costTax,
+                      oldInvoice: originalReceive?.invoice,
+                      newInvoice: editForm.invoice
+                    });
+                    
+                    // Solo actualizar si hay cambios reales
+                    if (shouldUpdatePrice || shouldUpdateInvoice) {
+                      const updateData = {
+                        ...part,
+                        usuario: localStorage.getItem('username') || ''
+                      };
+                      
+                      // Actualizar precio solo si es diferente
+                      if (shouldUpdatePrice) {
+                        updateData.precio = newPrice;
+                        console.log(`💰 Actualizando precio de ${editForm.sku}: ${currentPrice} → ${newPrice}`);
+                      }
+                      
+                      // Actualizar invoice si es diferente
+                      if (shouldUpdateInvoice) {
+                        updateData.invoice = editForm.invoice;
+                        console.log(`📄 Actualizando invoice de ${editForm.sku}: "${currentInvoice || 'N/A'}" → "${editForm.invoice}"`);
+                      }
+                      
+                      await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
+                      
+                      console.log(`✅ Inventario master actualizado para SKU ${editForm.sku} desde edición de receive`);
+                    }
+                  }
+                }
+                
                 setShowEditForm(false);
                 const res = await axios.get(`${API_URL}/receive`);
                 setReceives(res.data as any[]);

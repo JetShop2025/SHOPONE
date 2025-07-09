@@ -8,13 +8,27 @@ const API_URL = process.env.REACT_APP_API_URL || 'https://shipone-onrender.com/a
 const rentalClients = ['AMAZON', 'WALMART', 'HOME DEPOT', 'FEDEX', 'UPS', 'TARGET'];
 const regularClients = ['GALGRE', 'JETGRE', 'PRIGRE', 'RAN100', 'GABGRE'];
 
-// Client-specific trailer ranges
+// Client-specific trailer ranges (based on first digit of trailer number)
 const clientTrailerRanges: { [key: string]: { min: number; max: number } } = {
-  'GALGRE': { min: 1, max: 99 },
-  'JETGRE': { min: 100, max: 199 },
-  'PRIGRE': { min: 200, max: 299 },
-  'RAN100': { min: 300, max: 399 },
-  'GABGRE': { min: 400, max: 499 }
+  'GALGRE': { min: 1, max: 199 },      // All trailers starting with 1 (1-199)
+  'JETGRE': { min: 200, max: 299 },    // All trailers starting with 2 (200-299)
+  'PRIGRE': { min: 300, max: 399 },    // All trailers starting with 3 (300-399)
+  'RAN100': { min: 400, max: 499 },    // All trailers starting with 4 (400-499)
+  'GABGRE': { min: 500, max: 599 }     // All trailers starting with 5 (500-599)
+};
+
+// Function to get client based on first digit of trailer number
+const getClientByFirstDigit = (trailerNumber: number): string | null => {
+  const firstDigit = Math.floor(trailerNumber / Math.pow(10, Math.floor(Math.log10(trailerNumber))));
+  
+  switch (firstDigit) {
+    case 1: return 'GALGRE';
+    case 2: return 'JETGRE';
+    case 3: return 'PRIGRE';
+    case 4: return 'RAN100';
+    case 5: return 'GABGRE';
+    default: return null;
+  }
 };
 
 interface Traila {
@@ -102,48 +116,29 @@ const TrailasTable: React.FC = () => {
       .filter((cliente, index, self) => self.indexOf(cliente) === index)
       .sort();
     return clients;
-  };
-  // Get trailers for a specific client within their range
+  };  // Get trailers for a specific client based on first digit of trailer number
   const getClientTrailersInRange = (clientName: string) => {
     if (!Array.isArray(trailas)) return [];
     
-    const range = clientTrailerRanges[clientName];
-    if (!range) return [];
+    console.log(`🔍 Agrupando trailers para ${clientName} por primer dígito del número de trailer`);
     
-    console.log(`🔍 Buscando trailers para cliente ${clientName} en rango ${range.min}-${range.max}`);
-    
-    const clientTrailers = trailas.filter(traila => {
-      // Check if trailer belongs to this client
-      if (traila.cliente !== clientName) return false;
-      
-      // Extract number from trailer name (e.g., "T-150" -> 150)
+    // Group ONLY by first digit of trailer number, ignoring the cliente field completely
+    const rangeTrailers = trailas.filter(traila => {
+      // Extract number from trailer name (e.g., "T-150" -> 150, "1-123" -> 123)
       const trailerNumber = extractTrailerNumber(traila.nombre);
       if (trailerNumber === null) return false;
       
-      // Check if number is in range
-      const inRange = trailerNumber >= range.min && trailerNumber <= range.max;
-      console.log(`  ${traila.nombre} (${trailerNumber}) - Cliente: ${traila.cliente} - En rango: ${inRange}`);
-      return inRange;
+      // Get the client that should own this trailer based on first digit
+      const expectedClient = getClientByFirstDigit(trailerNumber);
+      const belongsToClient = expectedClient === clientName;
+      
+      if (belongsToClient) {
+        console.log(`  ✅ ${traila.nombre} (${trailerNumber}) -> ${clientName} (primer dígito: ${Math.floor(trailerNumber / Math.pow(10, Math.floor(Math.log10(trailerNumber))))})`);
+      }
+      return belongsToClient;
     });
     
-    // Si no hay trailers con cliente asignado, buscar por nombre en el rango
-    if (clientTrailers.length === 0) {
-      console.log(`⚠️ No se encontraron trailers con cliente "${clientName}", buscando por número en rango`);
-      const rangeTrailers = trailas.filter(traila => {
-        const trailerNumber = extractTrailerNumber(traila.nombre);
-        if (trailerNumber === null) return false;
-        
-        const inRange = trailerNumber >= range.min && trailerNumber <= range.max;
-        if (inRange) {
-          console.log(`  ${traila.nombre} (${trailerNumber}) - Cliente DB: "${traila.cliente}" - En rango: ${inRange}`);
-        }
-        return inRange;
-      });
-      
-      return rangeTrailers;
-    }
-    
-    return clientTrailers;
+    return rangeTrailers;
   };
 
   // Extract trailer number from name
@@ -417,11 +412,23 @@ const TrailasTable: React.FC = () => {
               (traila.cliente && traila.cliente.toLowerCase().includes(searchTerm.toLowerCase()));
             return matchesFilter && matchesSearch;
           });
-          
-          // Show client group even if no trailers match the filter
+            // Show client group even if no trailers match the filter
           const isExpanded = expandedClients.has(client);
-          const range = clientTrailerRanges[client];
           const allClientTrailers = clientTrailersInRange; // Show total count regardless of filters
+          
+          // Get the first digit that corresponds to this client
+          const getFirstDigitForClient = (clientName: string) => {
+            switch (clientName) {
+              case 'GALGRE': return '1';
+              case 'JETGRE': return '2';
+              case 'PRIGRE': return '3';
+              case 'RAN100': return '4';
+              case 'GABGRE': return '5';
+              default: return '';
+            }
+          };
+          
+          const firstDigit = getFirstDigitForClient(client);
           
           return (
             <div key={client} style={{ marginBottom: '24px' }}>
@@ -453,14 +460,13 @@ const TrailasTable: React.FC = () => {
                   <span style={{ marginRight: '12px' }}>
                     {isExpanded ? '▼' : '▶'}
                   </span>
-                  {client}
-                  <span style={{ 
+                  {client}                  <span style={{ 
                     fontSize: '14px', 
                     color: '#666', 
                     fontWeight: '400',
                     marginLeft: '8px'
                   }}>
-                    ({allClientTrailers.length} trailers • Rango: {range.min}-{range.max})
+                    ({allClientTrailers.length} trailers • Primer dígito: {firstDigit})
                   </span>
                 </div>
                 <div style={{ fontSize: '14px', color: '#666' }}>
@@ -483,9 +489,8 @@ const TrailasTable: React.FC = () => {
                       background: 'white',
                       borderRadius: '12px',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                    }}>
-                      {allClientTrailers.length === 0 
-                        ? `No hay trailers para ${client} en el rango ${range.min}-${range.max}`
+                    }}>                      {allClientTrailers.length === 0 
+                        ? `No hay trailers para ${client} (primer dígito ${firstDigit})`
                         : 'No hay trailers que coincidan con los filtros aplicados'
                       }
                     </div>
