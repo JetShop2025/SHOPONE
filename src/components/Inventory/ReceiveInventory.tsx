@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+// Force deploy - Invoice link and date fixes v0.1.2
 
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
@@ -70,7 +71,13 @@ const ReceiveInventory: React.FC = () => {
     qty: '',
     costTax: '',
     totalPOClassic: '',
-    fecha: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10), // Fecha local correcta
+    fecha: (() => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    })(), // Fecha local correcta sin timezone offset
     estatus: 'PENDING'
   });
   const [editId, setEditId] = useState<number | null>(null);
@@ -130,17 +137,16 @@ const ReceiveInventory: React.FC = () => {
         // Verificar si hay cambios en precio
         const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
         const shouldUpdatePrice = newPrice && newPrice !== currentPrice;
-        
-        // SIEMPRE actualizar el invoice si se proporciona uno (sin comparar con el anterior)
-        const newInvoice = form.invoice ? form.invoice.trim() : '';
-        const shouldUpdateInvoice = newInvoice !== '';
+          // SIEMPRE actualizar el invoiceLink si se proporciona uno (enlace real, no número)
+        const newInvoiceLink = form.invoiceLink ? form.invoiceLink.trim() : '';
+        const shouldUpdateInvoiceLink = newInvoiceLink !== '';
         
         console.log(`🔍 Actualizando inventario para SKU ${form.sku}:`, {
           currentPrice: currentPrice,
           newPrice: newPrice,
           shouldUpdatePrice: shouldUpdatePrice,
-          newInvoice: newInvoice || 'N/A',
-          shouldUpdateInvoice: shouldUpdateInvoice,
+          newInvoiceLink: newInvoiceLink || 'N/A',
+          shouldUpdateInvoiceLink: shouldUpdateInvoiceLink,
           newOnHand: newOnHand
         });
         
@@ -155,15 +161,15 @@ const ReceiveInventory: React.FC = () => {
           updateData.precio = newPrice;
           console.log(`💰 Actualizando precio de ${form.sku}: ${currentPrice} → ${newPrice}`);
         }
-          // SIEMPRE actualizar invoice si se proporciona uno
-        if (shouldUpdateInvoice) {
-          updateData.invoiceLink = form.invoice; // Backend espera 'invoiceLink', no 'invoice'
-          console.log(`📄 Actualizando invoice de ${form.sku}: → "${form.invoice}"`);
+        
+        // SIEMPRE actualizar invoiceLink si se proporciona uno (enlace real)
+        if (shouldUpdateInvoiceLink) {
+          updateData.invoiceLink = form.invoiceLink; // Usar el enlace real, no el número
+          console.log(`📄 Actualizando invoiceLink de ${form.sku}: → "${form.invoiceLink}"`);
         }
         
         await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
-        
-        console.log(`✅ Actualizado SKU ${form.sku}: onHand=${newOnHand}${shouldUpdatePrice ? ', precio actualizado' : ''}${shouldUpdateInvoice ? ', invoice actualizado' : ''}`);
+          console.log(`✅ Actualizado SKU ${form.sku}: onHand=${newOnHand}${shouldUpdatePrice ? ', precio actualizado' : ''}${shouldUpdateInvoiceLink ? ', invoiceLink actualizado' : ''}`);
       }
     }
 
@@ -493,21 +499,20 @@ const ReceiveInventory: React.FC = () => {
                     const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
                     const shouldUpdatePrice = newPrice && newPrice !== currentPrice && 
                                             editForm.costTax !== originalReceive?.costTax;
-                    
-                    // SIEMPRE actualizar invoice si se proporciona uno en la edición (sin comparar con valores anteriores)
-                    const newInvoice = editForm.invoice ? editForm.invoice.trim() : '';
-                    const shouldUpdateInvoice = newInvoice !== '';
+                      // SIEMPRE actualizar invoiceLink si se proporciona uno en la edición (enlace real)
+                    const newInvoiceLink = editForm.invoiceLink ? editForm.invoiceLink.trim() : '';
+                    const shouldUpdateInvoiceLink = newInvoiceLink !== '';
                       console.log(`🔍 Editando receive - comparando datos para SKU ${editForm.sku}:`, {
                       shouldUpdatePrice,
-                      shouldUpdateInvoice,
+                      shouldUpdateInvoiceLink,
                       oldCost: originalReceive?.costTax,
                       newCost: editForm.costTax,
-                      oldInvoice: originalReceive?.invoice,
-                      newInvoice: editForm.invoice
+                      oldInvoiceLink: originalReceive?.invoiceLink,
+                      newInvoiceLink: editForm.invoiceLink
                     });
                     
                     // Solo actualizar si hay cambios reales
-                    if (shouldUpdatePrice || shouldUpdateInvoice) {
+                    if (shouldUpdatePrice || shouldUpdateInvoiceLink) {
                       const updateData = {
                         ...part,
                         usuario: localStorage.getItem('username') || ''
@@ -519,10 +524,10 @@ const ReceiveInventory: React.FC = () => {
                         console.log(`💰 Actualizando precio de ${editForm.sku}: ${currentPrice} → ${newPrice}`);
                       }
                       
-                      // Actualizar invoice si es diferente
-                      if (shouldUpdateInvoice) {
-                        updateData.invoiceLink = editForm.invoice; // Backend espera 'invoiceLink', no 'invoice'
-                        console.log(`📄 Actualizando invoice de ${editForm.sku}: → "${editForm.invoice}"`);
+                      // Actualizar invoiceLink si se proporciona (enlace real)
+                      if (shouldUpdateInvoiceLink) {
+                        updateData.invoiceLink = editForm.invoiceLink; // Usar el enlace real
+                        console.log(`📄 Actualizando invoiceLink de ${editForm.sku}: → "${editForm.invoiceLink}"`);
                       }
                       
                       await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
@@ -549,13 +554,14 @@ const ReceiveInventory: React.FC = () => {
                   <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
                   <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
-                  {/* Bill To Co solo lectura */}
+                  
+                  {/* Bill To Co - mostrar el valor original como solo lectura */}
                   <input
                     name="billToCo"
                     value={editForm.billToCo || ''}
                     readOnly
-                    style={inputStyle}
-                    placeholder="Bill To Co"
+                    style={{...inputStyle, backgroundColor: '#f0f0f0', color: '#666'}}
+                    placeholder="Bill To Co (Read Only)"
                   />
                   {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
                     <select
@@ -580,13 +586,22 @@ const ReceiveInventory: React.FC = () => {
                       style={inputStyle}
                       required
                     />
-                  )}
-                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
+                  )}                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
                   <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />
                   <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
                   <input name="costTax" value={editForm.costTax || ''} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
                   <input name="totalPOClassic" value={editForm.totalPOClassic || ''} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
-                  <input name="fecha" value={editForm.fecha || ''} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} type="date" required style={inputStyle} />
+                  
+                  {/* Date - mostrar la fecha original tal como se guardó */}
+                  <input 
+                    name="fecha" 
+                    value={editForm.fecha || ''} 
+                    onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} 
+                    type="date" 
+                    required 
+                    style={inputStyle} 
+                    title="Fecha original del receive"
+                  />
                 </div>
                 <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                   <button type="submit" style={primaryBtn}>Save</button>
