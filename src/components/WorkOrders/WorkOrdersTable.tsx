@@ -654,25 +654,12 @@ const WorkOrdersTable: React.FC = () => {
       }));
     }
   }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);  useEffect(() => {
-    if (showEditForm && editWorkOrder) {
-      // Calcular horas totales automáticamente sumando las horas de todos los mecánicos
-      const calculateTotalHours = () => {
-        if (!editWorkOrder.mechanics || editWorkOrder.mechanics.length === 0) return 0;
-        return editWorkOrder.mechanics.reduce((total: number, mechanic: any) => {
-          return total + (parseFloat(mechanic.hrs) || 0);
-        }, 0);
-      };
-
-      const totalHours = calculateTotalHours();
-      
-      // ✅ PRESERVAR VALORES ORIGINALES: Solo actualizar las horas totales sin recalcular el total
-      // Esto mantiene los valores tal como se guardó la Work Order originalmente
-      setEditWorkOrder((prev: any) => ({
-        ...prev,
-        totalHrs: totalHours.toString()
-        // NO recalcular totalLabAndParts para preservar el valor original
-      }));
-    }
+    // ✅ NO MODIFICAR NADA AL ABRIR EL EDITOR
+    // Preservar TODOS los valores originales tal como se guardaron
+    // Solo este useEffect sirve para detectar cambios, pero NO modifica valores
+    
+    // El formulario debe mostrar exactamente los valores que están en la base de datos
+    // sin ningún tipo de recálculo automático
   }, [editWorkOrder?.mechanics, showEditForm]);
 
   const handleEdit = () => {
