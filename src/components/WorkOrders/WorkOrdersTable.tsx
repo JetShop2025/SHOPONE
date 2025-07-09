@@ -653,36 +653,27 @@ const WorkOrdersTable: React.FC = () => {
         totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
       }));
     }
-  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);
-  useEffect(() => {
+  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);  useEffect(() => {
     if (showEditForm && editWorkOrder) {
-      // Si la orden ya tiene un totalLabAndParts válido, no recalcular
-      if (editWorkOrder.totalLabAndParts && !isNaN(parseFloat(editWorkOrder.totalLabAndParts))) {
-        // No recalcular, mantener el total existente
-        return;
-      }
+      // Calcular horas totales automáticamente sumando las horas de todos los mecánicos
+      const calculateTotalHours = () => {
+        if (!editWorkOrder.mechanics || editWorkOrder.mechanics.length === 0) return 0;
+        return editWorkOrder.mechanics.reduce((total: number, mechanic: any) => {
+          return total + (parseFloat(mechanic.hrs) || 0);
+        }, 0);
+      };
+
+      const totalHours = calculateTotalHours();
       
-      // Solo recalcular si no hay total o está vacío
-      const partsCost = editWorkOrder.parts.reduce((sum: number, p: any) => sum + (parseFloat(p.cost) || 0), 0);
-      const totalHrs = parseFloat(editWorkOrder.totalHrs) || 0;
-      const laborTotal = totalHrs * 60;
-      let subtotal = partsCost + laborTotal;
-
-      // Suma extras
-      let extra = 0;
-      (extraOptions || []).forEach((opt: string) => {
-        if (opt === '5') extra += subtotal * 0.05;
-        if (opt === '15shop') extra += subtotal * 0.15;
-        if (opt === '15weld') extra += subtotal * 0.15;
-      });
-
-      const totalLabAndParts = subtotal + extra;
+      // ✅ PRESERVAR VALORES ORIGINALES: Solo actualizar las horas totales sin recalcular el total
+      // Esto mantiene los valores tal como se guardó la Work Order originalmente
       setEditWorkOrder((prev: any) => ({
         ...prev,
-        totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
+        totalHrs: totalHours.toString()
+        // NO recalcular totalLabAndParts para preservar el valor original
       }));
     }
-  }, [editWorkOrder?.parts, editWorkOrder?.totalHrs, extraOptions, showEditForm]);
+  }, [editWorkOrder?.mechanics, showEditForm]);
 
   const handleEdit = () => {
     if (selectedRow === null) return;
@@ -1365,18 +1356,41 @@ const WorkOrdersTable: React.FC = () => {
                       onPartChange={handlePartChange}                      onSubmit={async () => {
                         try {
                           setLoading(true);
+                          
+                          // Calcular horas totales automáticamente sumando las horas de todos los mecánicos
+                          const calculateTotalHours = () => {
+                            if (!editWorkOrder.mechanics || editWorkOrder.mechanics.length === 0) return 0;
+                            return editWorkOrder.mechanics.reduce((total: number, mechanic: any) => {
+                              return total + (parseFloat(mechanic.hrs) || 0);
+                            }, 0);
+                          };
+
+                          const totalHoursCalculated = calculateTotalHours();
+                          
                           // LIMPIA EL TOTAL ANTES DE ENVIAR
-                          const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));                          // Actualizar la work order
-                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, {
+                          const totalLabAndPartsLimpio = Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''));
+                          
+                          // Preparar datos para enviar
+                          const dataToSend = {
                             ...editWorkOrder,
-                            totalHrs: editWorkOrder.totalHrs, // Asegurar que se envíe el campo totalHrs
+                            totalHrs: totalHoursCalculated.toString(), // Usar las horas calculadas automáticamente
                             totalLabAndParts: totalLabAndPartsLimpio,
                             manualTotalEdit: true,
                             date: editWorkOrder.date ? editWorkOrder.date.slice(0, 10) : '',
                             parts: editWorkOrder.parts,
                             usuario: localStorage.getItem('username') || '',
                             extraOptions,
+                          };
+                          
+                          console.log('🔧 Enviando datos de WO editada:', {
+                            id: editWorkOrder.id,
+                            totalHrs: dataToSend.totalHrs,
+                            mechanics: editWorkOrder.mechanics,
+                            totalLabAndParts: dataToSend.totalLabAndParts
                           });
+
+                          // Actualizar la work order
+                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
 
                           // MARCA PARTES PENDIENTES COMO USADAS (si se agregaron nuevas partes pendientes)
                           const partesConPendingId = editWorkOrder.parts.filter((p: any) => p._pendingPartId);
@@ -1403,12 +1417,11 @@ const WorkOrdersTable: React.FC = () => {
                           console.log('📋 Refrescando tabla después de actualizar WO...');
                           await fetchWorkOrders();
                           console.log('✅ Tabla refrescada exitosamente');
-                          
-                          // ACTUALIZA EL ESTADO LOCAL INMEDIATAMENTE PARA REFLEJAR LOS CAMBIOS
+                            // ACTUALIZA EL ESTADO LOCAL INMEDIATAMENTE PARA REFLEJAR LOS CAMBIOS
                           setWorkOrders(prevOrders => 
                             prevOrders.map(order => 
                               order.id === editWorkOrder.id 
-                                ? { ...order, ...editWorkOrder, totalHrs: editWorkOrder.totalHrs, totalLabAndParts: totalLabAndPartsLimpio }
+                                ? { ...order, ...editWorkOrder, totalHrs: totalHoursCalculated.toString(), totalLabAndParts: totalLabAndPartsLimpio }
                                 : order
                             )
                           );
