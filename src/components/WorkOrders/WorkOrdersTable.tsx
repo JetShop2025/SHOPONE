@@ -1404,6 +1404,15 @@ const WorkOrdersTable: React.FC = () => {
                           await fetchWorkOrders();
                           console.log('✅ Tabla refrescada exitosamente');
                           
+                          // ACTUALIZA EL ESTADO LOCAL INMEDIATAMENTE PARA REFLEJAR LOS CAMBIOS
+                          setWorkOrders(prevOrders => 
+                            prevOrders.map(order => 
+                              order.id === editWorkOrder.id 
+                                ? { ...order, ...editWorkOrder, totalHrs: editWorkOrder.totalHrs, totalLabAndParts: totalLabAndPartsLimpio }
+                                : order
+                            )
+                          );
+                          
                           // CIERRA EL MODAL Y LIMPIA ESTADO DESPUÉS DE REFRESCAR
                           setShowEditForm(false);
                           setEditWorkOrder(null);

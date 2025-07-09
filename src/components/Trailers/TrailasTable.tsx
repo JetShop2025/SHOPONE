@@ -103,7 +103,6 @@ const TrailasTable: React.FC = () => {
       .sort();
     return clients;
   };
-
   // Get trailers for a specific client within their range
   const getClientTrailersInRange = (clientName: string) => {
     if (!Array.isArray(trailas)) return [];
@@ -111,7 +110,9 @@ const TrailasTable: React.FC = () => {
     const range = clientTrailerRanges[clientName];
     if (!range) return [];
     
-    return trailas.filter(traila => {
+    console.log(`🔍 Buscando trailers para cliente ${clientName} en rango ${range.min}-${range.max}`);
+    
+    const clientTrailers = trailas.filter(traila => {
       // Check if trailer belongs to this client
       if (traila.cliente !== clientName) return false;
       
@@ -120,8 +121,29 @@ const TrailasTable: React.FC = () => {
       if (trailerNumber === null) return false;
       
       // Check if number is in range
-      return trailerNumber >= range.min && trailerNumber <= range.max;
+      const inRange = trailerNumber >= range.min && trailerNumber <= range.max;
+      console.log(`  ${traila.nombre} (${trailerNumber}) - Cliente: ${traila.cliente} - En rango: ${inRange}`);
+      return inRange;
     });
+    
+    // Si no hay trailers con cliente asignado, buscar por nombre en el rango
+    if (clientTrailers.length === 0) {
+      console.log(`⚠️ No se encontraron trailers con cliente "${clientName}", buscando por número en rango`);
+      const rangeTrailers = trailas.filter(traila => {
+        const trailerNumber = extractTrailerNumber(traila.nombre);
+        if (trailerNumber === null) return false;
+        
+        const inRange = trailerNumber >= range.min && trailerNumber <= range.max;
+        if (inRange) {
+          console.log(`  ${traila.nombre} (${trailerNumber}) - Cliente DB: "${traila.cliente}" - En rango: ${inRange}`);
+        }
+        return inRange;
+      });
+      
+      return rangeTrailers;
+    }
+    
+    return clientTrailers;
   };
 
   // Extract trailer number from name
@@ -396,8 +418,10 @@ const TrailasTable: React.FC = () => {
             return matchesFilter && matchesSearch;
           });
           
+          // Show client group even if no trailers match the filter
           const isExpanded = expandedClients.has(client);
           const range = clientTrailerRanges[client];
+          const allClientTrailers = clientTrailersInRange; // Show total count regardless of filters
           
           return (
             <div key={client} style={{ marginBottom: '24px' }}>
@@ -436,7 +460,7 @@ const TrailasTable: React.FC = () => {
                     fontWeight: '400',
                     marginLeft: '8px'
                   }}>
-                    ({filteredClientTrailers.length} trailers • Rango: {range.min}-{range.max})
+                    ({allClientTrailers.length} trailers • Rango: {range.min}-{range.max})
                   </span>
                 </div>
                 <div style={{ fontSize: '14px', color: '#666' }}>
@@ -451,7 +475,22 @@ const TrailasTable: React.FC = () => {
                   gap: '20px',
                   marginTop: '16px'
                 }}>
-                  {filteredClientTrailers.map((traila) => (
+                  {filteredClientTrailers.length === 0 ? (
+                    <div style={{
+                      padding: '32px',
+                      textAlign: 'center',
+                      color: '#666',
+                      background: 'white',
+                      borderRadius: '12px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                    }}>
+                      {allClientTrailers.length === 0 
+                        ? `No hay trailers para ${client} en el rango ${range.min}-${range.max}`
+                        : 'No hay trailers que coincidan con los filtros aplicados'
+                      }
+                    </div>
+                  ) : (
+                    filteredClientTrailers.map((traila) => (
                     <div
                       key={traila.id}
                       style={{
@@ -595,25 +634,12 @@ const TrailasTable: React.FC = () => {
                             borderRadius: '6px',
                             cursor: 'pointer',
                             fontSize: '12px',
-                            fontWeight: '600'
-                          }}
+                            fontWeight: '600'                          }}
                         >
-                          🔧 W.O
-                        </button>
+                          🔧 W.O                        </button>
                       </div>
                     </div>
-                  ))}
-                  
-                  {filteredClientTrailers.length === 0 && (
-                    <div style={{
-                      gridColumn: '1 / -1',
-                      textAlign: 'center',
-                      padding: '40px',
-                      color: '#666',
-                      fontSize: '16px'
-                    }}>
-                      No se encontraron trailers para {client} en el rango {range.min}-{range.max}
-                    </div>
+                  ))
                   )}
                 </div>
               )}
