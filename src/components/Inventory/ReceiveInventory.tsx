@@ -66,7 +66,7 @@ const modalContentStyle: React.CSSProperties = {
 const ReceiveInventory: React.FC = () => {
   const [receives, setReceives] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);  const [form, setForm] = useState({
+  const [showForm, setShowForm] = useState(false);  const [form, setForm] = useState(() => ({
     sku: '',
     category: '',
     item: '',
@@ -82,7 +82,7 @@ const ReceiveInventory: React.FC = () => {
     totalPOClassic: '',
     fecha: getLocalDate(), // Usar función para fecha actual
     estatus: 'PENDING'
-  });
+  }));
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
   const [editPassword, setEditPassword] = useState('');
@@ -90,11 +90,22 @@ const ReceiveInventory: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [providerFilter, setProviderFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
-
   useEffect(() => {
     axios.get(`${API_URL}/inventory`).then(res => setInventory(res.data as any[]));
     axios.get(`${API_URL}/receive`).then(res => setReceives(res.data as any[]));
   }, []);
+
+  // Asegurar que la fecha esté actualizada cuando se abre el formulario
+  useEffect(() => {
+    if (showForm) {
+      const todayDate = getLocalDate();
+      console.log('🗓️ UseEffect - Actualizando fecha cuando se abre formulario:', todayDate);
+      setForm(prev => ({
+        ...prev,
+        fecha: todayDate
+      }));
+    }
+  }, [showForm]);
 
   useEffect(() => {
     const selected = inventory.find((item: any) => item.sku === form.sku);
@@ -177,6 +188,8 @@ const ReceiveInventory: React.FC = () => {
     }    setShowForm(false);
     
     // Reset form con fecha actual
+    const todayDate = getLocalDate();
+    console.log('🗓️ Reseteando formulario con fecha:', todayDate);
     setForm({
       sku: '',
       category: '',
@@ -191,7 +204,7 @@ const ReceiveInventory: React.FC = () => {
       qty: '',
       costTax: '',
       totalPOClassic: '',
-      fecha: getLocalDate(), // Usar fecha local correcta
+      fecha: todayDate, // Usar fecha local correcta
       estatus: 'PENDING'
     });
     const res = await axios.get(`${API_URL}/receive`);
@@ -303,12 +316,13 @@ const ReceiveInventory: React.FC = () => {
             marginRight: 8,
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
-          }}
-          onClick={() => {
+          }}          onClick={() => {
             // Actualizar fecha cuando se abre el formulario
+            const todayDate = getLocalDate();
+            console.log('🗓️ Actualizando fecha al abrir formulario:', todayDate);
             setForm(prev => ({
               ...prev,
-              fecha: getLocalDate()
+              fecha: todayDate
             }));
             setShowForm(true);
           }}
@@ -392,9 +406,8 @@ const ReceiveInventory: React.FC = () => {
                 marginBottom: 20,
                 letterSpacing: 1
               }}>Add Receipt</h2>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
-                <input name="category" value={form.category} onChange={handleChange} placeholder="Category" style={inputStyle} />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>                <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} autoComplete="off" />
+                <input name="category" value={form.category} onChange={handleChange} placeholder="Category" style={inputStyle} autoComplete="off" />
                 {/* Autocomplete para Item */}
                 <input
                   name="item"
@@ -404,15 +417,16 @@ const ReceiveInventory: React.FC = () => {
                   list="items-list"
                   style={inputStyle}
                   required
+                  autoComplete="off"
                 />
                 <datalist id="items-list">
                   {inventory.map((part: any) => (
                     <option key={part.sku} value={part.part} />
                   ))}
                 </datalist>
-                <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
-                <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
-                <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} />
+                <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} autoComplete="off" />
+                <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} autoComplete="off" />
+                <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} autoComplete="off" />
                 <select name="billToCo" value={form.billToCo} onChange={handleChange} required style={inputStyle}>
                   <option value="">Bill To Co</option>
                   {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -440,8 +454,7 @@ const ReceiveInventory: React.FC = () => {
                     style={inputStyle}
                     required
                   />
-                )}
-                {/* Campo para número de invoice */}
+                )}                {/* Campo para número de invoice */}
                 <input
                   type="text"
                   name="invoice"
@@ -449,8 +462,11 @@ const ReceiveInventory: React.FC = () => {
                   onChange={handleChange}
                   placeholder="Número de Invoice"
                   style={inputStyle}
-                />
-                {/* Campo para link de OneDrive */}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                />                {/* Campo para link de OneDrive */}
                 <input
                   name="invoiceLink"
                   value={form.invoiceLink || ''}
@@ -458,10 +474,13 @@ const ReceiveInventory: React.FC = () => {
                   placeholder="Invoice Link (OneDrive, etc.)"
                   style={inputStyle}
                   required
-                />
-                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} />
-                <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} />
-                <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} />
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                />                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} autoComplete="off" />
+                <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} autoComplete="off" />
+                <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} autoComplete="off" />
                 <input name="fecha" value={form.fecha} onChange={handleChange} type="date" required style={inputStyle} />
               </div>
               <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
