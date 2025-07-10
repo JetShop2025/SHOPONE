@@ -27,9 +27,10 @@ interface WorkOrderData {
 export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const pdf = new jsPDF();
   
-  // Establecer fuente Courier para todo el documento
-  pdf.setFont('courier');
-    // HEADER - Logo y título
+  // Establecer fuente Helvetica para mejor legibilidad
+  pdf.setFont('helvetica');
+  
+  // HEADER - Logo y título mejorado
   try {
     // Cargar logo desde el backend
     const logoResponse = await fetch('/api/assets/logo.png');
@@ -44,8 +45,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       
       // Verificar que el data URL es válido
       if (logoDataUrl && logoDataUrl.startsWith('data:image')) {
-        // Agregar logo en la esquina superior izquierda
-        pdf.addImage(logoDataUrl, 'PNG', 20, 15, 30, 15);
+        // Logo centrado en el header
+        pdf.addImage(logoDataUrl, 'PNG', 85, 10, 40, 20);
         console.log('✅ Logo cargado exitosamente');
       } else {
         throw new Error('Invalid logo data URL');
@@ -55,134 +56,246 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     }
   } catch (error) {
     console.warn('No se pudo cargar el logo:', error);
-    // Fallback: texto JET SHOP
-    pdf.setFontSize(12);
+    // Fallback: texto JET SHOP centrado
+    pdf.setFontSize(16);
     pdf.setTextColor(0, 100, 200);
-    pdf.text('JET SHOP', 20, 25);
+    pdf.text('JET SHOP', 105, 20, { align: 'center' });
   }
   
-  pdf.setFontSize(28);
+  // Título INVOICE centrado y profesional
+  pdf.setFontSize(24);
   pdf.setTextColor(0, 100, 200);
-  pdf.text('INVOICE', 105, 25, { align: 'center' });
+  pdf.text('WORK ORDER INVOICE', 105, 40, { align: 'center' });
   
-  // Información de la empresa - centrada y ajustada
-  pdf.setFontSize(9);
-  pdf.setTextColor(0, 0, 0);
-  pdf.text('JET SHOP, LLC', 140, 20);
-  pdf.text('740 EL CAMINO REAL', 140, 25);
-  pdf.text('GREENFIELD, CA 93927', 140, 30);
+  // Información de la empresa - centrada
+  pdf.setFontSize(10);
+  pdf.setTextColor(60, 60, 60);
+  pdf.text('JET SHOP, LLC', 105, 50, { align: 'center' });
+  pdf.text('740 EL CAMINO REAL, GREENFIELD, CA 93927', 105, 56, { align: 'center' });
+    
+  // INFORMACIÓN DEL CLIENTE Y W.O - Cajas mejoradas y centradas
+  const boxY = 70;
+  const boxHeight = 45;
   
-  // INFORMACIÓN DEL CLIENTE Y W.O - Cajas con bordes
   // Caja izquierda - Customer y Trailer
   pdf.setDrawColor(0, 100, 200);
-  pdf.rect(20, 40, 85, 35);
-    pdf.setFontSize(12);  pdf.setTextColor(0, 100, 200);
-  pdf.text('Customer:', 25, 50);
+  pdf.setLineWidth(1);
+  pdf.rect(25, boxY, 75, boxHeight);
+  
+  // Header de la caja izquierda
+  pdf.setFillColor(0, 100, 200);
+  pdf.rect(25, boxY, 75, 8, 'F');
+  pdf.setFontSize(10);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('CUSTOMER INFO', 62.5, boxY + 5, { align: 'center' });
+  
+  // Contenido de la caja izquierda
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 100, 200);
+  pdf.text('Customer:', 30, boxY + 18);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.customer || ''), 25, 55);
+  pdf.text(String(workOrderData.customer || ''), 30, boxY + 25);
   
   pdf.setTextColor(0, 100, 200);
-  pdf.text('Trailer:', 25, 65);
+  pdf.text('Trailer:', 30, boxY + 35);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.trailer || ''), 25, 70);
+  pdf.text(String(workOrderData.trailer || ''), 30, boxY + 42);
   
   // Caja derecha - Date, Invoice #, Mechanics, ID CLASSIC
-  pdf.rect(110, 40, 85, 35);
-    pdf.setTextColor(0, 100, 200);
-  pdf.text('Date:', 115, 50);
+  pdf.setDrawColor(0, 100, 200);
+  pdf.rect(110, boxY, 75, boxHeight);
+  
+  // Header de la caja derecha
+  pdf.setFillColor(0, 100, 200);
+  pdf.rect(110, boxY, 75, 8, 'F');
+  pdf.setTextColor(255, 255, 255);
+  pdf.text('ORDER INFO', 147.5, boxY + 5, { align: 'center' });
+  
+  // Contenido de la caja derecha
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 100, 200);
+  pdf.text('Date:', 115, boxY + 18);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.date || ''), 115, 55);
-    pdf.setTextColor(0, 100, 200);
-  pdf.text('Invoice #:', 115, 60);
-  pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.id || ''), 115, 65);
+  pdf.text(String(workOrderData.date || ''), 140, boxY + 18);
   
   pdf.setTextColor(0, 100, 200);
-  pdf.text('Mechanics:', 115, 70);
+  pdf.text('Invoice #:', 115, boxY + 25);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.mechanics || ''), 115, 75);
+  pdf.text(String(workOrderData.id || ''), 150, boxY + 25);
   
   pdf.setTextColor(0, 100, 200);
-  pdf.text('ID CLASSIC:', 150, 50);
+  pdf.text('Mechanics:', 115, boxY + 32);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.idClassic || ''), 150, 55);
+  const mechanicsText = String(workOrderData.mechanics || '');
+  const splitMechanics = pdf.splitTextToSize(mechanicsText, 40);
+  pdf.text(splitMechanics, 155, boxY + 32);
   
-  // DESCRIPCIÓN
+  pdf.setTextColor(0, 100, 200);
+  pdf.text('ID Classic:', 115, boxY + 42);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text(String(workOrderData.idClassic || ''), 155, boxY + 42);  
+  // DESCRIPCIÓN - mejorada y centrada
+  const descY = boxY + boxHeight + 15;
   pdf.setFontSize(12);
   pdf.setTextColor(0, 100, 200);
-  pdf.text('Description:', 20, 90);
-    pdf.setFontSize(10);
-  pdf.setTextColor(0, 0, 0);
-  const description = workOrderData.description || '';
-  const splitDescription = pdf.splitTextToSize(description, 175);
-  pdf.text(splitDescription, 20, 95);
+  pdf.text('Work Description:', 25, descY);
   
-  // TABLA DE PARTES
-  const tableData = workOrderData.parts.map((part, index) => [
-    index + 1,
-    part.sku,
-    part.description,
-    part.um,
-    part.qty,
-    `$${part.unitCost.toFixed(2)}`,
-    `$${part.total.toFixed(2)}`,
-    part.invoice || 'Ver Invoice'
-  ]);
-    autoTable(pdf, {
-    startY: 110,
-    head: [['No.', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT COST', 'TOTAL', 'INVOICE']],
-    body: tableData,
-    theme: 'grid',
-    headStyles: {
-      fillColor: [173, 216, 230],
-      textColor: [0, 0, 0],
-      fontSize: 10,
-      fontStyle: 'bold'
-    },
-    bodyStyles: {
-      fontSize: 9,
-      textColor: [0, 0, 0]
-    },    columnStyles: {
-      0: { halign: 'center', cellWidth: 12 },  // No.
-      1: { halign: 'left', cellWidth: 22 },    // SKU
-      2: { halign: 'left', cellWidth: 45 },    // DESCRIPTION
-      3: { halign: 'center', cellWidth: 15 },  // U/M
-      4: { halign: 'center', cellWidth: 12 },  // QTY
-      5: { halign: 'right', cellWidth: 22 },   // UNIT COST
-      6: { halign: 'right', cellWidth: 22 },   // TOTAL
-      7: { halign: 'center', cellWidth: 20 }   // INVOICE
-    },
-    margin: { left: 20, right: 20 }
-  });
-    // TOTALES
-  const finalY = (pdf as any).lastAutoTable.finalY + 10;
+  // Caja para descripción
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.5);
+  pdf.rect(25, descY + 5, 160, 20);
   
-  pdf.setFontSize(12);
-  pdf.text(`Subtotal Parts: $${workOrderData.subtotalParts.toFixed(2)}`, 140, finalY);
-  pdf.text(`Labor: $${workOrderData.laborCost.toFixed(2)}`, 140, finalY + 8);
-  
-  pdf.setFontSize(14);
-  pdf.setTextColor(220, 20, 60);
-  pdf.text(`TOTAL LAB & PARTS: $${workOrderData.totalCost.toFixed(2)}`, 140, finalY + 20);
-  
-  // TERMS & CONDITIONS
   pdf.setFontSize(10);
   pdf.setTextColor(0, 0, 0);
-  pdf.text('TERMS & CONDITIONS:', 20, finalY + 40);
-  pdf.setFontSize(8);
-  pdf.text('This estimate is not a final bill, pricing could change if job specifications change.', 20, finalY + 48);
-  pdf.text('I accept this estimate without any changes', 20, finalY + 60);
-  pdf.text('I accept this estimate with the handwritten changes', 20, finalY + 72);
+  const description = workOrderData.description || '';
+  const splitDescription = pdf.splitTextToSize(description, 150);
+  pdf.text(splitDescription, 30, descY + 12);
+    
+  // TABLA DE PARTES - optimizada y profesional
+  const tableStartY = descY + 35;
   
-  // LÍNEAS PARA FIRMAS
-  pdf.line(20, finalY + 85, 120, finalY + 85);
-  pdf.line(140, finalY + 85, 190, finalY + 85);
-  pdf.text('NAME:', 20, finalY + 92);
-  pdf.text('SIGNATURE:', 140, finalY + 92);
-    // FOOTER
+  const tableData = workOrderData.parts.map((part, index) => [
+    index + 1,
+    part.sku || '',
+    part.description || '',
+    part.um || '',
+    part.qty || 0,
+    `$${(part.unitCost || 0).toFixed(2)}`,
+    `$${(part.total || 0).toFixed(2)}`,
+    part.invoice || 'N/A'
+  ]);
+  
+  autoTable(pdf, {
+    startY: tableStartY,
+    head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT COST', 'TOTAL', 'INVOICE']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: [0, 100, 200],
+      textColor: [255, 255, 255],
+      fontSize: 9,
+      fontStyle: 'bold',
+      halign: 'center'
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: [0, 0, 0],
+      cellPadding: 3
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245]
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },   // #
+      1: { halign: 'left', cellWidth: 20 },     // SKU
+      2: { halign: 'left', cellWidth: 50 },     // DESCRIPTION
+      3: { halign: 'center', cellWidth: 15 },   // U/M
+      4: { halign: 'center', cellWidth: 15 },   // QTY
+      5: { halign: 'right', cellWidth: 25 },    // UNIT COST
+      6: { halign: 'right', cellWidth: 25 },    // TOTAL
+      7: { halign: 'center', cellWidth: 25 }    // INVOICE
+    },
+    margin: { left: 25, right: 25 },
+    tableLineColor: [0, 100, 200],
+    tableLineWidth: 0.5
+  });  
+  // TOTALES - mejorado y alineado
+  const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;
+  const totalsY = finalY + 15;
+  
+  // Caja para totales
+  pdf.setDrawColor(0, 100, 200);
+  pdf.setLineWidth(1);
+  pdf.rect(130, totalsY - 5, 55, 35);
+  
+  pdf.setFontSize(11);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('Subtotal Parts:', 135, totalsY + 5);
+  pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, 180, totalsY + 5, { align: 'right' });
+  
+  pdf.text('Labor Cost:', 135, totalsY + 12);
+  pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, 180, totalsY + 12, { align: 'right' });
+  
+  // Línea separadora
+  pdf.setDrawColor(0, 100, 200);
+  pdf.line(135, totalsY + 16, 180, totalsY + 16);
+  
+  // Total final
+  pdf.setFontSize(12);
+  pdf.setTextColor(220, 20, 60);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('TOTAL:', 135, totalsY + 25);
+  pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, 180, totalsY + 25, { align: 'right' });
+  
+  // Resetear fuente
+  pdf.setFont('helvetica', 'normal');
+    
+  // TERMS & CONDITIONS - mejorado
+  const termsY = totalsY + 45;
+  
+  pdf.setFontSize(11);
+  pdf.setTextColor(0, 100, 200);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('TERMS & CONDITIONS:', 25, termsY);
+  
+  pdf.setFontSize(9);
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFont('helvetica', 'normal');
+  const terms = [
+    '• This estimate is not a final bill, pricing could change if job specifications change.',
+    '• Payment is due upon completion of work.',
+    '• Customer is responsible for any additional costs due to unforeseen complications.'
+  ];
+  
+  terms.forEach((term, index) => {
+    pdf.text(term, 25, termsY + 10 + (index * 7));
+  });
+  
+  // AUTHORIZATION - mejorado
+  const authY = termsY + 35;
+  
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 100, 200);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('CUSTOMER AUTHORIZATION:', 25, authY);
+  
+  pdf.setFontSize(9);
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('☐ I accept this estimate without any changes', 25, authY + 10);
+  pdf.text('☐ I accept this estimate with the handwritten changes noted below', 25, authY + 18);
+  
+  // LÍNEAS PARA FIRMAS - mejoradas
+  const sigY = authY + 35;
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.5);
+  
+  // Línea para nombre
+  pdf.line(25, sigY, 95, sigY);
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 100, 100);
+  pdf.text('CUSTOMER NAME (PRINT)', 25, sigY + 7);
+  
+  // Línea para firma
+  pdf.line(115, sigY, 185, sigY);
+  pdf.text('CUSTOMER SIGNATURE', 115, sigY + 7);
+  
+  // Línea para fecha
+  pdf.line(25, sigY + 20, 95, sigY + 20);
+  pdf.text('DATE', 25, sigY + 27);
+  
+  // FOOTER - mejorado y centrado
+  const footerY = sigY + 45;
+  
   pdf.setFontSize(12);
   pdf.setTextColor(0, 100, 200);
-  pdf.text('Thanks for your business!', 105, finalY + 110, { align: 'center' });
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Thank you for choosing JET SHOP!', 105, footerY, { align: 'center' });
+  
+  pdf.setFontSize(9);
+  pdf.setTextColor(100, 100, 100);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('For questions about this invoice, please contact us at 740 El Camino Real, Greenfield, CA 93927', 105, footerY + 8, { align: 'center' });
   
   return pdf;
 };

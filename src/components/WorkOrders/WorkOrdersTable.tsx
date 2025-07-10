@@ -1047,6 +1047,74 @@ const WorkOrdersTable: React.FC = () => {
       setTrailersWithPendingParts([]);
     }
   };
+  // Función para visualizar PDF de Work Order existente
+  const handleViewPDF = async (workOrderId: number) => {
+    try {
+      console.log('🔄 Generando PDF para Work Order existente:', workOrderId);
+      
+      // 1. Obtener datos de la Work Order
+      const workOrderResponse = await axios.get(`${API_URL}/work-orders/${workOrderId}`);
+      const workOrderData = workOrderResponse.data as any;
+      
+      // 2. Obtener partes de la Work Order
+      const partsResponse = await axios.get(`${API_URL}/work-order-parts/${workOrderId}`);
+      const workOrderParts = partsResponse.data as any[];
+      
+      // 3. Enriquecer partes con invoice links del inventario
+      const enrichedParts = workOrderParts.map((part: any) => {
+        const inventoryItem = inventory.find(item => item.sku === part.sku);
+        return {
+          ...part,
+          invoiceLink: part.invoiceLink || inventoryItem?.invoiceLink || inventoryItem?.invoice_link,
+          invoice_number: part.invoice_number || 'N/A'
+        };
+      });
+      
+      // 4. Preparar datos para el PDF
+      const pdfData = {
+        id: workOrderData.id,
+        idClassic: workOrderData.idClassic || workOrderData.id.toString(),
+        customer: workOrderData.billToCo || 'N/A',
+        trailer: workOrderData.trailer || 'N/A',
+        date: new Date(workOrderData.date).toLocaleDateString('en-US'),
+        mechanics: Array.isArray(workOrderData.mechanics) ? 
+          workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : 
+          (workOrderData.mechanics || ''),
+        description: workOrderData.description || '',
+        parts: enrichedParts.map((part: any) => ({
+          sku: part.sku || '',
+          description: part.part_name || part.sku || 'N/A',
+          um: 'EA',
+          qty: Number(part.qty_used) || 0,
+          unitCost: Number(part.cost) || 0,
+          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+          invoice: part.invoice_number || 'N/A',
+          invoiceLink: part.invoiceLink
+        })),
+        laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
+        subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
+          sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
+        totalCost: Number(workOrderData.totalLabAndParts) || 0
+      };
+      
+      console.log('📄 Datos del PDF para WO existente:', pdfData);
+      
+      // 5. Generar PDF
+      const pdf = await generateWorkOrderPDF(pdfData);
+      
+      // 6. Descargar PDF
+      downloadPDF(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
+      
+      // 7. Abrir enlaces de facturas automáticamente
+      openInvoiceLinks(pdfData.parts);
+      
+      console.log('✅ PDF visualizado y enlaces de facturas abiertos para WO existente');
+      
+    } catch (error: any) {
+      console.error('❌ Error al visualizar PDF:', error);
+      alert(`Error al generar PDF: ${error.message}`);
+    }
+  };
 
   return (
     <>      <style>
@@ -1351,14 +1419,13 @@ const WorkOrdersTable: React.FC = () => {
             onClick={() => setShowHourmeter(true)}
           >
             Hourmeter
-          </button>
-          <button
+          </button>          <button
             className="wo-btn"
             style={secondaryBtn}
             disabled={selectedRow === null}
             onClick={() => {
               if (selectedRow !== null) {
-                window.open(`${API_URL}/work-orders/${selectedRow}/pdf`, '_blank', 'noopener,noreferrer');
+                handleViewPDF(selectedRow);
               }
             }}
           >
@@ -1550,6 +1617,7 @@ const WorkOrdersTable: React.FC = () => {
                           }
                             // Generar nuevo PDF tras la edición
                           try {
+
                             console.log('Generando nuevo PDF para Work Order editada...');
                             
                             // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas                            // Obtener datos completos de la orden editada
