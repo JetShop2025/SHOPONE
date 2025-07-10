@@ -128,9 +128,8 @@ export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
     },
     margin: { left: 20, right: 20 }
   });
-  
-  // TOTALES
-  const finalY = (pdf as any).autoTable.previous.finalY + 10;
+    // TOTALES
+  const finalY = (pdf as any).lastAutoTable.finalY + 10;
   
   pdf.setFontSize(12);
   pdf.text(`Subtotal Parts: $${workOrderData.subtotalParts.toFixed(2)}`, 140, finalY);
