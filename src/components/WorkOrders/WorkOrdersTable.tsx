@@ -756,38 +756,10 @@ const WorkOrdersTable: React.FC = () => {
       console.error(`❌ Error obteniendo partes pendientes para ${trailer}:`, error);
       setPendingParts([]);
     }
-  };
-  const partesSeleccionadas = pendingParts.filter(p => selectedPendingParts.includes(p.id));
+  };  const partesSeleccionadas = pendingParts.filter(p => selectedPendingParts.includes(p.id));
 
-  useEffect(() => {
-    if (showForm) {
-      // Obtén las partes seleccionadas
-      const partesSeleccionadas = pendingParts.filter(p => selectedPendingParts.includes(p.id));
-      // Rellena los primeros campos vacíos del formulario con las partes seleccionadas
-      const nuevasPartes = [...newWorkOrder.parts];
-      let idx = 0;
-      for (const parte of partesSeleccionadas) {
-        if (idx < nuevasPartes.length) {
-          nuevasPartes[idx] = {
-            part: parte.sku,
-            sku: parte.sku, // <-- obligatorio
-            qty: parte.qty,
-            cost: ''
-          };
-          idx++;
-        }
-      }
-      // Vacía los campos restantes si sobran
-      for (; idx < nuevasPartes.length; idx++) {
-        nuevasPartes[idx] = { part: '', sku: '', qty: '', cost: '' }; // <-- obligatorio
-      }
-      setNewWorkOrder(prev => ({
-        ...prev,
-        parts: nuevasPartes
-      }));
-    }    // Solo ejecuta cuando cambia la selección o las partes pendientes
-    // eslint-disable-next-line
-  }, [selectedPendingParts, pendingParts, showForm, setNewWorkOrder]);
+  // NOTA: useEffect problemático removido - causaba que se borraran las partes agregadas manualmente
+  // El sistema ahora usa botones "Add Part" individuales en lugar de selección múltiple
 
   // Calcula el total cada vez que cambian las partes o las horas
   useEffect(() => {
