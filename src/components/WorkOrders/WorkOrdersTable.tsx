@@ -254,25 +254,37 @@ const WorkOrdersTable: React.FC = () => {
   }, [fetchWorkOrders, serverStatus]);
   
   // Functions removed - handleFormSuccess and findPartBySku were unused
-  
-  useEffect(() => {
-    console.log('🔄 Cargando inventario...');
-    axios.get(`${API_URL}/inventory`)
-      .then(res => {
-        const inventoryData = Array.isArray(res.data) ? res.data : [];
-        setInventory(inventoryData);
-        console.log('✅ Inventario cargado:', inventoryData.length, 'items');
-        console.log('📋 Primeros 3 items del inventario:', inventoryData.slice(0, 3));
-        console.log('📋 Campos disponibles en inventory[0]:', inventoryData[0] ? Object.keys(inventoryData[0]) : 'N/A');
-        // Verificar que tenemos campos de precio
-        const withPrice = inventoryData.filter(item => item.precio || item.cost || item.price).length;
-        console.log(`💰 Items con precio: ${withPrice}/${inventoryData.length}`);
-      })
-      .catch(err => {
-        console.error('❌ Error cargando inventario:', err);
-        setInventory([]);
-      });
+    // Función para cargar inventario con reintentos inteligentes
+  const fetchInventory = useCallback(async () => {
+    try {
+      console.log('🔄 Cargando inventario...');
+      const res = await axios.get(`${API_URL}/inventory`, { timeout: 15000 });
+      const inventoryData = Array.isArray(res.data) ? res.data : [];
+      setInventory(inventoryData);
+      console.log('✅ Inventario cargado:', inventoryData.length, 'items');
+      console.log('📋 Primeros 3 items del inventario:', inventoryData.slice(0, 3));
+      console.log('📋 Campos disponibles en inventory[0]:', inventoryData[0] ? Object.keys(inventoryData[0]) : 'N/A');
+      // Verificar que tenemos campos de precio
+      const withPrice = inventoryData.filter(item => item.precio || item.cost || item.price).length;
+      console.log(`💰 Items con precio: ${withPrice}/${inventoryData.length}`);
+    } catch (err) {
+      console.error('❌ Error cargando inventario:', err);
+      setInventory([]);
+    }
   }, []);
+
+  // Cargar inventario inicialmente y cuando el servidor esté online
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
+
+  // Recargar inventario cuando el servidor se recupere
+  useEffect(() => {
+    if (serverStatus === 'online' && inventory.length === 0) {
+      console.log('🔄 Servidor online y sin inventario, recargando...');
+      fetchInventory();
+    }
+  }, [serverStatus, inventory.length, fetchInventory]);
   useEffect(() => {
     // Solo cargar una vez al abrir el formulario
     if (showForm) {
@@ -573,51 +585,107 @@ const WorkOrdersTable: React.FC = () => {
           console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED:`, error);
         }
       }      // Muestra mensaje de éxito
-      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);
-
-      // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
-      try {        // Obtener datos completos de la orden recién creada
-        const workOrderRes = await axios.get(`${API_URL}/work-orders/${newWorkOrderId}`);
+      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);      // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
+      try {
+        console.log('🔄 Intentando generar PDF para work order:', newWorkOrderId);
+        
+        // Obtener datos completos de la orden recién creada
+        const workOrderRes = await axios.get(`${API_URL}/work-orders/${newWorkOrderId}`, { timeout: 10000 });
         const workOrderData = workOrderRes.data as any;
         
+        console.log('✅ Datos de work order obtenidos:', workOrderData);
+        
+        // Validar que tenemos los datos mínimos necesarios
+        if (!workOrderData || !workOrderData.id) {
+          console.error('❌ Datos de work order inválidos o incompletos');
+          return;
+        }
+        
         // Obtener partes usadas con sus enlaces de facturas
-        const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`);
-        const partsWithInvoices = partsRes.data as any[];
-          // Preparar datos para el PDF
+        const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`, { timeout: 10000 });
+        const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data : [];
+        
+        console.log('✅ Partes de work order obtenidas:', partsWithInvoices.length, 'partes');
+        
+        // Preparar datos para el PDF con validaciones robustas
         const pdfData = {
-          id: workOrderData.id,
-          idClassic: workOrderData.idClassic || workOrderData.id.toString(),
-          customer: workOrderData.customer || '',
+          id: workOrderData.id || newWorkOrderId,
+          idClassic: workOrderData.idClassic || workOrderData.id?.toString() || newWorkOrderId.toString(),
+          customer: workOrderData.billToCo || workOrderData.customer || '',
           trailer: workOrderData.trailer || '',
-          date: workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
-          mechanics: workOrderData.mechanics || '',
+          date: workOrderData.date ? new Date(workOrderData.date).toLocaleDateString('en-US') : 
+                workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
+          mechanics: Array.isArray(workOrderData.mechanics) ? 
+            workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
+            workOrderData.mechanics || workOrderData.mechanic || '',
           description: workOrderData.description || '',
           parts: partsWithInvoices.map((part: any) => ({
-            sku: part.sku,
-            description: part.part_name || part.sku,
+            sku: part.sku || '',
+            description: part.part_name || part.sku || 'N/A',
             um: 'EA',
-            qty: part.qty_used,
-            unitCost: part.cost || 0,
-            total: (part.qty_used || 0) * (part.cost || 0),
+            qty: Number(part.qty_used) || 0,
+            unitCost: Number(part.cost) || 0,
+            total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
             invoice: part.invoice_number || 'N/A',
             invoiceLink: part.invoice_link
           })),
-          laborCost: Number(workOrderData.laborCost) || 0,
-          subtotalParts: Number(workOrderData.subtotalParts) || 0,
+          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
+          subtotalParts: partsWithInvoices.reduce((sum: number, part: any) => 
+            sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
           totalCost: Number(workOrderData.totalLabAndParts) || 0
         };
         
+        console.log('📄 Datos preparados para PDF:', pdfData);
+        
         // Generar y descargar PDF
         const pdf = generateWorkOrderPDF(pdfData);
-        downloadPDF(pdf, `work_order_${workOrderData.idClassic || newWorkOrderId}.pdf`);
+        downloadPDF(pdf, `work_order_${pdfData.idClassic}.pdf`);
         
         // Abrir enlaces de facturas automáticamente
         openInvoiceLinks(pdfData.parts);
         
         console.log('✅ PDF generado y enlaces de facturas abiertos');
-      } catch (pdfError) {
+      } catch (pdfError: any) {
         console.error('❌ Error generando PDF:', pdfError);
-        // No interrumpir el flujo si falla el PDF
+        console.error('❌ Detalles del error:', {
+          message: pdfError.message,
+          response: pdfError.response?.data,
+          status: pdfError.response?.status
+        });
+        
+        // Crear PDF básico con los datos que tenemos
+        try {
+          const basicPdfData = {
+            id: newWorkOrderId,
+            idClassic: newWorkOrderId.toString(),
+            customer: datosOrden.billToCo || '',
+            trailer: datosOrden.trailer || '',
+            date: datosOrden.date || new Date().toLocaleDateString('en-US'),
+            mechanics: Array.isArray(datosOrden.mechanics) ? 
+              datosOrden.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : '',
+            description: datosOrden.description || '',
+            parts: datosOrden.parts.map((part: any) => ({
+              sku: part.sku || '',
+              description: part.part || 'N/A',
+              um: 'EA',
+              qty: Number(part.qty) || 0,
+              unitCost: Number(part.cost) || 0,
+              total: (Number(part.qty) || 0) * (Number(part.cost) || 0),
+              invoice: 'N/A',
+              invoiceLink: undefined
+            })),
+            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
+            subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
+              sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
+            totalCost: Number(datosOrden.totalLabAndParts) || 0
+          };
+          
+          const pdf = generateWorkOrderPDF(basicPdfData);
+          downloadPDF(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
+          console.log('✅ PDF básico generado como fallback');
+        } catch (fallbackError) {
+          console.error('❌ Error generando PDF básico:', fallbackError);
+        }
       }
 
       if (data.pdfUrl) {
