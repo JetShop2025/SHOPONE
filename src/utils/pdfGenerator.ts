@@ -1,11 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+import autoTable from 'jspdf-autotable';
 
 interface WorkOrderData {
   id: number;
@@ -107,8 +101,7 @@ export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
     `$${part.total.toFixed(2)}`,
     part.invoice || 'Ver Invoice'
   ]);
-  
-  pdf.autoTable({
+    autoTable(pdf, {
     startY: 110,
     head: [['No.', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT COST', 'TOTAL', 'INVOICE']],
     body: tableData,
@@ -137,7 +130,7 @@ export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
   });
   
   // TOTALES
-  const finalY = (pdf as any).lastAutoTable.finalY + 10;
+  const finalY = (pdf as any).autoTable.previous.finalY + 10;
   
   pdf.setFontSize(12);
   pdf.text(`Subtotal Parts: $${workOrderData.subtotalParts.toFixed(2)}`, 140, finalY);
