@@ -677,14 +677,15 @@ async function deleteParte(id) {
 }
 
 // Pending Parts functions
-async function getPendingParts() {
+async function getReceivesParts() {
   try {
-    console.log('[DB] Getting pending parts from receives table');
-    const [rows] = await connection.execute('SELECT * FROM receives WHERE estatus = "PENDING"');
-    console.log(`[DB] Found ${rows.length} pending parts in receives table`);
+    console.log('[DB] Getting ALL parts from receives table (PENDING and USED)');
+    // Devolver TODAS las partes de receives, ordenadas por fecha y estatus
+    const [rows] = await connection.execute('SELECT * FROM receives ORDER BY fecha DESC, estatus ASC');
+    console.log(`[DB] Found ${rows.length} total parts in receives table`);
     return rows;
   } catch (error) {
-    console.error('[DB] Error getting pending parts from receives table:', error.message);
+    console.error('[DB] Error getting parts from receives table:', error.message);
     throw error;
   }
 }
@@ -840,7 +841,7 @@ module.exports = {
   createParte,
   updateParte,
   deleteParte,
-  getPendingParts,
+  getReceivesParts,
   createPendingPart,
   updatePendingPart,
   deletePendingPart,

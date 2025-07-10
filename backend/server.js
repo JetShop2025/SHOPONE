@@ -452,10 +452,10 @@ app.post('/api/inventory/deduct-fifo', async (req, res) => {
 // RECEIVE / PENDING PARTS ENDPOINTS - USING REAL DATABASE
 app.get('/api/receive', async (req, res) => {
   try {
-    console.log('[GET] /api/receive - Fetching from database');
-    const pendingParts = await db.getPendingParts();
-    console.log(`[GET] /api/receive - Found ${pendingParts.length} pending parts from database`);
-    res.json(pendingParts);
+    console.log('[GET] /api/receive - Fetching ALL parts from database');
+    const receivesParts = await db.getReceivesParts();
+    console.log(`[GET] /api/receive - Found ${receivesParts.length} total parts from database`);
+    res.json(receivesParts);
   } catch (error) {
     console.error('[ERROR] GET /api/receive:', error);
     res.status(500).json({ error: 'Failed to fetch receive data from database' });
@@ -517,9 +517,11 @@ app.delete('/api/receive/:id', async (req, res) => {
 app.get('/api/receive/pending/:trailer', async (req, res) => {
   try {
     console.log(`[GET] /api/receive/pending/${req.params.trailer} - Fetching from database`);
-    const pendingParts = await db.getPendingParts();
-    // Filter by destino_trailer field (not trailer)
-    const filtered = pendingParts.filter(part => part.destino_trailer === req.params.trailer);
+    const allParts = await db.getReceivesParts();
+    // Filter by destino_trailer field - mostrar solo PENDING para la funcionalidad de agregar a WO
+    const filtered = allParts.filter(part => 
+      part.destino_trailer === req.params.trailer && part.estatus === 'PENDING'
+    );
     console.log(`[GET] /api/receive/pending/${req.params.trailer} - Found ${filtered.length} pending parts from database`);
     res.json(filtered);
   } catch (error) {
@@ -531,9 +533,14 @@ app.get('/api/receive/pending/:trailer', async (req, res) => {
 app.get('/api/receive/trailers/with-pending', async (req, res) => {
   try {
     console.log('[GET] /api/receive/trailers/with-pending - Fetching from database');
-    const pendingParts = await db.getPendingParts();
-    // Use destino_trailer field instead of trailer
-    const trailersWithPending = [...new Set(pendingParts.map(part => part.destino_trailer).filter(Boolean))];
+    const allParts = await db.getReceivesParts();
+    // Use destino_trailer field instead of trailer - solo PENDING para notificaciones
+    const trailersWithPending = [...new Set(
+      allParts
+        .filter(part => part.estatus === 'PENDING')
+        .map(part => part.destino_trailer)
+        .filter(Boolean)
+    )];
     console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithPending.length} trailers from database`);
     res.json(trailersWithPending);
   } catch (error) {
