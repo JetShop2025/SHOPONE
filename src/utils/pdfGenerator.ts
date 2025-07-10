@@ -27,12 +27,18 @@ interface WorkOrderData {
 // First implementation removed - keeping the improved second implementation
 
 export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
-  const pdf = new jsPDF();
+  const pdf = new jsPDF('p', 'mm', 'a4'); // Especificar formato A4
   
   // Configurar fuente
   pdf.setFont('helvetica');
   
-  // HEADER EXACTO COMO LA IMAGEN 1
+  // Márgenes de página (A4: 210mm ancho)
+  const pageWidth = 210;
+  const leftMargin = 15;
+  const rightMargin = 15;
+  const contentWidth = pageWidth - leftMargin - rightMargin; // 180mm
+  
+  // HEADER CENTRADO Y SIN DESBORDAMIENTO
   try {
     // Cargar logo desde el backend
     const logoResponse = await fetch('/api/assets/logo.png');
@@ -46,8 +52,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       });
       
       if (logoDataUrl && logoDataUrl.startsWith('data:image')) {
-        // Logo en posición exacta como imagen 1 (izquierda superior)
-        pdf.addImage(logoDataUrl, 'PNG', 20, 15, 40, 25);
+        // Logo centrado en el lado izquierdo
+        pdf.addImage(logoDataUrl, 'PNG', leftMargin, 15, 35, 20);
         console.log('✅ Logo cargado exitosamente');
       } else {
         throw new Error('Invalid logo data URL');
@@ -57,97 +63,108 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     }
   } catch (error) {
     console.warn('No se pudo cargar el logo:', error);
-    // Fallback: texto JET SHOP en la posición del logo
-    pdf.setFontSize(16);
+    // Fallback: texto JET SHOP
+    pdf.setFontSize(14);
     pdf.setTextColor(0, 100, 200);
-    pdf.text('JET SHOP', 20, 30);
+    pdf.text('JET SHOP', leftMargin, 28);
   }
   
-  // TÍTULO "INVOICE" en el centro exacto como imagen 1
-  pdf.setFontSize(30);
+  // TÍTULO "INVOICE" perfectamente centrado
+  pdf.setFontSize(28);
   pdf.setTextColor(0, 150, 255);
-  pdf.text('INVOICE', 105, 35, { align: 'center' });
+  pdf.text('INVOICE', pageWidth / 2, 30, { align: 'center' });
   
-  // INFORMACIÓN DE LA EMPRESA en la esquina superior derecha exacto como imagen 1
-  pdf.setFontSize(9);
+  // INFORMACIÓN DE LA EMPRESA alineada a la derecha
+  pdf.setFontSize(8);
   pdf.setTextColor(0, 0, 0);
-  pdf.text('JET SHOP, LLC', 150, 20);
-  pdf.text('740 EL CAMINO REAL', 150, 26);
-  pdf.text('GREENFIELD, CA 93927', 150, 32);
+  pdf.text('JET SHOP, LLC', pageWidth - rightMargin, 18, { align: 'right' });
+  pdf.text('740 EL CAMINO REAL', pageWidth - rightMargin, 24, { align: 'right' });
+  pdf.text('GREENFIELD, CA 93927', pageWidth - rightMargin, 30, { align: 'right' });
   
-  // PRIMERA FILA DE CAJAS (Customer/Trailer a la izquierda, Date/Invoice#/Mechanics/ID a la derecha)
-  const firstRowY = 50;
-  const boxHeight = 35;
+  // CAJAS PRINCIPALES - CENTRADAS Y BALANCEADAS
+  const firstRowY = 45;
+  const boxHeight = 30;
+  const leftBoxWidth = 80;
+  const rightBoxWidth = 80;
+  const gapBetweenBoxes = 10;
   
-  // CAJA IZQUIERDA - Customer y Trailer (exacto como imagen 1)
+  // Calcular posiciones para centrar ambas cajas
+  const totalBoxesWidth = leftBoxWidth + gapBetweenBoxes + rightBoxWidth;
+  const boxesStartX = (pageWidth - totalBoxesWidth) / 2;
+  
+  // CAJA IZQUIERDA - Customer y Trailer
   pdf.setDrawColor(0, 150, 255);
-  pdf.setLineWidth(1);
-  pdf.rect(20, firstRowY, 85, boxHeight);
+  pdf.setLineWidth(0.8);
+  pdf.rect(boxesStartX, firstRowY, leftBoxWidth, boxHeight);
   
   // Contenido caja izquierda
-  pdf.setFontSize(11);
+  pdf.setFontSize(10);
   pdf.setTextColor(0, 150, 255);
-  pdf.text('Customer:', 25, firstRowY + 10);
+  pdf.text('Customer:', boxesStartX + 3, firstRowY + 8);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.customer || ''), 25, firstRowY + 18);
+  const customerText = String(workOrderData.customer || '');
+  pdf.text(customerText.length > 15 ? customerText.substring(0, 15) + '...' : customerText, 
+           boxesStartX + 3, firstRowY + 15);
   
   pdf.setTextColor(0, 150, 255);
-  pdf.text('Trailer:', 25, firstRowY + 26);
+  pdf.text('Trailer:', boxesStartX + 3, firstRowY + 22);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.trailer || ''), 25, firstRowY + 32);
+  pdf.text(String(workOrderData.trailer || ''), boxesStartX + 3, firstRowY + 28);
   
-  // CAJA DERECHA - Date, Invoice #, Mechanics, ID Classic (exacto como imagen 1)
+  // CAJA DERECHA - Date, Invoice #, Mechanics, ID Classic
+  const rightBoxX = boxesStartX + leftBoxWidth + gapBetweenBoxes;
   pdf.setDrawColor(0, 150, 255);
-  pdf.rect(115, firstRowY, 75, boxHeight);
+  pdf.rect(rightBoxX, firstRowY, rightBoxWidth, boxHeight);
   
   // Contenido caja derecha
-  pdf.setFontSize(11);
+  pdf.setFontSize(10);
   pdf.setTextColor(0, 150, 255);
-  pdf.text('Date:', 120, firstRowY + 10);
+  pdf.text('Date:', rightBoxX + 3, firstRowY + 6);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.date || ''), 155, firstRowY + 10);
+  pdf.text(String(workOrderData.date || ''), rightBoxX + 25, firstRowY + 6);
   
   pdf.setTextColor(0, 150, 255);
-  pdf.text('Invoice #:', 120, firstRowY + 18);
+  pdf.text('Invoice #:', rightBoxX + 3, firstRowY + 12);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.id || ''), 155, firstRowY + 18);
+  pdf.text(String(workOrderData.id || ''), rightBoxX + 25, firstRowY + 12);
   
   pdf.setTextColor(0, 150, 255);
-  pdf.text('Mechanics:', 120, firstRowY + 26);
+  pdf.text('Mechanics:', rightBoxX + 3, firstRowY + 18);
   pdf.setTextColor(0, 0, 0);
   const mechanicsText = String(workOrderData.mechanics || '');
-  pdf.text(mechanicsText, 155, firstRowY + 26);
+  pdf.text(mechanicsText.length > 12 ? mechanicsText.substring(0, 12) + '...' : mechanicsText, 
+           rightBoxX + 25, firstRowY + 18);
   
   pdf.setTextColor(0, 150, 255);
-  pdf.text('ID Classic:', 120, firstRowY + 34);
+  pdf.text('ID Classic:', rightBoxX + 3, firstRowY + 24);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.idClassic || ''), 155, firstRowY + 34);
+  pdf.text(String(workOrderData.idClassic || ''), rightBoxX + 25, firstRowY + 24);
   
-  // DESCRIPCIÓN (exacto como imagen 1)
-  const descY = firstRowY + boxHeight + 15;
-  pdf.setFontSize(11);
-  pdf.setTextColor(0, 150, 255);
-  pdf.text('Description:', 20, descY);
-  
-  // Descripción del trabajo
+  // DESCRIPCIÓN
+  const descY = firstRowY + boxHeight + 12;
   pdf.setFontSize(10);
+  pdf.setTextColor(0, 150, 255);
+  pdf.text('Description:', leftMargin, descY);
+  
+  // Descripción del trabajo - con control de ancho
+  pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   const description = workOrderData.description || '';
-  const splitDescription = pdf.splitTextToSize(description, 170);
-  pdf.text(splitDescription, 20, descY + 8);
+  const splitDescription = pdf.splitTextToSize(description, contentWidth - 20);
+  pdf.text(splitDescription, leftMargin, descY + 6);
   
-  // TABLA DE PARTES (exacto como imagen 1 - formato correcto)
-  const tableStartY = descY + 25;
+  // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
+  const tableStartY = descY + 20;
   
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
-    String(part.sku || ''),
-    String(part.description || ''),
+    String(part.sku || '').substring(0, 12), // Limitar SKU
+    String(part.description || '').substring(0, 30), // Limitar descripción
     String(part.um || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
     `$${(part.total || 0).toFixed(2)}`,
-    String(part.invoice || 'Ver Invoice')
+    'Ver Invoice'
   ]);
   
   autoTable(pdf, {
@@ -156,110 +173,125 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     body: tableData,
     theme: 'grid',
     headStyles: {
-      fillColor: [66, 139, 202], // Color azul exacto como imagen 1
+      fillColor: [66, 139, 202],
       textColor: [255, 255, 255],
-      fontSize: 10,
-      fontStyle: 'bold',
-      halign: 'center'
-    },
-    bodyStyles: {
       fontSize: 9,
-      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      halign: 'center',
       cellPadding: 2
     },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 15 },    // No.
-      1: { halign: 'center', cellWidth: 25 },    // SKU
-      2: { halign: 'left', cellWidth: 55 },      // DESCRIPTION
-      3: { halign: 'center', cellWidth: 15 },    // U/M
-      4: { halign: 'center', cellWidth: 15 },    // QTY
-      5: { halign: 'right', cellWidth: 25 },     // UNIT COST
-      6: { halign: 'right', cellWidth: 25 },     // TOTAL
-      7: { halign: 'center', cellWidth: 25 }     // INVOICE
+    bodyStyles: {
+      fontSize: 8,
+      textColor: [0, 0, 0],
+      cellPadding: 1.5,
+      overflow: 'ellipsize'
     },
-    margin: { left: 20, right: 20 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 12 },    // No.
+      1: { halign: 'center', cellWidth: 20 },    // SKU
+      2: { halign: 'left', cellWidth: 45 },      // DESCRIPTION
+      3: { halign: 'center', cellWidth: 12 },    // U/M
+      4: { halign: 'center', cellWidth: 12 },    // QTY
+      5: { halign: 'right', cellWidth: 22 },     // UNIT COST
+      6: { halign: 'right', cellWidth: 22 },     // TOTAL
+      7: { halign: 'center', cellWidth: 22 }     // INVOICE
+    },
+    margin: { left: leftMargin, right: rightMargin },
     tableLineColor: [66, 139, 202],
-    tableLineWidth: 0.5,
+    tableLineWidth: 0.3,
     styles: {
       lineColor: [66, 139, 202],
-      lineWidth: 0.5
+      lineWidth: 0.3,
+      cellPadding: 1.5
     }
   });
   
-  // TOTALES (posición exacta como imagen 1 - esquina inferior derecha)
-  const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 60;
-  const totalsY = finalY + 10;
+  // TOTALES - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
+  const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;
+  const totalsY = finalY + 8;
+  const totalsStartX = pageWidth - rightMargin - 60; // 60mm para los totales
   
-  pdf.setFontSize(11);
+  pdf.setFontSize(10);
   pdf.setTextColor(0, 0, 0);
   
   // Subtotal Parts
-  pdf.text('Subtotal Parts:', 140, totalsY);
-  pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, 185, totalsY, { align: 'right' });
+  pdf.text('Subtotal Parts:', totalsStartX, totalsY);
+  pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, pageWidth - rightMargin, totalsY, { align: 'right' });
   
   // Labor
-  pdf.text('Labor:', 140, totalsY + 8);
-  pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, 185, totalsY + 8, { align: 'right' });
+  pdf.text('Labor:', totalsStartX, totalsY + 6);
+  pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, pageWidth - rightMargin, totalsY + 6, { align: 'right' });
   
   // Línea separadora
   pdf.setDrawColor(0, 0, 0);
-  pdf.setLineWidth(0.5);
-  pdf.line(140, totalsY + 12, 185, totalsY + 12);
+  pdf.setLineWidth(0.3);
+  pdf.line(totalsStartX, totalsY + 9, pageWidth - rightMargin, totalsY + 9);
   
-  // TOTAL (en rojo como imagen 1)
-  pdf.setFontSize(12);
+  // TOTAL (en rojo)
+  pdf.setFontSize(11);
   pdf.setTextColor(220, 20, 60);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('TOTAL LAB & PARTS:', 140, totalsY + 20);
-  pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, 185, totalsY + 20, { align: 'right' });
+  pdf.text('TOTAL LAB & PARTS:', totalsStartX, totalsY + 15);
+  pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, pageWidth - rightMargin, totalsY + 15, { align: 'right' });
   
   // Resetear fuente
   pdf.setFont('helvetica', 'normal');
   
-  // TERMS & CONDITIONS (exacto como imagen 1)
-  const termsY = totalsY + 35;
+  // TERMS & CONDITIONS
+  const termsY = totalsY + 25;
   
-  pdf.setFontSize(10);
+  pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('TERMS & CONDITIONS:', 20, termsY);
+  pdf.text('TERMS & CONDITIONS:', leftMargin, termsY);
   
-  pdf.setFontSize(9);
+  pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.text('This estimate is not a final bill, pricing could change if job specifications change.', 20, termsY + 8);
-  pdf.text('Payment is due upon completion of work.', 20, termsY + 15);
-  pdf.text('Customer is responsible for any additional costs due to unforeseen complications.', 20, termsY + 22);
+  const terms = [
+    'This estimate is not a final bill, pricing could change if job specifications change.',
+    'Payment is due upon completion of work.',
+    'Customer is responsible for any additional costs due to unforeseen complications.'
+  ];
   
-  // CUSTOMER AUTHORIZATION (exacto como imagen 1)
-  const authY = termsY + 35;
+  terms.forEach((term, index) => {
+    const splitTerm = pdf.splitTextToSize(term, contentWidth);
+    pdf.text(splitTerm, leftMargin, termsY + 6 + (index * 6));
+  });
   
-  pdf.setFontSize(9);
-  pdf.setTextColor(0, 0, 0);
-  pdf.text('☐ I accept this estimate without any changes', 20, authY);
-  pdf.text('☐ I accept this estimate with the handwritten changes noted below', 20, authY + 8);
+  // CUSTOMER AUTHORIZATION
+  const authY = termsY + 25;
   
-  // LÍNEAS PARA FIRMAS (exacto como imagen 1)
-  const sigY = authY + 25;
-  pdf.setDrawColor(0, 0, 0);
-  pdf.setLineWidth(0.5);
-  
-  // Línea para nombre
-  pdf.line(20, sigY, 100, sigY);
   pdf.setFontSize(8);
   pdf.setTextColor(0, 0, 0);
-  pdf.text('NAME:', 20, sigY + 7);
+  pdf.text('☐ I accept this estimate without any changes', leftMargin, authY);
+  pdf.text('☐ I accept this estimate with the handwritten changes noted below', leftMargin, authY + 6);
+  
+  // LÍNEAS PARA FIRMAS - CENTRADAS
+  const sigY = authY + 18;
+  const lineWidth = 70;
+  const gapBetweenLines = 20;
+  const linesStartX = (pageWidth - (lineWidth * 2 + gapBetweenLines)) / 2;
+  
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.3);
+  
+  // Línea para nombre
+  pdf.line(linesStartX, sigY, linesStartX + lineWidth, sigY);
+  pdf.setFontSize(7);
+  pdf.text('NAME:', linesStartX, sigY + 5);
   
   // Línea para firma
-  pdf.line(120, sigY, 190, sigY);
-  pdf.text('SIGNATURE:', 120, sigY + 7);
+  const secondLineX = linesStartX + lineWidth + gapBetweenLines;
+  pdf.line(secondLineX, sigY, secondLineX + lineWidth, sigY);
+  pdf.text('SIGNATURE:', secondLineX, sigY + 5);
   
-  // FOOTER (exacto como imagen 1)
-  const footerY = sigY + 25;
+  // FOOTER CENTRADO
+  const footerY = sigY + 15;
   
-  pdf.setFontSize(12);
+  pdf.setFontSize(11);
   pdf.setTextColor(0, 150, 255);
   pdf.setFont('helvetica', 'italic');
-  pdf.text('Thanks for your business!', 105, footerY, { align: 'center' });
+  pdf.text('Thanks for your business!', pageWidth / 2, footerY, { align: 'center' });
   
   return pdf;
 };

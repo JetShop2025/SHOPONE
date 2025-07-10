@@ -726,10 +726,12 @@ const WorkOrdersTable: React.FC = () => {
       if (data.pdfUrl) {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
       }
-      
-      // Cierra el formulario y resetea
+        // Cierra el formulario y resetea COMPLETAMENTE
       setShowForm(false);
       resetNewWorkOrder();
+      setExtraOptions([]);
+      setPendingPartsQty({});
+      setSelectedPendingParts([]);
       
       // Actualiza la tabla inmediatamente
       await fetchWorkOrders();
@@ -949,25 +951,39 @@ const WorkOrdersTable: React.FC = () => {
       _pendingPartId: pendingPart.id // Guardar referencia para el procesamiento posterior
     };
       console.log('✅ Nueva parte creada:', newPart);
-    
-    // Agregar la parte al formulario correspondiente
-    if (showEditForm && editWorkOrder) {      // Agregar al editWorkOrder
-      setEditWorkOrder((prev: any) => ({
-        ...prev,
-        parts: [
-          ...(prev.parts || []),
-          newPart
-        ]
-      }));
+      // Agregar la parte al formulario correspondiente
+    if (showEditForm && editWorkOrder) {
+      // Agregar al editWorkOrder - buscar primer slot vacío
+      setEditWorkOrder((prev: any) => {
+        const updatedParts = [...(prev.parts || [])];
+        const emptyIndex = updatedParts.findIndex(p => !p.part && !p.sku);
+        
+        if (emptyIndex !== -1) {
+          // Reemplazar el primer slot vacío
+          updatedParts[emptyIndex] = newPart;
+        } else {
+          // Si no hay slots vacíos, agregar al final
+          updatedParts.push(newPart);
+        }
+        
+        return { ...prev, parts: updatedParts };
+      });
     } else {
-      // Agregar al newWorkOrder
-      setNewWorkOrder(prev => ({
-        ...prev,
-        parts: [
-          ...prev.parts,
-          newPart
-        ]
-      }));
+      // Agregar al newWorkOrder - buscar primer slot vacío
+      setNewWorkOrder(prev => {
+        const updatedParts = [...prev.parts];
+        const emptyIndex = updatedParts.findIndex(p => !p.part && !p.sku);
+        
+        if (emptyIndex !== -1) {
+          // Reemplazar el primer slot vacío
+          updatedParts[emptyIndex] = newPart;
+        } else {
+          // Si no hay slots vacíos, agregar al final
+          updatedParts.push(newPart);
+        }
+        
+        return { ...prev, parts: updatedParts };
+      });
     }
     
     // Actualizar la cantidad de partes pendientes localmente
@@ -1341,14 +1357,17 @@ const WorkOrdersTable: React.FC = () => {
           </label>
         </div>
 
-        {/* --- BOTONES ARRIBA --- */}
-        <div style={{ margin: '24px 0 16px 0' }}>
+        {/* --- BOTONES ARRIBA --- */}        <div style={{ margin: '24px 0 16px 0' }}>
           <button
             className="wo-btn"
             style={primaryBtn}
             onClick={() => {
-              resetNewWorkOrder(); // <-- LIMPIA LOS CAMPOS
-              setExtraOptions([]); // <-- LIMPIA EXTRAS SI USAS
+              // RESETEAR COMPLETAMENTE EL FORMULARIO
+              resetNewWorkOrder(); 
+              setExtraOptions([]);
+              setPendingPartsQty({});
+              // También resetear cualquier selección de partes pendientes
+              setSelectedPendingParts([]);
               setShowForm(true);
             }}
           >
@@ -1397,13 +1416,27 @@ const WorkOrdersTable: React.FC = () => {
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
         {showForm && (
-          <div style={modalStyle} onClick={() => setShowForm(false)}>
+          <div style={modalStyle} onClick={() => {
+            // RESETEAR TODO CUANDO SE CIERRA EL MODAL
+            resetNewWorkOrder();
+            setExtraOptions([]);
+            setPendingPartsQty({});
+            setSelectedPendingParts([]);
+            setShowForm(false);
+          }}>
             <div style={modalContentStyle} onClick={e => e.stopPropagation()}>              <WorkOrderForm
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
                 onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}
-                onCancel={() => setShowForm(false)}                title="New Work Order"
+                onCancel={() => {
+                  // RESETEAR TODO CUANDO SE CANCELA
+                  resetNewWorkOrder();
+                  setExtraOptions([]);
+                  setPendingPartsQty({});
+                  setSelectedPendingParts([]);
+                  setShowForm(false);
+                }}                title="New Work Order"
                 billToCoOptions={billToCoOptions}
                 getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
                 inventory={inventory}
