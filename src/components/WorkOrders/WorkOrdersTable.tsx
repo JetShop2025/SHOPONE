@@ -11,6 +11,7 @@ import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
+import { generateWorkOrderPDF, openInvoiceLinks, downloadPDF } from '../../utils/pdfGenerator';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -571,10 +572,53 @@ const WorkOrdersTable: React.FC = () => {
         } catch (error) {
           console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED:`, error);
         }
-      }
-
-      // Muestra mensaje de éxito
+      }      // Muestra mensaje de éxito
       alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);
+
+      // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
+      try {        // Obtener datos completos de la orden recién creada
+        const workOrderRes = await axios.get(`${API_URL}/work-orders/${newWorkOrderId}`);
+        const workOrderData = workOrderRes.data as any;
+        
+        // Obtener partes usadas con sus enlaces de facturas
+        const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`);
+        const partsWithInvoices = partsRes.data as any[];
+          // Preparar datos para el PDF
+        const pdfData = {
+          id: workOrderData.id,
+          idClassic: workOrderData.idClassic || workOrderData.id.toString(),
+          customer: workOrderData.customer || '',
+          trailer: workOrderData.trailer || '',
+          date: workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
+          mechanics: workOrderData.mechanics || '',
+          description: workOrderData.description || '',
+          parts: partsWithInvoices.map((part: any) => ({
+            sku: part.sku,
+            description: part.part_name || part.sku,
+            um: 'EA',
+            qty: part.qty_used,
+            unitCost: part.cost || 0,
+            total: (part.qty_used || 0) * (part.cost || 0),
+            invoice: part.invoice_number || 'N/A',
+            invoiceLink: part.invoice_link
+          })),
+          laborCost: Number(workOrderData.laborCost) || 0,
+          subtotalParts: Number(workOrderData.subtotalParts) || 0,
+          totalCost: Number(workOrderData.totalLabAndParts) || 0
+        };
+        
+        // Generar y descargar PDF
+        const pdf = generateWorkOrderPDF(pdfData);
+        downloadPDF(pdf, `work_order_${workOrderData.idClassic || newWorkOrderId}.pdf`);
+        
+        // Abrir enlaces de facturas automáticamente
+        openInvoiceLinks(pdfData.parts);
+        
+        console.log('✅ PDF generado y enlaces de facturas abiertos');
+      } catch (pdfError) {
+        console.error('❌ Error generando PDF:', pdfError);
+        // No interrumpir el flujo si falla el PDF
+      }
 
       if (data.pdfUrl) {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
@@ -1391,16 +1435,57 @@ const WorkOrdersTable: React.FC = () => {
                               console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED en edición:`, error);
                             }
                           }
-                          
-                          // Generar nuevo PDF tras la edición
+                            // Generar nuevo PDF tras la edición
                           try {
                             console.log('Generando nuevo PDF para Work Order editada...');
+                            
+                            // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas                            // Obtener datos completos de la orden editada
+                            const workOrderRes = await axios.get(`${API_URL}/work-orders/${editWorkOrder.id}`);
+                            const workOrderData = workOrderRes.data as any;
+                            
+                            // Obtener partes usadas con sus enlaces de facturas
+                            const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
+                            const partsWithInvoices = partsRes.data as any[];
+                              // Preparar datos para el PDF
+                            const pdfData = {
+                              id: workOrderData.id,
+                              idClassic: workOrderData.idClassic || workOrderData.id.toString(),
+                              customer: workOrderData.customer || '',
+                              trailer: workOrderData.trailer || '',
+                              date: workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
+                              mechanics: workOrderData.mechanics || '',
+                              description: workOrderData.description || '',
+                              parts: partsWithInvoices.map((part: any) => ({
+                                sku: part.sku,
+                                description: part.part_name || part.sku,
+                                um: 'EA',
+                                qty: part.qty_used,
+                                unitCost: part.cost || 0,
+                                total: (part.qty_used || 0) * (part.cost || 0),
+                                invoice: part.invoice_number || 'N/A',
+                                invoiceLink: part.invoice_link
+                              })),
+                              laborCost: Number(workOrderData.laborCost) || 0,
+                              subtotalParts: Number(workOrderData.subtotalParts) || 0,
+                              totalCost: Number(workOrderData.totalLabAndParts) || 0
+                            };
+                            
+                            // Generar y descargar PDF
+                            const pdf = generateWorkOrderPDF(pdfData);
+                            downloadPDF(pdf, `work_order_${workOrderData.idClassic || editWorkOrder.id}.pdf`);
+                            
+                            // Abrir enlaces de facturas automáticamente
+                            openInvoiceLinks(pdfData.parts);
+                            
+                            console.log('✅ PDF generado y enlaces de facturas abiertos tras edición');
+                            
+                            // Mantener el endpoint anterior para compatibilidad
                             await axios.post(`${API_URL}/work-orders/${editWorkOrder.id}/generate-pdf`);
                             console.log('PDF generado exitosamente tras edición');
                           } catch (pdfError) {
                             console.error('Error generando PDF tras edición:', pdfError);
                             // No interrumpir el flujo si falla el PDF
-                          }                          // REFRESCA LA TABLA INMEDIATAMENTE CON AWAIT
+                          }// REFRESCA LA TABLA INMEDIATAMENTE CON AWAIT
                           console.log('📋 Refrescando tabla después de actualizar WO...');
                           await fetchWorkOrders();
                           console.log('✅ Tabla refrescada exitosamente');

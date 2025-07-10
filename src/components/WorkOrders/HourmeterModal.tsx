@@ -17,14 +17,22 @@ const HourmeterModal: React.FC<{
 }> = ({ show, onClose, workOrders, mechanics, selectedWeek }) => {
   const [week, setWeek] = useState(selectedWeek);
   const [mechanic, setMechanic] = useState('');
-
+  const [selectedDate, setSelectedDate] = useState(''); // Nuevo filtro por día
   const { start, end } = getWeekRange(week);
   const filtered = workOrders.filter(order => {
     if (!order.date) return false;
     const orderDate = dayjs(order.date.slice(0, 10));
+    
+    // Filtro por semana
     const inWeek = orderDate.isBetween(start, end, 'day', '[]');
+    
+    // Filtro por día específico (si se selecciona)
+    const matchesDate = !selectedDate || orderDate.format('YYYY-MM-DD') === selectedDate;
+    
+    // Filtro por mecánico
     const matchesMechanic = !mechanic || order.mechanic === mechanic;
-    return inWeek && matchesMechanic;
+    
+    return inWeek && matchesDate && matchesMechanic;
   });
 
   // 1. Construye un objeto para acumular por mecánico
@@ -127,13 +135,15 @@ const HourmeterModal: React.FC<{
             fontSize: 28,
             fontWeight: 700,
             letterSpacing: '0.5px'
-          }}>📊 Hourmeter Report</h2>
-          <p style={{
+          }}>📊 Hourmeter Report</h2>          <p style={{
             color: '#666',
             fontSize: 14,
             margin: 0,
             fontStyle: 'italic'
-          }}>Reporte detallado de horas por mecánico</p>
+          }}>
+            Reporte detallado de horas por mecánico
+            {selectedDate && ` - Día: ${dayjs(selectedDate).format('DD/MM/YYYY')}`}
+          </p>
         </div>
 
         <div style={{ 
@@ -197,13 +207,59 @@ const HourmeterModal: React.FC<{
                 transition: 'all 0.2s ease',
                 background: '#fff',
                 minWidth: 150
-              }}
-            >
+              }}            >
               <option value="">Todos</option>
               {mechanics.map(mec =>
                 <option key={mec} value={mec}>{mec}</option>
               )}
             </select>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ 
+              fontWeight: 600, 
+              color: '#1976d2',
+              fontSize: 14,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              📅 Día específico:
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: '2px solid #e3f2fd',
+                fontSize: 14,
+                fontWeight: 500,
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                background: '#fff',
+                minWidth: 150
+              }}
+              title="Opcional: Filtra por un día específico dentro de la semana"
+            />
+            {selectedDate && (
+              <button
+                onClick={() => setSelectedDate('')}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  background: '#f44336',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  alignSelf: 'flex-start'
+                }}
+                title="Limpiar filtro de día"
+              >
+                ✕ Limpiar
+              </button>
+            )}
           </div>
           
           <button
