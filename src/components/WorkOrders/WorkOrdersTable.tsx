@@ -11,7 +11,7 @@ import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
-import { generateWorkOrderPDF, openInvoiceLinks, downloadPDF } from '../../utils/pdfGenerator';
+import { generateWorkOrderPDF, openInvoiceLinks, downloadPDF, savePDFToDatabase } from '../../utils/pdfGenerator';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -530,14 +530,24 @@ const WorkOrdersTable: React.FC = () => {
         .map((p: any) => ({
           sku: p.sku,
           qty: Number(p.qty)
-        }));
-
-      // 2. Descuenta del inventario
+        }));      // 2. Descuenta del inventario usando FIFO
+      let fifoResult: any = null;
       if (partesUsadas.length > 0) {
-        await axios.post(`${API_URL}/inventory/deduct`, {
-          parts: partesUsadas,
-          usuario: localStorage.getItem('username') || ''
-        });
+        try {
+          const fifoResponse = await axios.post(`${API_URL}/inventory/deduct-fifo`, {
+            parts: partesUsadas,
+            usuario: localStorage.getItem('username') || ''
+          });
+          fifoResult = fifoResponse.data;
+          console.log('✅ FIFO deduction successful:', fifoResult);
+        } catch (fifoError) {
+          console.error('❌ FIFO deduction failed, falling back to regular deduction:', fifoError);
+          // Fallback al método anterior si FIFO falla
+          await axios.post(`${API_URL}/inventory/deduct`, {
+            parts: partesUsadas,
+            usuario: localStorage.getItem('username') || ''
+          });
+        }
       }
 
       // 3. Prepara partes para guardar en la orden
@@ -561,14 +571,21 @@ const WorkOrdersTable: React.FC = () => {
         usuario: localStorage.getItem('username') || ''
       });
       const data = res.data as { id: number, pdfUrl?: string };
-      const newWorkOrderId = data.id;      // REGISTRA PARTES USADAS EN work_order_parts
+      const newWorkOrderId = data.id;      // REGISTRA PARTES USADAS EN work_order_parts con información FIFO
       for (const part of partesParaGuardar) {
+        // Buscar información FIFO para esta parte
+        let fifoInfoForPart = null;
+        if (fifoResult && fifoResult.details) {
+          fifoInfoForPart = fifoResult.details.find((f: any) => f.sku === part.sku);
+        }
+        
         await axios.post(`${API_URL}/work-order-parts`, {
           work_order_id: newWorkOrderId,
           sku: part.sku,
           part_name: inventory.find(i => i.sku === part.sku)?.part || '',
           qty_used: part.qty,
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
+          fifo_info: fifoInfoForPart, // Pasar información FIFO
           usuario: localStorage.getItem('username') || ''
         });
       }
@@ -636,9 +653,21 @@ const WorkOrdersTable: React.FC = () => {
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
+          // Generar PDF
+        const pdf = await generateWorkOrderPDF(pdfData);
         
-        // Generar y descargar PDF
-        const pdf = generateWorkOrderPDF(pdfData);
+        // Generar blob para guardar en BD
+        const pdfBlob = pdf.output('blob');
+        
+        // Guardar PDF en la base de datos
+        try {
+          await savePDFToDatabase(workOrderData.id, pdfBlob);
+          console.log('✅ PDF guardado en BD correctamente');
+        } catch (dbError) {
+          console.warn('⚠️ No se pudo guardar PDF en BD:', dbError);
+        }
+        
+        // Descargar PDF
         downloadPDF(pdf, `work_order_${pdfData.idClassic}.pdf`);
         
         // Abrir enlaces de facturas automáticamente
@@ -680,7 +709,7 @@ const WorkOrdersTable: React.FC = () => {
             totalCost: Number(datosOrden.totalLabAndParts) || 0
           };
           
-          const pdf = generateWorkOrderPDF(basicPdfData);
+          const pdf = await generateWorkOrderPDF(basicPdfData);
           downloadPDF(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
           console.log('✅ PDF básico generado como fallback');
         } catch (fallbackError) {
@@ -1537,9 +1566,21 @@ const WorkOrdersTable: React.FC = () => {
                               subtotalParts: Number(workOrderData.subtotalParts) || 0,
                               totalCost: Number(workOrderData.totalLabAndParts) || 0
                             };
+                              // Generar PDF
+                            const pdf = await generateWorkOrderPDF(pdfData);
                             
-                            // Generar y descargar PDF
-                            const pdf = generateWorkOrderPDF(pdfData);
+                            // Generar blob para guardar en BD
+                            const pdfBlob = pdf.output('blob');
+                            
+                            // Guardar PDF en la base de datos
+                            try {
+                              await savePDFToDatabase(editWorkOrder.id, pdfBlob);
+                              console.log('✅ PDF guardado en BD correctamente tras edición');
+                            } catch (dbError) {
+                              console.warn('⚠️ No se pudo guardar PDF en BD tras edición:', dbError);
+                            }
+                            
+                            // Descargar PDF
                             downloadPDF(pdf, `work_order_${workOrderData.idClassic || editWorkOrder.id}.pdf`);
                             
                             // Abrir enlaces de facturas automáticamente

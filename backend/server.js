@@ -4,6 +4,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
+const upload = multer();
 
 const app = express();
 
@@ -414,7 +416,7 @@ app.get('/api/trailas/:trailerName/rental-history', async (req, res) => {
 app.post('/api/work-order-parts', async (req, res) => {
   try {
     console.log('[POST] /api/work-order-parts - Creating in database:', req.body);
-    const newWorkOrderPart = await db.createWorkOrderPart(req.body);
+    const newWorkOrderPart = await db.createWorkOrderPart(req.body, req.body.fifo_info);
     console.log('[POST] /api/work-order-parts - Created in database:', newWorkOrderPart);
     res.json(newWorkOrderPart);
   } catch (error) {
@@ -432,6 +434,18 @@ app.post('/api/inventory/deduct', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] POST /api/inventory/deduct:', error);
     res.status(500).json({ error: 'Failed to deduct inventory in database' });
+  }
+});
+
+app.post('/api/inventory/deduct-fifo', async (req, res) => {
+  try {
+    console.log('[POST] /api/inventory/deduct-fifo - Deducting inventory with FIFO:', req.body);
+    const result = await db.deductInventoryFIFO(req.body.parts || []);
+    console.log('[POST] /api/inventory/deduct-fifo - Successfully deducted inventory with FIFO:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('[ERROR] POST /api/inventory/deduct-fifo:', error);
+    res.status(500).json({ error: 'Failed to deduct inventory with FIFO in database' });
   }
 });
 
@@ -541,6 +555,28 @@ app.post('/api/work-orders/:id/generate-pdf', (req, res) => {
   res.json({ success: true, pdfPath: `/pdfs/${pdfName}` });
 });
 
+app.post('/api/work-orders/:id/pdf', upload.single('pdf'), async (req, res) => {
+  try {
+    console.log('[POST] /api/work-orders/:id/pdf - Saving PDF to database:', req.params.id);
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No PDF file provided' });
+    }
+    
+    const workOrderId = req.params.id;
+    const pdfBuffer = req.file.buffer;
+    
+    // Guardar PDF en la base de datos
+    const result = await db.savePDFToWorkOrder(workOrderId, pdfBuffer);
+    console.log('[POST] /api/work-orders/:id/pdf - PDF saved to database:', result);
+    
+    res.json({ success: true, message: 'PDF saved successfully' });
+  } catch (error) {
+    console.error('[ERROR] POST /api/work-orders/:id/pdf:', error);
+    res.status(500).json({ error: 'Failed to save PDF to database' });
+  }
+});
+
 // STATIC FILES - Build de React
 app.use(express.static(path.join(__dirname, '../build')));
 
@@ -562,4 +598,16 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[STARTUP] Minimal server running on port ${PORT}`);
   console.log(`[STARTUP] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[STARTUP] Start time: ${new Date().toISOString()}`);
+});
+
+// Serve assets (logo)
+app.get('/api/assets/logo.png', (req, res) => {
+  console.log('[ASSETS] Serving logo.png');
+  const logoPath = path.join(__dirname, 'assets', 'logo.png');
+  res.sendFile(logoPath, (err) => {
+    if (err) {
+      console.error('[ASSETS] Error serving logo:', err);
+      res.status(404).json({ error: 'Logo not found' });
+    }
+  });
 });

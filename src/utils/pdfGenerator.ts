@@ -24,24 +24,45 @@ interface WorkOrderData {
   totalCost: number;
 }
 
-export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
+export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const pdf = new jsPDF();
   
+  // Establecer fuente Courier para todo el documento
+  pdf.setFont('courier');
+  
   // HEADER - Logo y título
-  pdf.setFontSize(20);
-  pdf.setTextColor(0, 100, 200);
-  pdf.text('JET SHOP', 20, 25);
+  try {
+    // Cargar logo desde el backend
+    const logoResponse = await fetch('/api/assets/logo.png');
+    if (logoResponse.ok) {
+      const logoBlob = await logoResponse.blob();
+      const logoDataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(logoBlob);
+      });
+      
+      // Agregar logo en la esquina superior izquierda
+      pdf.addImage(logoDataUrl, 'PNG', 20, 15, 30, 15);
+    }
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error);
+    // Fallback: texto JET SHOP
+    pdf.setFontSize(12);
+    pdf.setTextColor(0, 100, 200);
+    pdf.text('JET SHOP', 20, 25);
+  }
   
   pdf.setFontSize(28);
   pdf.setTextColor(0, 100, 200);
   pdf.text('INVOICE', 105, 25, { align: 'center' });
   
-  // Información de la empresa
-  pdf.setFontSize(10);
+  // Información de la empresa - centrada y ajustada
+  pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
-  pdf.text('JET SHOP, LLC', 150, 20);
-  pdf.text('740 EL CAMINO REAL', 150, 25);
-  pdf.text('GREENFIELD, CA 93927', 150, 30);
+  pdf.text('JET SHOP, LLC', 140, 20);
+  pdf.text('740 EL CAMINO REAL', 140, 25);
+  pdf.text('GREENFIELD, CA 93927', 140, 30);
   
   // INFORMACIÓN DEL CLIENTE Y W.O - Cajas con bordes
   // Caja izquierda - Customer y Trailer
@@ -64,11 +85,10 @@ export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
   pdf.text('Date:', 115, 50);
   pdf.setTextColor(0, 0, 0);
   pdf.text(workOrderData.date || '', 115, 55);
-  
-  pdf.setTextColor(0, 100, 200);
+    pdf.setTextColor(0, 100, 200);
   pdf.text('Invoice #:', 115, 60);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.idClassic || workOrderData.id.toString(), 115, 65);
+  pdf.text(workOrderData.id.toString(), 115, 65);
   
   pdf.setTextColor(0, 100, 200);
   pdf.text('Mechanics:', 115, 70);
@@ -115,16 +135,15 @@ export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
     bodyStyles: {
       fontSize: 9,
       textColor: [0, 0, 0]
-    },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 15 },
-      1: { halign: 'left', cellWidth: 25 },
-      2: { halign: 'left', cellWidth: 50 },
-      3: { halign: 'center', cellWidth: 20 },
-      4: { halign: 'center', cellWidth: 15 },
-      5: { halign: 'right', cellWidth: 25 },
-      6: { halign: 'right', cellWidth: 25 },
-      7: { halign: 'center', cellWidth: 25 }
+    },    columnStyles: {
+      0: { halign: 'center', cellWidth: 12 },  // No.
+      1: { halign: 'left', cellWidth: 22 },    // SKU
+      2: { halign: 'left', cellWidth: 45 },    // DESCRIPTION
+      3: { halign: 'center', cellWidth: 15 },  // U/M
+      4: { halign: 'center', cellWidth: 12 },  // QTY
+      5: { halign: 'right', cellWidth: 22 },   // UNIT COST
+      6: { halign: 'right', cellWidth: 22 },   // TOTAL
+      7: { halign: 'center', cellWidth: 20 }   // INVOICE
     },
     margin: { left: 20, right: 20 }
   });
@@ -153,13 +172,35 @@ export const generateWorkOrderPDF = (workOrderData: WorkOrderData) => {
   pdf.line(140, finalY + 85, 190, finalY + 85);
   pdf.text('NAME:', 20, finalY + 92);
   pdf.text('SIGNATURE:', 140, finalY + 92);
-  
-  // FOOTER
+    // FOOTER
   pdf.setFontSize(12);
   pdf.setTextColor(0, 100, 200);
   pdf.text('Thanks for your business!', 105, finalY + 110, { align: 'center' });
   
   return pdf;
+};
+
+export const savePDFToDatabase = async (workOrderId: number, pdfBlob: Blob) => {
+  try {
+    const formData = new FormData();
+    formData.append('pdf', pdfBlob, `work_order_${workOrderId}.pdf`);
+    
+    const response = await fetch(`/api/work-orders/${workOrderId}/pdf`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error saving PDF: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('📄 PDF guardado en BD:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error guardando PDF en BD:', error);
+    throw error;
+  }
 };
 
 export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: string }>) => {

@@ -316,25 +316,161 @@ async function getWorkOrderParts(workOrderId) {
 }
 
 // Work Order Parts functions
-async function createWorkOrderPart(workOrderPart) {
+async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
   try {
     console.log('[DB] Creating work order part:', workOrderPart);
     
+    // Si tenemos información FIFO, usar el invoice link específico del lote usado
+    let invoiceLink = workOrderPart.invoice_link || null;
+    let invoiceNumber = workOrderPart.invoice || null;
+    
+    // Si tenemos información FIFO, usar los datos del lote específico
+    if (fifoInfo && fifoInfo.invoicesUsed && fifoInfo.invoicesUsed.length > 0) {
+      // Tomar el primer invoice usado (puede haber múltiples si se tomó de varios lotes)
+      const primaryInvoice = fifoInfo.invoicesUsed[0];
+      invoiceLink = primaryInvoice.invoiceLink;
+      invoiceNumber = primaryInvoice.invoice;
+      
+      console.log(`[DB] Using FIFO invoice info: ${invoiceNumber} (${invoiceLink})`);
+    } else if (!invoiceLink && workOrderPart.sku) {
+      // Fallback: obtener invoice_link desde el inventario
+      try {
+        const [inventoryRows] = await connection.execute(
+          'SELECT invoiceLink FROM inventory WHERE sku = ?',
+          [workOrderPart.sku]
+        );
+        if (inventoryRows.length > 0 && inventoryRows[0].invoiceLink) {
+          invoiceLink = inventoryRows[0].invoiceLink;
+          console.log(`[DB] Found invoice link from inventory for SKU ${workOrderPart.sku}: ${invoiceLink}`);
+        }
+      } catch (inventoryError) {
+        console.warn('[DB] Could not fetch invoice link from inventory:', inventoryError.message);
+      }
+    }
+    
     const [result] = await connection.execute(
-      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice_link, invoice_number) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         workOrderPart.work_order_id,
         workOrderPart.sku || null,
         workOrderPart.part_name || null,
         workOrderPart.qty_used || 1,
-        workOrderPart.cost || 0
+        workOrderPart.cost || 0,
+        invoiceLink,
+        invoiceNumber
       ]
     );
     
-    console.log('[DB] Successfully created work order part');
-    return { id: result.insertId, ...workOrderPart };
+    console.log('[DB] Successfully created work order part with FIFO invoice info:', { invoiceNumber, invoiceLink });
+    return { 
+      id: result.insertId, 
+      ...workOrderPart, 
+      invoice_link: invoiceLink,
+      invoice_number: invoiceNumber,
+      fifo_info: fifoInfo
+    };
   } catch (error) {
     console.error('[DB] Error creating work order part:', error.message);
+    throw error;
+  }
+}
+
+async function deductInventoryFIFO(partsToDeduct) {
+  try {
+    console.log('[DB] Deducting inventory using FIFO for parts:', partsToDeduct);
+    const result = [];
+    
+    for (const part of partsToDeduct) {
+      let qtyNeeded = Number(part.qty) || 0;
+      const partResult = {
+        sku: part.sku,
+        totalQtyDeducted: 0,
+        invoicesUsed: []
+      };
+      
+      // Obtener todos los lotes disponibles para este SKU ordenados por FIFO (fecha más antigua primero)
+      // Buscar en tabla 'receives' los lotes que ya fueron recibidos y tienen stock disponible
+      const [availableLots] = await connection.execute(`
+        SELECT r.*, 
+               COALESCE(r.qty, 0) as available_qty,
+               r.invoice,
+               r.invoiceLink,
+               r.fecha as receipt_date
+        FROM receives r 
+        WHERE r.sku = ? 
+          AND r.estatus = 'RECEIVED' 
+          AND COALESCE(r.qty, 0) > 0
+        ORDER BY r.fecha ASC, r.id ASC
+      `, [part.sku]);
+      
+      console.log(`[DB] Found ${availableLots.length} available lots for SKU ${part.sku}`);
+      
+      // Deducir FIFO: tomar de los lotes más antiguos primero
+      for (const lot of availableLots) {
+        if (qtyNeeded <= 0) break;
+        
+        const availableInLot = Number(lot.available_qty) || 0;
+        const qtyToTakeFromLot = Math.min(qtyNeeded, availableInLot);
+        
+        if (qtyToTakeFromLot > 0) {
+          // Actualizar el lote en receives
+          const newQtyInLot = availableInLot - qtyToTakeFromLot;
+          await connection.execute(
+            'UPDATE receives SET qty = ? WHERE id = ?',
+            [newQtyInLot, lot.id]
+          );
+          
+          // Registrar qué invoice se usó
+          partResult.invoicesUsed.push({
+            invoiceId: lot.id,
+            invoice: lot.invoice,
+            invoiceLink: lot.invoiceLink,
+            qtyTaken: qtyToTakeFromLot,
+            receiptDate: lot.receipt_date
+          });
+          
+          partResult.totalQtyDeducted += qtyToTakeFromLot;
+          qtyNeeded -= qtyToTakeFromLot;
+          
+          console.log(`[DB] FIFO: Took ${qtyToTakeFromLot} of ${part.sku} from invoice ${lot.invoice} (${newQtyInLot} remaining in lot)`);
+        }
+      }
+      
+      // Actualizar inventario principal (tabla inventory)
+      if (partResult.totalQtyDeducted > 0) {
+        const [inventoryRows] = await connection.execute(
+          'SELECT onHand, salidasWo FROM inventory WHERE sku = ?',
+          [part.sku]
+        );
+        
+        if (inventoryRows.length > 0) {
+          const currentOnHand = Number(inventoryRows[0].onHand) || 0;
+          const currentSalidasWo = Number(inventoryRows[0].salidasWo) || 0;
+          const newOnHand = Math.max(0, currentOnHand - partResult.totalQtyDeducted);
+          const newSalidasWo = currentSalidasWo + partResult.totalQtyDeducted;
+          
+          await connection.execute(
+            'UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?',
+            [newOnHand, newSalidasWo, part.sku]
+          );
+          
+          console.log(`[DB] Updated main inventory for ${part.sku}: ${currentOnHand} -> ${newOnHand}`);
+        }
+      }
+      
+      // Advertir si no se pudo satisfacer completamente la demanda
+      if (qtyNeeded > 0) {
+        console.warn(`[DB] FIFO: Could not satisfy full demand for ${part.sku}. Missing: ${qtyNeeded}`);
+        partResult.shortage = qtyNeeded;
+      }
+      
+      result.push(partResult);
+    }
+    
+    console.log('[DB] FIFO deduction completed:', result);
+    return { success: true, details: result };
+  } catch (error) {
+    console.error('[DB] Error in FIFO inventory deduction:', error.message);
     throw error;
   }
 }
@@ -597,6 +733,22 @@ async function generatePDF(data) {
   }
 }
 
+// PDF functions
+async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
+  try {
+    console.log('[DB] Saving PDF to work order:', workOrderId);
+    
+    const query = 'UPDATE work_orders SET pdf_file = ? WHERE id = ?';
+    const [result] = await connection.execute(query, [pdfBuffer, workOrderId]);
+    
+    console.log('[DB] PDF saved successfully to work order:', workOrderId);
+    return { success: true, affectedRows: result.affectedRows };
+  } catch (error) {
+    console.error('[DB] Error saving PDF to work order:', error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   connection,
   execute: (query, params) => connection.execute(query, params),
@@ -618,6 +770,7 @@ module.exports = {
   getWorkOrderParts,
   createWorkOrderPart,
   deductInventory,
+  deductInventoryFIFO,
   getPartes,
   createParte,
   updateParte,
@@ -627,5 +780,6 @@ module.exports = {
   updatePendingPart,
   deletePendingPart,
   getUsers,
-  generatePDF
+  generatePDF,
+  savePDFToWorkOrder
 };
