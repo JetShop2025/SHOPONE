@@ -586,23 +586,13 @@ const WorkOrdersTable: React.FC = () => {
           qty_used: part.qty,
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
           fifo_info: fifoInfoForPart, // Pasar información FIFO
-          usuario: localStorage.getItem('username') || ''
-        });
+          usuario: localStorage.getItem('username') || ''        });
       }
 
-      // MARCA PARTES PENDIENTES COMO USADAS
-      const partesConPendingId = datosOrden.parts.filter((p: any) => p._pendingPartId);
-      for (const part of partesConPendingId) {
-        try {
-          await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
-            usuario: localStorage.getItem('username') || ''
-          });
-          console.log(`✅ Parte pendiente ${part._pendingPartId} marcada como USED`);
-        } catch (error) {
-          console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED:`, error);
-        }
-      }      // Muestra mensaje de éxito
-      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);      // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
+      // NOTA: Ya no es necesario marcar partes pendientes manualmente porque
+      // el sistema FIFO automáticamente las marca como USED cuando las dedujo
+      console.log('✅ Sistema FIFO manejó automáticamente las partes pending');      // Muestra mensaje de éxito
+      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);// NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
       try {
         console.log('🔄 Intentando generar PDF para work order:', newWorkOrderId);
         
@@ -1448,33 +1438,8 @@ const WorkOrdersTable: React.FC = () => {
                 trailersWithPendingParts={trailersWithPendingParts}
                 pendingParts={pendingParts}
                 pendingPartsQty={pendingPartsQty}
-                setPendingPartsQty={setPendingPartsQty}
-                onAddPendingPart={(part: any, qty: any) => {
-                  setNewWorkOrder(prev => {
-                    const emptyIdx = prev.parts.findIndex(p => !p.part);
-                    const cantidad = qty || part.qty?.toString() || '1';
-                    if (emptyIdx !== -1) {
-                      const newParts = [...prev.parts];
-                      newParts[emptyIdx] = {
-                        part: part.part || part.sku,
-                        sku: part.sku, // <-- ahora siempre se asigna sku
-                        qty: cantidad,
-                        cost: part.costTax?.toString() || ''
-                      };
-                      return { ...prev, parts: newParts };
-                    } else {
-                      return {
-                        ...prev,
-                        parts: [
-                          ...prev.parts,
-                          {
-                            part: part.part || part.sku,
-                            sku: part.sku,
-                            qty: cantidad,
-                            cost: part.costTax?.toString() || ''
-                          }                        ]
-                      };
-                    }                  });
+                setPendingPartsQty={setPendingPartsQty}                onAddPendingPart={(part: any, qty: any) => {
+                  addPendingPart(part, qty || part.qty || 1);
                 }}
                 onAddEmptyPart={addEmptyPart}
                 extraOptions={extraOptions}

@@ -24,6 +24,8 @@ interface WorkOrderData {
   totalCost: number;
 }
 
+// First implementation removed - keeping the improved second implementation
+
 export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const pdf = new jsPDF();
   
