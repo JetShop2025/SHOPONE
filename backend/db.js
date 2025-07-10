@@ -275,6 +275,46 @@ async function deleteOrder(id) {
   }
 }
 
+// Get single work order by ID
+async function getOrderById(id) {
+  try {
+    console.log('[DB] Executing query: SELECT * FROM work_orders WHERE id = ?', id);
+    const [rows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
+    console.log(`[DB] Found ${rows.length} work order(s) with ID ${id}`);
+    
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    // Parse JSON fields
+    const order = {
+      ...rows[0],
+      parts: rows[0].parts ? JSON.parse(rows[0].parts) : [],
+      mechanics: rows[0].mechanics ? JSON.parse(rows[0].mechanics) : [],
+      extraOptions: rows[0].extraOptions ? JSON.parse(rows[0].extraOptions) : []
+    };
+    
+    return order;
+  } catch (error) {
+    console.error('[DB] Error getting work order by ID:', error.message);
+    throw error;
+  }
+}
+
+// Get work order parts by work order ID
+async function getWorkOrderParts(workOrderId) {
+  try {
+    console.log('[DB] Executing query: SELECT * FROM work_order_parts WHERE work_order_id = ?', workOrderId);
+    const [rows] = await connection.execute('SELECT * FROM work_order_parts WHERE work_order_id = ?', [workOrderId]);
+    console.log(`[DB] Found ${rows.length} work order parts for work order ${workOrderId}`);
+    
+    return rows;
+  } catch (error) {
+    console.error('[DB] Error getting work order parts:', error.message);
+    throw error;
+  }
+}
+
 // Work Order Parts functions
 async function createWorkOrderPart(workOrderPart) {
   try {
@@ -574,6 +614,8 @@ module.exports = {
   createOrder,
   updateOrder,
   deleteOrder,
+  getOrderById,
+  getWorkOrderParts,
   createWorkOrderPart,
   deductInventory,
   getPartes,

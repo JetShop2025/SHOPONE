@@ -332,6 +332,36 @@ app.get('/api/work-orders/trailer/:trailerId', async (req, res) => {
   }
 });
 
+// Get single work order by ID
+app.get('/api/work-orders/:id', async (req, res) => {
+  try {
+    console.log('[GET] /api/work-orders/:id - Fetching from database:', req.params.id);
+    const order = await db.getOrderById(req.params.id);
+    if (!order) {
+      console.log('[GET] /api/work-orders/:id - Work order not found:', req.params.id);
+      return res.status(404).json({ error: 'Work order not found' });
+    }
+    console.log('[GET] /api/work-orders/:id - Found work order:', order);
+    res.json(order);
+  } catch (error) {
+    console.error('[ERROR] GET /api/work-orders/:id:', error);
+    res.status(500).json({ error: 'Failed to fetch work order from database' });
+  }
+});
+
+// Get work order parts by work order ID
+app.get('/api/work-order-parts/:id', async (req, res) => {
+  try {
+    console.log('[GET] /api/work-order-parts/:id - Fetching from database:', req.params.id);
+    const parts = await db.getWorkOrderParts(req.params.id);
+    console.log(`[GET] /api/work-order-parts/:id - Found ${parts.length} parts for work order ${req.params.id}`);
+    res.json(parts);
+  } catch (error) {
+    console.error('[ERROR] GET /api/work-order-parts/:id:', error);
+    res.status(500).json({ error: 'Failed to fetch work order parts from database' });
+  }
+});
+
 app.post('/api/work-orders', async (req, res) => {
   try {
     console.log('[POST] /api/work-orders - Creating in database:', req.body);
