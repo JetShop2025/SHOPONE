@@ -347,21 +347,20 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
         console.warn('[DB] Could not fetch invoice link from inventory:', inventoryError.message);
       }
     }
-    
+      // Usar los campos que existen en la tabla work_order_parts (incluyendo invoiceLink)
     const [result] = await connection.execute(
-      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice_link, invoice_number) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoiceLink) VALUES (?, ?, ?, ?, ?, ?)',
       [
         workOrderPart.work_order_id,
         workOrderPart.sku || null,
         workOrderPart.part_name || null,
         workOrderPart.qty_used || 1,
         workOrderPart.cost || 0,
-        invoiceLink,
-        invoiceNumber
+        invoiceLink
       ]
     );
     
-    console.log('[DB] Successfully created work order part with FIFO invoice info:', { invoiceNumber, invoiceLink });
+    console.log('[DB] Successfully created work order part with invoiceLink:', invoiceLink);
     return { 
       id: result.insertId, 
       ...workOrderPart, 

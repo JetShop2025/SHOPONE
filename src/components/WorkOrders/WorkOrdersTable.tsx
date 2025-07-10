@@ -617,12 +617,29 @@ const WorkOrdersTable: React.FC = () => {
           console.error('❌ Datos de work order inválidos o incompletos');
           return;
         }
-        
-        // Obtener partes usadas con sus enlaces de facturas
+          // Obtener partes usadas con sus enlaces de facturas
         const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`, { timeout: 10000 });
         const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data : [];
         
         console.log('✅ Partes de work order obtenidas:', partsWithInvoices.length, 'partes');
+        
+        // Enriquecer partes con invoice links del inventario si no los tienen
+        const enrichedParts = partsWithInvoices.map((part: any) => {
+          // Si la parte ya tiene invoiceLink, usarlo
+          if (part.invoiceLink) {
+            return { ...part, invoice_number: 'FIFO Invoice' };
+          }
+          
+          // Si no, buscar en el inventario
+          const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
+          return {
+            ...part,
+            invoiceLink: inventoryItem?.invoiceLink || null,
+            invoice_number: inventoryItem?.invoiceLink ? 'Inventory Invoice' : 'N/A'
+          };
+        });
+        
+        console.log('✅ Partes enriquecidas con invoice data:', enrichedParts);
         
         // Preparar datos para el PDF con validaciones robustas
         const pdfData = {
@@ -634,9 +651,8 @@ const WorkOrdersTable: React.FC = () => {
                 workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
           mechanics: Array.isArray(workOrderData.mechanics) ? 
             workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
-            workOrderData.mechanics || workOrderData.mechanic || '',
-          description: workOrderData.description || '',
-          parts: partsWithInvoices.map((part: any) => ({
+            workOrderData.mechanics || workOrderData.mechanic || '',          description: workOrderData.description || '',
+          parts: enrichedParts.map((part: any) => ({
             sku: part.sku || '',
             description: part.part_name || part.sku || 'N/A',
             um: 'EA',
@@ -644,10 +660,10 @@ const WorkOrdersTable: React.FC = () => {
             unitCost: Number(part.cost) || 0,
             total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
             invoice: part.invoice_number || 'N/A',
-            invoiceLink: part.invoice_link
+            invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
           })),
           laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
-          subtotalParts: partsWithInvoices.reduce((sum: number, part: any) => 
+          subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
             sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
           totalCost: Number(workOrderData.totalLabAndParts) || 0
         };

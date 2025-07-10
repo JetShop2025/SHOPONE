@@ -577,6 +577,18 @@ app.post('/api/work-orders/:id/pdf', upload.single('pdf'), async (req, res) => {
   }
 });
 
+// Serve assets (logo) - DEBE IR ANTES DEL CATCH-ALL
+app.get('/api/assets/logo.png', (req, res) => {
+  console.log('[ASSETS] Serving logo.png');
+  const logoPath = path.join(__dirname, 'assets', 'logo.png');
+  res.sendFile(logoPath, (err) => {
+    if (err) {
+      console.error('[ASSETS] Error serving logo:', err);
+      res.status(404).json({ error: 'Logo not found' });
+    }
+  });
+});
+
 // STATIC FILES - Build de React
 app.use(express.static(path.join(__dirname, '../build')));
 
@@ -594,20 +606,7 @@ app.use((error, req, res, next) => {
 
 // START SERVER
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[STARTUP] Minimal server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {  console.log(`[STARTUP] Minimal server running on port ${PORT}`);
   console.log(`[STARTUP] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[STARTUP] Start time: ${new Date().toISOString()}`);
-});
-
-// Serve assets (logo)
-app.get('/api/assets/logo.png', (req, res) => {
-  console.log('[ASSETS] Serving logo.png');
-  const logoPath = path.join(__dirname, 'assets', 'logo.png');
-  res.sendFile(logoPath, (err) => {
-    if (err) {
-      console.error('[ASSETS] Error serving logo:', err);
-      res.status(404).json({ error: 'Logo not found' });
-    }
-  });
 });

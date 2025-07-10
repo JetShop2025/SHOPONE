@@ -29,21 +29,29 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   // Establecer fuente Courier para todo el documento
   pdf.setFont('courier');
-  
-  // HEADER - Logo y título
+    // HEADER - Logo y título
   try {
     // Cargar logo desde el backend
     const logoResponse = await fetch('/api/assets/logo.png');
-    if (logoResponse.ok) {
+    if (logoResponse.ok && logoResponse.headers.get('content-type')?.includes('image')) {
       const logoBlob = await logoResponse.blob();
-      const logoDataUrl = await new Promise<string>((resolve) => {
+      const logoDataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Error reading logo file'));
         reader.readAsDataURL(logoBlob);
       });
       
-      // Agregar logo en la esquina superior izquierda
-      pdf.addImage(logoDataUrl, 'PNG', 20, 15, 30, 15);
+      // Verificar que el data URL es válido
+      if (logoDataUrl && logoDataUrl.startsWith('data:image')) {
+        // Agregar logo en la esquina superior izquierda
+        pdf.addImage(logoDataUrl, 'PNG', 20, 15, 30, 15);
+        console.log('✅ Logo cargado exitosamente');
+      } else {
+        throw new Error('Invalid logo data URL');
+      }
+    } else {
+      throw new Error('Logo response not valid');
     }
   } catch (error) {
     console.warn('No se pudo cargar el logo:', error);
@@ -68,37 +76,36 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Caja izquierda - Customer y Trailer
   pdf.setDrawColor(0, 100, 200);
   pdf.rect(20, 40, 85, 35);
-    pdf.setFontSize(12);
-  pdf.setTextColor(0, 100, 200);
+    pdf.setFontSize(12);  pdf.setTextColor(0, 100, 200);
   pdf.text('Customer:', 25, 50);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.customer || '', 25, 55);
+  pdf.text(String(workOrderData.customer || ''), 25, 55);
   
   pdf.setTextColor(0, 100, 200);
   pdf.text('Trailer:', 25, 65);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.trailer || '', 25, 70);
+  pdf.text(String(workOrderData.trailer || ''), 25, 70);
   
   // Caja derecha - Date, Invoice #, Mechanics, ID CLASSIC
   pdf.rect(110, 40, 85, 35);
     pdf.setTextColor(0, 100, 200);
   pdf.text('Date:', 115, 50);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.date || '', 115, 55);
+  pdf.text(String(workOrderData.date || ''), 115, 55);
     pdf.setTextColor(0, 100, 200);
   pdf.text('Invoice #:', 115, 60);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.id.toString(), 115, 65);
+  pdf.text(String(workOrderData.id || ''), 115, 65);
   
   pdf.setTextColor(0, 100, 200);
   pdf.text('Mechanics:', 115, 70);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.mechanics || '', 115, 75);
+  pdf.text(String(workOrderData.mechanics || ''), 115, 75);
   
   pdf.setTextColor(0, 100, 200);
   pdf.text('ID CLASSIC:', 150, 50);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(workOrderData.idClassic || '', 150, 55);
+  pdf.text(String(workOrderData.idClassic || ''), 150, 55);
   
   // DESCRIPCIÓN
   pdf.setFontSize(12);
