@@ -180,6 +180,16 @@ const WorkOrdersTable: React.FC = () => {
   const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+
+  // Function to check if ID Classic already exists
+  const checkIdClassicExists = (idClassic: string): boolean => {
+    if (!idClassic || idClassic.trim() === '') return false;
+    return workOrders.some(order => 
+      order.idClassic && 
+      order.idClassic.toLowerCase() === idClassic.toLowerCase()
+    );
+  };
+
   // Función para cargar las órdenes con manejo inteligente de errores
   const fetchWorkOrders = useCallback(async (isRetry = false) => {
     try {      setFetchingData(true);
@@ -519,11 +529,17 @@ const WorkOrdersTable: React.FC = () => {
 
       setEditWorkOrder((prev: any) => ({ ...prev, parts: updatedParts }));
     }
-  };
-  // Guardar nueva orden
+  };  // Guardar nueva orden
   const handleAddWorkOrder = async (datosOrden: any) => {
     setLoading(true);
     try {
+      // 0. Validate ID Classic doesn't already exist
+      if (datosOrden.idClassic && checkIdClassicExists(datosOrden.idClassic)) {
+        alert(`Error: Work Order with ID Classic "${datosOrden.idClassic}" already exists. Please use a different ID.`);
+        setLoading(false);
+        return;
+      }
+
       // 1. Prepara las partes a descontar
       const partesUsadas = datosOrden.parts
         .filter((p: any) => p.sku && p.qty && Number(p.qty) > 0)
@@ -536,7 +552,7 @@ const WorkOrdersTable: React.FC = () => {
         try {
           const fifoResponse = await axios.post(`${API_URL}/inventory/deduct-fifo`, {
             parts: partesUsadas,
-            usuario: localStorage.getItem('username') || ''
+            usuario: localStorage.getItem('username') || 'unknown'
           });
           fifoResult = fifoResponse.data;
           console.log('✅ FIFO deduction successful:', fifoResult);
@@ -545,7 +561,7 @@ const WorkOrdersTable: React.FC = () => {
           // Fallback al método anterior si FIFO falla
           await axios.post(`${API_URL}/inventory/deduct`, {
             parts: partesUsadas,
-            usuario: localStorage.getItem('username') || ''
+            usuario: localStorage.getItem('username') || 'unknown'
           });
         }
       }
@@ -1024,8 +1040,7 @@ const WorkOrdersTable: React.FC = () => {
       console.error('❌ Error cargando trailers con partes pendientes:', error);
       setTrailersWithPendingParts([]);
     }
-  };
-  // Función para visualizar PDF de Work Order existente
+  };  // Función para visualizar PDF de Work Order existente
   const handleViewPDF = async (workOrderId: number) => {
     try {
       console.log('🔄 Generando PDF para Work Order existente:', workOrderId);
@@ -1034,9 +1049,13 @@ const WorkOrdersTable: React.FC = () => {
       const workOrderResponse = await axios.get(`${API_URL}/work-orders/${workOrderId}`);
       const workOrderData = workOrderResponse.data as any;
       
+      console.log('📊 Datos completos de Work Order desde BD:', workOrderData);
+      
       // 2. Obtener partes de la Work Order
       const partsResponse = await axios.get(`${API_URL}/work-order-parts/${workOrderId}`);
       const workOrderParts = partsResponse.data as any[];
+      
+      console.log('📦 Partes de Work Order desde BD:', workOrderParts);
       
       // 3. Enriquecer partes con invoice links del inventario
       const enrichedParts = workOrderParts.map((part: any) => {
@@ -1048,16 +1067,43 @@ const WorkOrdersTable: React.FC = () => {
         };
       });
       
-      // 4. Preparar datos para el PDF
+      // 4. Procesar mecánicos correctamente
+      let mechanicsString = '';
+      if (workOrderData.mechanics) {
+        if (typeof workOrderData.mechanics === 'string') {
+          try {
+            // Si es un string JSON, parsearlo
+            const mechanicsArray = JSON.parse(workOrderData.mechanics);
+            if (Array.isArray(mechanicsArray)) {
+              mechanicsString = mechanicsArray.map((m: any) => 
+                typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${m.hrs || 0}h)` : String(m)
+              ).join(', ');
+            } else {
+              mechanicsString = String(mechanicsArray);
+            }
+          } catch {
+            // Si no es JSON válido, usar el string directamente
+            mechanicsString = workOrderData.mechanics;
+          }
+        } else if (Array.isArray(workOrderData.mechanics)) {
+          mechanicsString = workOrderData.mechanics.map((m: any) => 
+            typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${m.hrs || 0}h)` : String(m)
+          ).join(', ');
+        } else {
+          mechanicsString = String(workOrderData.mechanics);
+        }
+      }
+      
+      // 5. Preparar datos para el PDF con validaciones robustas
       const pdfData = {
-        id: workOrderData.id,
-        idClassic: workOrderData.idClassic || workOrderData.id.toString(),
-        customer: workOrderData.billToCo || 'N/A',
+        id: workOrderData.id || workOrderId,
+        idClassic: workOrderData.idClassic || workOrderData.id?.toString() || workOrderId.toString(),
+        customer: workOrderData.billToCo || workOrderData.customer || 'N/A',
         trailer: workOrderData.trailer || 'N/A',
-        date: new Date(workOrderData.date).toLocaleDateString('en-US'),
-        mechanics: Array.isArray(workOrderData.mechanics) ? 
-          workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : 
-          (workOrderData.mechanics || ''),
+        date: workOrderData.date ? 
+          new Date(workOrderData.date).toLocaleDateString('en-US') : 
+          new Date().toLocaleDateString('en-US'),
+        mechanics: mechanicsString || 'N/A',
         description: workOrderData.description || '',
         parts: enrichedParts.map((part: any) => ({
           sku: part.sku || '',
@@ -1075,21 +1121,22 @@ const WorkOrdersTable: React.FC = () => {
         totalCost: Number(workOrderData.totalLabAndParts) || 0
       };
       
-      console.log('📄 Datos del PDF para WO existente:', pdfData);
+      console.log('📄 Datos finales preparados para PDF:', pdfData);
       
-      // 5. Generar PDF
+      // 6. Generar PDF
       const pdf = await generateWorkOrderPDF(pdfData);
       
-      // 6. Descargar PDF
+      // 7. Descargar PDF
       downloadPDF(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
       
-      // 7. Abrir enlaces de facturas automáticamente
+      // 8. Abrir enlaces de facturas automáticamente
       openInvoiceLinks(pdfData.parts);
       
       console.log('✅ PDF visualizado y enlaces de facturas abiertos para WO existente');
       
     } catch (error: any) {
       console.error('❌ Error al visualizar PDF:', error);
+      console.error('❌ Detalles del error:', error.response?.data);
       alert(`Error al generar PDF: ${error.message}`);
     }
   };
@@ -1537,6 +1584,19 @@ const WorkOrdersTable: React.FC = () => {
                       onPartChange={handlePartChange}                      onSubmit={async () => {
                         try {
                           setLoading(true);
+                          
+                          // Validate ID Classic doesn't already exist (if changed)
+                          if (editWorkOrder.idClassic) {
+                            const originalOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
+                            const isIdClassicChanged = originalOrder && 
+                              originalOrder.idClassic !== editWorkOrder.idClassic;
+                            
+                            if (isIdClassicChanged && checkIdClassicExists(editWorkOrder.idClassic)) {
+                              alert(`Error: Work Order with ID Classic "${editWorkOrder.idClassic}" already exists. Please use a different ID.`);
+                              setLoading(false);
+                              return;
+                            }
+                          }
                           
                           // Calcular horas totales automáticamente sumando las horas de todos los mecánicos
                           const calculateTotalHours = () => {

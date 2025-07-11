@@ -20,6 +20,9 @@ console.log('[ENV] Database config:', {
 // Import database functions
 const db = require('./db');
 
+// Import route modules
+const auditRoutes = require('./routes/audit');
+
 // CORS configuration
 app.use(cors({
   origin: '*',
@@ -37,6 +40,9 @@ app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.url}`);
   next();
 });
+
+// AUDIT ROUTES
+app.use('/api/audit', auditRoutes);
 
 // DIAGNOSTIC ENDPOINTS
 app.get('/api/status', (req, res) => {
@@ -440,7 +446,8 @@ app.post('/api/inventory/deduct', async (req, res) => {
 app.post('/api/inventory/deduct-fifo', async (req, res) => {
   try {
     console.log('[POST] /api/inventory/deduct-fifo - Deducting inventory with FIFO:', req.body);
-    const result = await db.deductInventoryFIFO(req.body.parts || []);
+    const usuario = req.body.usuario || 'unknown';
+    const result = await db.deductInventoryFIFO(req.body.parts || [], usuario);
     console.log('[POST] /api/inventory/deduct-fifo - Successfully deducted inventory with FIFO:', result);
     res.json(result);
   } catch (error) {

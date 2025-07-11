@@ -190,7 +190,9 @@ async function getRentalHistory(trailerName) {
 async function createOrder(order) {
   try {
     console.log('[DB] Creating order with data:', order);
-      // Convert undefined values to null for MySQL compatibility
+    const usuario = order.usuario || 'system';
+    
+    // Convert undefined values to null for MySQL compatibility
     // Remove orderNumber as it doesn't exist in the database table
     const safeValues = [
       order.billToCo || null,
@@ -212,8 +214,26 @@ async function createOrder(order) {
       safeValues
     );
     
-    console.log('[DB] Successfully created work order with ID:', result.insertId);
-    return { id: result.insertId, ...order };
+    const newOrderId = result.insertId;
+    console.log('[DB] Successfully created work order with ID:', newOrderId);
+    
+    // Registrar en auditoría
+    await logAuditEvent(
+      usuario,
+      'CREATE',
+      'work_orders',
+      newOrderId,
+      {
+        action: 'Nueva Work Order creada',
+        customer: order.billToCo,
+        trailer: order.trailer,
+        mechanic: order.mechanic,
+        totalCost: order.totalLabAndParts,
+        partsCount: order.parts?.length || 0
+      }
+    );
+    
+    return { id: newOrderId, ...order };
   } catch (error) {
     console.error('[DB] Error creating order:', error.message);
     console.error('[DB] Full error details:', error);
@@ -224,7 +244,13 @@ async function createOrder(order) {
 async function updateOrder(id, order) {
   try {
     console.log('[DB] Updating order with ID:', id, 'and data:', order);
-      // Convert undefined values to null for MySQL compatibility
+    const usuario = order.usuario || 'system';
+    
+    // Obtener datos actuales para comparación
+    const [currentRows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
+    const currentData = currentRows[0];
+    
+    // Convert undefined values to null for MySQL compatibility
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
@@ -247,6 +273,33 @@ async function updateOrder(id, order) {
     );
     
     console.log('[DB] Successfully updated work order with ID:', id);
+    
+    // Registrar cambios en auditoría
+    const changes = getChangesForAudit(currentData, {
+      billToCo: order.billToCo,
+      trailer: order.trailer,
+      mechanic: order.mechanic,
+      date: order.date,
+      description: order.description,
+      totalHrs: order.totalHrs,
+      totalLabAndParts: order.totalLabAndParts,
+      status: order.status,
+      idClassic: order.idClassic
+    });
+    
+    if (Object.keys(changes).length > 0) {
+      await logAuditEvent(
+        usuario,
+        'UPDATE',
+        'work_orders',
+        id,
+        {
+          action: 'Work Order actualizada',
+          changes: changes
+        }
+      );
+    }
+    
     return { id, ...order };
   } catch (error) {
     console.error('[DB] Error updating order:', error.message);
@@ -255,9 +308,13 @@ async function updateOrder(id, order) {
   }
 }
 
-async function deleteOrder(id) {
+async function deleteOrder(id, usuario = 'system') {
   try {
     console.log('[DB] Deleting work order with ID:', id);
+    
+    // Obtener datos antes de eliminar para auditoría
+    const [orderRows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
+    const orderData = orderRows[0];
     
     // First delete related work order parts
     await connection.execute('DELETE FROM work_order_parts WHERE work_order_id = ?', [id]);
@@ -267,6 +324,27 @@ async function deleteOrder(id) {
     const [result] = await connection.execute('DELETE FROM work_orders WHERE id = ?', [id]);
     
     console.log('[DB] Successfully deleted work order with ID:', id);
+    
+    // Registrar en auditoría
+    if (orderData) {
+      await logAuditEvent(
+        usuario,
+        'DELETE',
+        'work_orders',
+        id,
+        {
+          action: 'Work Order eliminada',
+          deletedData: {
+            customer: orderData.billToCo,
+            trailer: orderData.trailer,
+            mechanic: orderData.mechanic,
+            totalCost: orderData.totalLabAndParts,
+            status: orderData.status
+          }
+        }
+      );
+    }
+    
     return { success: true, deletedId: id };
   } catch (error) {
     console.error('[DB] Error deleting work order:', error.message);
@@ -374,7 +452,7 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
   }
 }
 
-async function deductInventoryFIFO(partsToDeduct) {
+async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
   try {
     console.log('[DB] Deducting inventory using FIFO for parts:', partsToDeduct);
     const result = [];
@@ -445,6 +523,22 @@ async function deductInventoryFIFO(partsToDeduct) {
               invoice: lot.invoice,
               destinoTrailer: lot.destino_trailer
             });
+            
+            // Registrar en auditoría el cambio de estado
+            await logAuditEvent(
+              usuario,
+              'UPDATE',
+              'receives',
+              lot.id,
+              {
+                action: 'Parte pendiente marcada como USED por FIFO',
+                sku: lot.sku,
+                qtyUsed: qtyToTakeFromLot,
+                invoice: lot.invoice,
+                destinoTrailer: lot.destino_trailer,
+                statusChange: { antes: 'PENDING', despues: 'USED' }
+              }
+            );
           }
           
           partResult.totalQtyDeducted += qtyToTakeFromLot;
@@ -474,6 +568,21 @@ async function deductInventoryFIFO(partsToDeduct) {
             await connection.execute(
               'UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?',
               [newOnHand, newSalidasWo, part.sku]
+            );
+            
+            // Registrar en auditoría la deducción del inventario master
+            await logAuditEvent(
+              usuario,
+              'UPDATE',
+              'inventory',
+              part.sku,
+              {
+                action: 'Deducción de inventario master por FIFO',
+                sku: part.sku,
+                qtyDeducted: qtyToDeductFromMaster,
+                onHandChange: { antes: currentOnHand, despues: newOnHand },
+                salidasWoChange: { antes: currentSalidasWo, despues: newSalidasWo }
+              }
             );
             
             partResult.totalQtyDeducted += qtyToDeductFromMaster;
@@ -507,6 +616,22 @@ async function deductInventoryFIFO(partsToDeduct) {
               [newOnHand, newSalidasWo, part.sku]
             );
             
+            // Registrar en auditoría la actualización del inventario master
+            await logAuditEvent(
+              usuario,
+              'UPDATE',
+              'inventory',
+              part.sku,
+              {
+                action: 'Actualización inventario master (deducción desde PENDING)',
+                sku: part.sku,
+                qtyDeducted: partResult.totalQtyDeducted,
+                onHandChange: { antes: currentOnHand, despues: newOnHand },
+                salidasWoChange: { antes: currentSalidasWo, despues: newSalidasWo },
+                source: 'PENDING_LOTS'
+              }
+            );
+            
             console.log(`[DB] FIFO: Updated master inventory for ${part.sku}: ${currentOnHand} -> ${newOnHand} (all from PENDING lots)`);
           }
         }
@@ -534,6 +659,21 @@ async function deductInventoryFIFO(partsToDeduct) {
       totalPendingPartsMarkedAsUsed: result.reduce((sum, r) => sum + r.pendingPartsMarkedAsUsed.length, 0),
       totalInvoicesUsed: result.reduce((sum, r) => sum + r.invoicesUsed.length, 0)
     });
+    
+    // Registrar resumen de operación FIFO en auditoría
+    await logAuditEvent(
+      usuario,
+      'FIFO_DEDUCTION',
+      'inventory_system',
+      null,
+      {
+        action: 'Deducción FIFO completada',
+        totalPartsProcessed: result.length,
+        pendingPartsMarkedAsUsed: result.reduce((sum, r) => sum + r.pendingPartsMarkedAsUsed.length, 0),
+        invoicesUsed: result.reduce((sum, r) => sum + r.invoicesUsed.length, 0),
+        partsProcessed: result.map(r => ({ sku: r.sku, qtyDeducted: r.totalQtyDeducted }))
+      }
+    );
     
     return { success: true, details: result };
   } catch (error) {
@@ -815,6 +955,103 @@ async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
   }
 }
 
+// AUDIT FUNCTIONS
+async function logAuditEvent(usuario, accion, tabla, registroId, detalles, ipAddress = null) {
+  try {
+    console.log('[DB] Logging audit event:', { usuario, accion, tabla, registroId });
+    
+    const detallesJson = typeof detalles === 'object' ? JSON.stringify(detalles) : detalles;
+    
+    const [result] = await connection.execute(
+      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, ip_address, fecha) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [usuario, accion, tabla, registroId, detallesJson, ipAddress]
+    );
+    
+    console.log('[DB] Audit event logged successfully with ID:', result.insertId);
+    return { success: true, auditId: result.insertId };
+  } catch (error) {
+    console.error('[DB] Error logging audit event:', error.message);
+    // No lanzar error para no interrumpir la operación principal
+    return { success: false, error: error.message };
+  }
+}
+
+async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
+  try {
+    let query = 'SELECT * FROM audit_log';
+    let params = [];
+    let conditions = [];
+    
+    // Aplicar filtros
+    if (filters.usuario) {
+      conditions.push('usuario LIKE ?');
+      params.push(`%${filters.usuario}%`);
+    }
+    
+    if (filters.accion) {
+      conditions.push('accion = ?');
+      params.push(filters.accion);
+    }
+    
+    if (filters.tabla) {
+      conditions.push('tabla = ?');
+      params.push(filters.tabla);
+    }
+    
+    if (filters.fechaDesde) {
+      conditions.push('fecha >= ?');
+      params.push(filters.fechaDesde);
+    }
+    
+    if (filters.fechaHasta) {
+      conditions.push('fecha <= ?');
+      params.push(filters.fechaHasta);
+    }
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    query += ' ORDER BY fecha DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    const [rows] = await connection.execute(query, params);
+    console.log(`[DB] Retrieved ${rows.length} audit logs`);
+    return rows;
+  } catch (error) {
+    console.error('[DB] Error getting audit logs:', error.message);
+    throw error;
+  }
+}
+
+// Helper function to track changes between old and new data
+function getChangesForAudit(oldData, newData, excludeFields = ['fecha_modificacion', 'updated_at']) {
+  const changes = {};
+  
+  // Comparar todos los campos
+  const allFields = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
+  
+  for (const field of allFields) {
+    if (excludeFields.includes(field)) continue;
+    
+    const oldValue = oldData?.[field];
+    const newValue = newData?.[field];
+    
+    // Comparar valores, considerando null/undefined como equivalentes
+    const oldNormalized = oldValue === null || oldValue === undefined ? '' : String(oldValue);
+    const newNormalized = newValue === null || newValue === undefined ? '' : String(newValue);
+    
+    if (oldNormalized !== newNormalized) {
+      changes[field] = {
+        antes: oldValue,
+        despues: newValue
+      };
+    }
+  }
+  
+  return changes;
+}
+
 module.exports = {
   connection,
   execute: (query, params) => connection.execute(query, params),
@@ -847,5 +1084,8 @@ module.exports = {
   deletePendingPart,
   getUsers,
   generatePDF,
-  savePDFToWorkOrder
+  savePDFToWorkOrder,
+  logAuditEvent,
+  getAuditLogs,
+  getChangesForAudit
 };
