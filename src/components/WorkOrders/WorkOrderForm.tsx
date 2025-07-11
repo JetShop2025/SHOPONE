@@ -694,16 +694,44 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </button>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-            {workOrder.parts && workOrder.parts.map((part: Part, index: number) => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>            {workOrder.parts && workOrder.parts.map((part: Part, index: number) => (
               <div key={index} style={{
                 border: '1px solid #ccc',
                 borderRadius: 4,
                 padding: 8,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 4
-              }}>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+                gap: 4,
+                position: 'relative'
+              }}>
+                {/* Botón para eliminar parte */}
+                {onDeletePart && (
+                  <button
+                    type="button"
+                    onClick={() => onDeletePart(index)}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      background: '#f44336',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 20,
+                      height: 20,
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 1
+                    }}
+                    title="Eliminar parte"
+                  >
+                    ×
+                  </button>
+                )}<label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   SKU
                   <input
                     list={`inventory-${index}`}
@@ -756,7 +784,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'qty', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="Cantidad"
-                  />                </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+                  />
+                </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   Costo Unit.
                   <input
                     type="text"
@@ -774,28 +803,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 </label>                <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
                   Total: ${((parseFloat(String(part.qty || '0'))) * (parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0)).toFixed(2)}
                 </div>
-                
-                {/* Botón de eliminar parte */}
-                {onDeletePart && (
-                  <button
-                    type="button"
-                    onClick={() => onDeletePart(index)}
-                    style={{
-                      padding: '4px 8px',
-                      background: '#d32f2f',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      marginTop: 4,
-                      width: '100%'
-                    }}
-                    title="Eliminar esta parte"
-                  >
-                    🗑️ Eliminar
-                  </button>
-                )}
               </div>
             ))}
           </div>

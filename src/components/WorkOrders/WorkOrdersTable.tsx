@@ -1165,56 +1165,56 @@ const WorkOrdersTable: React.FC = () => {
           invoice_number: part.invoice_number || 'N/A'
         };
       });
-      
-      // 6. Procesar mecánicos correctamente
+        // 6. Procesar mecánicos correctamente
       let mechanicsString = '';
       let totalHrs = 0;
       
-      // Priorizar campo 'mechanic' simple de la tabla
-      if (finalWorkOrderData.mechanic && typeof finalWorkOrderData.mechanic === 'string') {
+      console.log('🔍 Procesando mechanics:', {
+        mechanic: finalWorkOrderData.mechanic,
+        mechanics: finalWorkOrderData.mechanics,
+        totalHrs: finalWorkOrderData.totalHrs
+      });
+      
+      // PRIORIDAD 1: Campo mechanic simple
+      if (finalWorkOrderData.mechanic && finalWorkOrderData.mechanic.trim() !== '') {
         mechanicsString = finalWorkOrderData.mechanic;
-        // Intentar obtener horas del campo totalHrs
         totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
-        if (totalHrs > 0) {
-          mechanicsString += ` (${totalHrs}h)`;
-        }
-        console.log('👷 Usando mechanic simple:', mechanicsString);
+        console.log('👷 Usando mechanic simple:', mechanicsString, 'Horas:', totalHrs);
       } 
-      // Si no hay mechanic simple, procesar array de mechanics
+      // PRIORIDAD 2: Array de mechanics
       else if (finalWorkOrderData.mechanics) {
-        if (typeof finalWorkOrderData.mechanics === 'string') {
-          try {
-            const mechanicsArray = JSON.parse(finalWorkOrderData.mechanics);
-            if (Array.isArray(mechanicsArray)) {
-              mechanicsString = mechanicsArray.map((m: any) => {
-                const hrs = Number(m.hrs) || 0;
-                totalHrs += hrs;
-                return typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${hrs}h)` : String(m);
-              }).join(', ');
-            } else {
-              mechanicsString = String(mechanicsArray);
-            }
-          } catch {
-            mechanicsString = finalWorkOrderData.mechanics;
+        try {
+          let mechanicsArray = finalWorkOrderData.mechanics;
+          
+          // Si es string JSON, parsearlo
+          if (typeof mechanicsArray === 'string') {
+            mechanicsArray = JSON.parse(mechanicsArray);
           }
-        } else if (Array.isArray(finalWorkOrderData.mechanics)) {
-          mechanicsString = finalWorkOrderData.mechanics.map((m: any) => {
-            const hrs = Number(m.hrs) || 0;
-            totalHrs += hrs;
-            return typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${hrs}h)` : String(m);
-          }).join(', ');
-        } else {
-          mechanicsString = String(finalWorkOrderData.mechanics);
+          
+          // Si es array, procesarlo
+          if (Array.isArray(mechanicsArray) && mechanicsArray.length > 0) {
+            mechanicsString = mechanicsArray.map((m: any) => {
+              const hrs = Number(m.hrs) || 0;
+              totalHrs += hrs;
+              const name = m.name || m.mechanic || 'Unknown';
+              return `${name} (${hrs}h)`;
+            }).join(', ');
+            console.log('👷 Usando mechanics array:', mechanicsString, 'Total hrs:', totalHrs);
+          } else {
+            console.log('⚠️ Mechanics array vacío o inválido');
+          }
+        } catch (error) {
+          console.warn('⚠️ Error procesando mechanics:', error);
+          mechanicsString = String(finalWorkOrderData.mechanics || '');
         }
-        console.log('👷 Usando mechanics array:', mechanicsString, 'Total hrs:', totalHrs);
       }
       
-      // Si aún no hay horas, usar totalHrs del objeto
+      // Si no hay horas del procesamiento de mechanics, usar totalHrs directo
       if (totalHrs === 0) {
         totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
+        console.log('📊 Usando totalHrs directo:', totalHrs);
       }
-      
-      // 7. Procesar fecha correctamente
+        // 7. Procesar fecha correctamente
       let formattedDate = '';
       if (finalWorkOrderData.date) {
         try {
@@ -1229,10 +1229,20 @@ const WorkOrdersTable: React.FC = () => {
         } catch {
           formattedDate = String(finalWorkOrderData.date).slice(0, 10);
         }
+      } else {
+        // Si no hay fecha, usar fecha actual
+        formattedDate = new Date().toLocaleDateString('en-US');
       }
-      console.log('📅 Fecha procesada:', formattedDate);
+      console.log('📅 Fecha procesada:', formattedDate, 'desde:', finalWorkOrderData.date);
       
-      // 8. Calcular totales
+      // 8. Obtener customer correctamente
+      const customer = finalWorkOrderData.billToCo || 
+                      finalWorkOrderData.customer || 
+                      finalWorkOrderData.bill_to_co || 
+                      'N/A';
+      console.log('🏢 Customer procesado:', customer);
+      
+      // 9. Calcular totales correctamente
       const subtotalParts = enrichedParts.reduce((sum: number, part: any) => 
         sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0);
       
@@ -1240,11 +1250,18 @@ const WorkOrdersTable: React.FC = () => {
       
       const totalCost = Number(finalWorkOrderData.totalLabAndParts) || (laborCost + subtotalParts);
       
-      // 9. Preparar datos para el PDF con todos los datos correctos
+      console.log('💰 Cálculos de totales:', {
+        totalHrs,
+        laborCost,
+        subtotalParts,
+        totalLabAndParts: finalWorkOrderData.totalLabAndParts,
+        finalTotalCost: totalCost
+      });
+        // 10. Preparar datos para el PDF con todos los datos correctos
       const pdfData = {
         id: finalWorkOrderData.id || workOrderId,
         idClassic: finalWorkOrderData.idClassic || finalWorkOrderData.id?.toString() || workOrderId.toString(),
-        customer: finalWorkOrderData.billToCo || finalWorkOrderData.customer || '',
+        customer: customer,
         trailer: finalWorkOrderData.trailer || '',
         date: formattedDate,
         mechanics: mechanicsString || '',
@@ -1290,7 +1307,6 @@ const WorkOrdersTable: React.FC = () => {
       alert(`Error al generar PDF: ${error.message}`);
     }
   };
-
   // Función para eliminar una parte
   const deletePart = (index: number) => {
     if (showEditForm && editWorkOrder) {
@@ -1680,6 +1696,7 @@ const WorkOrdersTable: React.FC = () => {
                 setPendingPartsQty={setPendingPartsQty}                onAddPendingPart={(part: any, qty: any) => {
                   addPendingPart(part, qty || part.qty || 1);
                 }}                onAddEmptyPart={addEmptyPart}
+                onDeletePart={deletePart}
                 extraOptions={extraOptions}
                 setExtraOptions={setExtraOptions}
                 loading={loading}
@@ -1833,7 +1850,83 @@ const WorkOrdersTable: React.FC = () => {
                             totalHrs: dataToSend.totalHrs,
                             mechanics: editWorkOrder.mechanics,
                             totalLabAndParts: dataToSend.totalLabAndParts
-                          });
+                          });                          // NUEVA FUNCIONALIDAD: Detectar y deducir nuevas partes del inventario usando FIFO
+                          // Obtener partes originales para comparar
+                          const originalWorkOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
+                          const originalParts = originalWorkOrder?.parts || [];
+                          const currentParts = editWorkOrder.parts || [];
+                          
+                          // Detectar partes nuevas que se agregaron en la edición
+                          const newPartsToDeduct = [];
+                          
+                          for (const currentPart of currentParts) {
+                            if (currentPart.sku && currentPart.qty && Number(currentPart.qty) > 0) {
+                              // Buscar si esta parte ya existía en la WO original
+                              const originalPart = originalParts.find((op: any) => op.sku === currentPart.sku);
+                              
+                              if (!originalPart) {
+                                // Parte completamente nueva - deducir toda la cantidad
+                                newPartsToDeduct.push({
+                                  sku: currentPart.sku,
+                                  qty: Number(currentPart.qty)
+                                });
+                                console.log(`🆕 Parte nueva detectada: ${currentPart.sku} (qty: ${currentPart.qty})`);
+                              } else if (Number(currentPart.qty) > Number(originalPart.qty || 0)) {
+                                // Parte existente con cantidad aumentada - deducir solo la diferencia
+                                const qtyDifference = Number(currentPart.qty) - Number(originalPart.qty || 0);
+                                newPartsToDeduct.push({
+                                  sku: currentPart.sku,
+                                  qty: qtyDifference
+                                });
+                                console.log(`📈 Cantidad aumentada detectada: ${currentPart.sku} (diferencia: ${qtyDifference})`);
+                              }
+                            }
+                          }
+                          
+                          // Deducir del inventario usando FIFO si hay partes nuevas/aumentadas
+                          if (newPartsToDeduct.length > 0) {
+                            try {
+                              console.log('🔄 Deduciendo nuevas partes del inventario usando FIFO:', newPartsToDeduct);
+                              
+                              const fifoResponse = await axios.post(`${API_URL}/inventory/deduct-fifo`, {
+                                parts: newPartsToDeduct,
+                                usuario: localStorage.getItem('username') || 'unknown'
+                              });
+                              
+                              console.log('✅ FIFO deduction successful en edición:', fifoResponse.data);
+                                // Registrar las nuevas partes en work_order_parts con información FIFO
+                              const fifoResult = fifoResponse.data as any;
+                              for (const part of newPartsToDeduct) {
+                                let fifoInfoForPart = null;
+                                if (fifoResult && fifoResult.details && Array.isArray(fifoResult.details)) {
+                                  fifoInfoForPart = fifoResult.details.find((f: any) => f.sku === part.sku);
+                                }
+                                
+                                await axios.post(`${API_URL}/work-order-parts`, {
+                                  work_order_id: editWorkOrder.id,
+                                  sku: part.sku,
+                                  part_name: inventory.find(i => i.sku === part.sku)?.part || '',
+                                  qty_used: part.qty,
+                                  cost: Number(String(currentParts.find((p: any) => p.sku === part.sku)?.cost || 0).replace(/[^0-9.]/g, '')),
+                                  fifo_info: fifoInfoForPart,
+                                  usuario: localStorage.getItem('username') || ''
+                                });
+                                
+                                console.log(`✅ Nueva parte ${part.sku} registrada en work_order_parts con FIFO`);
+                              }
+                              
+                            } catch (fifoError) {
+                              console.error('❌ FIFO deduction failed en edición, usando método tradicional:', fifoError);
+                              // Fallback al método anterior si FIFO falla
+                              await axios.post(`${API_URL}/inventory/deduct`, {
+                                parts: newPartsToDeduct,
+                                usuario: localStorage.getItem('username') || 'unknown'
+                              });
+                              console.log('✅ Fallback deduction successful en edición');
+                            }
+                          } else {
+                            console.log('ℹ️ No hay partes nuevas o aumentadas para deducir del inventario');
+                          }
 
                           // Actualizar la work order
                           await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
@@ -1939,13 +2032,13 @@ const WorkOrdersTable: React.FC = () => {
                         } finally {
                           setLoading(false);
                         }
-                      }}
-                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); setIdClassicError(''); }}                      title="Edit Work Order"
+                      }}                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); setIdClassicError(''); }}                      title="Edit Work Order"
                       billToCoOptions={billToCoOptions}
                       getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
                       inventory={inventory}
                       onAddEmptyPart={addEmptyPart}
                       onAddPendingPart={addPendingPart}
+                      onDeletePart={deletePart}
                       trailersWithPendingParts={trailersWithPendingParts}
                       pendingParts={pendingParts}
                       pendingPartsQty={pendingPartsQty}
