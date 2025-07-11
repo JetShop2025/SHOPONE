@@ -28,6 +28,7 @@ interface WorkOrderFormProps {
   setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  idClassicError?: string;
   // Optional props that may be passed from WorkOrdersTable
   trailersWithPendingParts?: any[];
   pendingParts?: any[];
@@ -59,13 +60,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   setExtraOptions, 
   loading, 
   setLoading,
+  idClassicError,
   trailersWithPendingParts,
   pendingParts,
   pendingPartsQty,
   setPendingPartsQty,
   onAddPendingPart,
   onAddEmptyPart
-}) => {  const [successMsg, setSuccessMsg] = React.useState('');
+}) => {const [successMsg, setSuccessMsg] = React.useState('');
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   
   // Function to hide tooltip
@@ -543,21 +545,33 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <option value="APPROVED">APPROVED</option>
               <option value="FINISHED">FINISHED</option>
             </select>
+          </label>          {/* ID CLASSIC - Always show */}
+          <label style={{ flex: '1 1 150px' }}>
+            ID CLASSIC
+            <input
+              type="text"
+              name="idClassic"
+              placeholder="ID Classic (opcional)"
+              value={workOrder.idClassic || ''}
+              onChange={onChange}
+              style={{ 
+                width: '100%', 
+                marginTop: 4, 
+                padding: 8,
+                borderColor: idClassicError ? '#f44336' : undefined
+              }}
+            />
+            {idClassicError && (
+              <div style={{
+                color: '#f44336',
+                fontSize: '12px',
+                marginTop: '4px',
+                fontWeight: '500'
+              }}>
+                {idClassicError}
+              </div>
+            )}
           </label>
-          {/* ID CLASSIC aparece al editar o cuando el status es FINISHED */}
-          {(workOrder.id || workOrder.status === 'FINISHED') && (
-            <label style={{ flex: '1 1 150px' }}>
-              ID CLASSIC
-              <input
-                type="text"
-                name="idClassic"
-                placeholder="ID Classic (opcional)"
-                value={workOrder.idClassic || ''}
-                onChange={onChange}
-                style={{ width: '100%', marginTop: 4, padding: 8 }}
-              />
-            </label>
-          )}
         </div>
         
         <div style={{ marginBottom: 16 }}>

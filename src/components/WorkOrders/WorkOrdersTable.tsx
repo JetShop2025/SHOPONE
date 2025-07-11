@@ -177,10 +177,9 @@ const WorkOrdersTable: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
-  const [retryCount, setRetryCount] = useState(0);
+  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');  const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
-
+  const [idClassicError, setIdClassicError] = useState('');
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
     if (!idClassic || idClassic.trim() === '') return false;
@@ -188,6 +187,20 @@ const WorkOrdersTable: React.FC = () => {
       order.idClassic && 
       order.idClassic.toLowerCase() === idClassic.toLowerCase()
     );
+  };
+
+  // Function to validate ID Classic in real-time
+  const validateIdClassic = (idClassic: string) => {
+    if (!idClassic || idClassic.trim() === '') {
+      setIdClassicError('');
+      return;
+    }
+    
+    if (checkIdClassicExists(idClassic)) {
+      setIdClassicError(`⚠️ Work Order with ID Classic "${idClassic}" already exists!`);
+    } else {
+      setIdClassicError('');
+    }
   };
 
   // Función para cargar las órdenes con manejo inteligente de errores
@@ -356,7 +369,6 @@ const WorkOrdersTable: React.FC = () => {
   });
 
 
-
   // Cambios generales
   const handleWorkOrderChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any
@@ -364,6 +376,12 @@ const WorkOrdersTable: React.FC = () => {
     // Si es un evento (input, select, textarea)
     if (e && e.target) {
       const { name, value } = e.target;
+      
+      // Validar ID Classic en tiempo real
+      if (name === 'idClassic') {
+        validateIdClassic(value);
+      }
+      
       if (showForm) {
         setNewWorkOrder((prev: typeof newWorkOrder) => ({ ...prev, [name]: value }));
         if (name === 'trailer') fetchPendingParts(value);
@@ -380,7 +398,7 @@ const WorkOrdersTable: React.FC = () => {
         setEditWorkOrder(e);
       }
     }
-  };  // Cambios en partes con autocompletado
+  };// Cambios en partes con autocompletado
   const handlePartChange = (index: number, field: string, value: string) => {
     // Función para buscar parte en inventario por SKU con logging mejorado
     const findPartBySku = (sku: string) => {
@@ -535,6 +553,7 @@ const WorkOrdersTable: React.FC = () => {
     try {
       // 0. Validate ID Classic doesn't already exist
       if (datosOrden.idClassic && checkIdClassicExists(datosOrden.idClassic)) {
+        setIdClassicError(`⚠️ Work Order with ID Classic "${datosOrden.idClassic}" already exists!`);
         alert(`Error: Work Order with ID Classic "${datosOrden.idClassic}" already exists. Please use a different ID.`);
         setLoading(false);
         return;
@@ -1045,19 +1064,47 @@ const WorkOrdersTable: React.FC = () => {
     try {
       console.log('🔄 Generando PDF para Work Order existente:', workOrderId);
       
-      // 1. Obtener datos de la Work Order
+      // 1. Obtener datos de la Work Order desde la tabla actual (más confiable)
+      const workOrderFromTable = workOrders.find(wo => wo.id === workOrderId);
+      console.log('📊 Work Order desde tabla:', workOrderFromTable);
+      
+      // 2. También obtener desde API como respaldo
       const workOrderResponse = await axios.get(`${API_URL}/work-orders/${workOrderId}`);
       const workOrderData = workOrderResponse.data as any;
+      console.log('📊 Work Order desde API:', workOrderData);
       
-      console.log('📊 Datos completos de Work Order desde BD:', workOrderData);
+      // 3. Usar datos de la tabla como prioridad, API como respaldo
+      const finalWorkOrderData = workOrderFromTable || workOrderData;
+      console.log('📊 Datos finales de Work Order:', finalWorkOrderData);
       
-      // 2. Obtener partes de la Work Order
-      const partsResponse = await axios.get(`${API_URL}/work-order-parts/${workOrderId}`);
-      const workOrderParts = partsResponse.data as any[];
+      // 4. Obtener partes de la Work Order (intentar desde tabla primero, luego API)
+      let workOrderParts: any[] = [];
       
-      console.log('📦 Partes de Work Order desde BD:', workOrderParts);
+      // Si tiene partes en la tabla, usarlas
+      if (finalWorkOrderData.parts && Array.isArray(finalWorkOrderData.parts) && finalWorkOrderData.parts.length > 0) {
+        console.log('📦 Usando partes desde tabla:', finalWorkOrderData.parts);
+        workOrderParts = finalWorkOrderData.parts.map((part: any, index: number) => ({
+          id: `table_${index}`,
+          sku: part.sku || '',
+          part_name: part.part || part.description || '',
+          qty_used: Number(part.qty) || 0,
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
+          invoiceLink: null,
+          invoice_number: 'N/A'
+        }));
+      } else {
+        // Si no hay partes en tabla, obtener del API
+        try {
+          const partsResponse = await axios.get(`${API_URL}/work-order-parts/${workOrderId}`);
+          workOrderParts = Array.isArray(partsResponse.data) ? partsResponse.data : [];
+          console.log('📦 Partes desde API:', workOrderParts);
+        } catch (partsError) {
+          console.warn('⚠️ No se pudieron obtener partes del API:', partsError);
+          workOrderParts = [];
+        }
+      }
       
-      // 3. Enriquecer partes con invoice links del inventario
+      // 5. Enriquecer partes con invoice links del inventario
       const enrichedParts = workOrderParts.map((part: any) => {
         const inventoryItem = inventory.find(item => item.sku === part.sku);
         return {
@@ -1067,44 +1114,89 @@ const WorkOrdersTable: React.FC = () => {
         };
       });
       
-      // 4. Procesar mecánicos correctamente
+      // 6. Procesar mecánicos correctamente
       let mechanicsString = '';
-      if (workOrderData.mechanics) {
-        if (typeof workOrderData.mechanics === 'string') {
+      let totalHrs = 0;
+      
+      // Priorizar campo 'mechanic' simple de la tabla
+      if (finalWorkOrderData.mechanic && typeof finalWorkOrderData.mechanic === 'string') {
+        mechanicsString = finalWorkOrderData.mechanic;
+        // Intentar obtener horas del campo totalHrs
+        totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
+        if (totalHrs > 0) {
+          mechanicsString += ` (${totalHrs}h)`;
+        }
+        console.log('👷 Usando mechanic simple:', mechanicsString);
+      } 
+      // Si no hay mechanic simple, procesar array de mechanics
+      else if (finalWorkOrderData.mechanics) {
+        if (typeof finalWorkOrderData.mechanics === 'string') {
           try {
-            // Si es un string JSON, parsearlo
-            const mechanicsArray = JSON.parse(workOrderData.mechanics);
+            const mechanicsArray = JSON.parse(finalWorkOrderData.mechanics);
             if (Array.isArray(mechanicsArray)) {
-              mechanicsString = mechanicsArray.map((m: any) => 
-                typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${m.hrs || 0}h)` : String(m)
-              ).join(', ');
+              mechanicsString = mechanicsArray.map((m: any) => {
+                const hrs = Number(m.hrs) || 0;
+                totalHrs += hrs;
+                return typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${hrs}h)` : String(m);
+              }).join(', ');
             } else {
               mechanicsString = String(mechanicsArray);
             }
           } catch {
-            // Si no es JSON válido, usar el string directamente
-            mechanicsString = workOrderData.mechanics;
+            mechanicsString = finalWorkOrderData.mechanics;
           }
-        } else if (Array.isArray(workOrderData.mechanics)) {
-          mechanicsString = workOrderData.mechanics.map((m: any) => 
-            typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${m.hrs || 0}h)` : String(m)
-          ).join(', ');
+        } else if (Array.isArray(finalWorkOrderData.mechanics)) {
+          mechanicsString = finalWorkOrderData.mechanics.map((m: any) => {
+            const hrs = Number(m.hrs) || 0;
+            totalHrs += hrs;
+            return typeof m === 'object' ? `${m.name || m.mechanic || 'Unknown'} (${hrs}h)` : String(m);
+          }).join(', ');
         } else {
-          mechanicsString = String(workOrderData.mechanics);
+          mechanicsString = String(finalWorkOrderData.mechanics);
         }
+        console.log('👷 Usando mechanics array:', mechanicsString, 'Total hrs:', totalHrs);
       }
       
-      // 5. Preparar datos para el PDF con validaciones robustas
+      // Si aún no hay horas, usar totalHrs del objeto
+      if (totalHrs === 0) {
+        totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
+      }
+      
+      // 7. Procesar fecha correctamente
+      let formattedDate = '';
+      if (finalWorkOrderData.date) {
+        try {
+          // Si la fecha tiene formato ISO o similar, convertirla
+          const dateObj = new Date(finalWorkOrderData.date);
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString('en-US');
+          } else {
+            // Si no se puede parsear, usar string original
+            formattedDate = String(finalWorkOrderData.date).slice(0, 10);
+          }
+        } catch {
+          formattedDate = String(finalWorkOrderData.date).slice(0, 10);
+        }
+      }
+      console.log('📅 Fecha procesada:', formattedDate);
+      
+      // 8. Calcular totales
+      const subtotalParts = enrichedParts.reduce((sum: number, part: any) => 
+        sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0);
+      
+      const laborCost = totalHrs * 60; // $60 por hora
+      
+      const totalCost = Number(finalWorkOrderData.totalLabAndParts) || (laborCost + subtotalParts);
+      
+      // 9. Preparar datos para el PDF con todos los datos correctos
       const pdfData = {
-        id: workOrderData.id || workOrderId,
-        idClassic: workOrderData.idClassic || workOrderData.id?.toString() || workOrderId.toString(),
-        customer: workOrderData.billToCo || workOrderData.customer || 'N/A',
-        trailer: workOrderData.trailer || 'N/A',
-        date: workOrderData.date ? 
-          new Date(workOrderData.date).toLocaleDateString('en-US') : 
-          new Date().toLocaleDateString('en-US'),
-        mechanics: mechanicsString || 'N/A',
-        description: workOrderData.description || '',
+        id: finalWorkOrderData.id || workOrderId,
+        idClassic: finalWorkOrderData.idClassic || finalWorkOrderData.id?.toString() || workOrderId.toString(),
+        customer: finalWorkOrderData.billToCo || finalWorkOrderData.customer || '',
+        trailer: finalWorkOrderData.trailer || '',
+        date: formattedDate,
+        mechanics: mechanicsString || '',
+        description: finalWorkOrderData.description || '',
         parts: enrichedParts.map((part: any) => ({
           sku: part.sku || '',
           description: part.part_name || part.sku || 'N/A',
@@ -1115,21 +1207,27 @@ const WorkOrdersTable: React.FC = () => {
           invoice: part.invoice_number || 'N/A',
           invoiceLink: part.invoiceLink
         })),
-        laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
-        subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
-          sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
-        totalCost: Number(workOrderData.totalLabAndParts) || 0
+        laborCost: laborCost,
+        subtotalParts: subtotalParts,
+        totalCost: totalCost
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);
+      console.log('🔢 Totales calculados:', {
+        totalHrs,
+        laborCost,
+        subtotalParts,
+        totalCost,
+        partsCount: enrichedParts.length
+      });
       
-      // 6. Generar PDF
+      // 10. Generar PDF
       const pdf = await generateWorkOrderPDF(pdfData);
       
-      // 7. Descargar PDF
+      // 11. Descargar PDF
       downloadPDF(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
       
-      // 8. Abrir enlaces de facturas automáticamente
+      // 12. Abrir enlaces de facturas automáticamente
       openInvoiceLinks(pdfData.parts);
       
       console.log('✅ PDF visualizado y enlaces de facturas abiertos para WO existente');
@@ -1404,8 +1502,7 @@ const WorkOrdersTable: React.FC = () => {
           </label>
         </div>
 
-        {/* --- BOTONES ARRIBA --- */}        <div style={{ margin: '24px 0 16px 0' }}>
-          <button
+        {/* --- BOTONES ARRIBA --- */}        <div style={{ margin: '24px 0 16px 0' }}>          <button
             className="wo-btn"
             style={primaryBtn}
             onClick={() => {
@@ -1415,6 +1512,8 @@ const WorkOrdersTable: React.FC = () => {
               setPendingPartsQty({});
               // También resetear cualquier selección de partes pendientes
               setSelectedPendingParts([]);
+              // Limpiar el error del ID Classic
+              setIdClassicError('');
               setShowForm(true);
             }}
           >
@@ -1453,6 +1552,28 @@ const WorkOrdersTable: React.FC = () => {
             disabled={selectedRow === null}
             onClick={() => {
               if (selectedRow !== null) {
+                // Debug: Mostrar datos de la Work Order seleccionada
+                const selectedWorkOrder = workOrders.find(wo => wo.id === selectedRow);
+                console.log('🔍 Work Order seleccionada para PDF:', selectedWorkOrder);
+                console.log('📊 Campos disponibles:', selectedWorkOrder ? Object.keys(selectedWorkOrder) : 'No encontrada');
+                
+                if (selectedWorkOrder) {
+                  console.log('📋 Detalles de la WO:', {
+                    id: selectedWorkOrder.id,
+                    idClassic: selectedWorkOrder.idClassic,
+                    billToCo: selectedWorkOrder.billToCo,
+                    customer: selectedWorkOrder.customer,
+                    trailer: selectedWorkOrder.trailer,
+                    date: selectedWorkOrder.date,
+                    mechanic: selectedWorkOrder.mechanic,
+                    mechanics: selectedWorkOrder.mechanics,
+                    totalHrs: selectedWorkOrder.totalHrs,
+                    totalLabAndParts: selectedWorkOrder.totalLabAndParts,
+                    parts: selectedWorkOrder.parts,
+                    partsLength: selectedWorkOrder.parts ? selectedWorkOrder.parts.length : 0
+                  });
+                }
+                
                 handleViewPDF(selectedRow);
               }
             }}
@@ -1462,28 +1583,28 @@ const WorkOrdersTable: React.FC = () => {
         </div>
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
-        {showForm && (
-          <div style={modalStyle} onClick={() => {
+        {showForm && (          <div style={modalStyle} onClick={() => {
             // RESETEAR TODO CUANDO SE CIERRA EL MODAL
             resetNewWorkOrder();
             setExtraOptions([]);
             setPendingPartsQty({});
             setSelectedPendingParts([]);
+            setIdClassicError('');
             setShowForm(false);
           }}>
             <div style={modalContentStyle} onClick={e => e.stopPropagation()}>              <WorkOrderForm
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
-                onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}
-                onCancel={() => {
+                onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}                onCancel={() => {
                   // RESETEAR TODO CUANDO SE CANCELA
                   resetNewWorkOrder();
                   setExtraOptions([]);
                   setPendingPartsQty({});
                   setSelectedPendingParts([]);
+                  setIdClassicError('');
                   setShowForm(false);
-                }}                title="New Work Order"
+                }}title="New Work Order"
                 billToCoOptions={billToCoOptions}
                 getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
                 inventory={inventory}
@@ -1492,12 +1613,12 @@ const WorkOrdersTable: React.FC = () => {
                 pendingPartsQty={pendingPartsQty}
                 setPendingPartsQty={setPendingPartsQty}                onAddPendingPart={(part: any, qty: any) => {
                   addPendingPart(part, qty || part.qty || 1);
-                }}
-                onAddEmptyPart={addEmptyPart}
+                }}                onAddEmptyPart={addEmptyPart}
                 extraOptions={extraOptions}
                 setExtraOptions={setExtraOptions}
                 loading={loading}
                 setLoading={setLoading}
+                idClassicError={idClassicError}
               />
             </div>
           </div>
