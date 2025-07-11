@@ -10,6 +10,7 @@ export interface WorkOrder {
   totalHrs: string;
   totalLabAndParts: string;
   status: string;
+  idClassic?: string;
   mechanics?: any[];
   extraOptions?: string[];
 }
@@ -26,10 +27,10 @@ const EMPTY_WORK_ORDER: WorkOrder = {
     { part: '', sku: '', qty: '', cost: '' },
     { part: '', sku: '', qty: '', cost: '' },
     { part: '', sku: '', qty: '', cost: '' },
-  ],
-  totalHrs: '',
+  ],  totalHrs: '',
   totalLabAndParts: '',
   status: '',
+  idClassic: '',
 };
 
 export function useNewWorkOrder(): [

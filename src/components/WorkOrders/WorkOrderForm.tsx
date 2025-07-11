@@ -36,6 +36,7 @@ interface WorkOrderFormProps {
   setPendingPartsQty?: React.Dispatch<React.SetStateAction<any>>;
   onAddPendingPart?: (part: any, qty: any) => void;
   onAddEmptyPart?: () => void;
+  onDeletePart?: (index: number) => void;
 }
 
 interface Part {
@@ -66,7 +67,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   pendingPartsQty,
   setPendingPartsQty,
   onAddPendingPart,
-  onAddEmptyPart
+  onAddEmptyPart,
+  onDeletePart
 }) => {const [successMsg, setSuccessMsg] = React.useState('');
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   
@@ -545,23 +547,37 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <option value="APPROVED">APPROVED</option>
               <option value="FINISHED">FINISHED</option>
             </select>
-          </label>          {/* ID CLASSIC - Always show */}
+          </label>          {/* ID CLASSIC - Solo habilitado cuando status es FINISHED */}
           <label style={{ flex: '1 1 150px' }}>
-            ID CLASSIC
+            ID CLASSIC {workOrder.status === 'FINISHED' && <span style={{ color: 'red' }}>*</span>}
             <input
               type="text"
               name="idClassic"
-              placeholder="ID Classic (opcional)"
+              placeholder={workOrder.status === 'FINISHED' ? "ID Classic (requerido)" : "ID Classic (solo disponible cuando status es FINISHED)"}
               value={workOrder.idClassic || ''}
               onChange={onChange}
+              disabled={workOrder.status !== 'FINISHED'}
+              required={workOrder.status === 'FINISHED'}
               style={{ 
                 width: '100%', 
                 marginTop: 4, 
                 padding: 8,
-                borderColor: idClassicError ? '#f44336' : undefined
+                borderColor: idClassicError ? '#f44336' : undefined,
+                backgroundColor: workOrder.status !== 'FINISHED' ? '#f5f5f5' : '#fff',
+                cursor: workOrder.status !== 'FINISHED' ? 'not-allowed' : 'text'
               }}
             />
-            {idClassicError && (
+            {workOrder.status !== 'FINISHED' && (
+              <div style={{
+                color: '#666',
+                fontSize: '11px',
+                marginTop: '2px',
+                fontStyle: 'italic'
+              }}>
+                Campo habilitado solo cuando status es FINISHED
+              </div>
+            )}
+            {idClassicError && workOrder.status === 'FINISHED' && (
               <div style={{
                 color: '#f44336',
                 fontSize: '12px',
@@ -740,8 +756,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'qty', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
                     placeholder="Cantidad"
-                  />
-                </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
+                  />                </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   Costo Unit.
                   <input
                     type="text"
@@ -759,6 +774,28 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 </label>                <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
                   Total: ${((parseFloat(String(part.qty || '0'))) * (parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0)).toFixed(2)}
                 </div>
+                
+                {/* Botón de eliminar parte */}
+                {onDeletePart && (
+                  <button
+                    type="button"
+                    onClick={() => onDeletePart(index)}
+                    style={{
+                      padding: '4px 8px',
+                      background: '#d32f2f',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      marginTop: 4,
+                      width: '100%'
+                    }}
+                    title="Eliminar esta parte"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                )}
               </div>
             ))}
           </div>

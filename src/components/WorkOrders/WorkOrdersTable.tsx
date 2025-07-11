@@ -188,19 +188,41 @@ const WorkOrdersTable: React.FC = () => {
       order.idClassic.toLowerCase() === idClassic.toLowerCase()
     );
   };
-
   // Function to validate ID Classic in real-time
-  const validateIdClassic = (idClassic: string) => {
-    if (!idClassic || idClassic.trim() === '') {
-      setIdClassicError('');
-      return;
+  const validateIdClassic = (idClassic: string, status?: string) => {
+    // Clear any existing error first
+    setIdClassicError('');
+    
+    // Get current status (from parameter or current work order)
+    const currentStatus = status || (showEditForm ? editWorkOrder?.status : newWorkOrder.status) || '';
+    
+    // If status is FINISHED, ID Classic is required
+    if (currentStatus === 'FINISHED') {
+      if (!idClassic || idClassic.trim() === '') {
+        setIdClassicError('⚠️ ID Classic is required when status is FINISHED!');
+        return false;
+      }
+      
+      // Check if ID Classic already exists (excluding current work order if editing)
+      const existingOrder = workOrders.find(order => 
+        order.idClassic && 
+        order.idClassic.toLowerCase() === idClassic.toLowerCase() &&
+        order.id !== (showEditForm ? editWorkOrder?.id : undefined)
+      );
+      
+      if (existingOrder) {
+        setIdClassicError(`⚠️ Work Order with ID Classic "${idClassic}" already exists!`);
+        return false;
+      }
+    } else {
+      // If status is not FINISHED, ID Classic should not be entered
+      if (idClassic && idClassic.trim() !== '') {
+        setIdClassicError('⚠️ ID Classic can only be set when status is FINISHED!');
+        return false;
+      }
     }
     
-    if (checkIdClassicExists(idClassic)) {
-      setIdClassicError(`⚠️ Work Order with ID Classic "${idClassic}" already exists!`);
-    } else {
-      setIdClassicError('');
-    }
+    return true;
   };
 
   // Función para cargar las órdenes con manejo inteligente de errores
@@ -368,7 +390,6 @@ const WorkOrdersTable: React.FC = () => {
     return inWeek && matchesStatus && matchesDay && matchesIdClassic;
   });
 
-
   // Cambios generales
   const handleWorkOrderChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any
@@ -377,16 +398,29 @@ const WorkOrdersTable: React.FC = () => {
     if (e && e.target) {
       const { name, value } = e.target;
       
-      // Validar ID Classic en tiempo real
-      if (name === 'idClassic') {
-        validateIdClassic(value);
-      }
-      
       if (showForm) {
-        setNewWorkOrder((prev: typeof newWorkOrder) => ({ ...prev, [name]: value }));
+        const updatedWorkOrder = { ...newWorkOrder, [name]: value };
+        setNewWorkOrder(updatedWorkOrder);
+        
+        // Validar ID Classic cuando cambia el ID Classic o el status
+        if (name === 'idClassic' || name === 'status') {
+          const idClassicValue = name === 'idClassic' ? value : updatedWorkOrder.idClassic;
+          const statusValue = name === 'status' ? value : updatedWorkOrder.status;
+          validateIdClassic(idClassicValue || '', statusValue);
+        }
+        
         if (name === 'trailer') fetchPendingParts(value);
       } else if (showEditForm && editWorkOrder) {
-        setEditWorkOrder((prev: any) => ({ ...prev, [name]: value }));
+        const updatedEditWorkOrder = { ...editWorkOrder, [name]: value };
+        setEditWorkOrder(updatedEditWorkOrder);
+        
+        // Validar ID Classic cuando cambia el ID Classic o el status
+        if (name === 'idClassic' || name === 'status') {
+          const idClassicValue = name === 'idClassic' ? value : updatedEditWorkOrder.idClassic;
+          const statusValue = name === 'status' ? value : updatedEditWorkOrder.status;
+          validateIdClassic(idClassicValue || '', statusValue);
+        }
+        
         if (name === 'trailer') fetchPendingParts(value);
       }
     }
@@ -542,16 +576,27 @@ const WorkOrdersTable: React.FC = () => {
             cost: updatedParts[index].cost,
             foundPart
           });
-        }
-      }
+        }      }
 
       setEditWorkOrder((prev: any) => ({ ...prev, parts: updatedParts }));
     }
-  };  // Guardar nueva orden
+  };
+
+  // Guardar nueva orden
   const handleAddWorkOrder = async (datosOrden: any) => {
     setLoading(true);
     try {
-      // 0. Validate ID Classic doesn't already exist
+      // 0a. Validate ID Classic is required when status is FINISHED
+      if (datosOrden.status === 'FINISHED') {
+        if (!datosOrden.idClassic || datosOrden.idClassic.trim() === '') {
+          setIdClassicError('⚠️ ID Classic is required when status is FINISHED!');
+          alert('Error: ID Classic is required when status is FINISHED. Please enter an ID Classic.');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // 0b. Validate ID Classic doesn't already exist (when provided)
       if (datosOrden.idClassic && checkIdClassicExists(datosOrden.idClassic)) {
         setIdClassicError(`⚠️ Work Order with ID Classic "${datosOrden.idClassic}" already exists!`);
         alert(`Error: Work Order with ID Classic "${datosOrden.idClassic}" already exists. Please use a different ID.`);
@@ -791,9 +836,10 @@ const WorkOrdersTable: React.FC = () => {
       setPendingParts(res.data as any[]);
     } catch (error) {
       console.error(`❌ Error obteniendo partes pendientes para ${trailer}:`, error);
-      setPendingParts([]);
-    }
-  };  const partesSeleccionadas = pendingParts.filter(p => selectedPendingParts.includes(p.id));
+      setPendingParts([]);    }
+  };
+
+  const partesSeleccionadas = pendingParts.filter((p: any) => selectedPendingParts.includes(p.id));
 
   // NOTA: useEffect problemático removido - causaba que se borraran las partes agregadas manualmente
   // El sistema ahora usa botones "Add Part" individuales en lugar de selección múltiple
@@ -809,7 +855,9 @@ const WorkOrdersTable: React.FC = () => {
         totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
       }));
     }
-  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);  useEffect(() => {
+  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);
+
+  useEffect(() => {
     // ✅ NO MODIFICAR NADA AL ABRIR EL EDITOR
     // Preservar TODOS los valores originales tal como se guardaron
     // Solo este useEffect sirve para detectar cambios, pero NO modifica valores
@@ -909,7 +957,10 @@ const WorkOrdersTable: React.FC = () => {
     maxHeight: '80vh',
     overflowY: 'auto',
     boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
-  };  const addEmptyPart = () => {    if (showEditForm && editWorkOrder) {
+  };
+
+  const addEmptyPart = () => {
+    if (showEditForm && editWorkOrder) {
       // Agregar parte vacía al editWorkOrder
       setEditWorkOrder((prev: any) => ({
         ...prev,
@@ -1057,9 +1108,10 @@ const WorkOrdersTable: React.FC = () => {
       setTrailersWithPendingParts(res.data as string[]);
     } catch (error) {
       console.error('❌ Error cargando trailers con partes pendientes:', error);
-      setTrailersWithPendingParts([]);
-    }
-  };  // Función para visualizar PDF de Work Order existente
+      setTrailersWithPendingParts([]);    }
+  };
+
+  // Función para visualizar PDF de Work Order existente
   const handleViewPDF = async (workOrderId: number) => {
     try {
       console.log('🔄 Generando PDF para Work Order existente:', workOrderId);
@@ -1236,6 +1288,23 @@ const WorkOrdersTable: React.FC = () => {
       console.error('❌ Error al visualizar PDF:', error);
       console.error('❌ Detalles del error:', error.response?.data);
       alert(`Error al generar PDF: ${error.message}`);
+    }
+  };
+
+  // Función para eliminar una parte
+  const deletePart = (index: number) => {
+    if (showEditForm && editWorkOrder) {
+      // Eliminar parte del editWorkOrder
+      setEditWorkOrder((prev: any) => ({
+        ...prev,
+        parts: (prev.parts || []).filter((_: any, i: number) => i !== index)
+      }));
+    } else {
+      // Eliminar parte del newWorkOrder
+      setNewWorkOrder(prev => ({
+        ...prev,
+        parts: prev.parts.filter((_, i) => i !== index)
+      }));
     }
   };
 
@@ -1500,9 +1569,9 @@ const WorkOrdersTable: React.FC = () => {
               placeholder="ID Classic"
             />
           </label>
-        </div>
-
-        {/* --- BOTONES ARRIBA --- */}        <div style={{ margin: '24px 0 16px 0' }}>          <button
+        </div>        {/* --- BOTONES ARRIBA --- */}
+        <div style={{ margin: '24px 0 16px 0' }}>
+          <button
             className="wo-btn"
             style={primaryBtn}
             onClick={() => {
@@ -1517,19 +1586,7 @@ const WorkOrdersTable: React.FC = () => {
               setShowForm(true);
             }}
           >
-            NEW W.O
-          </button>
-          <button className="wo-btn" style={secondaryBtn} onClick={exportToExcel}>
-            Export Excel
-          </button>
-          {/* Botón Edit */}
-          <button
-            className="wo-btn"
-            style={secondaryBtn}
-            onClick={handleEdit}
-            disabled={selectedRow === null}
-          >
-            Edit
+            New Work Order
           </button>
           {/* Botón Delete */}
           <button
@@ -1604,7 +1661,8 @@ const WorkOrdersTable: React.FC = () => {
                   setSelectedPendingParts([]);
                   setIdClassicError('');
                   setShowForm(false);
-                }}title="New Work Order"
+                }}
+                title="New Work Order"
                 billToCoOptions={billToCoOptions}
                 getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
                 inventory={inventory}
@@ -1625,7 +1683,7 @@ const WorkOrdersTable: React.FC = () => {
         )}
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
         {showEditForm && (
-          <div style={modalStyle} onClick={() => setShowEditForm(false)}>
+          <div style={modalStyle} onClick={() => { setShowEditForm(false); setIdClassicError(''); }}>
             <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
               <div style={{
                 marginBottom: 24,
@@ -1685,7 +1743,7 @@ const WorkOrdersTable: React.FC = () => {
                     <button
                       className="wo-btn secondary"
                       style={{ marginLeft: 8 }}
-                      onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); }}
+                      onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); setIdClassicError(''); }}
                     >
                       Cancel
                     </button>
@@ -1706,16 +1764,34 @@ const WorkOrdersTable: React.FC = () => {
                         try {
                           setLoading(true);
                           
+                          // Validate ID Classic is required when status is FINISHED
+                          if (editWorkOrder.status === 'FINISHED') {
+                            if (!editWorkOrder.idClassic || editWorkOrder.idClassic.trim() === '') {
+                              setIdClassicError('⚠️ ID Classic is required when status is FINISHED!');
+                              alert('Error: ID Classic is required when status is FINISHED. Please enter an ID Classic.');
+                              setLoading(false);
+                              return;
+                            }
+                          }
+                          
                           // Validate ID Classic doesn't already exist (if changed)
                           if (editWorkOrder.idClassic) {
                             const originalOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
                             const isIdClassicChanged = originalOrder && 
                               originalOrder.idClassic !== editWorkOrder.idClassic;
                             
-                            if (isIdClassicChanged && checkIdClassicExists(editWorkOrder.idClassic)) {
-                              alert(`Error: Work Order with ID Classic "${editWorkOrder.idClassic}" already exists. Please use a different ID.`);
-                              setLoading(false);
-                              return;
+                            if (isIdClassicChanged) {
+                              const existingOrder = workOrders.find(wo => 
+                                wo.idClassic && 
+                                wo.idClassic.toLowerCase() === editWorkOrder.idClassic.toLowerCase() &&
+                                wo.id !== editWorkOrder.id
+                              );
+                              if (existingOrder) {
+                                setIdClassicError(`⚠️ Work Order with ID Classic "${editWorkOrder.idClassic}" already exists!`);
+                                alert(`Error: Work Order with ID Classic "${editWorkOrder.idClassic}" already exists. Please use a different ID.`);
+                                setLoading(false);
+                                return;
+                              }
                             }
                           }
                           
@@ -1856,10 +1932,11 @@ const WorkOrdersTable: React.FC = () => {
                           setLoading(false);
                         }
                       }}
-                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); }}                      title="Edit Work Order"
+                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); setIdClassicError(''); }}                      title="Edit Work Order"
                       billToCoOptions={billToCoOptions}
                       getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
-                      inventory={inventory}onAddEmptyPart={addEmptyPart}
+                      inventory={inventory}
+                      onAddEmptyPart={addEmptyPart}
                       onAddPendingPart={addPendingPart}
                       trailersWithPendingParts={trailersWithPendingParts}
                       pendingParts={pendingParts}
@@ -1869,6 +1946,7 @@ const WorkOrdersTable: React.FC = () => {
                       setExtraOptions={setExtraOptions}
                       loading={loading}
                       setLoading={setLoading}
+                      idClassicError={idClassicError}
                     />
                   </>
                 )}
