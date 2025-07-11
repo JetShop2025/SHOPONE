@@ -1584,9 +1584,17 @@ const WorkOrdersTable: React.FC = () => {
               // Limpiar el error del ID Classic
               setIdClassicError('');
               setShowForm(true);
-            }}
-          >
+            }}          >
             New Work Order
+          </button>
+          {/* Botón Edit */}
+          <button
+            className="wo-btn"
+            style={secondaryBtn}
+            onClick={handleEdit}
+            disabled={selectedRow === null}
+          >
+            Edit
           </button>
           {/* Botón Delete */}
           <button
