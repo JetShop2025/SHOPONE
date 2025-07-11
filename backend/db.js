@@ -17,8 +17,8 @@ const connection = mysql.createPool({
   password: process.env.MYSQL_PASSWORD,
   port: process.env.MYSQL_PORT,
   connectionLimit: 10,
-  acquireTimeout: 60000,
-  timeout: 60000
+  waitForConnections: true,
+  queueLimit: 0
 });
 
 // Test database connection
@@ -265,14 +265,38 @@ async function updateOrder(id, order) {
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(order.parts || []),
       id
-    ];
-
-    const [result] = await connection.execute(
+    ];    const [result] = await connection.execute(
       'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
       safeValues
     );
     
     console.log('[DB] Successfully updated work order with ID:', id);
+    
+    // NUEVA FUNCIONALIDAD: Sincronizar partes con work_order_parts cuando se edita
+    if (order.parts && Array.isArray(order.parts) && order.parts.length > 0) {
+      console.log('[DB] Syncing parts to work_order_parts table for work order:', id);
+      
+      // Primero, eliminar partes existentes para esta work order
+      await connection.execute('DELETE FROM work_order_parts WHERE work_order_id = ?', [id]);
+      
+      // Luego, insertar las partes actuales
+      for (const part of order.parts) {
+        if (part.sku && part.sku.trim() !== '') {
+          await connection.execute(
+            'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              id,
+              part.sku,
+              part.part || '',
+              Number(part.qty) || 0,
+              Number(part.cost) || 0,
+              usuario || ''
+            ]
+          );
+          console.log(`[DB] Synced part ${part.sku} to work_order_parts`);
+        }
+      }
+    }
     
     // Registrar cambios en auditoría
     const changes = getChangesForAudit(currentData, {
@@ -957,14 +981,13 @@ async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
 
 // AUDIT FUNCTIONS
 async function logAuditEvent(usuario, accion, tabla, registroId, detalles, ipAddress = null) {
-  try {
-    console.log('[DB] Logging audit event:', { usuario, accion, tabla, registroId });
+  try {    console.log('[DB] Logging audit event:', { usuario, accion, tabla, registroId });
     
     const detallesJson = typeof detalles === 'object' ? JSON.stringify(detalles) : detalles;
     
     const [result] = await connection.execute(
-      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, ip_address, fecha) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-      [usuario, accion, tabla, registroId, detallesJson, ipAddress]
+      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
+      [usuario, accion, tabla, registroId, detallesJson]
     );
     
     console.log('[DB] Audit event logged successfully with ID:', result.insertId);
@@ -1011,9 +1034,8 @@ async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
-    
-    query += ' ORDER BY fecha DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+      query += ' ORDER BY fecha DESC LIMIT ? OFFSET ?';
+    params.push(Number(limit) || 100, Number(offset) || 0);
     
     const [rows] = await connection.execute(query, params);
     console.log(`[DB] Retrieved ${rows.length} audit logs`);
