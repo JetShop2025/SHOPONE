@@ -11,7 +11,7 @@ import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
-import { generateWorkOrderPDF, openInvoiceLinks, downloadPDF, savePDFToDatabase } from '../../utils/pdfGenerator';
+import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -710,8 +710,7 @@ const WorkOrdersTable: React.FC = () => {
         });
         
         console.log('✅ Partes enriquecidas con invoice data:', enrichedParts);
-        
-        // Preparar datos para el PDF con validaciones robustas
+          // Preparar datos para el PDF con validaciones robustas
         const pdfData = {
           id: workOrderData.id || newWorkOrderId,
           idClassic: workOrderData.idClassic || workOrderData.id?.toString() || newWorkOrderId.toString(),
@@ -722,6 +721,7 @@ const WorkOrdersTable: React.FC = () => {
           mechanics: Array.isArray(workOrderData.mechanics) ? 
             workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
             workOrderData.mechanics || workOrderData.mechanic || '',          description: workOrderData.description || '',
+          status: workOrderData.status || datosOrden.status || 'PROCESSING', // Incluir status actual
           parts: enrichedParts.map((part: any) => ({
             sku: part.sku || '',
             description: part.part_name || part.sku || 'N/A',
@@ -752,9 +752,8 @@ const WorkOrdersTable: React.FC = () => {
         } catch (dbError) {
           console.warn('⚠️ No se pudo guardar PDF en BD:', dbError);
         }
-        
-        // Descargar PDF
-        downloadPDF(pdf, `work_order_${pdfData.idClassic}.pdf`);
+          // Abrir PDF en nueva pestaña
+        openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}.pdf`);
         
         // Abrir enlaces de facturas automáticamente
         openInvoiceLinks(pdfData.parts);
@@ -767,8 +766,7 @@ const WorkOrdersTable: React.FC = () => {
           response: pdfError.response?.data,
           status: pdfError.response?.status
         });
-        
-        // Crear PDF básico con los datos que tenemos
+          // Crear PDF básico con los datos que tenemos
         try {
           const basicPdfData = {
             id: newWorkOrderId,
@@ -779,6 +777,7 @@ const WorkOrdersTable: React.FC = () => {
             mechanics: Array.isArray(datosOrden.mechanics) ? 
               datosOrden.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : '',
             description: datosOrden.description || '',
+            status: datosOrden.status || 'PROCESSING', // Incluir status actual
             parts: datosOrden.parts.map((part: any) => ({
               sku: part.sku || '',
               description: part.part || 'N/A',
@@ -794,9 +793,8 @@ const WorkOrdersTable: React.FC = () => {
               sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
             totalCost: Number(datosOrden.totalLabAndParts) || 0
           };
-          
-          const pdf = await generateWorkOrderPDF(basicPdfData);
-          downloadPDF(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
+            const pdf = await generateWorkOrderPDF(basicPdfData);
+          openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
           console.log('✅ PDF básico generado como fallback');
         } catch (fallbackError) {
           console.error('❌ Error generando PDF básico:', fallbackError);
@@ -1256,8 +1254,7 @@ const WorkOrdersTable: React.FC = () => {
         subtotalParts,
         totalLabAndParts: finalWorkOrderData.totalLabAndParts,
         finalTotalCost: totalCost
-      });
-        // 10. Preparar datos para el PDF con todos los datos correctos
+      });        // 10. Preparar datos para el PDF con todos los datos correctos
       const pdfData = {
         id: finalWorkOrderData.id || workOrderId,
         idClassic: finalWorkOrderData.idClassic || finalWorkOrderData.id?.toString() || workOrderId.toString(),
@@ -1266,6 +1263,7 @@ const WorkOrdersTable: React.FC = () => {
         date: formattedDate,
         mechanics: mechanicsString || '',
         description: finalWorkOrderData.description || '',
+        status: finalWorkOrderData.status || 'PROCESSING', // Incluir status actual
         parts: enrichedParts.map((part: any) => ({
           sku: part.sku || '',
           description: part.part_name || part.sku || 'N/A',
@@ -1292,9 +1290,8 @@ const WorkOrdersTable: React.FC = () => {
       
       // 10. Generar PDF
       const pdf = await generateWorkOrderPDF(pdfData);
-      
-      // 11. Descargar PDF
-      downloadPDF(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
+        // 11. Abrir PDF en nueva pestaña
+      openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
       
       // 12. Abrir enlaces de facturas automáticamente
       openInvoiceLinks(pdfData.parts);
@@ -1844,13 +1841,13 @@ const WorkOrdersTable: React.FC = () => {
                             usuario: localStorage.getItem('username') || '',
                             extraOptions,
                           };
-                          
-                          console.log('🔧 Enviando datos de WO editada:', {
+                            console.log('🔧 Enviando datos de WO editada:', {
                             id: editWorkOrder.id,
                             totalHrs: dataToSend.totalHrs,
                             mechanics: editWorkOrder.mechanics,
-                            totalLabAndParts: dataToSend.totalLabAndParts
-                          });                          // NUEVA FUNCIONALIDAD: Detectar y deducir nuevas partes del inventario usando FIFO
+                            totalLabAndParts: dataToSend.totalLabAndParts,
+                            status: editWorkOrder.status // Mostrar status actual
+                          });// NUEVA FUNCIONALIDAD: Detectar y deducir nuevas partes del inventario usando FIFO
                           // Obtener partes originales para comparar
                           const originalWorkOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
                           const originalParts = originalWorkOrder?.parts || [];
@@ -1948,14 +1945,16 @@ const WorkOrdersTable: React.FC = () => {
 
                             console.log('Generando nuevo PDF para Work Order editada...');
                             
-                            // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas                            // Obtener datos completos de la orden editada
+                            // NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas                            // IMPORTANTE: SIEMPRE se regenera el PDF al editar, independientemente de si se cambiaron partes
+                            // Esto asegura que el PDF siempre refleje el estado actual de la Work Order,
+                            // incluyendo cambios en status, descripción, mecánicos, fecha, etc.
+                            console.log('Generando nuevo PDF para Work Order editada...');
                             const workOrderRes = await axios.get(`${API_URL}/work-orders/${editWorkOrder.id}`);
                             const workOrderData = workOrderRes.data as any;
                             
                             // Obtener partes usadas con sus enlaces de facturas
                             const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
-                            const partsWithInvoices = partsRes.data as any[];
-                              // Preparar datos para el PDF
+                            const partsWithInvoices = partsRes.data as any[];                              // Preparar datos para el PDF
                             const pdfData = {
                               id: workOrderData.id,
                               idClassic: workOrderData.idClassic || workOrderData.id.toString(),
@@ -1964,6 +1963,7 @@ const WorkOrdersTable: React.FC = () => {
                               date: workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
                               mechanics: workOrderData.mechanics || '',
                               description: workOrderData.description || '',
+                              status: workOrderData.status || editWorkOrder.status || 'PROCESSING', // Incluir status actual
                               parts: partsWithInvoices.map((part: any) => ({
                                 sku: part.sku,
                                 description: part.part_name || part.sku,
@@ -1991,9 +1991,8 @@ const WorkOrdersTable: React.FC = () => {
                             } catch (dbError) {
                               console.warn('⚠️ No se pudo guardar PDF en BD tras edición:', dbError);
                             }
-                            
-                            // Descargar PDF
-                            downloadPDF(pdf, `work_order_${workOrderData.idClassic || editWorkOrder.id}.pdf`);
+                              // Abrir PDF en nueva pestaña
+                            openPDFInNewTab(pdf, `work_order_${workOrderData.idClassic || editWorkOrder.id}.pdf`);
                             
                             // Abrir enlaces de facturas automáticamente
                             openInvoiceLinks(pdfData.parts);

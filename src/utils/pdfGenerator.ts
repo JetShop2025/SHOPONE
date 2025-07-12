@@ -9,6 +9,7 @@ interface WorkOrderData {
   date: string;
   mechanics: string;
   description: string;
+  status?: string;
   parts: Array<{
     sku: string;
     description: string;
@@ -110,8 +111,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('Trailer:', boxesStartX + 3, firstRowY + 22);
   pdf.setTextColor(0, 0, 0);
   pdf.text(String(workOrderData.trailer || ''), boxesStartX + 3, firstRowY + 28);
-  
-  // CAJA DERECHA - Date, Invoice #, Mechanics, ID Classic
+    // CAJA DERECHA - Date, Invoice #, ID Classic, Mechanics, Status
   const rightBoxX = boxesStartX + leftBoxWidth + gapBetweenBoxes;
   pdf.setDrawColor(0, 150, 255);
   pdf.rect(rightBoxX, firstRowY, rightBoxWidth, boxHeight);
@@ -127,21 +127,45 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('Invoice #:', rightBoxX + 3, firstRowY + 12);
   pdf.setTextColor(0, 0, 0);
   pdf.text(String(workOrderData.id || ''), rightBoxX + 25, firstRowY + 12);
-    pdf.setTextColor(0, 150, 255);
-  pdf.text('Mechanics:', rightBoxX + 3, firstRowY + 18);
+  
+  pdf.setTextColor(0, 150, 255);
+  pdf.text('ID Classic:', rightBoxX + 3, firstRowY + 18);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text(String(workOrderData.idClassic || ''), rightBoxX + 25, firstRowY + 18);
+  
+  pdf.setTextColor(0, 150, 255);
+  pdf.text('Mechanics:', rightBoxX + 3, firstRowY + 24);
   pdf.setTextColor(0, 0, 0);
   const mechanicsText = String(workOrderData.mechanics || '');
   // Usar splitTextToSize para que el texto se ajuste al ancho disponible
   const splitMechanics = pdf.splitTextToSize(mechanicsText, rightBoxWidth - 28);
-  pdf.text(splitMechanics, rightBoxX + 25, firstRowY + 18);
+  pdf.text(splitMechanics, rightBoxX + 25, firstRowY + 24);
   
+  // STATUS - Agregar después de las cajas principales
+  const statusY = firstRowY + boxHeight + 6;
+  pdf.setFontSize(10);
   pdf.setTextColor(0, 150, 255);
-  pdf.text('ID Classic:', rightBoxX + 3, firstRowY + 24);
+  pdf.text('STATUS:', rightBoxX + 3, statusY);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.idClassic || ''), rightBoxX + 25, firstRowY + 24);
   
-  // DESCRIPCIÓN
-  const descY = firstRowY + boxHeight + 12;
+  // Resaltar el status según su valor
+  const status = String(workOrderData.status || 'PROCESSING');
+  if (status === 'FINISHED') {
+    pdf.setTextColor(0, 150, 0); // Verde para FINISHED
+  } else if (status === 'APPROVED') {
+    pdf.setTextColor(255, 165, 0); // Naranja para APPROVED
+  } else {
+    pdf.setTextColor(255, 0, 0); // Rojo para PROCESSING
+  }
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(status, rightBoxX + 25, statusY);
+  
+  // Resetear estilo
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(0, 0, 0);
+    // DESCRIPCIÓN
+  const descY = firstRowY + boxHeight + 18; // Aumentar espacio para el status
   pdf.setFontSize(10);
   pdf.setTextColor(0, 150, 255);
   pdf.text('Description:', leftMargin, descY);
@@ -353,4 +377,32 @@ export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: 
 
 export const downloadPDF = (pdf: jsPDF, filename: string) => {
   pdf.save(filename);
+};
+
+// Función para abrir PDF en nueva pestaña sin descargarlo
+export const openPDFInNewTab = (pdf: jsPDF, filename: string = 'work_order.pdf') => {
+  try {
+    const pdfBlob = pdf.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    
+    // Abrir en nueva pestaña
+    const newWindow = window.open(pdfUrl, '_blank');
+    
+    if (newWindow) {
+      console.log('✅ PDF abierto en nueva pestaña:', filename);
+      
+      // Limpiar la URL del objeto después de un tiempo para liberar memoria
+      setTimeout(() => {
+        URL.revokeObjectURL(pdfUrl);
+      }, 60000); // 1 minuto
+    } else {
+      console.warn('⚠️ No se pudo abrir nueva pestaña, posible bloqueador de popups');
+      // Fallback: descargar si no se puede abrir
+      downloadPDF(pdf, filename);
+    }
+  } catch (error) {
+    console.error('❌ Error abriendo PDF en nueva pestaña:', error);
+    // Fallback: descargar si hay error
+    downloadPDF(pdf, filename);
+  }
 };

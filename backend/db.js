@@ -981,9 +981,16 @@ async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
 
 // AUDIT FUNCTIONS
 async function logAuditEvent(usuario, accion, tabla, registroId, detalles, ipAddress = null) {
-  try {    console.log('[DB] Logging audit event:', { usuario, accion, tabla, registroId });
+  try {
+    console.log('[DB] Logging audit event:', { usuario, accion, tabla, registroId });
     
-    const detallesJson = typeof detalles === 'object' ? JSON.stringify(detalles) : detalles;
+    let detallesJson = typeof detalles === 'object' ? JSON.stringify(detalles) : String(detalles);
+    
+    // Truncar detalles si es muy largo (máximo 1000 caracteres para evitar error SQL)
+    if (detallesJson.length > 1000) {
+      detallesJson = detallesJson.substring(0, 997) + '...';
+      console.log('[DB] Detalles truncados por ser muy largos');
+    }
     
     const [result] = await connection.execute(
       'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',

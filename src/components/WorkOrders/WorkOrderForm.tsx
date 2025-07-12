@@ -311,7 +311,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         parts: cleanParts,
         extraOptions, // Sin agregar el 5% manualmente, el backend lo hará automáticamente
         totalHrs: calculateTotalHours(), // Asegurar que se envíen las horas actuales
-        usuario: localStorage.getItem('username') || ''
+        usuario: localStorage.getItem('username') || '',
+        forceUpdate: true // Flag para forzar actualización del PDF en edición
       };
 
       await onSubmit(dataToSend);
