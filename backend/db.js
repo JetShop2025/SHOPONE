@@ -33,8 +33,35 @@ async function testConnection() {
   }
 }
 
-// Call test connection on startup
-testConnection();
+// Función para crear tabla de auditoría si no existe
+async function ensureAuditTableExists() {
+  try {
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario VARCHAR(100) NOT NULL DEFAULT 'SYSTEM',
+        accion VARCHAR(50) NOT NULL,
+        tabla VARCHAR(100) NOT NULL,
+        registro_id VARCHAR(100),
+        detalles TEXT,
+        ip_address VARCHAR(45),
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_usuario (usuario),
+        INDEX idx_accion (accion),
+        INDEX idx_tabla (tabla),
+        INDEX idx_fecha (fecha)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('[DB] Audit table ensured to exist');
+  } catch (error) {
+    console.error('[DB] Error creating audit table:', error.message);
+  }
+}
+
+// Call test connection and ensure audit table on startup
+testConnection().then(() => {
+  ensureAuditTableExists();
+});
 
 // Trailers functions
 async function getTrailers() {
@@ -47,35 +74,58 @@ async function getTrailers() {
   }
 }
 
-async function createTrailer(trailer) {
+async function createTrailer(trailer, usuario = 'SYSTEM') {
   try {
     const [result] = await connection.execute(
       'INSERT INTO trailers (numero, type, modelo, año, placa, status) VALUES (?, ?, ?, ?, ?, ?)',
       [trailer.numero, trailer.type, trailer.modelo, trailer.año, trailer.placa, trailer.status]
     );
-    return { id: result.insertId, ...trailer };
+    
+    const newTrailer = { id: result.insertId, ...trailer };
+    
+    // Registrar en auditoría
+    await auditTrailerOperation(usuario, 'CREATE', result.insertId, null, null, newTrailer);
+    
+    return newTrailer;
   } catch (error) {
     console.error('[DB] Error creating trailer:', error.message);
     throw error;
   }
 }
 
-async function updateTrailer(id, trailer) {
+async function updateTrailer(id, trailer, usuario = 'SYSTEM') {
   try {
+    // Obtener datos actuales para auditoría
+    const [current] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [id]);
+    const oldData = current[0] || null;
+    
     await connection.execute(
       'UPDATE trailers SET numero=?, type=?, modelo=?, año=?, placa=?, status=? WHERE id=?',
       [trailer.numero, trailer.type, trailer.modelo, trailer.año, trailer.placa, trailer.status, id]
     );
-    return { id, ...trailer };
+    
+    const newData = { id, ...trailer };
+    
+    // Registrar en auditoría
+    await auditTrailerOperation(usuario, 'UPDATE', id, null, oldData, newData);
+    
+    return newData;
   } catch (error) {
     console.error('[DB] Error updating trailer:', error.message);
     throw error;
   }
 }
 
-async function deleteTrailer(id) {
+async function deleteTrailer(id, usuario = 'SYSTEM') {
   try {
+    // Obtener datos antes de eliminar para auditoría
+    const [current] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [id]);
+    const oldData = current[0] || null;
+    
     await connection.execute('DELETE FROM trailers WHERE id=?', [id]);
+    
+    // Registrar en auditoría
+    await auditTrailerOperation(usuario, 'DELETE', id, null, oldData, null);
   } catch (error) {
     console.error('[DB] Error deleting trailer:', error.message);
     throw error;
@@ -193,7 +243,6 @@ async function createOrder(order) {
     const usuario = order.usuario || 'system';
     
     // Convert undefined values to null for MySQL compatibility
-    // Remove orderNumber as it doesn't exist in the database table
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
@@ -217,20 +266,14 @@ async function createOrder(order) {
     const newOrderId = result.insertId;
     console.log('[DB] Successfully created work order with ID:', newOrderId);
     
-    // Registrar en auditoría
-    await logAuditEvent(
+    // Registrar en auditoría usando función especializada
+    await auditWorkOrderOperation(
       usuario,
       'CREATE',
-      'work_orders',
       newOrderId,
-      {
-        action: 'Nueva Work Order creada',
-        customer: order.billToCo,
-        trailer: order.trailer,
-        mechanic: order.mechanic,
-        totalCost: order.totalLabAndParts,
-        partsCount: order.parts?.length || 0
-      }
+      null,
+      null,
+      order
     );
     
     return { id: newOrderId, ...order };
@@ -297,32 +340,25 @@ async function updateOrder(id, order) {
         }
       }
     }
-    
-    // Registrar cambios en auditoría
-    const changes = getChangesForAudit(currentData, {
-      billToCo: order.billToCo,
-      trailer: order.trailer,
-      mechanic: order.mechanic,
-      date: order.date,
-      description: order.description,
-      totalHrs: order.totalHrs,
-      totalLabAndParts: order.totalLabAndParts,
-      status: order.status,
-      idClassic: order.idClassic
-    });
-    
-    if (Object.keys(changes).length > 0) {
-      await logAuditEvent(
-        usuario,
-        'UPDATE',
-        'work_orders',
-        id,
-        {
-          action: 'Work Order actualizada',
-          changes: changes
-        }
-      );
-    }
+      // Registrar cambios en auditoría usando función especializada
+    await auditWorkOrderOperation(
+      usuario,
+      'UPDATE',
+      id,
+      null,
+      currentData,
+      {
+        billToCo: order.billToCo,
+        trailer: order.trailer,
+        mechanic: order.mechanic,
+        date: order.date,
+        description: order.description,
+        totalHrs: order.totalHrs,
+        totalLabAndParts: order.totalLabAndParts,
+        status: order.status,
+        idClassic: order.idClassic
+      }
+    );
     
     return { id, ...order };
   } catch (error) {
@@ -768,7 +804,7 @@ async function getPartes() {
   }
 }
 
-async function createParte(parte) {
+async function createParte(parte, usuario = 'SYSTEM') {
   try {    // Convert undefined values to null for MySQL compatibility
     const safeValues = [
       parte.sku || null,
@@ -792,15 +828,25 @@ async function createParte(parte) {
       'INSERT INTO inventory (sku, barCodes, category, part, provider, brand, um, area, imagen, precio, onHand, receive, salidasWo, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
-    return { id: result.insertId, ...parte };
+    
+    const newParte = { id: result.insertId, ...parte };
+    
+    // Registrar en auditoría
+    await auditInventoryOperation(usuario, 'CREATE', parte.sku, null, null, newParte);
+    
+    return newParte;
   } catch (error) {
     console.error('[DB] Error creating parte:', error.message);
     throw error;
   }
 }
 
-async function updateParte(id, parte) {
+async function updateParte(id, parte, usuario = 'SYSTEM') {
   try {
+    // Obtener datos actuales para auditoría
+    const [current] = await connection.execute('SELECT * FROM inventory WHERE id = ?', [id]);
+    const oldData = current[0] || null;
+    
     // Convert undefined values to null for MySQL compatibility
     const safeValues = [
       parte.sku || null,
@@ -824,16 +870,29 @@ async function updateParte(id, parte) {
       'UPDATE inventory SET sku=?, barCodes=?, category=?, part=?, provider=?, brand=?, um=?, area=?, imagen=?, precio=?, onHand=?, receive=?, salidasWo=?, invoiceLink=? WHERE id=?',
       safeValues
     );
-    return { id, ...parte };
+    
+    const newData = { id, ...parte };
+    
+    // Registrar en auditoría
+    await auditInventoryOperation(usuario, 'UPDATE', parte.sku, null, oldData, newData);
+    
+    return newData;
   } catch (error) {
     console.error('[DB] Error updating parte:', error.message);
     throw error;
   }
 }
 
-async function deleteParte(id) {
+async function deleteParte(id, usuario = 'SYSTEM') {
   try {
+    // Obtener datos antes de eliminar para auditoría
+    const [current] = await connection.execute('SELECT * FROM inventory WHERE id = ?', [id]);
+    const oldData = current[0] || null;
+    
     await connection.execute('DELETE FROM inventory WHERE id=?', [id]);
+    
+    // Registrar en auditoría
+    await auditInventoryOperation(usuario, 'DELETE', oldData?.sku || id, null, oldData, null);
   } catch (error) {
     console.error('[DB] Error deleting parte:', error.message);
     throw error;
@@ -979,31 +1038,151 @@ async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
   }
 }
 
-// AUDIT FUNCTIONS
+// AUDIT FUNCTIONS - Sistema de Auditoría Profesional
 async function logAuditEvent(usuario, accion, tabla, registroId, detalles, ipAddress = null) {
   try {
-    console.log('[DB] Logging audit event:', { usuario, accion, tabla, registroId });
+    console.log('[AUDIT] Registrando evento:', { usuario, accion, tabla, registroId });
     
     let detallesJson = typeof detalles === 'object' ? JSON.stringify(detalles) : String(detalles);
     
-    // Truncar detalles si es muy largo (máximo 1000 caracteres para evitar error SQL)
-    if (detallesJson.length > 1000) {
-      detallesJson = detallesJson.substring(0, 997) + '...';
-      console.log('[DB] Detalles truncados por ser muy largos');
+    // Truncar detalles si es muy largo (máximo 2000 caracteres)
+    if (detallesJson.length > 2000) {
+      detallesJson = detallesJson.substring(0, 1997) + '...';
+      console.log('[AUDIT] Detalles truncados por longitud');
     }
     
     const [result] = await connection.execute(
-      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
-      [usuario, accion, tabla, registroId, detallesJson]
+      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, ip_address, fecha) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [usuario || 'SYSTEM', accion, tabla, registroId, detallesJson, ipAddress]
     );
     
-    console.log('[DB] Audit event logged successfully with ID:', result.insertId);
+    console.log('[AUDIT] Evento registrado exitosamente con ID:', result.insertId);
     return { success: true, auditId: result.insertId };
   } catch (error) {
-    console.error('[DB] Error logging audit event:', error.message);
+    console.error('[AUDIT] Error registrando evento:', error.message);
     // No lanzar error para no interrumpir la operación principal
     return { success: false, error: error.message };
   }
+}
+
+// Función para comparar objetos y generar detalles de cambios
+function getChangesForAudit(oldData, newData, excludeFields = ['updated_at', 'created_at']) {
+  const changes = {};
+  const allKeys = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
+  
+  for (const key of allKeys) {
+    if (excludeFields.includes(key)) continue;
+    
+    const oldValue = oldData ? oldData[key] : null;
+    const newValue = newData ? newData[key] : null;
+    
+    // Solo registrar si hay cambio real
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      changes[key] = {
+        antes: oldValue,
+        despues: newValue
+      };
+    }
+  }
+  
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
+// Función específica para auditar Work Orders
+async function auditWorkOrderOperation(usuario, accion, workOrderId, details, oldData = null, newData = null) {
+  let auditDetails = details;
+  
+  if (oldData && newData && accion === 'UPDATE') {
+    const changes = getChangesForAudit(oldData, newData);
+    if (changes) {
+      auditDetails = {
+        operation: 'Work Order Update',
+        workOrderId: workOrderId,
+        changes: changes,
+        summary: `Actualizada Work Order #${workOrderId}`
+      };
+    }
+  } else if (accion === 'CREATE') {
+    auditDetails = {
+      operation: 'Work Order Creation',
+      workOrderId: workOrderId,
+      data: {
+        customer: newData?.billToCo,
+        trailer: newData?.trailer,
+        status: newData?.status,
+        totalLabAndParts: newData?.totalLabAndParts
+      },
+      summary: `Creada nueva Work Order #${workOrderId}`
+    };
+  } else if (accion === 'DELETE') {
+    auditDetails = {
+      operation: 'Work Order Deletion',
+      workOrderId: workOrderId,
+      deletedData: oldData,
+      summary: `Eliminada Work Order #${workOrderId}`
+    };
+  }
+  
+  return await logAuditEvent(usuario, accion, 'work_orders', workOrderId, auditDetails);
+}
+
+// Función específica para auditar Inventario
+async function auditInventoryOperation(usuario, accion, sku, details, oldData = null, newData = null) {
+  let auditDetails = details;
+  
+  if (oldData && newData && accion === 'UPDATE') {
+    const changes = getChangesForAudit(oldData, newData);
+    if (changes) {
+      auditDetails = {
+        operation: 'Inventory Update',
+        sku: sku,
+        changes: changes,
+        summary: `Actualizado inventario para SKU: ${sku}`
+      };
+    }
+  } else if (accion === 'DEDUCT') {
+    auditDetails = {
+      operation: 'Inventory Deduction',
+      sku: sku,
+      deduction: details,
+      summary: `Deducción de inventario SKU: ${sku}`
+    };
+  }
+  
+  return await logAuditEvent(usuario, accion, 'inventory', sku, auditDetails);
+}
+
+// Función específica para auditar Trailers
+async function auditTrailerOperation(usuario, accion, trailerId, details, oldData = null, newData = null) {
+  let auditDetails = details;
+  
+  if (oldData && newData && accion === 'UPDATE') {
+    const changes = getChangesForAudit(oldData, newData);
+    if (changes) {
+      auditDetails = {
+        operation: 'Trailer Update',
+        trailerId: trailerId,
+        changes: changes,
+        summary: `Actualizado trailer #${trailerId}`
+      };
+    }
+  } else if (accion === 'RENT') {
+    auditDetails = {
+      operation: 'Trailer Rental',
+      trailerId: trailerId,
+      rental: details,
+      summary: `Rentado trailer #${trailerId}`
+    };
+  } else if (accion === 'RETURN') {
+    auditDetails = {
+      operation: 'Trailer Return',
+      trailerId: trailerId,
+      return: details,
+      summary: `Devuelto trailer #${trailerId}`
+    };
+  }
+  
+  return await logAuditEvent(usuario, accion, 'trailers', trailerId, auditDetails);
 }
 
 async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
@@ -1116,5 +1295,8 @@ module.exports = {
   savePDFToWorkOrder,
   logAuditEvent,
   getAuditLogs,
-  getChangesForAudit
+  getChangesForAudit,
+  auditWorkOrderOperation,
+  auditInventoryOperation,
+  auditTrailerOperation
 };

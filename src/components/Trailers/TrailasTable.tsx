@@ -192,7 +192,10 @@ const TrailasTable: React.FC = () => {
     const matchesSearch = traila.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (traila.cliente || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesClient && matchesStatus && matchesSearch;
-  }) : [];
+  }) : [];  // Helper function to get current user
+  const getCurrentUser = () => {
+    return localStorage.getItem('username') || 'USER';
+  };
 
   // Handle rental
   const handleRental = async () => {
@@ -202,7 +205,12 @@ const TrailasTable: React.FC = () => {
     }
 
     try {
-      await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalForm);
+      const rentalData = {
+        ...rentalForm,
+        usuario: getCurrentUser()
+      };
+      
+      await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalData);
       setShowRentalModal(false);
       setRentalForm({ cliente: '', fecha_renta: '', fecha_devolucion: '', observaciones: '' });
       // Refresh data
@@ -212,13 +220,15 @@ const TrailasTable: React.FC = () => {
       console.error('Error renting trailer:', error);
       alert('Error al rentar el trailer');
     }
-  };
-
-  // Handle return
+  };  // Handle return
   const handleReturn = async (traila: Traila) => {
     if (window.confirm('¿Está seguro que desea devolver este trailer?')) {
       try {
-        await axios.put(`${API_URL}/trailas/${traila.id}/return`);
+        const returnData = {
+          usuario: getCurrentUser()
+        };
+        
+        await axios.put(`${API_URL}/trailas/${traila.id}/return`, returnData);
         // Refresh data
         const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
         setTrailas(response.data || []);

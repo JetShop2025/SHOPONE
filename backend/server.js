@@ -124,7 +124,8 @@ app.get('/api/trailas', async (req, res) => {
 app.post('/api/trailers', async (req, res) => {
   try {
     console.log('[POST] /api/trailers - Creating in database:', req.body);
-    const newTrailer = await db.createTrailer(req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const newTrailer = await db.createTrailer(req.body, usuario);
     console.log('[POST] /api/trailers - Created in database:', newTrailer);
     res.json(newTrailer);
   } catch (error) {
@@ -136,7 +137,8 @@ app.post('/api/trailers', async (req, res) => {
 app.post('/api/trailas', async (req, res) => {
   try {
     console.log('[POST] /api/trailas - Creating in database:', req.body);
-    const newTrailer = await db.createTrailer(req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const newTrailer = await db.createTrailer(req.body, usuario);
     console.log('[POST] /api/trailas - Created in database:', newTrailer);
     res.json(newTrailer);
   } catch (error) {
@@ -148,7 +150,8 @@ app.post('/api/trailas', async (req, res) => {
 app.put('/api/trailers/:id', async (req, res) => {
   try {
     console.log(`[PUT] /api/trailers/${req.params.id} - Updating in database:`, req.body);
-    const updatedTrailer = await db.updateTrailer(req.params.id, req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const updatedTrailer = await db.updateTrailer(req.params.id, req.body, usuario);
     console.log(`[PUT] /api/trailers/${req.params.id} - Updated in database:`, updatedTrailer);
     res.json(updatedTrailer);
   } catch (error) {
@@ -160,7 +163,8 @@ app.put('/api/trailers/:id', async (req, res) => {
 app.put('/api/trailas/:id', async (req, res) => {
   try {
     console.log(`[PUT] /api/trailas/${req.params.id} - Updating in database:`, req.body);
-    const updatedTrailer = await db.updateTrailer(req.params.id, req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const updatedTrailer = await db.updateTrailer(req.params.id, req.body, usuario);
     console.log(`[PUT] /api/trailas/${req.params.id} - Updated in database:`, updatedTrailer);
     res.json(updatedTrailer);
   } catch (error) {
@@ -172,7 +176,8 @@ app.put('/api/trailas/:id', async (req, res) => {
 app.delete('/api/trailers/:id', async (req, res) => {
   try {
     console.log(`[DELETE] /api/trailers/${req.params.id} - Deleting from database`);
-    await db.deleteTrailer(req.params.id);
+    const usuario = req.body.usuario || 'SYSTEM';
+    await db.deleteTrailer(req.params.id, usuario);
     console.log(`[DELETE] /api/trailers/${req.params.id} - Deleted from database`);
     res.json({ success: true });
   } catch (error) {
@@ -184,7 +189,8 @@ app.delete('/api/trailers/:id', async (req, res) => {
 app.delete('/api/trailas/:id', async (req, res) => {
   try {
     console.log(`[DELETE] /api/trailas/${req.params.id} - Deleting from database`);
-    await db.deleteTrailer(req.params.id);
+    const usuario = req.body.usuario || 'SYSTEM';
+    await db.deleteTrailer(req.params.id, usuario);
     console.log(`[DELETE] /api/trailas/${req.params.id} - Deleted from database`);
     res.json({ success: true });
   } catch (error) {
@@ -270,7 +276,8 @@ app.get('/api/partes', async (req, res) => {
 app.post('/api/inventory', async (req, res) => {
   try {
     console.log('[POST] /api/inventory - Creating in database:', req.body);
-    const newItem = await db.createParte(req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const newItem = await db.createParte(req.body, usuario);
     console.log('[POST] /api/inventory - Created in database:', newItem);
     res.json(newItem);
   } catch (error) {
@@ -282,7 +289,8 @@ app.post('/api/inventory', async (req, res) => {
 app.post('/api/partes', async (req, res) => {
   try {
     console.log('[POST] /api/partes - Creating in database:', req.body);
-    const newItem = await db.createParte(req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const newItem = await db.createParte(req.body, usuario);
     console.log('[POST] /api/partes - Created in database:', newItem);
     res.json(newItem);
   } catch (error) {
@@ -294,7 +302,8 @@ app.post('/api/partes', async (req, res) => {
 app.put('/api/inventory/:id', async (req, res) => {
   try {
     console.log(`[PUT] /api/inventory/${req.params.id} - Updating in database:`, req.body);
-    const updatedItem = await db.updateParte(req.params.id, req.body);
+    const usuario = req.body.usuario || 'SYSTEM';
+    const updatedItem = await db.updateParte(req.params.id, req.body, usuario);
     console.log(`[PUT] /api/inventory/${req.params.id} - Updated in database:`, updatedItem);
     res.json(updatedItem);
   } catch (error) {
@@ -306,7 +315,8 @@ app.put('/api/inventory/:id', async (req, res) => {
 app.delete('/api/inventory/:id', async (req, res) => {
   try {
     console.log(`[DELETE] /api/inventory/${req.params.id} - Deleting from database`);
-    await db.deleteParte(req.params.id);
+    const usuario = req.body.usuario || 'SYSTEM';
+    await db.deleteParte(req.params.id, usuario);
     console.log(`[DELETE] /api/inventory/${req.params.id} - Deleted from database`);
     res.json({ success: true });
   } catch (error) {
@@ -416,6 +426,101 @@ app.get('/api/trailas/:trailerName/rental-history', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] GET /api/trailas/:trailerName/rental-history:', error);
     res.status(500).json({ error: 'Failed to fetch rental history for trailer from database' });
+  }
+});
+
+// Trailer rental endpoint
+app.put('/api/trailas/:id/rent', async (req, res) => {
+  try {
+    const trailerId = req.params.id;
+    const { cliente, fecha_renta, fecha_devolucion, observaciones } = req.body;
+    const usuario = req.body.usuario || 'SYSTEM';
+    
+    console.log(`[PUT] /api/trailas/${trailerId}/rent - Renting trailer:`, req.body);
+    
+    // Obtener datos actuales del trailer para auditoría
+    const [current] = await db.connection.execute('SELECT * FROM trailas WHERE id = ?', [trailerId]);
+    const oldData = current[0] || null;
+    
+    // Actualizar el trailer como rentado
+    await db.connection.execute(
+      'UPDATE trailas SET estatus = ?, cliente = ?, fecha_renta = ?, fecha_devolucion = ?, observaciones = ? WHERE id = ?',
+      ['RENTADO', cliente, fecha_renta, fecha_devolucion, observaciones, trailerId]
+    );
+    
+    // Obtener datos actualizados
+    const [updated] = await db.connection.execute('SELECT * FROM trailas WHERE id = ?', [trailerId]);
+    const newData = updated[0] || null;
+    
+    // Insertar en historial de rentas
+    try {
+      await db.connection.execute(
+        'INSERT INTO trailer_rental_history (trailer_id, trailer_nombre, cliente, fecha_renta, fecha_devolucion, observaciones) VALUES (?, ?, ?, ?, ?, ?)',
+        [trailerId, oldData?.nombre, cliente, fecha_renta, fecha_devolucion, observaciones]
+      );
+    } catch (historyError) {
+      console.warn('Could not insert rental history:', historyError.message);
+    }
+    
+    // Registrar en auditoría
+    await db.auditTrailerOperation(usuario, 'RENT', trailerId, {
+      cliente,
+      fecha_renta,
+      fecha_devolucion,
+      observaciones
+    }, oldData, newData);
+    
+    console.log(`[PUT] /api/trailas/${trailerId}/rent - Trailer rented successfully`);
+    res.json({ success: true, trailer: newData });
+  } catch (error) {
+    console.error(`[ERROR] PUT /api/trailas/${req.params.id}/rent:`, error);
+    res.status(500).json({ error: 'Failed to rent trailer', details: error.message });
+  }
+});
+
+// Trailer return endpoint
+app.put('/api/trailas/:id/return', async (req, res) => {
+  try {
+    const trailerId = req.params.id;
+    const usuario = req.body.usuario || 'SYSTEM';
+    
+    console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer`);
+    
+    // Obtener datos actuales del trailer para auditoría
+    const [current] = await db.connection.execute('SELECT * FROM trailas WHERE id = ?', [trailerId]);
+    const oldData = current[0] || null;
+    
+    // Actualizar el trailer como disponible
+    const fechaDevolucionReal = new Date().toISOString().split('T')[0];
+    await db.connection.execute(
+      'UPDATE trailas SET estatus = ?, cliente = NULL, fecha_devolucion = ? WHERE id = ?',
+      ['DISPONIBLE', fechaDevolucionReal, trailerId]
+    );
+    
+    // Obtener datos actualizados
+    const [updated] = await db.connection.execute('SELECT * FROM trailas WHERE id = ?', [trailerId]);
+    const newData = updated[0] || null;
+    
+    // Actualizar el historial de rentas con la fecha real de devolución
+    try {
+      await db.connection.execute(
+        'UPDATE trailer_rental_history SET fecha_devolucion_real = ? WHERE trailer_id = ? AND fecha_devolucion_real IS NULL ORDER BY fecha_renta DESC LIMIT 1',
+        [fechaDevolucionReal, trailerId]
+      );
+    } catch (historyError) {
+      console.warn('Could not update rental history:', historyError.message);
+    }
+    
+    // Registrar en auditoría
+    await db.auditTrailerOperation(usuario, 'RETURN', trailerId, {
+      fecha_devolucion_real: fechaDevolucionReal
+    }, oldData, newData);
+    
+    console.log(`[PUT] /api/trailas/${trailerId}/return - Trailer returned successfully`);
+    res.json({ success: true, trailer: newData });
+  } catch (error) {
+    console.error(`[ERROR] PUT /api/trailas/${req.params.id}/return:`, error);
+    res.status(500).json({ error: 'Failed to return trailer', details: error.message });
   }
 });
 
@@ -620,7 +725,8 @@ app.use((error, req, res, next) => {
 
 // START SERVER
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => {  console.log(`[STARTUP] Minimal server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[STARTUP] Minimal server running on port ${PORT}`);
   console.log(`[STARTUP] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[STARTUP] Start time: ${new Date().toISOString()}`);
 });
