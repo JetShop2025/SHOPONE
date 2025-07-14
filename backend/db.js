@@ -33,7 +33,7 @@ async function testConnection() {
   }
 }
 
-// Función para crear tabla de auditoría si no existe
+// Función para crear tabla de auditoría si no existe.
 async function ensureAuditTableExists() {
   try {
     await connection.execute(`
