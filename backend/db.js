@@ -222,10 +222,14 @@ async function deleteTrailerLocation(id) {
 // Orders functions - Optimizado para memoria
 async function getOrders(limit = 100, offset = 0) {
   try {
-    // Limitar la consulta para optimizar memoria
-    const query = 'SELECT * FROM work_orders ORDER BY id DESC LIMIT ? OFFSET ?';
-    console.log(`[DB] Executing optimized query with limit ${limit}, offset ${offset}`);
-    const [rows] = await connection.execute(query, [limit, offset]);
+    // Validate and sanitize limit and offset to prevent SQL injection
+    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 100));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
+    
+    // Use direct interpolation for LIMIT/OFFSET to avoid MySQL parameter issues
+    const query = `SELECT * FROM work_orders ORDER BY id DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+    console.log(`[DB] Executing optimized query with limit ${safeLimit}, offset ${safeOffset}`);
+    const [rows] = await connection.execute(query);
     console.log(`[DB] Found ${rows.length} work orders in database`);
     
     // Parse JSON fields con manejo de errores optimizado
@@ -836,13 +840,18 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
 // Partes/Inventory functions - Optimizado para memoria
 async function getPartes(limit = 200, offset = 0) {
   try {
+    // Validate and sanitize limit and offset to prevent SQL injection
+    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 200));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
+    
     // Intentar con diferentes nombres de tabla comunes
     const tableNames = ['inventory', 'parts', 'partes', 'inventario'];
     
     for (const tableName of tableNames) {
       try {
-        console.log(`[DB] Trying table: ${tableName} with limit ${limit}`);
-        const [rows] = await connection.execute(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`, [limit, offset]);
+        console.log(`[DB] Trying table: ${tableName} with limit ${safeLimit}`);
+        // Use direct interpolation for LIMIT/OFFSET to avoid MySQL parameter issues
+        const [rows] = await connection.execute(`SELECT * FROM ${tableName} LIMIT ${safeLimit} OFFSET ${safeOffset}`);
         console.log(`[DB] Found ${rows.length} items in table ${tableName}`);
         return rows;
       } catch (error) {
