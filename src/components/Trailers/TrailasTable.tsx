@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab } from '../../utils/pdfGenerator';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shipone-onrender.com/api';
 
@@ -60,7 +61,11 @@ const TrailasTable: React.FC = () => {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState<boolean>(false);
   const [rentalHistory, setRentalHistory] = useState<any[]>([]);
-  const [workOrderHistory, setWorkOrderHistory] = useState<any[]>([]);  // Client-based filtering
+  const [workOrderHistory, setWorkOrderHistory] = useState<any[]>([]);
+  // Filtro por mes para Work Orders
+  const [workOrderMonthFilter, setWorkOrderMonthFilter] = useState<string>('ALL');
+
+  // Client-based filtering
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filter, setFilter] = useState<string>('ALL');
@@ -73,6 +78,24 @@ const TrailasTable: React.FC = () => {
     fecha_devolucion: '',
     observaciones: ''
   });
+
+  // Función para formatear fecha sin problemas de zona horaria
+  const formatDateSafely = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      // Si la fecha está en formato YYYY-MM-DD, parsearlo manualmente
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
+        const [year, month, day] = dateString.split('T')[0].split('-');
+        return `${month}/${day}/${year}`;
+      }
+      // Para otros formatos, usar Date pero con cuidado
+      const date = new Date(dateString + 'T00:00:00'); // Forzar hora local
+      return date.toLocaleDateString('en-US');
+    } catch (error) {
+      console.error('Error formateando fecha:', dateString, error);
+      return dateString;
+    }
+  };
 
   // Return form state
   const [returnForm, setReturnForm] = useState({
@@ -230,6 +253,106 @@ const TrailasTable: React.FC = () => {
       {status}
     </span>
   );
+
+  // Función para manejar la generación y visualización de PDF
+  const handleViewWorkOrderPDF = async (workOrder: any) => {
+    try {
+      console.log('🔄 Generando PDF para Work Order desde Trailer Control:', workOrder.id);
+      
+      // 1. Obtener partes de la Work Order
+      let workOrderParts: any[] = [];
+      try {
+        const partsResponse = await axios.get(`${API_URL}/work-order-parts/${workOrder.id}`);
+        workOrderParts = Array.isArray(partsResponse.data) ? partsResponse.data : [];
+      } catch (partsError) {
+        console.warn('⚠️ No se pudieron obtener partes del API:', partsError);
+        // Si no hay partes en API, usar las del work order si las tiene
+        if (workOrder.parts && Array.isArray(workOrder.parts)) {
+          workOrderParts = workOrder.parts.map((part: any, index: number) => ({
+            id: `fallback_${index}`,
+            sku: part.sku || '',
+            part_name: part.part || part.description || '',
+            qty_used: Number(part.qty) || 0,
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
+            invoiceLink: null,
+            invoice_number: 'N/A'
+          }));
+        }
+      }
+      
+      // 2. Procesar mecánicos
+      let mechanicsString = '';
+      let totalHrs = 0;
+      
+      if (workOrder.mechanic && workOrder.mechanic.trim() !== '') {
+        mechanicsString = workOrder.mechanic;
+        totalHrs = Number(workOrder.totalHrs) || 0;
+      } else if (workOrder.mechanics) {
+        try {
+          let mechanicsArray = workOrder.mechanics;
+          if (typeof mechanicsArray === 'string') {
+            mechanicsArray = JSON.parse(mechanicsArray);
+          }
+          if (Array.isArray(mechanicsArray) && mechanicsArray.length > 0) {
+            mechanicsString = mechanicsArray.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ');
+            totalHrs = mechanicsArray.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0);
+          }
+        } catch (error) {
+          mechanicsString = String(workOrder.mechanics || '');
+        }
+      }
+      
+      if (totalHrs === 0) {
+        totalHrs = Number(workOrder.totalHrs) || 0;
+      }
+      
+      // 3. Preparar datos para el PDF
+      const subtotalParts = workOrderParts.reduce((sum: number, part: any) => 
+        sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0);
+      
+      const laborCost = totalHrs * 60;
+      const totalCost = Number(workOrder.totalLabAndParts) || (laborCost + subtotalParts);
+      
+      const pdfData = {
+        id: workOrder.id,
+        idClassic: workOrder.idClassic || workOrder.id.toString(),
+        customer: workOrder.billToCo || workOrder.customer || 'N/A',
+        trailer: workOrder.trailer || '',
+        date: formatDateSafely(workOrder.date || ''),
+        mechanics: mechanicsString || '',
+        description: workOrder.description || '',
+        status: workOrder.status || 'PROCESSING',
+        parts: workOrderParts.map((part: any) => ({
+          sku: part.sku || '',
+          description: part.part_name || part.sku || 'N/A',
+          um: 'EA',
+          qty: Number(part.qty_used) || 0,
+          unitCost: Number(part.cost) || 0,
+          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+          invoice: part.invoice_number || 'N/A',
+          invoiceLink: part.invoiceLink
+        })),
+        laborCost: laborCost,
+        subtotalParts: subtotalParts,
+        totalCost: totalCost
+      };
+      
+      console.log('📄 Datos preparados para PDF desde Trailer Control:', pdfData);
+      
+      // 4. Generar y abrir PDF
+      const pdf = await generateWorkOrderPDF(pdfData);
+      openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_trailer.pdf`);
+      
+      // 5. Abrir enlaces de facturas automáticamente
+      openInvoiceLinks(pdfData.parts);
+      
+      console.log('✅ PDF generado exitosamente desde Trailer Control');
+      
+    } catch (error: any) {
+      console.error('❌ Error al generar PDF desde Trailer Control:', error);
+      alert(`Error al generar PDF: ${error.message}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -639,7 +762,8 @@ const TrailasTable: React.FC = () => {
                             borderRadius: '6px',
                             cursor: 'pointer',
                             fontSize: '12px',
-                            fontWeight: '600'                          }}
+                            fontWeight: '600'
+                          }}
                         >
                           🔧 W.O                        </button>
                       </div>
@@ -827,7 +951,7 @@ const TrailasTable: React.FC = () => {
           textAlign: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
         }}>
-          <p style={{ fontSize: '18px', color: '#666', margin: '0' }}>
+          <p style={{ fontSize: '18px', color: '#666', margin: 0 }}>
             No se encontraron trailers con los filtros seleccionados
           </p>
         </div>
@@ -1070,6 +1194,56 @@ const TrailasTable: React.FC = () => {
           }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
               Historial de Work Orders: {selectedTraila.nombre}
             </h2>
+
+            {/* Filtro por mes */}
+            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label htmlFor="monthFilter" style={{ fontWeight: '600', color: '#333' }}>
+                Filtrar por mes:
+              </label>
+              <select
+                id="monthFilter"
+                value={workOrderMonthFilter}
+                onChange={(e) => setWorkOrderMonthFilter(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  border: '2px solid #1976d2',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: '#fff'
+                }}
+              >
+                <option value="ALL">Todos los meses</option>
+                <option value="2025-01">Enero 2025</option>
+                <option value="2025-02">Febrero 2025</option>
+                <option value="2025-03">Marzo 2025</option>
+                <option value="2025-04">Abril 2025</option>
+                <option value="2025-05">Mayo 2025</option>
+                <option value="2025-06">Junio 2025</option>
+                <option value="2025-07">Julio 2025</option>
+                <option value="2025-08">Agosto 2025</option>
+                <option value="2025-09">Septiembre 2025</option>
+                <option value="2025-10">Octubre 2025</option>
+                <option value="2025-11">Noviembre 2025</option>
+                <option value="2025-12">Diciembre 2025</option>
+                <option value="2024-12">Diciembre 2024</option>
+                <option value="2024-11">Noviembre 2024</option>
+                <option value="2024-10">Octubre 2024</option>
+              </select>
+              {workOrderMonthFilter !== 'ALL' && (
+                <span style={{ color: '#666', fontSize: '14px' }}>
+                  ({(() => {
+                    const filtered = workOrderHistory.filter(wo => {
+                      if (!wo.date) return false;
+                      const woMonth = wo.date.slice(0, 7); // YYYY-MM
+                      return woMonth === workOrderMonthFilter;
+                    });
+                    return filtered.length;
+                  })()} de {workOrderHistory.length} work orders)
+                </span>
+              )}
+            </div>
+
               {workOrderHistory.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1086,41 +1260,63 @@ const TrailasTable: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {workOrderHistory.map((wo, index) => (
-                      <tr key={index}>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.date ? wo.date.slice(0, 10) : '-'}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                          {Array.isArray(wo.mechanics) && wo.mechanics.length > 0
-                            ? wo.mechanics.map((m: any) => m.name).join(', ')
-                            : wo.mechanic || '-'}
-                        </td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                          {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
-                        </td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.status}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>
-                          <button
-                            onClick={() => window.open(`${API_URL}/work-orders/${wo.id}/pdf`, '_blank', 'noopener,noreferrer')}
-                            style={{
-                              padding: '4px 8px',
-                              background: '#f44336',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                            title="Ver PDF de la Work Order"
-                          >
-                            📄 PDF
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      // Filtrar work orders por mes
+                      const filteredWorkOrders = workOrderMonthFilter === 'ALL' 
+                        ? workOrderHistory 
+                        : workOrderHistory.filter(wo => {
+                            if (!wo.date) return false;
+                            const woMonth = wo.date.slice(0, 7); // YYYY-MM
+                            return woMonth === workOrderMonthFilter;
+                          });
+                      
+                      return filteredWorkOrders.length > 0 ? (
+                        filteredWorkOrders.map((wo, index) => (
+                          <tr key={index}>
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.date ? wo.date.slice(0, 10) : '-'}</td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                              {Array.isArray(wo.mechanics) && wo.mechanics.length > 0
+                                ? wo.mechanics.map((m: any) => m.name).join(', ')
+                                : wo.mechanic || '-'}
+                            </td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                              {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
+                            </td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.status}</td>
+                            <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>
+                              <button
+                                onClick={() => handleViewWorkOrderPDF(wo)}
+                                style={{
+                                  padding: '4px 8px',
+                                  background: '#f44336',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: '600'
+                                }}
+                                title="Ver PDF de la Work Order"
+                              >
+                                📄 PDF
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={8} style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                            {workOrderMonthFilter === 'ALL' 
+                              ? 'No hay work orders para este trailer'
+                              : `No hay work orders para ${workOrderMonthFilter.split('-')[1]}/${workOrderMonthFilter.split('-')[0]}`
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -1130,9 +1326,11 @@ const TrailasTable: React.FC = () => {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowWorkOrderModal(false)}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>              <button
+                onClick={() => {
+                  setShowWorkOrderModal(false);
+                  setWorkOrderMonthFilter('ALL'); // Reset filter when closing modal
+                }}
                 style={{
                   padding: '12px 24px',
                   background: '#1976d2',

@@ -225,6 +225,24 @@ const WorkOrdersTable: React.FC = () => {
     return true;
   };
 
+  // Función para formatear fecha sin problemas de zona horaria
+  const formatDateSafely = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      // Si la fecha está en formato YYYY-MM-DD, parsearlo manualmente
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
+        const [year, month, day] = dateString.split('T')[0].split('-');
+        return `${month}/${day}/${year}`;
+      }
+      // Para otros formatos, usar Date pero con cuidado
+      const date = new Date(dateString + 'T00:00:00'); // Forzar hora local
+      return date.toLocaleDateString('en-US');
+    } catch (error) {
+      console.error('Error formateando fecha:', dateString, error);
+      return dateString;
+    }
+  };
+
   // Función para cargar las órdenes con manejo inteligente de errores
   const fetchWorkOrders = useCallback(async (isRetry = false) => {
     try {      setFetchingData(true);
@@ -708,16 +726,15 @@ const WorkOrdersTable: React.FC = () => {
             invoice_number: inventoryItem?.invoiceLink ? 'Inventory Invoice' : 'N/A'
           };
         });
-        
-        console.log('✅ Partes enriquecidas con invoice data:', enrichedParts);
-          // Preparar datos para el PDF con validaciones robustas
+          console.log('✅ Partes enriquecidas con invoice data:', enrichedParts);
+
+        // Preparar datos para el PDF con validaciones robustas
         const pdfData = {
           id: workOrderData.id || newWorkOrderId,
           idClassic: workOrderData.idClassic || workOrderData.id?.toString() || newWorkOrderId.toString(),
           customer: workOrderData.billToCo || workOrderData.customer || '',
           trailer: workOrderData.trailer || '',
-          date: workOrderData.date ? new Date(workOrderData.date).toLocaleDateString('en-US') : 
-                workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
+          date: formatDateSafely(workOrderData.date || workOrderData.fecha || ''),
           mechanics: Array.isArray(workOrderData.mechanics) ? 
             workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
             workOrderData.mechanics || workOrderData.mechanic || '',          description: workOrderData.description || '',
@@ -767,13 +784,12 @@ const WorkOrdersTable: React.FC = () => {
           status: pdfError.response?.status
         });
           // Crear PDF básico con los datos que tenemos
-        try {
-          const basicPdfData = {
+        try {          const basicPdfData = {
             id: newWorkOrderId,
             idClassic: newWorkOrderId.toString(),
             customer: datosOrden.billToCo || '',
             trailer: datosOrden.trailer || '',
-            date: datosOrden.date || new Date().toLocaleDateString('en-US'),
+            date: formatDateSafely(datosOrden.date || ''),
             mechanics: Array.isArray(datosOrden.mechanics) ? 
               datosOrden.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : '',
             description: datosOrden.description || '',
@@ -803,13 +819,16 @@ const WorkOrdersTable: React.FC = () => {
 
       if (data.pdfUrl) {
         window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
-      }
-        // Cierra el formulario y resetea COMPLETAMENTE
+      }        // Cierra el formulario y resetea COMPLETAMENTE
       setShowForm(false);
+      
+      // Reseteo completo del formulario
+      console.log('✅ Work Order guardada exitosamente - Limpiando formulario completamente');
       resetNewWorkOrder();
       setExtraOptions([]);
       setPendingPartsQty({});
       setSelectedPendingParts([]);
+      setIdClassicError('');
       
       // Actualiza la tabla inmediatamente
       await fetchWorkOrders();
@@ -1210,27 +1229,10 @@ const WorkOrdersTable: React.FC = () => {
       // Si no hay horas del procesamiento de mechanics, usar totalHrs directo
       if (totalHrs === 0) {
         totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
-        console.log('📊 Usando totalHrs directo:', totalHrs);
-      }
-        // 7. Procesar fecha correctamente
-      let formattedDate = '';
-      if (finalWorkOrderData.date) {
-        try {
-          // Si la fecha tiene formato ISO o similar, convertirla
-          const dateObj = new Date(finalWorkOrderData.date);
-          if (!isNaN(dateObj.getTime())) {
-            formattedDate = dateObj.toLocaleDateString('en-US');
-          } else {
-            // Si no se puede parsear, usar string original
-            formattedDate = String(finalWorkOrderData.date).slice(0, 10);
-          }
-        } catch {
-          formattedDate = String(finalWorkOrderData.date).slice(0, 10);
-        }
-      } else {
-        // Si no hay fecha, usar fecha actual
-        formattedDate = new Date().toLocaleDateString('en-US');
-      }
+        console.log('📊 Usando totalHrs directo:', totalHrs);      }        // 7. Procesar fecha correctamente sin problemas de zona horaria
+      const formattedDate = formatDateSafely(finalWorkOrderData.date || '') || 
+                           formatDateSafely(finalWorkOrderData.fecha || '') || 
+                           new Date().toLocaleDateString('en-US');
       console.log('📅 Fecha procesada:', formattedDate, 'desde:', finalWorkOrderData.date);
       
       // 8. Obtener customer correctamente
@@ -1586,9 +1588,9 @@ const WorkOrdersTable: React.FC = () => {
         <div style={{ margin: '24px 0 16px 0' }}>
           <button
             className="wo-btn"
-            style={primaryBtn}
-            onClick={() => {
-              // RESETEAR COMPLETAMENTE EL FORMULARIO
+            style={primaryBtn}            onClick={() => {
+              // RESETEAR COMPLETAMENTE EL FORMULARIO ANTES DE ABRIR
+              console.log('🔄 Abriendo formulario de nueva Work Order - Limpiando formulario completamente');
               resetNewWorkOrder(); 
               setExtraOptions([]);
               setPendingPartsQty({});
@@ -1596,8 +1598,12 @@ const WorkOrdersTable: React.FC = () => {
               setSelectedPendingParts([]);
               // Limpiar el error del ID Classic
               setIdClassicError('');
-              setShowForm(true);
-            }}          >
+              
+              // Pequeño delay para asegurar que el reset se complete antes de mostrar el formulario
+              setTimeout(() => {
+                setShowForm(true);
+              }, 10);
+            }}>
             New Work Order
           </button>
           {/* Botón Edit */}
