@@ -36,25 +36,66 @@ async function testConnection() {
 // Función para crear tabla de auditoría si no existe.
 async function ensureAuditTableExists() {
   try {
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS audit_log (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        usuario VARCHAR(100) NOT NULL DEFAULT 'SYSTEM',
-        accion VARCHAR(50) NOT NULL,
-        tabla VARCHAR(100) NOT NULL,
-        registro_id VARCHAR(100),
-        detalles TEXT,
-        ip_address VARCHAR(45),
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_usuario (usuario),
-        INDEX idx_accion (accion),
-        INDEX idx_tabla (tabla),
-        INDEX idx_fecha (fecha)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `);
-    console.log('[DB] Audit table ensured to exist');
+    // Primero verificar si la tabla existe
+    const [tables] = await connection.execute(
+      "SHOW TABLES LIKE 'audit_log'"
+    );
+    
+    if (tables.length > 0) {
+      // La tabla existe, verificar su estructura
+      const [columns] = await connection.execute(
+        "SHOW COLUMNS FROM audit_log"
+      );
+      
+      const columnNames = columns.map(col => col.Field);
+      console.log('[DB] Existing audit_log columns:', columnNames);
+      
+      // Si tiene ip_address, eliminarla
+      if (columnNames.includes('ip_address')) {
+        console.log('[DB] Removing ip_address column from audit_log');
+        try {
+          await connection.execute('ALTER TABLE audit_log DROP COLUMN ip_address');
+          console.log('[DB] Successfully removed ip_address column');
+        } catch (dropError) {
+          console.log('[DB] Column ip_address may not exist or already removed:', dropError.message);
+        }
+      }
+      
+      // Asegurar que todas las columnas necesarias existen
+      const requiredColumns = ['id', 'usuario', 'accion', 'tabla', 'registro_id', 'detalles', 'fecha'];
+      for (const col of requiredColumns) {
+        if (!columnNames.includes(col)) {
+          console.log(`[DB] Adding missing column: ${col}`);
+          // Agregar columnas faltantes según sea necesario
+          if (col === 'usuario') {
+            await connection.execute('ALTER TABLE audit_log ADD COLUMN usuario VARCHAR(100) NOT NULL DEFAULT "SYSTEM"');
+          }
+          // Agregar más columnas si es necesario...
+        }
+      }
+    } else {
+      // La tabla no existe, crearla
+      console.log('[DB] Creating new audit_log table');
+      await connection.execute(`
+        CREATE TABLE audit_log (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          usuario VARCHAR(100) NOT NULL DEFAULT 'SYSTEM',
+          accion VARCHAR(50) NOT NULL,
+          tabla VARCHAR(100) NOT NULL,
+          registro_id VARCHAR(100),
+          detalles TEXT,
+          fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_usuario (usuario),
+          INDEX idx_accion (accion),
+          INDEX idx_tabla (tabla),
+          INDEX idx_fecha (fecha)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    }
+    
+    console.log('[DB] Audit table ensured to exist with correct structure');
   } catch (error) {
-    console.error('[DB] Error creating audit table:', error.message);
+    console.error('[DB] Error ensuring audit table:', error.message);
   }
 }
 
@@ -1039,7 +1080,7 @@ async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
 }
 
 // AUDIT FUNCTIONS - Sistema de Auditoría Profesional
-async function logAuditEvent(usuario, accion, tabla, registroId, detalles, ipAddress = null) {
+async function logAuditEvent(usuario, accion, tabla, registroId, detalles) {
   try {
     console.log('[AUDIT] Registrando evento:', { usuario, accion, tabla, registroId });
     
@@ -1052,8 +1093,8 @@ async function logAuditEvent(usuario, accion, tabla, registroId, detalles, ipAdd
     }
     
     const [result] = await connection.execute(
-      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, ip_address, fecha) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-      [usuario || 'SYSTEM', accion, tabla, registroId, detallesJson, ipAddress]
+      'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
+      [usuario || 'SYSTEM', accion, tabla, registroId, detallesJson]
     );
     
     console.log('[AUDIT] Evento registrado exitosamente con ID:', result.insertId);
@@ -1220,45 +1261,39 @@ async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
-      query += ' ORDER BY fecha DESC LIMIT ? OFFSET ?';
-    params.push(Number(limit) || 100, Number(offset) || 0);
+    
+    query += ' ORDER BY fecha DESC';
+    
+    // Asegurar que limit y offset sean números válidos
+    const finalLimit = Math.max(1, Math.min(1000, parseInt(limit) || 100));
+    const finalOffset = Math.max(0, parseInt(offset) || 0);
+    
+    // Agregar LIMIT y OFFSET solo si son necesarios
+    if (finalLimit) {
+      query += ' LIMIT ?';
+      params.push(finalLimit);
+    }
+    
+    if (finalOffset > 0) {
+      query += ' OFFSET ?';
+      params.push(finalOffset);
+    }
+    
+    console.log('[DB] Executing audit query:', query);
+    console.log('[DB] With params:', params);
     
     const [rows] = await connection.execute(query, params);
     console.log(`[DB] Retrieved ${rows.length} audit logs`);
     return rows;
   } catch (error) {
     console.error('[DB] Error getting audit logs:', error.message);
+    console.error('[DB] Query was:', query);
+    console.error('[DB] Params were:', params);
     throw error;
   }
 }
 
-// Helper function to track changes between old and new data
-function getChangesForAudit(oldData, newData, excludeFields = ['fecha_modificacion', 'updated_at']) {
-  const changes = {};
-  
-  // Comparar todos los campos
-  const allFields = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
-  
-  for (const field of allFields) {
-    if (excludeFields.includes(field)) continue;
-    
-    const oldValue = oldData?.[field];
-    const newValue = newData?.[field];
-    
-    // Comparar valores, considerando null/undefined como equivalentes
-    const oldNormalized = oldValue === null || oldValue === undefined ? '' : String(oldValue);
-    const newNormalized = newValue === null || newValue === undefined ? '' : String(newValue);
-    
-    if (oldNormalized !== newNormalized) {
-      changes[field] = {
-        antes: oldValue,
-        despues: newValue
-      };
-    }
-  }
-  
-  return changes;
-}
+
 
 module.exports = {
   connection,
