@@ -5,7 +5,24 @@ import dayjs from 'dayjs';
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 // Función para renderizar detalles de auditoría de forma profesional
-function renderDetalles(detalles: string) {
+function renderDetalles(detalles: string | null | undefined) {
+  // Verificar si detalles es null, undefined o string vacío
+  if (!detalles || detalles === 'null' || detalles === 'undefined') {
+    return (
+      <div style={{ 
+        fontSize: 12, 
+        color: '#666', 
+        fontStyle: 'italic',
+        padding: '8px 12px',
+        background: '#f5f5f5',
+        borderRadius: 4,
+        border: '1px solid #e0e0e0'
+      }}>
+        Sin detalles disponibles
+      </div>
+    );
+  }
+
   let parsed: any;
   try {
     parsed = JSON.parse(detalles);
@@ -13,23 +30,37 @@ function renderDetalles(detalles: string) {
     return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
   }
 
-  // Si tiene summary, mostrarlo primero
+  // Verificar si parsed es null después del JSON.parse
+  if (!parsed || typeof parsed !== 'object') {
+    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
+  }
+
+  // Si tiene summary, mostrarlo primero como encabezado principal
   if (parsed.summary) {
     return (
       <div style={{ fontSize: 13 }}>
         <div style={{ 
           fontWeight: 600, 
-          color: '#1976d2', 
-          marginBottom: 8,
-          padding: '4px 8px',
-          background: '#e3f2fd',
-          borderRadius: 4,
-          border: '1px solid #1976d2'
+          color: '#1565c0', 
+          marginBottom: 12,
+          padding: '8px 12px',
+          background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+          borderRadius: 8,
+          border: '1px solid #2196f3',
+          boxShadow: '0 2px 4px rgba(33, 150, 243, 0.1)'
         }}>
           📋 {parsed.summary}
         </div>
+        
+        {/* Mostrar información contextual si existe */}
+        {renderContextInfo(parsed)}
+        
+        {/* Mostrar cambios si existen */}
         {parsed.changes && renderChangesTable(parsed.changes)}
-        {parsed.data && renderDataTable(parsed.data)}
+        
+        {/* Mostrar detalles adicionales */}
+        {parsed.detalles && renderDataTable(parsed.detalles, 'Detalles', '#4caf50')}
+        {parsed.datosEliminados && renderDataTable(parsed.datosEliminados, 'Datos Eliminados', '#f44336')}
       </div>
     );
   }
@@ -41,111 +72,248 @@ function renderDetalles(detalles: string) {
 
   // Si es un objeto, mostrar tabla general
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-    return renderDataTable(parsed);
+    return renderDataTable(parsed, 'Información', '#2196f3');
   }
 
   // Si no es objeto, mostrar como texto plano
   return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
 }
 
+// Función para renderizar información contextual
+function renderContextInfo(parsed: any) {
+  if (!parsed || typeof parsed !== 'object') return null;
+  
+  const contextFields = ['cliente', 'trailer', 'estado', 'numero', 'tipo', 'parte', 'categoria', 'sku'];
+  const contextData: any = {};
+  
+  contextFields.forEach(field => {
+    if (parsed[field] && parsed[field] !== null && parsed[field] !== 'null') {
+      contextData[field] = parsed[field];
+    }
+  });
+  
+  if (Object.keys(contextData).length === 0) return null;
+  
+  return (
+    <div style={{
+      background: '#f8f9fa',
+      border: '1px solid #dee2e6',
+      borderRadius: 6,
+      padding: '8px 12px',
+      marginBottom: 12,
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '12px'
+    }}>
+      {Object.entries(contextData).map(([key, value]) => (
+        <div key={key} style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ 
+            fontWeight: 600, 
+            color: '#495057',
+            fontSize: 11,
+            textTransform: 'uppercase',
+            marginRight: 6
+          }}>
+            {key}:
+          </span>
+          <span style={{ 
+            color: '#6c757d',
+            fontSize: 12,
+            padding: '2px 8px',
+            background: '#fff',
+            borderRadius: 4,
+            border: '1px solid #e9ecef'
+          }}>
+            {String(value)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Función para renderizar tabla de cambios (antes/después)
 function renderChangesTable(changes: any) {
+  if (!changes || typeof changes !== 'object') return null;
+  
   const keys = Object.keys(changes);
   if (keys.length === 0) return null;
 
   return (
-    <table style={{
-      fontSize: 12,
-      borderCollapse: 'collapse',
-      width: '100%',
-      background: '#fafafa',
-      borderRadius: 6,
-      overflow: 'hidden',
-      border: '1px solid #e0e0e0',
-      marginTop: 8
-    }}>
-      <thead>
-        <tr style={{ background: '#f44336', color: '#fff' }}>
-          <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>CAMPO</th>
-          <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>ANTES</th>
-          <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>DESPUÉS</th>
-        </tr>
-      </thead>
-      <tbody>
-        {keys.map(key => {
-          const change = changes[key];
-          return (
-            <tr key={key} style={{ borderBottom: '1px solid #e0e0e0' }}>
-              <td style={{ 
-                padding: '6px 8px', 
-                fontWeight: 600, 
-                background: '#f5f5f5',
-                borderRight: '1px solid #e0e0e0'
+    <div style={{ marginBottom: 12 }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: '#e65100',
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
+      }}>
+        🔄 Cambios Realizados
+      </div>
+      <table style={{
+        fontSize: 12,
+        borderCollapse: 'collapse',
+        width: '100%',
+        background: '#fff',
+        borderRadius: 8,
+        overflow: 'hidden',
+        border: '1px solid #e0e0e0',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+      }}>
+        <thead>
+          <tr style={{ background: 'linear-gradient(135deg, #ff5722 0%, #e64a19 100%)', color: '#fff' }}>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>CAMPO</th>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>VALOR ANTERIOR</th>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>VALOR NUEVO</th>
+          </tr>
+        </thead>
+        <tbody>
+          {keys.map((key, index) => {
+            const change = changes[key];
+            return (
+              <tr key={key} style={{ 
+                borderBottom: index < keys.length - 1 ? '1px solid #f5f5f5' : 'none',
+                background: index % 2 === 0 ? '#fafafa' : '#fff'
               }}>
-                {key}
-              </td>
-              <td style={{ 
-                padding: '6px 8px', 
-                color: '#d32f2f',
-                borderRight: '1px solid #e0e0e0'
-              }}>
-                {String(change.antes ?? '')}
-              </td>
-              <td style={{ 
-                padding: '6px 8px', 
-                color: '#388e3c'
-              }}>
-                {String(change.despues ?? '')}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                <td style={{ 
+                  padding: '8px 12px', 
+                  fontWeight: 600, 
+                  color: '#424242',
+                  borderRight: '1px solid #f0f0f0',
+                  background: '#f8f9fa'
+                }}>
+                  {key}
+                </td>
+                <td style={{ 
+                  padding: '8px 12px', 
+                  color: '#d32f2f',                  borderRight: '1px solid #f0f0f0',
+                  fontStyle: change.antes === null || change.antes === 'Sin definir' || change.antes === 'Vacío' || change.antes === 'null' ? 'italic' : 'normal'
+                }}>
+                  <div style={{
+                    padding: '4px 8px',
+                    background: '#ffebee',
+                    borderRadius: 4,
+                    border: '1px solid #ffcdd2'
+                  }}>
+                    {change.antes === null || change.antes === 'null' ? 'Sin definir' : String(change.antes ?? 'Sin definir')}
+                  </div>
+                </td>
+                <td style={{ 
+                  padding: '8px 12px', 
+                  color: '#388e3c',
+                  fontStyle: change.despues === null || change.despues === 'Sin definir' || change.despues === 'Vacío' || change.despues === 'null' ? 'italic' : 'normal'
+                }}>
+                  <div style={{
+                    padding: '4px 8px',
+                    background: '#e8f5e8',
+                    borderRadius: 4,
+                    border: '1px solid #c8e6c9'
+                  }}>
+                    {change.despues === null || change.despues === 'null' ? 'Sin definir' : String(change.despues ?? 'Sin definir')}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 // Función para renderizar tabla de datos general
-function renderDataTable(data: any) {
-  const keys = Object.keys(data).filter(key => key !== 'summary' && key !== 'changes');
+function renderDataTable(data: any, title: string = 'Información', color: string = '#2196f3') {
+  if (!data || typeof data !== 'object') return null;
+  
+  const keys = Object.keys(data).filter(key => 
+    key !== 'summary' && 
+    key !== 'changes' && 
+    key !== 'operation' &&
+    key !== 'workOrderId' &&
+    key !== 'trailerId' &&
+    key !== 'sku' &&
+    data[key] !== null &&
+    data[key] !== 'null' &&
+    data[key] !== undefined
+  );
   if (keys.length === 0) return null;
 
   return (
-    <table style={{
-      fontSize: 12,
-      borderCollapse: 'collapse',
-      width: '100%',
-      background: '#fafafa',
-      borderRadius: 6,
-      overflow: 'hidden',
-      border: '1px solid #e0e0e0',
-      marginTop: 8
-    }}>
-      <thead>
-        <tr style={{ background: '#2196f3', color: '#fff' }}>
-          <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>CAMPO</th>
-          <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>VALOR</th>
-        </tr>
-      </thead>
-      <tbody>
-        {keys.map(key => (
-          <tr key={key} style={{ borderBottom: '1px solid #e0e0e0' }}>
-            <td style={{ 
-              padding: '6px 8px', 
-              fontWeight: 600, 
-              background: '#f5f5f5',
-              borderRight: '1px solid #e0e0e0'
-            }}>
-              {key}
-            </td>
-            <td style={{ padding: '6px 8px' }}>
-              {typeof data[key] === 'object' ? JSON.stringify(data[key]) : String(data[key] ?? '')}
-            </td>
+    <div style={{ marginBottom: 12 }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: color,
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
+      }}>
+        📄 {title}
+      </div>
+      <table style={{
+        fontSize: 12,
+        borderCollapse: 'collapse',
+        width: '100%',
+        background: '#fff',
+        borderRadius: 8,
+        overflow: 'hidden',
+        border: '1px solid #e0e0e0',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+      }}>
+        <thead>
+          <tr style={{ background: `linear-gradient(135deg, ${color} 0%, ${adjustColor(color, -20)} 100%)`, color: '#fff' }}>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>CAMPO</th>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>VALOR</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {keys.map((key, index) => (
+            <tr key={key} style={{ 
+              borderBottom: index < keys.length - 1 ? '1px solid #f5f5f5' : 'none',
+              background: index % 2 === 0 ? '#fafafa' : '#fff'
+            }}>
+              <td style={{ 
+                padding: '8px 12px', 
+                fontWeight: 600, 
+                color: '#424242',
+                borderRight: '1px solid #f0f0f0',
+                background: '#f8f9fa',
+                textTransform: 'capitalize'
+              }}>
+                {key.replace(/([A-Z])/g, ' $1').trim()}
+              </td>              <td style={{ padding: '8px 12px', color: '#616161' }}>
+                <div style={{
+                  padding: '4px 8px',
+                  background: '#f5f5f5',
+                  borderRadius: 4,
+                  border: '1px solid #e0e0e0'
+                }}>
+                  {data[key] === null || data[key] === 'null' 
+                    ? 'Sin definir' 
+                    : typeof data[key] === 'object' 
+                      ? JSON.stringify(data[key]) 
+                      : String(data[key] ?? 'Sin definir')
+                  }
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
+}
+
+// Función auxiliar para ajustar colores
+function adjustColor(color: string, amount: number): string {
+  const colorMap: { [key: string]: string } = {
+    '#2196f3': amount > 0 ? '#1976d2' : '#1565c0',
+    '#4caf50': amount > 0 ? '#388e3c' : '#2e7d32',
+    '#f44336': amount > 0 ? '#d32f2f' : '#c62828',
+    '#ff9800': amount > 0 ? '#f57c00' : '#ef6c00'
+  };
+  return colorMap[color] || color;
 }
 
 // Función para obtener el ícono según la acción
@@ -191,15 +359,17 @@ const AuditLogTable: React.FC = () => {
       if (filters.usuario) params.append('usuario', filters.usuario);
       if (filters.accion) params.append('accion', filters.accion);
       if (filters.tabla) params.append('tabla', filters.tabla);
-      
-      axios.get<any[]>(`${API_URL}/audit/audit-log?${params.toString()}`)
+        axios.get<any[]>(`${API_URL}/audit/audit-log?${params.toString()}`)
         .then(res => { 
           if (isMounted) {
-            setLogs(res.data || []);
+            console.log('Audit logs response:', res.data);
+            const safeData = Array.isArray(res.data) ? res.data : [];
+            setLogs(safeData);
             setLoading(false);
           }
         })
-        .catch(() => { 
+        .catch(error => { 
+          console.error('Error fetching audit logs:', error);
           if (isMounted) {
             setLogs([]);
             setLoading(false);

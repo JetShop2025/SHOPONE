@@ -1129,6 +1129,57 @@ function getChangesForAudit(oldData, newData, excludeFields = ['updated_at', 'cr
   return Object.keys(changes).length > 0 ? changes : null;
 }
 
+// Función para formatear los cambios con nombres más amigables
+function formatChangesForDisplay(changes) {
+  const fieldNames = {
+    'billToCo': 'Cliente',
+    'trailer': 'Trailer',
+    'mechanic': 'Mecánico',
+    'date': 'Fecha',
+    'description': 'Descripción',
+    'totalHrs': 'Horas Totales',
+    'totalLabAndParts': 'Costo Total',
+    'status': 'Estado',
+    'idClassic': 'ID Clásico',
+    'numero': 'Número',
+    'type': 'Tipo',
+    'modelo': 'Modelo',
+    'año': 'Año',
+    'placa': 'Placa',
+    'sku': 'SKU',
+    'part': 'Parte',
+    'category': 'Categoría',
+    'provider': 'Proveedor',
+    'brand': 'Marca',
+    'onHand': 'En Stock',
+    'precio': 'Precio'
+  };
+
+  const formattedChanges = {};
+  for (const [key, change] of Object.entries(changes)) {
+    const displayName = fieldNames[key] || key.charAt(0).toUpperCase() + key.slice(1);
+    formattedChanges[displayName] = {
+      antes: formatValue(change.antes),
+      despues: formatValue(change.despues)
+    };
+  }
+  
+  return formattedChanges;
+}
+
+// Función para formatear valores individuales
+function formatValue(value) {
+  if (value === null || value === undefined) return 'Sin definir';
+  if (value === '') return 'Vacío';
+  if (typeof value === 'number' && value.toString().includes('.')) {
+    // Si es un número decimal, formatearlo como moneda si parece ser dinero
+    if (value > 1) return `$${value.toFixed(2)}`;
+  }
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 // Función específica para auditar Work Orders
 async function auditWorkOrderOperation(usuario, accion, workOrderId, details, oldData = null, newData = null) {
   let auditDetails = details;
@@ -1137,30 +1188,39 @@ async function auditWorkOrderOperation(usuario, accion, workOrderId, details, ol
     const changes = getChangesForAudit(oldData, newData);
     if (changes) {
       auditDetails = {
-        operation: 'Work Order Update',
+        operation: 'Actualización de Work Order',
         workOrderId: workOrderId,
-        changes: changes,
-        summary: `Actualizada Work Order #${workOrderId}`
+        changes: formatChangesForDisplay(changes),
+        summary: `Work Order #${workOrderId} actualizada por ${usuario}`,
+        cliente: newData?.billToCo || 'N/A',
+        trailer: newData?.trailer || 'N/A',
+        estado: newData?.status || 'N/A'
       };
     }
   } else if (accion === 'CREATE') {
     auditDetails = {
-      operation: 'Work Order Creation',
+      operation: 'Creación de Work Order',
       workOrderId: workOrderId,
-      data: {
-        customer: newData?.billToCo,
-        trailer: newData?.trailer,
-        status: newData?.status,
-        totalLabAndParts: newData?.totalLabAndParts
-      },
-      summary: `Creada nueva Work Order #${workOrderId}`
+      summary: `Nueva Work Order #${workOrderId} creada por ${usuario}`,
+      detalles: {
+        cliente: newData?.billToCo || 'N/A',
+        trailer: newData?.trailer || 'N/A',
+        estado: newData?.status || 'En Proceso',
+        costoTotal: newData?.totalLabAndParts ? `$${newData.totalLabAndParts}` : '$0',
+        descripcion: newData?.description ? newData.description.substring(0, 100) + '...' : 'Sin descripción'
+      }
     };
   } else if (accion === 'DELETE') {
     auditDetails = {
-      operation: 'Work Order Deletion',
+      operation: 'Eliminación de Work Order',
       workOrderId: workOrderId,
-      deletedData: oldData,
-      summary: `Eliminada Work Order #${workOrderId}`
+      summary: `Work Order #${workOrderId} eliminada por ${usuario}`,
+      datosEliminados: {
+        cliente: oldData?.billToCo || 'N/A',
+        trailer: oldData?.trailer || 'N/A',
+        estado: oldData?.status || 'N/A',
+        costoTotal: oldData?.totalLabAndParts ? `$${oldData.totalLabAndParts}` : '$0'
+      }
     };
   }
   
@@ -1175,18 +1235,45 @@ async function auditInventoryOperation(usuario, accion, sku, details, oldData = 
     const changes = getChangesForAudit(oldData, newData);
     if (changes) {
       auditDetails = {
-        operation: 'Inventory Update',
+        operation: 'Actualización de Inventario',
         sku: sku,
-        changes: changes,
-        summary: `Actualizado inventario para SKU: ${sku}`
+        changes: formatChangesForDisplay(changes),
+        summary: `Inventario SKU ${sku} actualizado por ${usuario}`,
+        parte: newData?.part || oldData?.part || 'N/A',
+        categoria: newData?.category || oldData?.category || 'N/A'
       };
     }
+  } else if (accion === 'CREATE') {
+    auditDetails = {
+      operation: 'Creación de Item en Inventario',
+      sku: sku,
+      summary: `Nuevo item ${sku} agregado al inventario por ${usuario}`,
+      detalles: {
+        parte: newData?.part || 'N/A',
+        categoria: newData?.category || 'N/A',
+        proveedor: newData?.provider || 'N/A',
+        cantidadInicial: newData?.onHand || 0,
+        precio: newData?.precio ? `$${newData.precio}` : 'No definido'
+      }
+    };
+  } else if (accion === 'DELETE') {
+    auditDetails = {
+      operation: 'Eliminación de Inventario',
+      sku: sku,
+      summary: `Item ${sku} eliminado del inventario por ${usuario}`,
+      datosEliminados: {
+        parte: oldData?.part || 'N/A',
+        categoria: oldData?.category || 'N/A',
+        cantidadAnterior: oldData?.onHand || 0,
+        precio: oldData?.precio ? `$${oldData.precio}` : 'No definido'
+      }
+    };
   } else if (accion === 'DEDUCT') {
     auditDetails = {
-      operation: 'Inventory Deduction',
+      operation: 'Deducción de Inventario',
       sku: sku,
-      deduction: details,
-      summary: `Deducción de inventario SKU: ${sku}`
+      summary: `Inventario ${sku} reducido por uso en trabajo`,
+      detalles: details
     };
   }
   
@@ -1201,25 +1288,54 @@ async function auditTrailerOperation(usuario, accion, trailerId, details, oldDat
     const changes = getChangesForAudit(oldData, newData);
     if (changes) {
       auditDetails = {
-        operation: 'Trailer Update',
+        operation: 'Actualización de Trailer',
         trailerId: trailerId,
-        changes: changes,
-        summary: `Actualizado trailer #${trailerId}`
+        changes: formatChangesForDisplay(changes),
+        summary: `Trailer #${trailerId} actualizado por ${usuario}`,
+        numero: newData?.numero || oldData?.numero || 'N/A',
+        tipo: newData?.type || oldData?.type || 'N/A',
+        estado: newData?.status || oldData?.status || 'N/A'
       };
     }
+  } else if (accion === 'CREATE') {
+    auditDetails = {
+      operation: 'Creación de Trailer',
+      trailerId: trailerId,
+      summary: `Nuevo trailer #${trailerId} agregado por ${usuario}`,
+      detalles: {
+        numero: newData?.numero || 'N/A',
+        tipo: newData?.type || 'N/A',
+        modelo: newData?.modelo || 'N/A',
+        año: newData?.año || 'N/A',
+        placa: newData?.placa || 'N/A',
+        estado: newData?.status || 'Disponible'
+      }
+    };
+  } else if (accion === 'DELETE') {
+    auditDetails = {
+      operation: 'Eliminación de Trailer',
+      trailerId: trailerId,
+      summary: `Trailer #${trailerId} eliminado por ${usuario}`,
+      datosEliminados: {
+        numero: oldData?.numero || 'N/A',
+        tipo: oldData?.type || 'N/A',
+        modelo: oldData?.modelo || 'N/A',
+        estado: oldData?.status || 'N/A'
+      }
+    };
   } else if (accion === 'RENT') {
     auditDetails = {
-      operation: 'Trailer Rental',
+      operation: 'Renta de Trailer',
       trailerId: trailerId,
-      rental: details,
-      summary: `Rentado trailer #${trailerId}`
+      summary: `Trailer #${trailerId} rentado por ${usuario}`,
+      detalles: details
     };
   } else if (accion === 'RETURN') {
     auditDetails = {
-      operation: 'Trailer Return',
+      operation: 'Devolución de Trailer',
       trailerId: trailerId,
-      return: details,
-      summary: `Devuelto trailer #${trailerId}`
+      summary: `Trailer #${trailerId} devuelto por ${usuario}`,
+      detalles: details
     };
   }
   
