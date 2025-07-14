@@ -248,11 +248,13 @@ app.delete('/api/trailer-locations/:id', async (req, res) => {
   }
 });
 
-// INVENTORY ENDPOINTS - USING REAL DATABASE
+// INVENTORY ENDPOINTS - USING REAL DATABASE (Optimizado para memoria)
 app.get('/api/inventory', async (req, res) => {
   try {
     console.log('[GET] /api/inventory - Fetching from database');
-    const partes = await db.getPartes();
+    const limit = parseInt(req.query.limit) || 200;
+    const offset = parseInt(req.query.offset) || 0;
+    const partes = await db.getPartes(limit, offset);
     console.log(`[GET] /api/inventory - Found ${partes.length} items from database`);
     res.json(partes);
   } catch (error) {
@@ -264,7 +266,9 @@ app.get('/api/inventory', async (req, res) => {
 app.get('/api/partes', async (req, res) => {
   try {
     console.log('[GET] /api/partes - Fetching from database');
-    const partes = await db.getPartes();
+    const limit = parseInt(req.query.limit) || 200;
+    const offset = parseInt(req.query.offset) || 0;
+    const partes = await db.getPartes(limit, offset);
     console.log(`[GET] /api/partes - Found ${partes.length} items from database`);
     res.json(partes);
   } catch (error) {
@@ -325,11 +329,13 @@ app.delete('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// WORK ORDERS ENDPOINTS - USING REAL DATABASE
+// WORK ORDERS ENDPOINTS - USING REAL DATABASE (Optimizado para memoria)
 app.get('/api/work-orders', async (req, res) => {
   try {
     console.log('[GET] /api/work-orders - Fetching from database');
-    const orders = await db.getOrders();
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    const orders = await db.getOrders(limit, offset);
     console.log(`[GET] /api/work-orders - Found ${orders.length} work orders from database`);
     res.json(orders);
   } catch (error) {

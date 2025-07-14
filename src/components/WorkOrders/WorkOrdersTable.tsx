@@ -301,13 +301,12 @@ const WorkOrdersTable: React.FC = () => {
     fetchWorkOrders();
     
     let interval: NodeJS.Timeout;
-    
-    if (serverStatus === 'online') {
-      // Servidor online: polling normal cada 30 segundos
-      interval = setInterval(() => fetchWorkOrders(), 30000);
+      if (serverStatus === 'online') {
+      // Servidor online: polling reducido cada 60 segundos para optimizar memoria
+      interval = setInterval(() => fetchWorkOrders(), 60000);
     } else if (serverStatus === 'waking') {
-      // Servidor despertando: polling más frecuente cada 15 segundos
-      interval = setInterval(() => fetchWorkOrders(), 15000);
+      // Servidor despertando: polling cada 30 segundos (reducido de 15)
+      interval = setInterval(() => fetchWorkOrders(), 30000);
     }
     // Si está offline, no hacer polling automático
     
@@ -1960,14 +1959,16 @@ const WorkOrdersTable: React.FC = () => {
                             
                             // Obtener partes usadas con sus enlaces de facturas
                             const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
-                            const partsWithInvoices = partsRes.data as any[];                              // Preparar datos para el PDF
+                            const partsWithInvoices = partsRes.data as any[];                            // Preparar datos para el PDF
                             const pdfData = {
                               id: workOrderData.id,
                               idClassic: workOrderData.idClassic || workOrderData.id.toString(),
-                              customer: workOrderData.customer || '',
+                              customer: workOrderData.billToCo || workOrderData.customer || '',
                               trailer: workOrderData.trailer || '',
-                              date: workOrderData.fecha ? new Date(workOrderData.fecha).toLocaleDateString('en-US') : '',
-                              mechanics: workOrderData.mechanics || '',
+                              date: formatDateSafely(workOrderData.date || workOrderData.fecha || ''),
+                              mechanics: Array.isArray(workOrderData.mechanics) ? 
+                                workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
+                                workOrderData.mechanics || workOrderData.mechanic || '',
                               description: workOrderData.description || '',
                               status: workOrderData.status || editWorkOrder.status || 'PROCESSING', // Incluir status actual
                               parts: partsWithInvoices.map((part: any) => ({

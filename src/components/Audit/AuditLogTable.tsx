@@ -376,9 +376,9 @@ const AuditLogTable: React.FC = () => {
           }
         });
     };
-    
-    fetchData();
-    const interval = setInterval(fetchData, 10000); // cada 10 segundos
+      fetchData();
+    // Reducir frecuencia de polling para optimizar memoria (cada 30 segundos en lugar de 10)
+    const interval = setInterval(fetchData, 30000);
     return () => { isMounted = false; clearInterval(interval); };
   }, [filters]);
 

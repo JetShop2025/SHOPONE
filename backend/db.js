@@ -219,20 +219,34 @@ async function deleteTrailerLocation(id) {
   }
 }
 
-// Orders functions
-async function getOrders() {
+// Orders functions - Optimizado para memoria
+async function getOrders(limit = 100, offset = 0) {
   try {
-    console.log('[DB] Executing query: SELECT * FROM work_orders');
-    const [rows] = await connection.execute('SELECT * FROM work_orders');
+    // Limitar la consulta para optimizar memoria
+    const query = 'SELECT * FROM work_orders ORDER BY id DESC LIMIT ? OFFSET ?';
+    console.log(`[DB] Executing optimized query with limit ${limit}, offset ${offset}`);
+    const [rows] = await connection.execute(query, [limit, offset]);
     console.log(`[DB] Found ${rows.length} work orders in database`);
     
-    // Parse JSON fields
-    const parsedRows = rows.map(row => ({
-      ...row,
-      parts: row.parts ? JSON.parse(row.parts) : [],
-      mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
-      extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
-    }));
+    // Parse JSON fields con manejo de errores optimizado
+    const parsedRows = rows.map(row => {
+      try {
+        return {
+          ...row,
+          parts: row.parts ? JSON.parse(row.parts) : [],
+          mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
+          extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
+        };
+      } catch (parseError) {
+        console.warn(`[DB] Error parsing JSON for work order ${row.id}:`, parseError.message);
+        return {
+          ...row,
+          parts: [],
+          mechanics: [],
+          extraOptions: []
+        };
+      }
+    });
     
     return parsedRows;
   } catch (error) {
@@ -819,15 +833,16 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
 }
 
 // Partes/Inventory functions
-async function getPartes() {
+// Partes/Inventory functions - Optimizado para memoria
+async function getPartes(limit = 200, offset = 0) {
   try {
     // Intentar con diferentes nombres de tabla comunes
     const tableNames = ['inventory', 'parts', 'partes', 'inventario'];
     
     for (const tableName of tableNames) {
       try {
-        console.log(`[DB] Trying table: ${tableName}`);
-        const [rows] = await connection.execute(`SELECT * FROM ${tableName}`);
+        console.log(`[DB] Trying table: ${tableName} with limit ${limit}`);
+        const [rows] = await connection.execute(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`, [limit, offset]);
         console.log(`[DB] Found ${rows.length} items in table ${tableName}`);
         return rows;
       } catch (error) {

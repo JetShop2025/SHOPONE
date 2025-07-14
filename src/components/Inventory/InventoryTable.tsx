@@ -141,9 +141,9 @@ const InventoryTable: React.FC = () => {
           console.error('Error fetching inventory:', error);
           if (isMounted) setInventory([]); 
         });
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 4000);
+    };    fetchData();
+    // Optimizado: polling cada 60 segundos en lugar de 4 segundos para reducir memoria
+    const interval = setInterval(fetchData, 60000);
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
