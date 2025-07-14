@@ -1269,13 +1269,11 @@ async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
     const finalLimit = Math.max(1, Math.min(1000, parseInt(limit) || 100));
     const finalOffset = Math.max(0, parseInt(offset) || 0);
     
-    // Agregar LIMIT y OFFSET
-    query += ' LIMIT ?';
-    params.push(finalLimit);
+    // Construir la query sin parámetros para LIMIT/OFFSET (MySQL puede tener problemas con parámetros en LIMIT)
+    query += ` LIMIT ${finalLimit}`;
     
     if (finalOffset > 0) {
-      query += ' OFFSET ?';
-      params.push(finalOffset);
+      query += ` OFFSET ${finalOffset}`;
     }
     
     console.log('[DB] Executing audit query:', query);
@@ -1283,7 +1281,7 @@ async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
     
     const [rows] = await connection.execute(query, params);
     console.log(`[DB] Retrieved ${rows.length} audit logs`);
-    return rows;  } catch (error) {
+    return rows;} catch (error) {
     console.error('[DB] Error getting audit logs:', error.message);
     console.error('[DB] Query was:', query || 'undefined');
     console.error('[DB] Params were:', params || []);
