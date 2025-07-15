@@ -569,7 +569,7 @@ async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
 // Obtener todas las órdenes de trabajo
 router.get('/', async (req, res) => {
   try {
-    const [results] = await db.query('SELECT * FROM work_orders ORDER BY id DESC LIMIT 100');
+    const [results] = await db.query('SELECT * FROM work_orders ORDER BY id DESC');
     const parsedResults = results.map(order => {
       let parts = [];
       try {
