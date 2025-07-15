@@ -181,12 +181,10 @@ const WorkOrdersTable: React.FC = () => {
   const [editError, setEditError] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [workOrders, setWorkOrders] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
+  const [showForm, setShowForm] = useState(false);  const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
   const [selectedWeek, setSelectedWeek] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [idClassicFilter, setIdClassicFilter] = useState('');
   const [inventory, setInventory] = useState<any[]>([]);
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
@@ -513,13 +511,10 @@ const WorkOrdersTable: React.FC = () => {
       const { start, end } = getWeekRange(selectedWeek);
       const orderDate = dayjs(order.date.slice(0, 10));
       inWeek = orderDate.isBetween(start, end, 'day', '[]');
-    }
-
-    const matchesStatus = !statusFilter || order.status === statusFilter;
+    }    const matchesStatus = !statusFilter || order.status === statusFilter;
     const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
-    const matchesIdClassic = !idClassicFilter || (order.idClassic || '').toLowerCase().includes(idClassicFilter.toLowerCase());
 
-    return inWeek && matchesStatus && matchesDay && matchesIdClassic;
+    return inWeek && matchesStatus && matchesDay;
   });
 
   // Cambios generales
@@ -1770,8 +1765,7 @@ const WorkOrdersTable: React.FC = () => {
       fontFamily: 'Courier New, Courier, monospace',
       letterSpacing: 2,
       textShadow: '1px 1px 0 #fff',
-    }}
-  >    Work Orders
+    }}  >    Work Orders
     {searchIdClassic && (
       <span style={{
         marginLeft: '16px',
@@ -1787,6 +1781,16 @@ const WorkOrdersTable: React.FC = () => {
       </span>
     )}
   </span>
+  
+  {/* Contador de W.O. pequeño debajo del título */}
+  <div style={{ 
+    marginTop: '8px', 
+    fontSize: '14px', 
+    color: '#666',
+    fontWeight: '500'
+  }}>
+    📋 Total: {filteredOrders.length} Work Orders
+  </div>
   {/* Indicador de estado del servidor */}
   <div style={{ 
     marginLeft: 'auto',
@@ -1876,23 +1880,12 @@ const WorkOrdersTable: React.FC = () => {
               className="wo-filter-input"
               style={{ minWidth: 160 }}
             >
-              <option value="">All</option>
-              {STATUS_OPTIONS.map(opt => (
+              <option value="">All</option>              {STATUS_OPTIONS.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-          </label>          <label className="wo-filter-label">
-            Filter by ID CLASSIC:&nbsp;
-            <input
-              type="text"
-              value={idClassicFilter}
-              onChange={e => setIdClassicFilter(e.target.value)}
-              className="wo-filter-input"
-              style={{ minWidth: 160 }}
-              placeholder="ID Classic"
-            />
           </label>
-          
+
           {/* Búsqueda inteligente por ID Classic */}
           <label className="wo-filter-label">
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
@@ -2642,16 +2635,16 @@ const WorkOrdersTable: React.FC = () => {
             </div>
           </div>
         )}        {/* --- TABLA ABAJO --- */}
-        
-        {/* Información de resultados */}
-        <div style={{ 
-          marginBottom: '16px', 
-          padding: '8px 12px', 
-          backgroundColor: searchIdClassic ? '#e3f2fd' : '#f5f5f5',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '600'
-        }}>          {searchIdClassic ? (
+          {/* Información de resultados */}
+        {searchIdClassic && (
+          <div style={{ 
+            marginBottom: '16px', 
+            padding: '8px 12px', 
+            backgroundColor: '#e3f2fd',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}>
             <span style={{ color: '#1976d2' }}>
               🔍 Search Results: {filteredOrders.length} work order{filteredOrders.length !== 1 ? 's' : ''} found
               {filteredOrders.length === 0 && (
@@ -2660,12 +2653,8 @@ const WorkOrdersTable: React.FC = () => {
                 </span>
               )}
             </span>
-          ) : (
-            <span style={{ color: '#666' }}>
-              📋 Total Work Orders: {filteredOrders.length}
-            </span>
-          )}
-        </div>
+          </div>
+        )}
         
         <div style={{ overflowX: 'auto' }}>
           <table className="wo-table">
