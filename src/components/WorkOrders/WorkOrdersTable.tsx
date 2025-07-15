@@ -337,35 +337,40 @@ const WorkOrdersTable: React.FC = () => {
       setServerStatus('online');
       setRetryCount(0);
       console.log('✅ Órdenes cargadas exitosamente');
-        } catch (err: any) {
+    } catch (err: any) {
       console.error('Error cargando órdenes:', err);
-      
-      // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
+        // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
       if ((err?.response?.status === 502 || err?.response?.status === 503 || err.code === 'ECONNABORTED') && retryCount < maxRetries) {
         if (!isRetry) {
           setServerStatus('waking');
-          console.log(`Servidor dormido, intento ${retryCount + 1}/${maxRetries} de reactivación...`);
+          console.log(`🔄 Servidor dormido, intento ${retryCount + 1}/${maxRetries} de reactivación...`);
           
           // Usar el servicio keepAlive para intentar despertar el servidor
           try {
+            console.log('🚀 Enviando ping de reactivación...');
             const pingSuccess = await keepAliveService.manualPing();
             if (pingSuccess) {
-              console.log('Keep-alive ping exitoso, servidor despertando...');
+              console.log('✅ Ping exitoso, esperando que el servidor termine de despertar...');
+            } else {
+              console.log('⚠️ Ping falló, el servidor puede estar iniciando...');
             }
           } catch (keepAliveError) {
-            console.log('Keep-alive ping falló, server might be cold starting...');
+            console.log('⚠️ Error en keep-alive ping, continuando con reintento...', keepAliveError);
           }
           
           setRetryCount(prev => prev + 1);
-          // Reintentar con backoff exponencial - usar pageToLoad o currentPageData
+          // Reintentar con backoff exponencial más agresivo para despertar servidor
+          const retryDelay = Math.min(15000 * Math.pow(2, retryCount), 60000); // Más tiempo para despertar
+          console.log(`⏰ Reintentando en ${retryDelay / 1000} segundos...`);
           setTimeout(() => {
             fetchWorkOrders(true, pageToLoad || currentPageData);
-          }, Math.min(8000 * Math.pow(1.5, retryCount), 25000));
+          }, retryDelay);
         }
       } else {
         setServerStatus('offline');
         if (retryCount >= maxRetries) {
-          console.error('Max reintentos alcanzados, servidor no responde');
+          console.error('❌ Max reintentos alcanzados. El servidor no responde después de múltiples intentos.');
+          console.log('💡 Sugerencia: Espera 1-2 minutos y recarga la página manualmente.');
         }
       }
     } finally {
@@ -1953,7 +1958,75 @@ const WorkOrdersTable: React.FC = () => {
                 fontSize: '14px'
               }}
             >
-              {isSearching ? '🔄 Searching...' : '🔍 Search'}            </button>
+              {isSearching ? '🔄 Searching...' : '🔍 Search'}            </button>          )}
+        </div>
+        
+        {/* Indicador de Estado del Servidor */}
+        <div style={{ 
+          margin: '12px 0', 
+          padding: '12px 16px', 
+          backgroundColor: serverStatus === 'online' ? '#e8f5e8' : 
+                           serverStatus === 'waking' ? '#fff3cd' : '#f8d7da',
+          borderRadius: '8px',
+          border: `1px solid ${serverStatus === 'online' ? '#28a745' : 
+                                serverStatus === 'waking' ? '#ffc107' : '#dc3545'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ 
+              fontSize: '14px', 
+              fontWeight: '600',
+              color: serverStatus === 'online' ? '#155724' : 
+                     serverStatus === 'waking' ? '#856404' : '#721c24'
+            }}>
+              {serverStatus === 'online' && '🟢 Server Online'}
+              {serverStatus === 'waking' && '🟡 Server Waking Up...'}
+              {serverStatus === 'offline' && '🔴 Server Offline'}
+            </span>
+            {fetchingData && (
+              <span style={{ fontSize: '12px', color: '#6c757d' }}>
+                🔄 Loading data...
+              </span>
+            )}
+          </div>
+          
+          {/* Botón para despertar servidor manualmente */}
+          {(serverStatus === 'offline' || serverStatus === 'waking') && (
+            <button
+              onClick={async () => {
+                console.log('🚀 Intentando despertar servidor manualmente...');
+                setServerStatus('waking');
+                setRetryCount(0); // Reset counter
+                try {
+                  const success = await keepAliveService.manualPing();
+                  if (success) {
+                    console.log('✅ Servidor despertado, recargando datos...');
+                    await fetchWorkOrders();
+                  } else {
+                    console.log('⚠️ No se pudo despertar el servidor, reintentando...');
+                    setTimeout(() => fetchWorkOrders(), 5000);
+                  }
+                } catch (error) {
+                  console.error('❌ Error despertando servidor:', error);
+                  setTimeout(() => fetchWorkOrders(), 10000);
+                }
+              }}
+              disabled={fetchingData}
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: fetchingData ? 'not-allowed' : 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              {fetchingData ? '🔄 Trying...' : '🚀 Wake Server'}
+            </button>
           )}
         </div>
         
