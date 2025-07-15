@@ -17,6 +17,26 @@ dayjs.extend(weekOfYear);
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
+// TypeScript interfaces for API responses
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalRecords: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  pageSize: number;
+}
+
+interface PaginatedWorkOrdersResponse {
+  data: any[];
+  pagination: PaginationInfo;
+}
+
+interface WorkOrdersApiResponse {
+  pagination?: PaginationInfo;
+  data?: any[];
+}
+
 const billToCoOptions = [
   "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","CHUSAL"
 ];
@@ -178,11 +198,22 @@ const WorkOrdersTable: React.FC = () => {
   const [fetchingData, setFetchingData] = useState(false);  const [reconnecting, setReconnecting] = useState(false);
   const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');  const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
-  const [idClassicError, setIdClassicError] = useState('');
-  
-  // Nueva funcionalidad: búsqueda inteligente por ID Classic
+  const [idClassicError, setIdClassicError] = useState('');  // Nueva funcionalidad: búsqueda inteligente por ID Classic
   const [searchIdClassic, setSearchIdClassic] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  
+  // Variables para paginación de 1000 registros
+  const [currentPageData, setCurrentPageData] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+  const pageSize = 1000; // 1000 órdenes por página
+  
+  // NUEVO: Estados para W.O. activas siempre accesibles
+  const [activeWorkOrders, setActiveWorkOrders] = useState<any[]>([]);
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [activeWOsCount, setActiveWOsCount] = useState(0);
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
     if (!idClassic || idClassic.trim() === '') return false;
@@ -244,28 +275,69 @@ const WorkOrdersTable: React.FC = () => {
       console.error('Error formateando fecha:', dateString, error);
       return dateString;
     }
-  };
-  // Función para cargar las órdenes con manejo inteligente de errores
-  const fetchWorkOrders = useCallback(async (isRetry = false) => {
-    try {      setFetchingData(true);
-      // Add limit parameter to reduce memory usage
-      const res = await axios.get(`${API_URL}/work-orders?limit=50`, { timeout: 15000 });
-      const fetchedOrders = Array.isArray(res.data) ? (res.data as any[]) : [];
-      console.log('✅ Órdenes actualizadas:', fetchedOrders.length);
+  };  // Función para cargar las órdenes con paginación de 1000 registros
+  const fetchWorkOrders = useCallback(async (isRetry = false, pageToLoad?: number) => {
+    try {
+      setFetchingData(true);
+      const targetPage = pageToLoad || currentPageData;
       
-      // Log para debugging del problema de totalHrs
-      if (fetchedOrders.length > 0) {
-        console.log('🔍 Primer orden después de fetch:', {
-          id: fetchedOrders[0].id,
-          totalHrs: fetchedOrders[0].totalHrs,
-          totalLabAndParts: fetchedOrders[0].totalLabAndParts
+      // Si hay búsqueda específica por ID Classic, usar búsqueda directa
+      if (searchIdClassic.trim()) {
+        console.log(`🔍 Buscando ID Classic: ${searchIdClassic}`);
+        const res = await axios.get(`${API_URL}/work-orders`, {
+          params: { searchIdClassic: searchIdClassic.trim() },
+          timeout: 15000
         });
+        
+        const searchResults = Array.isArray(res.data) ? res.data : [];
+        setWorkOrders(searchResults);
+        // Para búsquedas, no mostrar paginación
+        setTotalPages(1);
+        setTotalRecords(searchResults.length);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+        setServerStatus('online');
+        setRetryCount(0);
+        return;
+      }
+        // Carga paginada normal (SIEMPRE usar paginación de 1000)
+      console.log(`📄 Cargando página ${targetPage} con ${pageSize} registros por página`);
+      const res = await axios.get<WorkOrdersApiResponse | any[]>(`${API_URL}/work-orders`, {
+        params: {
+          page: targetPage,
+          pageSize: pageSize,
+          includeArchived: false // Por defecto no incluir archivadas para mejor rendimiento
+        },
+        timeout: 15000
+      });
+      
+      // Manejar respuesta paginada
+      if (res.data && typeof res.data === 'object' && 'pagination' in res.data) {
+        const paginatedResponse = res.data as PaginatedWorkOrdersResponse;
+        const { data, pagination } = paginatedResponse;
+        console.log(`📊 Página ${pagination.currentPage}/${pagination.totalPages} - ${pagination.totalRecords} total registros`);
+        
+        setWorkOrders(data || []);
+        setCurrentPageData(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+        setHasNextPage(pagination.hasNextPage);
+        setHasPreviousPage(pagination.hasPreviousPage);
+      } else {
+        // Fallback si la respuesta no tiene paginación (modo tradicional)
+        const fetchedOrders = Array.isArray(res.data) ? res.data : [];
+        setWorkOrders(fetchedOrders);
+        setTotalPages(1);
+        setTotalRecords(fetchedOrders.length);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+        console.log('✅ Modo tradicional:', fetchedOrders.length, 'órdenes cargadas');
       }
       
-      setWorkOrders(fetchedOrders);
       setServerStatus('online');
-      setRetryCount(0); // Reset retry count on success
-    } catch (err: any) {
+      setRetryCount(0);
+      console.log('✅ Órdenes cargadas exitosamente');
+        } catch (err: any) {
       console.error('Error cargando órdenes:', err);
       
       // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
@@ -285,19 +357,21 @@ const WorkOrdersTable: React.FC = () => {
           }
           
           setRetryCount(prev => prev + 1);
-          // Reintentar con backoff exponencial (más agresivo para despertar el servidor)
+          // Reintentar con backoff exponencial - usar pageToLoad o currentPageData
           setTimeout(() => {
-            fetchWorkOrders(true);
+            fetchWorkOrders(true, pageToLoad || currentPageData);
           }, Math.min(8000 * Math.pow(1.5, retryCount), 25000));
         }
       } else {
         setServerStatus('offline');
         if (retryCount >= maxRetries) {
-          console.error('Max reintentos alcanzados, servidor no responde');        }
-      }    } finally {
+          console.error('Max reintentos alcanzados, servidor no responde');
+        }
+      }
+    } finally {
       setFetchingData(false);
     }
-  }, [retryCount]);
+  }, [retryCount, searchIdClassic, currentPageData, pageSize]);
   
   // Polling inteligente - ajusta frecuencia según estado del servidor
   useEffect(() => {
@@ -1879,10 +1953,145 @@ const WorkOrdersTable: React.FC = () => {
                 fontSize: '14px'
               }}
             >
-              {isSearching ? '🔄 Searching...' : '🔍 Search'}
-            </button>
+              {isSearching ? '🔄 Searching...' : '🔍 Search'}            </button>
           )}
-        </div>        {/* --- BOTONES ARRIBA --- */}
+        </div>
+        
+        {/* Controles de Paginación */}
+        {!searchIdClassic && totalPages > 1 && (
+          <div style={{ 
+            margin: '16px 0', 
+            padding: '12px 16px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            border: '1px solid #dee2e6'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#495057' }}>
+                📄 Página {currentPageData} de {totalPages}
+              </span>
+              <span style={{ fontSize: '12px', color: '#6c757d' }}>
+                Total: {totalRecords.toLocaleString()} W.O. | Mostrando 1000 por página
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Botón Primera Página */}
+              <button
+                onClick={() => {
+                  setCurrentPageData(1);
+                  fetchWorkOrders(false, 1);
+                }}
+                disabled={!hasPreviousPage || fetchingData}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
+                }}
+              >
+                « Primera
+              </button>
+              
+              {/* Botón Anterior */}
+              <button
+                onClick={() => {
+                  const prevPage = currentPageData - 1;
+                  setCurrentPageData(prevPage);
+                  fetchWorkOrders(false, prevPage);
+                }}
+                disabled={!hasPreviousPage || fetchingData}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
+                }}
+              >
+                ← Anterior
+              </button>
+              
+              {/* Selector de página rápido */}
+              <select
+                value={currentPageData}
+                onChange={(e) => {
+                  const targetPage = parseInt(e.target.value);
+                  setCurrentPageData(targetPage);
+                  fetchWorkOrders(false, targetPage);
+                }}
+                disabled={fetchingData}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  backgroundColor: 'white'
+                }}
+              >
+                {Array.from({ length: Math.min(totalPages, 20) }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    Página {i + 1}
+                  </option>
+                ))}
+                {totalPages > 20 && currentPageData > 20 && (
+                  <option value={currentPageData}>
+                    Página {currentPageData}
+                  </option>
+                )}
+              </select>
+              
+              {/* Botón Siguiente */}
+              <button
+                onClick={() => {
+                  const nextPage = currentPageData + 1;
+                  setCurrentPageData(nextPage);
+                  fetchWorkOrders(false, nextPage);
+                }}
+                disabled={!hasNextPage || fetchingData}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
+                }}
+              >
+                Siguiente →
+              </button>
+              
+              {/* Botón Última Página */}
+              <button
+                onClick={() => {
+                  setCurrentPageData(totalPages);
+                  fetchWorkOrders(false, totalPages);
+                }}
+                disabled={!hasNextPage || fetchingData}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
+                }}
+              >
+                Última »
+              </button>
+            </div>
+          </div>
+        )}{/* --- BOTONES ARRIBA --- */}
         <div style={{ margin: '24px 0 16px 0' }}>
           <button
             className="wo-btn"

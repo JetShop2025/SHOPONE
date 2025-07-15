@@ -125,11 +125,12 @@ const InventoryTable: React.FC = () => {
   const [editError, setEditError] = useState('');
   const [editPart, setEditPart] = useState<PartType>({ ...emptyPart });
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
-  const [skuSearch, setSkuSearch] = useState('');  // Fetch inventory
+  const [skuSearch, setSkuSearch] = useState('');
+  // Fetch inventory
   useEffect(() => {
     let isMounted = true;
     const fetchData = () => {
-      axios.get(`${API_URL}/inventory?limit=100`)        .then(res => { 
+      axios.get(`${API_URL}/inventory`)        .then(res => { 
           if (isMounted) {
             // Asegurar que siempre sea un array
             const inventoryData = Array.isArray(res.data) ? res.data : [];
@@ -141,8 +142,8 @@ const InventoryTable: React.FC = () => {
           if (isMounted) setInventory([]); 
         });
     };    fetchData();
-    // Optimizado: polling cada 120 segundos para reducir aún más la carga de memoria
-    const interval = setInterval(fetchData, 120000);
+    // Optimizado: polling cada 60 segundos en lugar de 4 segundos para reducir memoria
+    const interval = setInterval(fetchData, 60000);
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
