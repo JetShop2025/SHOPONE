@@ -176,10 +176,13 @@ const WorkOrdersTable: React.FC = () => {
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);  const [reconnecting, setReconnecting] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
-  const [retryCount, setRetryCount] = useState(0);
+  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');  const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
   const [idClassicError, setIdClassicError] = useState('');
+  
+  // Nueva funcionalidad: búsqueda inteligente por ID Classic
+  const [searchIdClassic, setSearchIdClassic] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
     if (!idClassic || idClassic.trim() === '') return false;
@@ -313,6 +316,41 @@ const WorkOrdersTable: React.FC = () => {
       if (interval) clearInterval(interval);
     };
   }, [fetchWorkOrders, serverStatus]);
+  
+  // Función de búsqueda inteligente por ID Classic
+  const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      // Si está vacío, recargar todas las órdenes
+      fetchWorkOrders();
+      setIsSearching(false);
+      return;
+    }
+    
+    try {
+      setIsSearching(true);
+      console.log(`🔍 Búsqueda inteligente por ID Classic: ${searchTerm}`);
+      
+      const res = await axios.get(`${API_URL}/work-orders`, {
+        params: { searchIdClassic: searchTerm.trim() },
+        timeout: 15000
+      });
+      
+      const searchResults = Array.isArray(res.data) ? res.data : [];
+      setWorkOrders(searchResults);
+      console.log(`✅ Búsqueda completada: ${searchResults.length} resultados encontrados`);
+      
+      if (searchResults.length === 0) {
+        console.log('⚠️ No se encontraron resultados para:', searchTerm);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en búsqueda:', error);
+      // En caso de error, volver a cargar todas las órdenes
+      fetchWorkOrders();
+    } finally {
+      setIsSearching(false);
+    }
+  }, [fetchWorkOrders]);
   
   // Función para cargar inventario con reintentos inteligentes
   const fetchInventory = useCallback(async () => {
@@ -1654,8 +1692,21 @@ const WorkOrdersTable: React.FC = () => {
       letterSpacing: 2,
       textShadow: '1px 1px 0 #fff',
     }}
-  >
-    Work Orders
+  >    Work Orders
+    {searchIdClassic && (
+      <span style={{
+        marginLeft: '16px',
+        fontSize: '16px',
+        fontWeight: '600',
+        color: '#ff9800',
+        backgroundColor: '#fff3e0',
+        padding: '4px 12px',
+        borderRadius: '12px',
+        border: '1px solid #ff9800'
+      }}>
+        🔍 Searching: "{searchIdClassic}"
+      </span>
+    )}
   </span>
   {/* Indicador de estado del servidor */}
   <div style={{ 
@@ -1751,8 +1802,7 @@ const WorkOrdersTable: React.FC = () => {
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-          </label>
-          <label className="wo-filter-label">
+          </label>          <label className="wo-filter-label">
             Filter by ID CLASSIC:&nbsp;
             <input
               type="text"
@@ -1763,6 +1813,75 @@ const WorkOrdersTable: React.FC = () => {
               placeholder="ID Classic"
             />
           </label>
+          
+          {/* Búsqueda inteligente por ID Classic */}
+          <label className="wo-filter-label">
+            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
+            <input
+              type="text"
+              value={searchIdClassic}
+              onChange={e => setSearchIdClassic(e.target.value)}
+              onKeyPress={e => {
+                if (e.key === 'Enter') {
+                  searchWorkOrderByIdClassic(searchIdClassic);
+                }
+              }}
+              className="wo-filter-input"
+              style={{ 
+                minWidth: 160, 
+                backgroundColor: searchIdClassic ? '#e3f2fd' : 'white',
+                border: searchIdClassic ? '2px solid #1976d2' : '1px solid #ddd'
+              }}
+              placeholder="W.O. 19417"
+              disabled={isSearching}
+            />
+            {searchIdClassic && (
+              <button
+                onClick={() => {
+                  setSearchIdClassic('');
+                  fetchWorkOrders(); // Volver a cargar todas las órdenes
+                }}
+                style={{ 
+                  marginLeft: '5px', 
+                  padding: '2px 6px', 
+                  fontSize: '12px', 
+                  backgroundColor: '#f44336', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '3px',
+                  cursor: 'pointer'
+                }}
+                title="Clear search and show all work orders"
+              >
+                ✕
+              </button>
+            )}
+            {isSearching && (
+              <span style={{ marginLeft: '5px', fontSize: '12px', color: '#1976d2' }}>
+                🔄 Searching...
+              </span>            )}
+          </label>
+          
+          {/* Botón de búsqueda */}
+          {searchIdClassic && (
+            <button
+              onClick={() => searchWorkOrderByIdClassic(searchIdClassic)}
+              disabled={isSearching}
+              style={{
+                marginLeft: '8px',
+                padding: '8px 16px',
+                backgroundColor: '#1976d2',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: isSearching ? 'not-allowed' : 'pointer',
+                fontWeight: '600',
+                fontSize: '14px'
+              }}
+            >
+              {isSearching ? '🔄 Searching...' : '🔍 Search'}
+            </button>
+          )}
         </div>        {/* --- BOTONES ARRIBA --- */}
         <div style={{ margin: '24px 0 16px 0' }}>
           <button
@@ -2240,9 +2359,32 @@ const WorkOrdersTable: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {/* --- TABLA ABAJO --- */}
+        )}        {/* --- TABLA ABAJO --- */}
+        
+        {/* Información de resultados */}
+        <div style={{ 
+          marginBottom: '16px', 
+          padding: '8px 12px', 
+          backgroundColor: searchIdClassic ? '#e3f2fd' : '#f5f5f5',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '600'
+        }}>          {searchIdClassic ? (
+            <span style={{ color: '#1976d2' }}>
+              🔍 Search Results: {filteredOrders.length} work order{filteredOrders.length !== 1 ? 's' : ''} found
+              {filteredOrders.length === 0 && (
+                <span style={{ color: '#f44336', marginLeft: '8px' }}>
+                  - No matches for "{searchIdClassic}"
+                </span>
+              )}
+            </span>
+          ) : (
+            <span style={{ color: '#666' }}>
+              📋 Total Work Orders: {filteredOrders.length}
+            </span>
+          )}
+        </div>
+        
         <div style={{ overflowX: 'auto' }}>
           <table className="wo-table">
             <thead>

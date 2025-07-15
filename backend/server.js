@@ -329,14 +329,83 @@ app.delete('/api/inventory/:id', async (req, res) => {
   }
 });
 
-// WORK ORDERS ENDPOINTS - USING REAL DATABASE (Optimizado para memoria)
+// WORK ORDERS ENDPOINTS - USING REAL DATABASE (Optimizado con paginación inteligente)
 app.get('/api/work-orders', async (req, res) => {
-  try {    console.log('[GET] /api/work-orders - Fetching from database');
-    const limit = parseInt(req.query.limit) || 10000; // Aumentar límite para mostrar todas las órdenes
-    const offset = parseInt(req.query.offset) || 0;
-    const orders = await db.getOrders(limit, offset);
-    console.log(`[GET] /api/work-orders - Found ${orders.length} work orders from database`);
-    res.json(orders);
+  try {
+    console.log('[GET] /api/work-orders - Fetching from database');
+    
+    // Parámetros de paginación
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 1000; // 1000 registros por página por defecto
+    const searchIdClassic = req.query.searchIdClassic || '';
+    const includeArchived = req.query.includeArchived === 'true';
+    
+    // Si hay búsqueda específica por ID Classic, buscar en toda la base de datos
+    if (searchIdClassic) {
+      console.log(`[GET] /api/work-orders - Searching for ID Classic: ${searchIdClassic}`);
+      const [searchResults] = await db.connection.execute(
+        `SELECT * FROM work_orders 
+         WHERE idClassic LIKE ? OR id = ?
+         ORDER BY id DESC`,
+        [`%${searchIdClassic}%`, searchIdClassic]
+      );
+      
+      const parsedResults = searchResults.map(order => {
+        let parts = [], mechanics = [], extraOptions = [];
+        try { parts = JSON.parse(order.parts || '[]'); } catch (e) { parts = []; }
+        try { mechanics = JSON.parse(order.mechanics || '[]'); } catch (e) { mechanics = []; }
+        try { extraOptions = JSON.parse(order.extraOptions || '[]'); } catch (e) { extraOptions = []; }
+        return { ...order, parts, mechanics, extraOptions };
+      });
+      
+      console.log(`[GET] /api/work-orders - Found ${parsedResults.length} work orders matching search`);
+      return res.json(parsedResults);
+    }
+    
+    // Carga normal con paginación
+    const offset = (page - 1) * pageSize;
+    let query = `SELECT * FROM work_orders`;
+    let whereClause = '';
+    
+    // Si no incluir archivadas, filtrar por fecha (últimos 2 años por defecto)
+    if (!includeArchived) {
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      whereClause = ` WHERE date >= '${twoYearsAgo.toISOString().split('T')[0]}'`;
+    }
+    
+    query += whereClause + ` ORDER BY id DESC LIMIT ${pageSize} OFFSET ${offset}`;
+    
+    console.log(`[GET] /api/work-orders - Executing query: ${query}`);
+    const [results] = await db.connection.execute(query);
+    
+    // Contar total de registros para paginación
+    const countQuery = `SELECT COUNT(*) as total FROM work_orders${whereClause}`;
+    const [countResult] = await db.connection.execute(countQuery);
+    const totalRecords = countResult[0].total;
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    
+    const parsedResults = results.map(order => {
+      let parts = [], mechanics = [], extraOptions = [];
+      try { parts = JSON.parse(order.parts || '[]'); } catch (e) { parts = []; }
+      try { mechanics = JSON.parse(order.mechanics || '[]'); } catch (e) { mechanics = []; }
+      try { extraOptions = JSON.parse(order.extraOptions || '[]'); } catch (e) { extraOptions = []; }
+      return { ...order, parts, mechanics, extraOptions };
+    });
+    
+    console.log(`[GET] /api/work-orders - Found ${parsedResults.length} work orders (Page ${page}/${totalPages}, Total: ${totalRecords})`);
+    
+    res.json({
+      data: parsedResults,
+      pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        totalRecords: totalRecords,
+        totalPages: totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    });
   } catch (error) {
     console.error('[ERROR] GET /api/work-orders:', error);
     res.status(500).json({ error: 'Failed to fetch work orders from database' });
