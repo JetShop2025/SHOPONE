@@ -170,14 +170,14 @@ const WorkOrdersTable: React.FC = () => {
   const [inventory, setInventory] = useState<any[]>([]);
   const [selectedPendingParts, setSelectedPendingParts] = useState<number[]>([]);
   const [trailersWithPendingParts, setTrailersWithPendingParts] = useState<string[]>([]);
-  const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [extraOptions, setExtraOptions] = React.useState<string[]>([]);  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
+  const [pendingPartsQty, setPendingPartsQty] = useState<{ [id: number]: string }>({});  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [extraOptions, setExtraOptions] = useState<string[]>([]);
+  const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [fetchingData, setFetchingData] = useState(false);
-  const [reconnecting, setReconnecting] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');  const [retryCount, setRetryCount] = useState(0);
+  const [fetchingData, setFetchingData] = useState(false);  const [reconnecting, setReconnecting] = useState(false);
+  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
+  const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
   const [idClassicError, setIdClassicError] = useState('');
   // Function to check if ID Classic already exists
@@ -242,11 +242,11 @@ const WorkOrdersTable: React.FC = () => {
       return dateString;
     }
   };
-
   // Función para cargar las órdenes con manejo inteligente de errores
   const fetchWorkOrders = useCallback(async (isRetry = false) => {
     try {      setFetchingData(true);
-      const res = await axios.get(`${API_URL}/work-orders`, { timeout: 15000 });
+      // Add limit parameter to reduce memory usage
+      const res = await axios.get(`${API_URL}/work-orders?limit=50`, { timeout: 15000 });
       const fetchedOrders = Array.isArray(res.data) ? (res.data as any[]) : [];
       console.log('✅ Órdenes actualizadas:', fetchedOrders.length);
       
@@ -291,32 +291,30 @@ const WorkOrdersTable: React.FC = () => {
         setServerStatus('offline');
         if (retryCount >= maxRetries) {
           console.error('Max reintentos alcanzados, servidor no responde');        }
-      }
-    } finally {
+      }    } finally {
       setFetchingData(false);
     }
   }, [retryCount]);
+  
   // Polling inteligente - ajusta frecuencia según estado del servidor
   useEffect(() => {
     fetchWorkOrders();
     
     let interval: NodeJS.Timeout;
       if (serverStatus === 'online') {
-      // Servidor online: polling reducido cada 60 segundos para optimizar memoria
-      interval = setInterval(() => fetchWorkOrders(), 60000);
+      // Servidor online: polling muy reducido cada 120 segundos para optimizar memoria
+      interval = setInterval(() => fetchWorkOrders(), 120000);
     } else if (serverStatus === 'waking') {
-      // Servidor despertando: polling cada 30 segundos (reducido de 15)
-      interval = setInterval(() => fetchWorkOrders(), 30000);
+      // Servidor despertando: polling cada 60 segundos (reducido aún más)
+      interval = setInterval(() => fetchWorkOrders(), 60000);
     }
     // Si está offline, no hacer polling automático
-    
-    return () => {
+      return () => {
       if (interval) clearInterval(interval);
     };
   }, [fetchWorkOrders, serverStatus]);
   
-  // Functions removed - handleFormSuccess and findPartBySku were unused
-    // Función para cargar inventario con reintentos inteligentes
+  // Función para cargar inventario con reintentos inteligentes
   const fetchInventory = useCallback(async () => {
     try {
       console.log('🔄 Cargando inventario...');
@@ -1320,10 +1318,9 @@ const WorkOrdersTable: React.FC = () => {
         parts: prev.parts.filter((_, i) => i !== index)
       }));
     }
-  };
-
-  return (
-    <>      <style>
+  };  return (
+    <>
+      <style>
         {`
           .parts-tooltip {
             position: relative;
@@ -1352,6 +1349,149 @@ const WorkOrdersTable: React.FC = () => {
             opacity: 1;
           }
           
+          .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1976d2;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            animation: spin 1s linear infinite;
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          .blink-animation {
+            animation: blink 2s infinite;
+          }
+          
+          @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+          }
+          
+          .btn-success:hover {
+            background: #1565c0;
+          }
+          
+          .wo-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 16px;
+            background: white;
+          }
+          
+          .wo-table th, .wo-table td {
+            border: 1px solid #d0d7e2;
+            padding: 6px 4px;
+            vertical-align: middle;
+            white-space: nowrap;
+            overflow: hidden;
+          }
+          
+          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
+          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
+          .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
+          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
+          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
+          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */
+          .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 220px; white-space: normal; } /* Description */
+          .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 65px; } /* PRT1 */
+          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */
+          .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 65px; } /* Costo1 */
+          .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 65px; } /* PRT2 */
+          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */
+          .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 65px; } /* Costo2 */
+          .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 65px; } /* PRT3 */
+          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */
+          .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 65px; } /* Costo3 */
+          .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 65px; } /* PRT4 */
+          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */
+          .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 65px; } /* Costo4 */
+          .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 65px; } /* PRT5 */
+          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */
+          .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 65px; } /* Costo5 */
+          .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 70px; } /* Total HRS */
+          .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 85px; } /* Total LAB & PRTS */
+          .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 85px; } /* Status */
+          .wo-table th:nth-child(26), .wo-table td:nth-child(26) { width: 130px; } /* Acciones */
+          
+          .wo-table th {
+            background: #1976d2;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          
+          .wo-table td {
+            font-size: 11px;
+          }
+          
+          .wo-table tr {
+            transition: background-color 0.1s;
+          }
+          
+          .wo-table tr:hover {
+            background-color: #e3f2fd !important;
+          }
+          
+          .wo-table tr.selected {
+            background-color: #bbdefb !important;
+          }
+          
+          .status-processing { 
+            background: #fff3e0; 
+            color: #e65100; 
+            font-weight: 600; 
+          }
+          .status-approved { 
+            background: #e8f5e8; 
+            color: #2e7d32; 
+            font-weight: 600; 
+          }
+          .status-finished { 
+            background: #e1f5fe; 
+            color: #0277bd; 
+            font-weight: 600; 
+          }
+          
+          .search-filters {
+            background: white;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+          }
+          
+          .search-filters input, .search-filters select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+          }
+          
+          .error-border {
+            border: 2px solid #d32f2f !important;
+            background-color: #ffebee !important;
+          }
+          
+          .error-text {
+            color: #d32f2f;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+          }          
           @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.4; }
@@ -1371,7 +1511,9 @@ const WorkOrdersTable: React.FC = () => {
           }
           .reconnect-btn:hover {
             background: #1565c0;
-          }            .wo-table {
+          }
+          
+          .wo-table {
             border-collapse: collapse;
             width: 100%;
             min-width: 1750px;
@@ -1380,13 +1522,17 @@ const WorkOrdersTable: React.FC = () => {
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(25,118,210,0.07);
             font-size: 11px;
-          }.wo-table th, .wo-table td {
+          }
+          
+          .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
             padding: 2px 4px;
             font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
-          }          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
+          }
+          
+          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
           .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
           .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
           .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
@@ -1411,6 +1557,7 @@ const WorkOrdersTable: React.FC = () => {
           .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 75px; } /* Total HRS */
           .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
           .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 95px; } /* Status */
+          
           .wo-table th {
             background: #1976d2;
             color: #fff;
@@ -1418,9 +1565,11 @@ const WorkOrdersTable: React.FC = () => {
             font-size: 13px;
             border-bottom: 2px solid #1565c0;
           }
+          
           .wo-table tr:last-child td {
             border-bottom: 1px solid #d0d7e2;
           }
+          
           /* Colores por estatus */
           .wo-row-approved {
             background: #43a047 !important; /* Verde fuerte */
@@ -1429,7 +1578,8 @@ const WorkOrdersTable: React.FC = () => {
           .wo-row-finished {
             background: #ffd600 !important; /* Amarillo fuerte */
             color: #333 !important;
-          }          .wo-row-processing {
+          }
+          .wo-row-processing {
             background: #fff !important; /* Blanco */
             color: #1976d2 !important;
           }
@@ -1438,16 +1588,38 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 0 0 2px #1976d233;
           }
         `}
-      </style>
+      </style>      
+      {tooltip.visible && tooltip.info && (
+        <div
+          style={{
+            position: 'fixed',
+            top: tooltip.y + 10,
+            left: tooltip.x + 10,
+            background: '#fff',
+            border: '1px solid #1976d2',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            padding: 16,
+            zIndex: 9999,
+            minWidth: 220
+          }}
+          onClick={hideTooltip}
+        >
+          <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
+          <div style={{ fontSize: 13, lineHeight: 1.4 }}>{tooltip.info}</div>
+        </div>
+      )}
+      
       <div
-        style={{          padding: '32px',
+        style={{
+          padding: '32px',
           background: 'linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%)',
           borderRadius: 16,
           boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',
           maxWidth: 1800,
           margin: '32px auto'
         }}
-      >        <div className="wo-header">
+      ><div className="wo-header">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
   <div
     style={{

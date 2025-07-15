@@ -220,10 +220,10 @@ async function deleteTrailerLocation(id) {
 }
 
 // Orders functions - Optimizado para memoria
-async function getOrders(limit = 100, offset = 0) {
+async function getOrders(limit = 50, offset = 0) {
   try {
-    // Validate and sanitize limit and offset to prevent SQL injection
-    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 100));
+    // Validate and sanitize limit and offset - reduce max limit for memory
+    const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 50));
     const safeOffset = Math.max(0, parseInt(offset) || 0);
     
     // Use direct interpolation for LIMIT/OFFSET to avoid MySQL parameter issues
@@ -838,10 +838,10 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
 
 // Partes/Inventory functions
 // Partes/Inventory functions - Optimizado para memoria
-async function getPartes(limit = 200, offset = 0) {
+async function getPartes(limit = 100, offset = 0) {
   try {
-    // Validate and sanitize limit and offset to prevent SQL injection
-    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 200));
+    // Validate and sanitize limit and offset - reduce max limit for memory
+    const safeLimit = Math.max(1, Math.min(200, parseInt(limit) || 100));
     const safeOffset = Math.max(0, parseInt(offset) || 0);
     
     // Intentar con diferentes nombres de tabla comunes

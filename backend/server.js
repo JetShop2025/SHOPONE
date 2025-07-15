@@ -31,9 +31,18 @@ app.use(cors({
   allowedHeaders: ['*']
 }));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Body parsing - Reduced limits for memory optimization
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
+// Memory optimization middleware
+app.use((req, res, next) => {
+  // Force garbage collection periodically (if exposed)
+  if (global.gc && Math.random() < 0.1) {
+    global.gc();
+  }
+  next();
+});
 
 // Request logging
 app.use((req, res, next) => {
@@ -252,10 +261,15 @@ app.delete('/api/trailer-locations/:id', async (req, res) => {
 app.get('/api/inventory', async (req, res) => {
   try {
     console.log('[GET] /api/inventory - Fetching from database');
-    const limit = parseInt(req.query.limit) || 200;
+    // Reduce default limit to 100 for memory optimization
+    const limit = Math.min(parseInt(req.query.limit) || 100, 200);
     const offset = parseInt(req.query.offset) || 0;
     const partes = await db.getPartes(limit, offset);
     console.log(`[GET] /api/inventory - Found ${partes.length} items from database`);
+    
+    // Force cleanup
+    if (global.gc) global.gc();
+    
     res.json(partes);
   } catch (error) {
     console.error('[ERROR] GET /api/inventory:', error);
@@ -333,10 +347,15 @@ app.delete('/api/inventory/:id', async (req, res) => {
 app.get('/api/work-orders', async (req, res) => {
   try {
     console.log('[GET] /api/work-orders - Fetching from database');
-    const limit = parseInt(req.query.limit) || 100;
+    // Reduce default limit to 50 for memory optimization
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const offset = parseInt(req.query.offset) || 0;
     const orders = await db.getOrders(limit, offset);
     console.log(`[GET] /api/work-orders - Found ${orders.length} work orders from database`);
+    
+    // Force cleanup
+    if (global.gc) global.gc();
+    
     res.json(orders);
   } catch (error) {
     console.error('[ERROR] GET /api/work-orders:', error);
