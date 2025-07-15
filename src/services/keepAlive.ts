@@ -1,8 +1,8 @@
 // Keep-alive service para mantener el servidor de Render activo
 // ULTRA AGRESIVO: Múltiples estrategias para mantener servidor despierto
 
-const KEEP_ALIVE_INTERVAL = 1 * 60 * 1000; // 1 minuto (ultra agresivo para evitar hibernación)
-const PING_TIMEOUT = 20000; // 20 segundos timeout
+const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 segundos (MÁXIMO AGRESIVO para evitar hibernación)
+const PING_TIMEOUT = 10000; // 10 segundos timeout
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 // Múltiples endpoints para despertar el servidor
@@ -21,12 +21,12 @@ class KeepAliveService {
   start() {
     if (this.intervalId) {
       return; // Ya está ejecutándose
-    }    console.log('🟢 Keep-alive service iniciado (intervalo: 1 min - ULTRA AGRESIVO)');
+    }    console.log('🟢 Keep-alive service iniciado (intervalo: 30 seg - MÁXIMO AGRESIVO)');
     
     // Hacer ping inmediatamente
     this.ping();
     
-    // Configurar ping cada 1 minuto (ultra frecuente para evitar hibernación)
+    // Configurar ping cada 30 segundos (máximo frecuente para evitar hibernación)
     this.intervalId = setInterval(() => {
       this.ping();
     }, KEEP_ALIVE_INTERVAL);

@@ -797,6 +797,27 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ENHANCED KEEP-ALIVE ENDPOINTS
+app.get('/api/ping', (req, res) => {
+  console.log('[PING] Keep-alive ping received');
+  res.json({ 
+    status: 'pong',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+app.get('/api/wake', (req, res) => {
+  console.log('[WAKE] Wake-up call received');
+  res.json({ 
+    status: 'awake',
+    message: 'Server is awake and running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // START SERVER
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
