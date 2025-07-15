@@ -1603,10 +1603,18 @@ const WorkOrdersTable: React.FC = () => {
             zIndex: 9999,
             minWidth: 220
           }}
-          onClick={hideTooltip}
-        >
+          onClick={hideTooltip}        >
           <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
-          <div style={{ fontSize: 13, lineHeight: 1.4 }}>{tooltip.info}</div>
+          <div><b>Part Name:</b> {tooltip.info.part || 'N/A'}</div>
+          <div><b>On Hand:</b> {tooltip.info.onHand || 'N/A'}</div>
+          <div><b>U/M:</b> {tooltip.info.um || 'N/A'}</div>
+          <div>
+            <b>Precio actual:</b>{" "}
+            {tooltip.info.precio
+              ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              : '$0.00'}
+          </div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
         </div>
       )}
       
