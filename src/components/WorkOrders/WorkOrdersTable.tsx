@@ -60,7 +60,6 @@ function getTrailerOptions(billToCo: string): string[] {
     const especiales = ["2-01 TRK"];
     const normales = Array.from({length: 16}, (_, i) => `2-${(i+1).toString().padStart(3, '0')}`);
     return [...especiales, ...normales];
-    return [...especiales, ...normales];
   }
   if (billToCo === "PRIGRE") return Array.from({length: 24}, (_, i) => `3-${(300+i).toString()}`);
   if (billToCo === "RAN100") return Array.from({length: 20}, (_, i) => `4-${(400+i).toString()}`);
@@ -426,11 +425,12 @@ const WorkOrdersTable: React.FC = () => {
       setIsSearching(false);
     }
   }, [fetchWorkOrders]);
-    // Función para cargar inventario con reintentos inteligentes (OPTIMIZADA para plan gratuito)
+  
+  // Función para cargar inventario con reintentos inteligentes
   const fetchInventory = useCallback(async () => {
     try {
       console.log('🔄 Cargando inventario...');
-      const res = await axios.get(`${API_URL}/inventory`, { timeout: 30000 }); // AUMENTADO timeout
+      const res = await axios.get(`${API_URL}/inventory`, { timeout: 15000 });
       const inventoryData = Array.isArray(res.data) ? res.data : [];
       setInventory(inventoryData);
       console.log('✅ Inventario cargado:', inventoryData.length, 'items');
@@ -441,7 +441,6 @@ const WorkOrdersTable: React.FC = () => {
       console.log(`💰 Items con precio: ${withPrice}/${inventoryData.length}`);
     } catch (err) {
       console.error('❌ Error cargando inventario:', err);
-      console.log('💡 NOTA: Si persiste el error, el servidor gratuito puede estar sobrecargado');
       setInventory([]);
     }
   }, []);
@@ -1000,7 +999,8 @@ const WorkOrdersTable: React.FC = () => {
           ...found,
           date: found.date ? found.date.slice(0, 10) : '',
           parts: Array.isArray(found.parts) ? found.parts : [],
-          mechanics: Array.isArray(found.mechanics) ? found.mechanics : [],          // Si tu backend guarda extraOptions como array, úsalo directo
+          mechanics: Array.isArray(found.mechanics) ? found.mechanics : [],
+          // Si tu backend guarda extraOptions como array, úsalo directo
           extraOptions: Array.isArray(found.extraOptions) ? found.extraOptions : [],
         });
         setExtraOptions(Array.isArray(found.extraOptions) ? found.extraOptions : []);
@@ -1332,7 +1332,7 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       
-      // Si no hay horas del procesamiento de mechanics, usar totalHrs directo
+      // Si no hay horas del procesamiento de mechanics, usar totalHrs directo.
       if (totalHrs === 0) {
         totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
         console.log('📊 Usando totalHrs directo:', totalHrs);      }        // 7. Procesar fecha correctamente sin problemas de zona horaria
@@ -1458,377 +1458,339 @@ const WorkOrdersTable: React.FC = () => {
             opacity: 1;
           }
           
-          .server-status-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 8px 12px;
-            border-radius: 20px;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-          }
-          .server-status-online {
-            background-color: #4caf50;
-          }
-          .server-status-waking {
-            background-color: #ff9800;
-            animation: pulse 1.5s infinite;
-          }
-          .server-status-offline {
-            background-color: #f44336;
+          .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1976d2;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            animation: spin 1s linear infinite;
           }
           
-          @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
           }
-        `}
-      </style>
-      
-      {/* Indicador de estado del servidor */}
-      <div className={`server-status-indicator server-status-${serverStatus}`}>
-        {serverStatus === 'online' && (
-          <>
-            <span>🟢</span>
-            <span>Servidor Online</span>
-          </>
-        )}
-        {serverStatus === 'waking' && (
-          <>
-            <span>🟡</span>
-            <span>Despertando servidor... ({retryCount}/{maxRetries})</span>
-          </>
-        )}
-        {serverStatus === 'offline' && (
-          <>
-            <span>🔴</span>
-            <span>Servidor sin respuesta</span>
-          </>
-        )}      </div>
-        
-      <style>ltip para información de partes */}
-        {`ltip.visible && tooltip.info && (
+          
+          .blink-animation {
+            animation: blink 2s infinite;
+          }
+          
           @keyframes blink {
             0% { opacity: 1; }
             50% { opacity: 0.4; }
             100% { opacity: 1; }
-          } 50% { opacity: 0.4; }
-            100% { opacity: 1; }
+          }
+          
           .btn-success:hover {
             background: #1565c0;
-          }btn-success:hover {
-            background: #1565c0;
+          }
+          
           .wo-table {
             border-collapse: collapse;
             width: 100%;
-            font-size: 12px; collapse;
+            font-size: 12px;
             text-align: center;
             margin-top: 16px;
-            background: white;;
-          } margin-top: 16px;
             background: white;
+          }
+          
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
-            padding: 6px 4px;able td {
-            vertical-align: middle;e2;
+            padding: 6px 4px;
+            vertical-align: middle;
             white-space: nowrap;
-            overflow: hidden;iddle;
-          } white-space: nowrap;
             overflow: hidden;
+          }
+          
           .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
           .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
           .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
-          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */ */
-          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */*/
-          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */ */
+          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
+          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
+          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */
           .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 220px; white-space: normal; } /* Description */
           .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 65px; } /* PRT1 */
-          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */: normal; } /* Description */
+          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */
           .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 65px; } /* Costo1 */
           .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 65px; } /* PRT2 */
-          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */*/
+          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */
           .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 65px; } /* Costo2 */
           .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 65px; } /* PRT3 */
-          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */*/
+          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */
           .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 65px; } /* Costo3 */
           .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 65px; } /* PRT4 */
-          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */*/
+          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */
           .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 65px; } /* Costo4 */
           .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 65px; } /* PRT5 */
-          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */*/
+          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */
           .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 65px; } /* Costo5 */
           .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 70px; } /* Total HRS */
           .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 85px; } /* Total LAB & PRTS */
-          .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 85px; } /* Status */ */
-          .wo-table th:nth-child(26), .wo-table td:nth-child(26) { width: 130px; } /* Acciones */PRTS */
           .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 85px; } /* Status */
-          .wo-table th {th-child(26), .wo-table td:nth-child(26) { width: 130px; } /* Acciones */
+          .wo-table th:nth-child(26), .wo-table td:nth-child(26) { width: 130px; } /* Acciones */
+          
+          .wo-table th {
             background: #1976d2;
             color: white;
-            font-weight: 600;d2;
+            font-weight: 600;
             position: sticky;
-            top: 0;ight: 600;
-            z-index: 10;icky;
-          } top: 0;
+            top: 0;
             z-index: 10;
+          }
+          
           .wo-table td {
             font-size: 11px;
-          }wo-table td {
-            font-size: 11px;
+          }
+          
           .wo-table tr {
             transition: background-color 0.1s;
-          }wo-table tr {
-            transition: background-color 0.1s;
+          }
+          
           .wo-table tr:hover {
             background-color: #e3f2fd !important;
-          }wo-table tr:hover {
-            background-color: #e3f2fd !important;
+          }
+          
           .wo-table tr.selected {
             background-color: #bbdefb !important;
-          }wo-table tr.selected {
-            background-color: #bbdefb !important;
+          }
+          
           .status-processing { 
             background: #fff3e0; 
-            color: #e65100;  { 
-            font-weight: 600; 0; 
-          } color: #e65100; 
-          .status-approved {  
-            background: #e8f5e8; 
-            color: #2e7d32;  
-            font-weight: 600; 8; 
-          } color: #2e7d32; 
-          .status-finished {  
-            background: #e1f5fe; 
-            color: #0277bd;  
-            font-weight: 600; e; 
-          } color: #0277bd; 
+            color: #e65100; 
             font-weight: 600; 
+          }
+          .status-approved { 
+            background: #e8f5e8; 
+            color: #2e7d32; 
+            font-weight: 600; 
+          }
+          .status-finished { 
+            background: #e1f5fe; 
+            color: #0277bd; 
+            font-weight: 600; 
+          }
+          
           .search-filters {
             background: white;
-            padding: 16px;{
+            padding: 16px;
             margin-bottom: 16px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex; 8px;
-            flex-wrap: wrap;x 8px rgba(0,0,0,0.1);
-            gap: 12px;lex;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
             align-items: center;
-          } gap: 12px;
-            align-items: center;
+          }
+          
           .search-filters input, .search-filters select {
             padding: 8px 12px;
-            border: 1px solid #ddd;earch-filters select {
+            border: 1px solid #ddd;
             border-radius: 6px;
-            font-size: 14px;d #ddd;
-          } border-radius: 6px;
             font-size: 14px;
+          }
+          
           .error-border {
             border: 2px solid #d32f2f !important;
             background-color: #ffebee !important;
-          } border: 2px solid #d32f2f !important;
-            background-color: #ffebee !important;
+          }
+          
           .error-text {
             color: #d32f2f;
             font-size: 12px;
             font-weight: 600;
             margin-top: 4px;
-          }          ht: 600;
+          }          
           @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.4; }
             100% { opacity: 1; }
-          } 50% { opacity: 0.4; }
-            100% { opacity: 1; }
+          }
+          
           .reconnect-btn {
             margin-left: 8px;
             padding: 4px 8px;
-            border: none;8px;
+            border: none;
             border-radius: 12px;
             background: #1976d2;
-            color: white;: 12px;
-            font-size: 11px;6d2;
+            color: white;
+            font-size: 11px;
             cursor: pointer;
             transition: background 0.2s;
-          } cursor: pointer;
-          .reconnect-btn:hover {nd 0.2s;
+          }
+          .reconnect-btn:hover {
             background: #1565c0;
-          }reconnect-btn:hover {
-            background: #1565c0;
+          }
+          
           .wo-table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 1750px;ollapse;
+            min-width: 1750px;
             background: #fff;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(25,118,210,0.07);
-            font-size: 11px;;
-          } box-shadow: 0 2px 12px rgba(25,118,210,0.07);
             font-size: 11px;
+          }
+          
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
-            padding: 2px 4px;able td {
-            font-size: 11px;d #d0d7e2;
+            padding: 2px 4px;
+            font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
-          } white-space: nowrap;
-            overflow: hidden;
+          }
+          
           .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
           .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
           .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
-          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */ */
-          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */*/
-          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */ */
+          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
+          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
+          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */
           .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 220px; white-space: normal; } /* Description */
           .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 65px; } /* PRT1 */
-          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */: normal; } /* Description */
+          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */
           .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 65px; } /* Costo1 */
           .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 65px; } /* PRT2 */
-          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */*/
+          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */
           .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 65px; } /* Costo2 */
           .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 65px; } /* PRT3 */
-          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */*/
+          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */
           .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 65px; } /* Costo3 */
           .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 65px; } /* PRT4 */
-          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */*/
+          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */
           .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 65px; } /* Costo4 */
           .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 65px; } /* PRT5 */
-          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */*/
+          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */
           .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 65px; } /* Costo5 */
           .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 75px; } /* Total HRS */
           .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
-          .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 95px; } /* Status */ */
-          .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
-          .wo-table th {th-child(25), .wo-table td:nth-child(25) { width: 95px; } /* Status */
+          .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 95px; } /* Status */
+          
+          .wo-table th {
             background: #1976d2;
             color: #fff;
-            font-weight: 700;d2;
+            font-weight: 700;
             font-size: 13px;
             border-bottom: 2px solid #1565c0;
-          } font-size: 13px;
-            border-bottom: 2px solid #1565c0;
+          }
+          
           .wo-table tr:last-child td {
             border-bottom: 1px solid #d0d7e2;
-          }wo-table tr:last-child td {
-            border-bottom: 1px solid #d0d7e2;
+          }
+          
           /* Colores por estatus */
           .wo-row-approved {
             background: #43a047 !important; /* Verde fuerte */
             color: #fff !important;
-          } background: #43a047 !important; /* Verde fuerte */
-          .wo-row-finished {ortant;
+          }
+          .wo-row-finished {
             background: #ffd600 !important; /* Amarillo fuerte */
             color: #333 !important;
-          } background: #ffd600 !important; /* Amarillo fuerte */
-          .wo-row-processing {tant;
+          }
+          .wo-row-processing {
             background: #fff !important; /* Blanco */
             color: #1976d2 !important;
-          }          .wo-row-selected {; /* Blanco */
+          }
+          .wo-row-selected {
             outline: 2px solid #1976d2 !important;
             box-shadow: 0 0 0 2px #1976d233;
-          }wo-row-selected {
-        `}  outline: 2px solid #1976d2 !important;
-      </style>      ow: 0 0 0 2px #1976d233;
           }
-      {/* Tooltip para información de partes */}
-        <dive>      
-          style={{ible && tooltip.info && (
+        `}
+      </style>      
+      {tooltip.visible && tooltip.info && (
+        <div
+          style={{
             position: 'fixed',
             top: tooltip.y + 10,
             left: tooltip.x + 10,
-            background: '#fff',,
+            background: '#fff',
             border: '1px solid #1976d2',
-            borderRadius: 8,f',
+            borderRadius: 8,
             boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
-            padding: 16,: 8,
-            zIndex: 9999, 2px 8px rgba(25,118,210,0.15)',
+            padding: 16,
+            zIndex: 9999,
             minWidth: 220
-          }}zIndex: 9999,
+          }}
           onClick={hideTooltip}        >
           <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
           <div><b>Part Name:</b> {tooltip.info.part || 'N/A'}</div>
-          <div><b>On Hand:</b> {tooltip.info.onHand || 'N/A'}</div>ttom: 6 }}>Part Info</div>
-          <div><b>U/M:</b> {tooltip.info.um || 'N/A'}</div>'}</div>
           <div><b>On Hand:</b> {tooltip.info.onHand || 'N/A'}</div>
-            <b>Precio actual:</b>{" "}fo.um || 'N/A'}</div>
+          <div><b>U/M:</b> {tooltip.info.um || 'N/A'}</div>
+          <div>
+            <b>Precio actual:</b>{" "}
             {tooltip.info.precio
               ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-              : '$0.00'}o.precio
-          </div>Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              : '$0.00'}
+          </div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
-        </div>v>
-      )}  <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
         </div>
+      )}
+      
       <div
         style={{
           padding: '32px',
           background: 'linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%)',
           borderRadius: 16,
-          boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',ffffff 100%)',
-          maxWidth: 1800,6,
-          margin: '32px auto'4px rgba(25, 118, 210, 0.10)',
-        }}maxWidth: 1800,
+          boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',
+          maxWidth: 1800,
+          margin: '32px auto'
+        }}
       ><div className="wo-header">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
-  <div><div className="wo-header">
-    style={{iv style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+  <div
+    style={{
       width: 48,
       height: 48,
       borderRadius: '50%',
       background: '#1976d2',
-      display: 'flex',0%',
-      alignItems: 'center',,
+      display: 'flex',
+      alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 12,ter',
-    }}justifyContent: 'center',
-  >   marginRight: 12,
+      marginRight: 12,
+    }}
+  >
     <span style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontFamily: 'Courier New, Courier, monospace', letterSpacing: 2 }}>
       WO
-    </span>tyle={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontFamily: 'Courier New, Courier, monospace', letterSpacing: 2 }}>
+    </span>
   </div>
-  <spanpan>
+  <span
     style={{
       fontSize: 32,
       fontWeight: 700,
       color: '#1976d2',
       fontFamily: 'Courier New, Courier, monospace',
       letterSpacing: 2,
-      textShadow: '1px 1px 0 #fff',rier, monospace',
+      textShadow: '1px 1px 0 #fff',
     }}  >    Work Orders
-    {searchIdClassic && (x 0 #fff',
-      <span style={{ders
+    {searchIdClassic && (
+      <span style={{
         marginLeft: '16px',
         fontSize: '16px',
-        fontWeight: '600',,
+        fontWeight: '600',
         color: '#ff9800',
         backgroundColor: '#fff3e0',
         padding: '4px 12px',
-        borderRadius: '12px',f3e0',
+        borderRadius: '12px',
         border: '1px solid #ff9800'
-      }}>orderRadius: '12px',
+      }}>
         🔍 Searching: "{searchIdClassic}"
       </span>
-    )}  🔍 Searching: "{searchIdClassic}"
-  </span>pan>
     )}
+  </span>
+  
   {/* Contador de W.O. pequeño debajo del título */}
   <div style={{ 
-    marginTop: '8px',  pequeño debajo del título */}
+    marginTop: '8px', 
     fontSize: '14px', 
-    color: '#666',x', 
-    fontWeight: '500' 
-  }}>olor: '#666',
+    color: '#666',
+    fontWeight: '500'
+  }}>
     📋 Total: {filteredOrders.length} Work Orders
   </div>
-  {/* Indicador de estado del servidor */} Orders
+  {/* Indicador de estado del servidor */}
   <div style={{ 
-    marginLeft: 'auto',do del servidor */}
+    marginLeft: 'auto',
     display: 'flex',
     alignItems: 'center',
     padding: '8px 16px',
@@ -1837,674 +1799,598 @@ const WorkOrdersTable: React.FC = () => {
                 serverStatus === 'waking' ? '#fff3e0' : '#ffebee',
     border: `1px solid ${serverStatus === 'online' ? '#4caf50' : 
                          serverStatus === 'waking' ? '#ff9800' : '#f44336'}`
-  }}>order: `1px solid ${serverStatus === 'online' ? '#4caf50' : 
-    <div style={{        serverStatus === 'waking' ? '#ff9800' : '#f44336'}`
+  }}>
+    <div style={{
       width: 8,
-      height: 8,{
+      height: 8,
       borderRadius: '50%',
       background: serverStatus === 'online' ? '#4caf50' : 
                   serverStatus === 'waking' ? '#ff9800' : '#f44336',
-      marginRight: 8,verStatus === 'online' ? '#4caf50' : 
+      marginRight: 8,
       animation: serverStatus === 'waking' ? 'pulse 1.5s infinite' : 'none'
-    }} />ginRight: 8,
-    <span style={{erverStatus === 'waking' ? 'pulse 1.5s infinite' : 'none'
+    }} />
+    <span style={{
       fontSize: 12,
       fontWeight: 600,
       color: serverStatus === 'online' ? '#2e7d32' : 
              serverStatus === 'waking' ? '#ef6c00' : '#c62828'
-    }}>    {serverStatus === 'online' ? 'Online' : : 
-     serverStatus === 'waking' ? 'Waking up...' : 'Offline'}8'
+    }}>    {serverStatus === 'online' ? 'Online' : 
+     serverStatus === 'waking' ? 'Waking up...' : 'Offline'}
     </span>    {serverStatus === 'offline' && (      <button 
-        className="reconnect-btn"'Waking up...' : 'Offline'}
-        onClick={async () => {== 'offline' && (      <button 
-          setRetryCount(0);t-btn"
+        className="reconnect-btn"
+        onClick={async () => {
+          setRetryCount(0);
           setServerStatus('waking');
           setReconnecting(true);
-          setServerStatus('waking');
+          
           // Intentar despertar con keep-alive primero
           try {
-            await keepAliveService.manualPing();rimero
+            await keepAliveService.manualPing();
           } catch (e) {
             console.log('Manual ping failed, proceeding with fetch...');
-          } catch (e) {
-            console.log('Manual ping failed, proceeding with fetch...');
+          }
+          
           // Esperar un poco y luego intentar fetch
           setTimeout(() => {
-            fetchWorkOrders(); luego intentar fetch
+            fetchWorkOrders();
             setReconnecting(false);
-          }, 3000);rkOrders();
-        }}  setReconnecting(false);
+          }, 3000);
+        }}
         disabled={reconnecting}
-      > }}
+      >
         {reconnecting ? 'Reconnecting...' : 'Reconnect'}
       </button>
-    )}  {reconnecting ? 'Reconnecting...' : 'Reconnect'}
+    )}
     {fetchingData && (
       <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>
-        Loading...&& (
-      </span>tyle={{ marginLeft: 8, fontSize: 12, color: '#666' }}>
-    )}  Loading...
-  </div>span>
+        Loading...
+      </span>
+    )}
+  </div>
 </div>
         </div>
         {/* FILTROS DERECHA */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, marginTop: -16 }}>
           <label className="wo-filter-label" style={{ marginBottom: 6 }}>
-            Filter by week:&nbsp;lex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, marginTop: -16 }}>
-            <inputlassName="wo-filter-label" style={{ marginBottom: 6 }}>
-              type="week"k:&nbsp;
+            Filter by week:&nbsp;
+            <input
+              type="week"
               value={selectedWeek}
               onChange={e => setSelectedWeek(e.target.value)}
               className="wo-filter-input"
-            />onChange={e => setSelectedWeek(e.target.value)}
-          </label>sName="wo-filter-input"
+            />
+          </label>
           <label className="wo-filter-label" style={{ marginBottom: 6 }}>
             Filter by day:&nbsp;
-            <inputlassName="wo-filter-label" style={{ marginBottom: 6 }}>
-              type="date":&nbsp;
+            <input
+              type="date"
               value={selectedDay}
               onChange={e => setSelectedDay(e.target.value)}
               className="wo-filter-input"
-            />onChange={e => setSelectedDay(e.target.value)}
-          </label>sName="wo-filter-input"
+            />
+          </label>
           <label className="wo-filter-label">
             Filter by status:&nbsp;
-            <selectassName="wo-filter-label">
-              value={statusFilter};
+            <select
+              value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
               className="wo-filter-input"
-              style={{ minWidth: 160 }}ilter(e.target.value)}
-            > className="wo-filter-input"
+              style={{ minWidth: 160 }}
+            >
               <option value="">All</option>              {STATUS_OPTIONS.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
-              ))}tion value="">All</option>              {STATUS_OPTIONS.map(opt => (
-            </select>on key={opt} value={opt}>{opt}</option>
-          </label>
+              ))}
             </select>
+          </label>
+
           {/* Búsqueda inteligente por ID Classic */}
           <label className="wo-filter-label">
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
-            <inputlassName="wo-filter-label">
-              type="text"{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
+            <input
+              type="text"
               value={searchIdClassic}
               onChange={e => setSearchIdClassic(e.target.value)}
-              onKeyPress={e => {ssic}
-                if (e.key === 'Enter') {Classic(e.target.value)}
+              onKeyPress={e => {
+                if (e.key === 'Enter') {
                   searchWorkOrderByIdClassic(searchIdClassic);
-                }f (e.key === 'Enter') {
-              }}  searchWorkOrderByIdClassic(searchIdClassic);
+                }
+              }}
               className="wo-filter-input"
               style={{ 
-                minWidth: 160, ter-input"
+                minWidth: 160, 
                 backgroundColor: searchIdClassic ? '#e3f2fd' : 'white',
                 border: searchIdClassic ? '2px solid #1976d2' : '1px solid #ddd'
-              }}backgroundColor: searchIdClassic ? '#e3f2fd' : 'white',
-              placeholder="W.O. 19417"c ? '2px solid #1976d2' : '1px solid #ddd'
+              }}
+              placeholder="W.O. 19417"
               disabled={isSearching}
-            />placeholder="W.O. 19417"
-            {searchIdClassic && (ng}
+            />
+            {searchIdClassic && (
               <button
-                onClick={() => {(
+                onClick={() => {
                   setSearchIdClassic('');
                   fetchWorkOrders(); // Volver a cargar todas las órdenes
-                }}setSearchIdClassic('');
-                style={{ rkOrders(); // Volver a cargar todas las órdenes
+                }}
+                style={{ 
                   marginLeft: '5px', 
                   padding: '2px 6px', 
-                  fontSize: '12px',  
+                  fontSize: '12px', 
                   backgroundColor: '#f44336', 
-                  color: 'white', , 
-                  border: 'none',  '#f44336', 
+                  color: 'white', 
+                  border: 'none', 
                   borderRadius: '3px',
                   cursor: 'pointer'
-                }}borderRadius: '3px',
+                }}
                 title="Clear search and show all work orders"
-              > }}
-                ✕itle="Clear search and show all work orders"
+              >
+                ✕
               </button>
-            )}  ✕
+            )}
             {isSearching && (
               <span style={{ marginLeft: '5px', fontSize: '12px', color: '#1976d2' }}>
                 🔄 Searching...
-              </span>            )}Left: '5px', fontSize: '12px', color: '#1976d2' }}>
-          </label> Searching...
               </span>            )}
+          </label>
+          
           {/* Botón de búsqueda */}
           {searchIdClassic && (
-            <button de búsqueda */}
+            <button
               onClick={() => searchWorkOrderByIdClassic(searchIdClassic)}
               disabled={isSearching}
-              style={{{() => searchWorkOrderByIdClassic(searchIdClassic)}
-                marginLeft: '8px',g}
+              style={{
+                marginLeft: '8px',
                 padding: '8px 16px',
                 backgroundColor: '#1976d2',
-                color: 'white',6px',
-                border: 'none',: '#1976d2',
+                color: 'white',
+                border: 'none',
                 borderRadius: '4px',
                 cursor: isSearching ? 'not-allowed' : 'pointer',
-                fontWeight: '600',',
-                fontSize: '14px'ing ? 'not-allowed' : 'pointer',
-              }}fontWeight: '600',
-            >   fontSize: '14px'
+                fontWeight: '600',
+                fontSize: '14px'
+              }}
+            >
               {isSearching ? '🔄 Searching...' : '🔍 Search'}            </button>          )}
         </div>
-              {isSearching ? '🔄 Searching...' : '🔍 Search'}            </button>          )}
+        
         {/* Indicador de Estado del Servidor */}
         <div style={{ 
-          margin: '12px 0', ado del Servidor */}
+          margin: '12px 0', 
           padding: '12px 16px', 
           backgroundColor: serverStatus === 'online' ? '#e8f5e8' : 
                            serverStatus === 'waking' ? '#fff3cd' : '#f8d7da',
-          borderRadius: '8px',verStatus === 'online' ? '#e8f5e8' : 
-          border: `1px solid ${serverStatus === 'online' ? '#28a745' : d7da',
+          borderRadius: '8px',
+          border: `1px solid ${serverStatus === 'online' ? '#28a745' : 
                                 serverStatus === 'waking' ? '#ffc107' : '#dc3545'}`,
-          display: 'flex',id ${serverStatus === 'online' ? '#28a745' : 
-          alignItems: 'center', serverStatus === 'waking' ? '#ffc107' : '#dc3545'}`,
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between'
-        }}>lignItems: 'center',
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ 
-              fontSize: '14px',  'flex', alignItems: 'center', gap: '8px' }}>
+              fontSize: '14px', 
               fontWeight: '600',
               color: serverStatus === 'online' ? '#155724' : 
                      serverStatus === 'waking' ? '#856404' : '#721c24'
-            }}>olor: serverStatus === 'online' ? '#155724' : 
-              {serverStatus === 'online' && '🟢 Server Online'}721c24'
+            }}>
+              {serverStatus === 'online' && '🟢 Server Online'}
               {serverStatus === 'waking' && '🟡 Server Waking Up...'}
               {serverStatus === 'offline' && '🔴 Server Offline'}
-            </span>erStatus === 'waking' && '🟡 Server Waking Up...'}
-            {fetchingData && (= 'offline' && '🔴 Server Offline'}
+            </span>
+            {fetchingData && (
               <span style={{ fontSize: '12px', color: '#6c757d' }}>
                 🔄 Loading data...
-              </span>tyle={{ fontSize: '12px', color: '#6c757d' }}>
-            )}  🔄 Loading data...
-          </div>span>
+              </span>
             )}
+          </div>
+          
           {/* Botón para despertar servidor manualmente */}
           {(serverStatus === 'offline' || serverStatus === 'waking') && (
-            <button para despertar servidor manualmente */}
-              onClick={async () => {e' || serverStatus === 'waking') && (
+            <button
+              onClick={async () => {
                 console.log('🚀 Intentando despertar servidor manualmente...');
                 setServerStatus('waking');
-                setRetryCount(0); // Reset counterar servidor manualmente...');
-                try {rverStatus('waking');
+                setRetryCount(0); // Reset counter
+                try {
                   const success = await keepAliveService.manualPing();
                   if (success) {
                     console.log('✅ Servidor despertado, recargando datos...');
                     await fetchWorkOrders();
-                  } else {e.log('✅ Servidor despertado, recargando datos...');
+                  } else {
                     console.log('⚠️ No se pudo despertar el servidor, reintentando...');
                     setTimeout(() => fetchWorkOrders(), 5000);
-                  } console.log('⚠️ No se pudo despertar el servidor, reintentando...');
-                } catch (error) { => fetchWorkOrders(), 5000);
+                  }
+                } catch (error) {
                   console.error('❌ Error despertando servidor:', error);
                   setTimeout(() => fetchWorkOrders(), 10000);
-                } console.error('❌ Error despertando servidor:', error);
-              }}  setTimeout(() => fetchWorkOrders(), 10000);
+                }
+              }}
               disabled={fetchingData}
               style={{
-                padding: '6px 12px',}
+                padding: '6px 12px',
                 fontSize: '12px',
                 backgroundColor: '#007bff',
-                color: 'white',',
-                border: 'none',: '#007bff',
+                color: 'white',
+                border: 'none',
                 borderRadius: '4px',
                 cursor: fetchingData ? 'not-allowed' : 'pointer',
-                fontWeight: '600'x',
-              }}cursor: fetchingData ? 'not-allowed' : 'pointer',
-            >   fontWeight: '600'
+                fontWeight: '600'
+              }}
+            >
               {fetchingData ? '🔄 Trying...' : '🚀 Wake Server'}
             </button>
-          )}  {fetchingData ? '🔄 Trying...' : '🚀 Wake Server'}
-        </div>button>
           )}
+        </div>
+        
         {/* Controles de Paginación */}
         {!searchIdClassic && totalPages > 1 && (
-          <div style={{  Paginación */}
-            margin: '16px 0', otalPages > 1 && (
+          <div style={{ 
+            margin: '16px 0', 
             padding: '12px 16px', 
             backgroundColor: '#f8f9fa', 
-            borderRadius: '8px',, 
-            display: 'flex', '#f8f9fa', 
+            borderRadius: '8px',
+            display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '10px',ustifyContent: 'space-between',
-            border: '1px solid #e9ecef'
+            border: '1px solid #dee2e6'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>ter', gap: '12px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: '#495057' }}>tyle={{ fontSize: '14px', fontWeight: '600', color: '#495057' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#495057' }}>
                 📄 Página {currentPageData} de {totalPages}
               </span>
-              <span style={{ fontSize: '12px', color: '#6c757d' }}>tyle={{ fontSize: '12px', color: '#6c757d' }}>
-                Total: {totalRecords.toLocaleString()} W.O. | Mostrando 1000 por páginatal: {totalRecords.toLocaleString()} W.O. | Mostrando 1000 por página
-              </span>  </span>
+              <span style={{ fontSize: '12px', color: '#6c757d' }}>
+                Total: {totalRecords.toLocaleString()} W.O. | Mostrando 1000 por página
+              </span>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>e={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Botón Primera Página */}Página */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Botón Primera Página */}
               <button
                 onClick={() => {
-                  setCurrentPageData(1);setCurrentPageData(1);
+                  setCurrentPageData(1);
                   fetchWorkOrders(false, 1);
                 }}
-                disabled={!hasPreviousPage || fetchingData}Page || fetchingData}
+                disabled={!hasPreviousPage || fetchingData}
                 style={{
                   padding: '6px 12px',
-                  fontSize: '12px',',
-                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
+                  fontSize: '12px',
+                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',borderRadius: '4px',
-                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'   cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
+                  borderRadius: '4px',
+                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
                 }}
               >
-                « Primera  « Primera
+                « Primera
               </button>
               
-              {/* Botón Anterior */} */}
+              {/* Botón Anterior */}
               <button
                 onClick={() => {
-                  const prevPage = currentPageData - 1;- 1;
-                  setCurrentPageData(prevPage);setCurrentPageData(prevPage);
+                  const prevPage = currentPageData - 1;
+                  setCurrentPageData(prevPage);
                   fetchWorkOrders(false, prevPage);
                 }}
-                disabled={!hasPreviousPage || fetchingData}Page || fetchingData}
+                disabled={!hasPreviousPage || fetchingData}
                 style={{
                   padding: '6px 12px',
-                  fontSize: '12px',',
-                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
+                  fontSize: '12px',
+                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',borderRadius: '4px',
-                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'   cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
+                  borderRadius: '4px',
+                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
                 }}
               >
-                ← Anterior  ← Anterior
+                ← Anterior
               </button>
               
-              {/* Selector de página rápido */}pido */}
+              {/* Selector de página rápido */}
               <select
                 value={currentPageData}
                 onChange={(e) => {
-                  const targetPage = parseInt(e.target.value);t.value);
-                  setCurrentPageData(targetPage);setCurrentPageData(targetPage);
-                  fetchWorkOrders(false, targetPage);, targetPage);
+                  const targetPage = parseInt(e.target.value);
+                  setCurrentPageData(targetPage);
+                  fetchWorkOrders(false, targetPage);
                 }}
-                disabled={fetchingData}a}
+                disabled={fetchingData}
                 style={{
                   padding: '4px 8px',
                   fontSize: '12px',
-                  border: '1px solid #ccc',,
-                  borderRadius: '4px',borderRadius: '4px',
-                  backgroundColor: 'white'   backgroundColor: 'white'
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  backgroundColor: 'white'
                 }}
               >
-                {Array.from({ length: Math.min(totalPages, 20) }, (_, i) => (th: Math.min(totalPages, 20) }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>ey={i + 1} value={i + 1}>
-                    Página {i + 1} Página {i + 1}
+                {Array.from({ length: Math.min(totalPages, 20) }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    Página {i + 1}
                   </option>
                 ))}
-                {totalPages > 20 && currentPageData > 20 && (ageData > 20 && (
-                  <option value={currentPageData}>alue={currentPageData}>
-                    Página {currentPageData}  Página {currentPageData}
-                  </option>ion>
-                )}  )}
+                {totalPages > 20 && currentPageData > 20 && (
+                  <option value={currentPageData}>
+                    Página {currentPageData}
+                  </option>
+                )}
               </select>
               
-              {/* Botón Siguiente */}e */}
+              {/* Botón Siguiente */}
               <button
                 onClick={() => {
-                  const nextPage = currentPageData + 1;+ 1;
-                  setCurrentPageData(nextPage);setCurrentPageData(nextPage);
+                  const nextPage = currentPageData + 1;
+                  setCurrentPageData(nextPage);
                   fetchWorkOrders(false, nextPage);
                 }}
-                disabled={!hasNextPage || fetchingData} || fetchingData}
+                disabled={!hasNextPage || fetchingData}
                 style={{
                   padding: '6px 12px',
-                  fontSize: '12px',',
-                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
+                  fontSize: '12px',
+                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',borderRadius: '4px',
-                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'   cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
+                  borderRadius: '4px',
+                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
                 }}
               >
-                Siguiente →  Siguiente →
+                Siguiente →
               </button>
               
-              {/* Botón Última Página */}ágina */}
+              {/* Botón Última Página */}
               <button
                 onClick={() => {
-                  setCurrentPageData(totalPages);setCurrentPageData(totalPages);
+                  setCurrentPageData(totalPages);
                   fetchWorkOrders(false, totalPages);
                 }}
-                disabled={!hasNextPage || fetchingData} || fetchingData}
+                disabled={!hasNextPage || fetchingData}
                 style={{
                   padding: '6px 12px',
-                  fontSize: '12px',',
-                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
+                  fontSize: '12px',
+                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',borderRadius: '4px',
-                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'   cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
+                  borderRadius: '4px',
+                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
                 }}
               >
-                Última »tima »
-              </button>button>
+                Última »
+              </button>
             </div>
           </div>
-        )}{/* --- BOTONES ARRIBA --- */} BOTONES ARRIBA --- */}
-        <div style={{ margin: '24px 0 16px 0' }}>'24px 0 16px 0' }}>
+        )}{/* --- BOTONES ARRIBA --- */}
+        <div style={{ margin: '24px 0 16px 0' }}>
           <button
             className="wo-btn"
             style={primaryBtn}            onClick={() => {
-              // RESETEAR COMPLETAMENTE EL FORMULARIO ANTES DE ABRIRENTE EL FORMULARIO ANTES DE ABRIR
-              console.log('🔄 Abriendo formulario de nueva Work Order - Limpiando formulario completamente');endo formulario de nueva Work Order - Limpiando formulario completamente');
+              // RESETEAR COMPLETAMENTE EL FORMULARIO ANTES DE ABRIR
+              console.log('🔄 Abriendo formulario de nueva Work Order - Limpiando formulario completamente');
               resetNewWorkOrder(); 
               setExtraOptions([]);
               setPendingPartsQty({});
-              // También resetear cualquier selección de partes pendientescción de partes pendientes
-              setSelectedPendingParts([]);s([]);
-              // Limpiar el error del ID Classic// Limpiar el error del ID Classic
+              // También resetear cualquier selección de partes pendientes
+              setSelectedPendingParts([]);
+              // Limpiar el error del ID Classic
               setIdClassicError('');
               
-              // Pequeño delay para asegurar que el reset se complete antes de mostrar el formularioa asegurar que el reset se complete antes de mostrar el formulario
-              setTimeout(() => {out(() => {
-                setShowForm(true); setShowForm(true);
+              // Pequeño delay para asegurar que el reset se complete antes de mostrar el formulario
+              setTimeout(() => {
+                setShowForm(true);
               }, 10);
             }}>
             New Work Order
-          </button>n>
+          </button>
           {/* Botón Edit */}
           <button
             className="wo-btn"
             style={secondaryBtn}
-            onClick={handleEdit} onClick={handleEdit}
-            disabled={selectedRow === null}bled={selectedRow === null}
+            onClick={handleEdit}
+            disabled={selectedRow === null}
           >
             Edit
-          </button>n>
+          </button>
           {/* Botón Delete */}
           <button
             className="wo-btn"
             style={dangerBtn}
-            onClick={() => selectedRow !== null && handleDelete(selectedRow)} onClick={() => selectedRow !== null && handleDelete(selectedRow)}
-            disabled={selectedRow === null}ed={selectedRow === null}
+            onClick={() => selectedRow !== null && handleDelete(selectedRow)}
+            disabled={selectedRow === null}
           >
-            Deletee
+            Delete
           </button>
           <button
             className="wo-btn"
-            style={secondaryBtn} style={secondaryBtn}
-            onClick={() => setShowHourmeter(true)}() => setShowHourmeter(true)}
+            style={secondaryBtn}
+            onClick={() => setShowHourmeter(true)}
           >
             Hourmeter
-          </button>          <buttontton
+          </button>          <button
             className="wo-btn"
-            style={secondaryBtn}Btn}
-            disabled={selectedRow === null}l}
+            style={secondaryBtn}
+            disabled={selectedRow === null}
             onClick={() => {
               if (selectedRow !== null) {
                 // Debug: Mostrar datos de la Work Order seleccionada
                 const selectedWorkOrder = workOrders.find(wo => wo.id === selectedRow);
-                console.log('🔍 Work Order seleccionada para PDF:', selectedWorkOrder);console.log('🔍 Work Order seleccionada para PDF:', selectedWorkOrder);
-                console.log('📊 Campos disponibles:', selectedWorkOrder ? Object.keys(selectedWorkOrder) : 'No encontrada');isponibles:', selectedWorkOrder ? Object.keys(selectedWorkOrder) : 'No encontrada');
+                console.log('🔍 Work Order seleccionada para PDF:', selectedWorkOrder);
+                console.log('📊 Campos disponibles:', selectedWorkOrder ? Object.keys(selectedWorkOrder) : 'No encontrada');
                 
                 if (selectedWorkOrder) {
                   console.log('📋 Detalles de la WO:', {
                     id: selectedWorkOrder.id,
-                    idClassic: selectedWorkOrder.idClassic,c,
-                    billToCo: selectedWorkOrder.billToCo,o,
-                    customer: selectedWorkOrder.customer,ustomer,
+                    idClassic: selectedWorkOrder.idClassic,
+                    billToCo: selectedWorkOrder.billToCo,
+                    customer: selectedWorkOrder.customer,
                     trailer: selectedWorkOrder.trailer,
                     date: selectedWorkOrder.date,
                     mechanic: selectedWorkOrder.mechanic,
                     mechanics: selectedWorkOrder.mechanics,
-                    totalHrs: selectedWorkOrder.totalHrs,alHrs,
+                    totalHrs: selectedWorkOrder.totalHrs,
                     totalLabAndParts: selectedWorkOrder.totalLabAndParts,
-                    parts: selectedWorkOrder.parts,arts: selectedWorkOrder.parts,
-                    partsLength: selectedWorkOrder.parts ? selectedWorkOrder.parts.length : 0   partsLength: selectedWorkOrder.parts ? selectedWorkOrder.parts.length : 0
-                  });  });
+                    parts: selectedWorkOrder.parts,
+                    partsLength: selectedWorkOrder.parts ? selectedWorkOrder.parts.length : 0
+                  });
                 }
-                 
-                handleViewPDF(selectedRow);  handleViewPDF(selectedRow);
+                
+                handleViewPDF(selectedRow);
               }
             }}
-          >            View PDF         View PDF
-          </button>          </button>
+          >
+            View PDF
+          </button>
         </div>
 
-        {/* CONTROLES DE PAGINACIÓN MEJORADOS para plan gratuito */}E PAGINACIÓN MEJORADOS para plan gratuito */}
-        {totalPages > 1 && (
-          <div style={{
-            background: '#f8f9fa',',
-            padding: '16px',
-            borderRadius: '8px',px',
-            margin: '16px 0',
-            display: 'flex',
-            alignItems: 'center',er',
-            justifyContent: 'space-between',nt: 'space-between',
-            flexWrap: 'wrap',
-            gap: '10px',ap: '10px',
-            border: '1px solid #e9ecef'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button
-                style={{
-                  ...primaryBtn,
-                  background: hasPreviousPage ? '#1976d2' : '#ccc',background: hasPreviousPage ? '#1976d2' : '#ccc',
-                  cursor: hasPreviousPage ? 'pointer' : 'not-allowed'
-                }}
-                onClick={() => hasPreviousPage && fetchWorkOrders(false, currentPageData - 1)} onClick={() => hasPreviousPage && fetchWorkOrders(false, currentPageData - 1)}
-                disabled={!hasPreviousPage || fetchingData}!hasPreviousPage || fetchingData}
-              >
-                ← Anterior  ← Anterior
-              </button>
-              
-              <span style={{ 
-                padding: '8px 16px', 
-                background: '#fff',
-                border: '1px solid #ddd',d #ddd',
-                borderRadius: '4px',x',
-                fontSize: '14px',ontSize: '14px',
-                fontWeight: '600'
-              }}>
-                Página {currentPageData} de {totalPages}  Página {currentPageData} de {totalPages}
-              </span>
-              
-              <button
-                style={{
-                  ...primaryBtn,
-                  background: hasNextPage ? '#1976d2' : '#ccc',background: hasNextPage ? '#1976d2' : '#ccc',
-                  cursor: hasNextPage ? 'pointer' : 'not-allowed'
-                }}
-                onClick={() => hasNextPage && fetchWorkOrders(false, currentPageData + 1)} onClick={() => hasNextPage && fetchWorkOrders(false, currentPageData + 1)}
-                disabled={!hasNextPage || fetchingData}hasNextPage || fetchingData}
-              >
-                Siguiente →guiente →
-              </button>  </button>
-            </div>
-            
-            <div style={{ fontSize: '14px', color: '#666' }}>tSize: '14px', color: '#666' }}>
-              <strong>{totalRecords}</strong> registros totales }</strong> registros totales 
-              <span style={{ 
-                marginLeft: '10px',
-                padding: '2px 8px',
-                background: '#e3f2fd',f2fd',
-                borderRadius: '12px',orderRadius: '12px',
-                fontSize: '12px'
-              }}>
-                {pageSize} por páginaágina
-              </span>
-              {fetchingData && (
-                <span style={{ 
-                  marginLeft: '10px',,
-                  color: '#ff9800',olor: '#ff9800',
-                  fontWeight: 'bold'old'
-                }}>
-                  🔄 Cargando...  🔄 Cargando...
-                </span>span>
-              )}
-            </div>  </div>
-          </div>          </div>
-        )}
-
         {/* --- FORMULARIO NUEVA ORDEN --- */}
-        {showForm && (          <div style={modalStyle} onClick={() => {<div style={modalStyle} onClick={() => {
-            // RESETEAR TODO CUANDO SE CIERRA EL MODALNDO SE CIERRA EL MODAL
+        {showForm && (          <div style={modalStyle} onClick={() => {
+            // RESETEAR TODO CUANDO SE CIERRA EL MODAL
             resetNewWorkOrder();
             setExtraOptions([]);
-            setPendingPartsQty({});;
-            setSelectedPendingParts([]);arts([]);
-            setIdClassicError('');etIdClassicError('');
+            setPendingPartsQty({});
+            setSelectedPendingParts([]);
+            setIdClassicError('');
             setShowForm(false);
           }}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>              <WorkOrderFormck={e => e.stopPropagation()}>              <WorkOrderForm
+            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>              <WorkOrderForm
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
-                onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}                onCancel={() => {ndleAddWorkOrder(data || newWorkOrder)}                onCancel={() => {
-                  // RESETEAR TODO CUANDO SE CANCELANDO SE CANCELA
+                onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}                onCancel={() => {
+                  // RESETEAR TODO CUANDO SE CANCELA
                   resetNewWorkOrder();
                   setExtraOptions([]);
-                  setPendingPartsQty({});;
-                  setSelectedPendingParts([]);arts([]);
-                  setIdClassicError('');setIdClassicError('');
+                  setPendingPartsQty({});
+                  setSelectedPendingParts([]);
+                  setIdClassicError('');
                   setShowForm(false);
                 }}
                 title="New Work Order"
-                billToCoOptions={billToCoOptions}ToCoOptions}
-                getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}OptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
+                billToCoOptions={billToCoOptions}
+                getTrailerOptions={(billToCo: string) => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
                 inventory={inventory}
-                trailersWithPendingParts={trailersWithPendingParts}sWithPendingParts}
+                trailersWithPendingParts={trailersWithPendingParts}
                 pendingParts={pendingParts}
                 pendingPartsQty={pendingPartsQty}
-                setPendingPartsQty={setPendingPartsQty}                onAddPendingPart={(part: any, qty: any) => {        onAddPendingPart={(part: any, qty: any) => {
-                  addPendingPart(part, qty || part.qty || 1);y || part.qty || 1);
-                }}                onAddEmptyPart={addEmptyPart}yPart={addEmptyPart}
+                setPendingPartsQty={setPendingPartsQty}                onAddPendingPart={(part: any, qty: any) => {
+                  addPendingPart(part, qty || part.qty || 1);
+                }}                onAddEmptyPart={addEmptyPart}
                 onDeletePart={deletePart}
-                extraOptions={extraOptions}raOptions}
-                setExtraOptions={setExtraOptions}raOptions}
+                extraOptions={extraOptions}
+                setExtraOptions={setExtraOptions}
                 loading={loading}
-                setLoading={setLoading}setLoading={setLoading}
-                idClassicError={idClassicError}ClassicError={idClassicError}
+                setLoading={setLoading}
+                idClassicError={idClassicError}
               />
-            </div>  </div>
+            </div>
           </div>
         )}
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
         {showEditForm && (
-          <div style={modalStyle} onClick={() => { setShowEditForm(false); setIdClassicError(''); }}>Style} onClick={() => { setShowEditForm(false); setIdClassicError(''); }}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>entStyle} onClick={e => e.stopPropagation()}>
+          <div style={modalStyle} onClick={() => { setShowEditForm(false); setIdClassicError(''); }}>
+            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
               <div style={{
                 marginBottom: 24,
-                border: '1px solid orange',id orange',
-                background: '#fffbe6','#fffbe6',
-                borderRadius: 8,8,
+                border: '1px solid orange',
+                background: '#fffbe6',
+                borderRadius: 8,
                 padding: 24,
-                maxWidth: 700,axWidth: 700,
+                maxWidth: 700,
                 boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
               }}>
-                <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>
+                <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>
                 {!editWorkOrder ? (
                   <>
-                    <label style={{ fontWeight: 600 }}>tyle={{ fontWeight: 600 }}>
+                    <label style={{ fontWeight: 600 }}>
                       ID:
                       <input
                         type="number"
                         placeholder="ID to edit"
                         value={editId}
-                        onChange={e => setEditId(e.target.value)}onChange={e => setEditId(e.target.value)}
-                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}e={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
+                        onChange={e => setEditId(e.target.value)}
+                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
                       />
                     </label>
-                    <label style={{ fontWeight: 600, marginLeft: 16 }}>tyle={{ fontWeight: 600, marginLeft: 16 }}>
+                    <label style={{ fontWeight: 600, marginLeft: 16 }}>
                       Password:
                       <input
                         type="password"
                         placeholder="Password"
                         value={editPassword}
-                        onChange={e => setEditPassword(e.target.value)}onChange={e => setEditPassword(e.target.value)}
-                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}e={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
+                        onChange={e => setEditPassword(e.target.value)}
+                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
                       />
                     </label>
                     <button
-                      className="wo-btn secondary"n secondary"
+                      className="wo-btn secondary"
                       style={{ marginLeft: 8 }}
                       onClick={() => {
-                        if (editPassword !== '6214') {assword !== '6214') {
-                          setEditError('Incorrect password'); setEditError('Incorrect password');
+                        if (editPassword !== '6214') {
+                          setEditError('Incorrect password');
                           return;
                         }
-                        const found = workOrders.find(wo => wo.id === Number(editId));ders.find(wo => wo.id === Number(editId));
+                        const found = workOrders.find(wo => wo.id === Number(editId));
                         if (found) {
                           setEditWorkOrder({
                             ...found,
-                            date: found.date ? found.date.slice(0, 10) : '',ate: found.date ? found.date.slice(0, 10) : '',
-                            parts: Array.isArray(found.parts) ? found.parts : []Array(found.parts) ? found.parts : []
+                            date: found.date ? found.date.slice(0, 10) : '',
+                            parts: Array.isArray(found.parts) ? found.parts : []
                           });
                           setEditError('');
-                        } else { else {
-                          setEditError('No order found with that ID.');  setEditError('No order found with that ID.');
-                        }   }
+                        } else {
+                          setEditError('No order found with that ID.');
+                        }
                       }}
                     >
                       Load
                     </button>
                     <button
                       className="wo-btn secondary"
-                      style={{ marginLeft: 8 }} style={{ marginLeft: 8 }}
-                      onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); setIdClassicError(''); }}k={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); setIdClassicError(''); }}
+                      style={{ marginLeft: 8 }}
+                      onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); setIdClassicError(''); }}
                     >
                       Cancel
-                    </button>/button>
-                    {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
-                  </>>
+                    </button>
+                    {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
+                  </>
                 ) : (
                   <>
-                    <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>tyle={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
+                    <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
                       Order ID: {editWorkOrder.id}
                     </div>
-                    {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (                  {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (
-  <div style={{ color: 'red', padding: 32 }}>No data to edit.</div>ing: 32 }}>No data to edit.</div>
+                    {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (
+  <div style={{ color: 'red', padding: 32 }}>No data to edit.</div>
 )}
                     <WorkOrderForm
                       workOrder={editWorkOrder}
-                      onChange={handleWorkOrderChange}e={handleWorkOrderChange}
-                      onPartChange={handlePartChange}                      onSubmit={async () => {artChange}                      onSubmit={async () => {
-                        try {y {
+                      onChange={handleWorkOrderChange}
+                      onPartChange={handlePartChange}                      onSubmit={async () => {
+                        try {
                           setLoading(true);
                           
                           // Validate ID Classic is required when status is FINISHED
                           if (editWorkOrder.status === 'FINISHED') {
                             if (!editWorkOrder.idClassic || editWorkOrder.idClassic.trim() === '') {
-                              setIdClassicError('⚠️ ID Classic is required when status is FINISHED!');'⚠️ ID Classic is required when status is FINISHED!');
-                              alert('Error: ID Classic is required when status is FINISHED. Please enter an ID Classic.');Error: ID Classic is required when status is FINISHED. Please enter an ID Classic.');
-                              setLoading(false); setLoading(false);
-                              return;   return;
-                            }  }
+                              setIdClassicError('⚠️ ID Classic is required when status is FINISHED!');
+                              alert('Error: ID Classic is required when status is FINISHED. Please enter an ID Classic.');
+                              setLoading(false);
+                              return;
+                            }
                           }
                           
                           // Validate ID Classic doesn't already exist (if changed)
                           if (editWorkOrder.idClassic) {
-                            const originalOrder = workOrders.find(wo => wo.id === editWorkOrder.id);editWorkOrder.id);
-                            const isIdClassicChanged = originalOrder && const isIdClassicChanged = originalOrder && 
-                              originalOrder.idClassic !== editWorkOrder.idClassic; !== editWorkOrder.idClassic;
+                            const originalOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
+                            const isIdClassicChanged = originalOrder && 
+                              originalOrder.idClassic !== editWorkOrder.idClassic;
                             
-                            if (isIdClassicChanged) {ed) {
+                            if (isIdClassicChanged) {
                               const existingOrder = workOrders.find(wo => 
                                 wo.idClassic && 
-                                wo.idClassic.toLowerCase() === editWorkOrder.idClassic.toLowerCase() &&wo.idClassic.toLowerCase() === editWorkOrder.idClassic.toLowerCase() &&
-                                wo.id !== editWorkOrder.idOrder.id
+                                wo.idClassic.toLowerCase() === editWorkOrder.idClassic.toLowerCase() &&
+                                wo.id !== editWorkOrder.id
                               );
                               if (existingOrder) {
-                                setIdClassicError(`⚠️ Work Order with ID Classic "${editWorkOrder.idClassic}" already exists!`);`⚠️ Work Order with ID Classic "${editWorkOrder.idClassic}" already exists!`);
-                                alert(`Error: Work Order with ID Classic "${editWorkOrder.idClassic}" already exists. Please use a different ID.`);Error: Work Order with ID Classic "${editWorkOrder.idClassic}" already exists. Please use a different ID.`);
-                                setLoading(false); setLoading(false);
-                                return;   return;
-                              }   }
-                            }  }
+                                setIdClassicError(`⚠️ Work Order with ID Classic "${editWorkOrder.idClassic}" already exists!`);
+                                alert(`Error: Work Order with ID Classic "${editWorkOrder.idClassic}" already exists. Please use a different ID.`);
+                                setLoading(false);
+                                return;
+                              }
+                            }
                           }
                           
                           // Calcular horas totales automáticamente sumando las horas de todos los mecánicos
