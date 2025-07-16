@@ -164,21 +164,27 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Resetear estilo
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(0, 0, 0);
-    // DESCRIPCIÓN
+  // DESCRIPCIÓN
   const descY = firstRowY + boxHeight + 18; // Aumentar espacio para el status
   pdf.setFontSize(10);
   pdf.setTextColor(0, 150, 255);
   pdf.text('Description:', leftMargin, descY);
   
-  // Descripción del trabajo - con control de ancho
+  // Descripción del trabajo - con control de ancho y altura dinámica
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   const description = workOrderData.description || '';
-  const splitDescription = pdf.splitTextToSize(description, contentWidth - 20);
-  pdf.text(splitDescription, leftMargin, descY + 6);
+  const splitDescription = pdf.splitTextToSize(description, contentWidth - 10);
   
-  // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
-  const tableStartY = descY + 20;
+  // Calcular la altura necesaria para la descripción
+  const lineHeight = 4; // Altura de línea en mm
+  const descriptionHeight = splitDescription.length * lineHeight;
+  
+  // Renderizar la descripción completa
+  pdf.text(splitDescription, leftMargin, descY + 6);
+    // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
+  // Ajustar posición de tabla según altura de la descripción
+  const tableStartY = descY + 20 + descriptionHeight;
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
     String(part.sku || '').substring(0, 12), // Limitar SKU
