@@ -23,6 +23,7 @@ interface WorkOrderData {
   laborCost: number;
   subtotalParts: number;
   totalCost: number;
+  extraOptions?: string[]; // Agregar extras seleccionados
 }
 
 // First implementation removed - keeping the improved second implementation
@@ -247,10 +248,56 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       }
     }
   });
-  
-  // TOTALES - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
+    // TOTALES - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
   const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;
-  const totalsY = finalY + 8;
+  
+  // SECCIÓN DE EXTRAS - NUEVA FUNCIONALIDAD
+  let extrasY = finalY + 8;
+  const extraOptions = workOrderData.extraOptions || [];
+  
+  // Calcular subtotal para los extras
+  const subtotal = (workOrderData.subtotalParts || 0) + (workOrderData.laborCost || 0);
+  
+  if (extraOptions.length > 0 || true) { // Siempre mostrar porque hay 5% automático
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 150, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('EXTRAS:', leftMargin, extrasY);
+    
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(0, 0, 0);
+    extrasY += 6;
+    
+    // 5% automático (siempre aplicado)
+    const automaticExtra = subtotal * 0.05;
+    pdf.text('• 5% Automático:', leftMargin + 5, extrasY);
+    pdf.text(`$${automaticExtra.toFixed(2)}`, pageWidth - rightMargin, extrasY, { align: 'right' });
+    extrasY += 4;
+    
+    // Extras seleccionados
+    extraOptions.forEach(option => {
+      let extraName = '';
+      let extraCost = 0;
+      
+      if (option === '15shop') {
+        extraName = '• Shop 15%:';
+        extraCost = subtotal * 0.15;
+      } else if (option === '15weld') {
+        extraName = '• Weld 15%:';
+        extraCost = subtotal * 0.15;
+      }
+      
+      if (extraName && extraCost > 0) {
+        pdf.text(extraName, leftMargin + 5, extrasY);
+        pdf.text(`$${extraCost.toFixed(2)}`, pageWidth - rightMargin, extrasY, { align: 'right' });
+        extrasY += 4;
+      }
+    });
+    
+    extrasY += 4; // Espacio extra antes de los totales
+  }
+  
+  const totalsY = extrasY;
   const totalsStartX = pageWidth - rightMargin - 60; // 60mm para los totales
   
   pdf.setFontSize(10);

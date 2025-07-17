@@ -854,11 +854,11 @@ const WorkOrdersTable: React.FC = () => {
             total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
             invoice: part.invoice_number || 'N/A',
             invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
-          })),
-          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
+          })),          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
           subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
             sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
-          totalCost: Number(workOrderData.totalLabAndParts) || 0
+          totalCost: Number(workOrderData.totalLabAndParts) || 0,
+          extraOptions: datosOrden.extraOptions || extraOptions || []
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
@@ -909,11 +909,11 @@ const WorkOrdersTable: React.FC = () => {
               total: (Number(part.qty) || 0) * (Number(part.cost) || 0),
               invoice: 'N/A',
               invoiceLink: undefined
-            })),
-            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
+            })),            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
             subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
               sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
-            totalCost: Number(datosOrden.totalLabAndParts) || 0
+            totalCost: Number(datosOrden.totalLabAndParts) || 0,
+            extraOptions: datosOrden.extraOptions || extraOptions || []
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
@@ -1381,10 +1381,10 @@ const WorkOrdersTable: React.FC = () => {
           total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
           invoice: part.invoice_number || 'N/A',
           invoiceLink: part.invoiceLink
-        })),
-        laborCost: laborCost,
+        })),        laborCost: laborCost,
         subtotalParts: subtotalParts,
-        totalCost: totalCost
+        totalCost: totalCost,
+        extraOptions: finalWorkOrderData.extraOptions || []
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);
@@ -2551,10 +2551,10 @@ const WorkOrdersTable: React.FC = () => {
                                 total: (part.qty_used || 0) * (part.cost || 0),
                                 invoice: part.invoice_number || 'N/A',
                                 invoiceLink: part.invoice_link
-                              })),
-                              laborCost: Number(workOrderData.laborCost) || 0,
+                              })),                              laborCost: Number(workOrderData.laborCost) || 0,
                               subtotalParts: Number(workOrderData.subtotalParts) || 0,
-                              totalCost: Number(workOrderData.totalLabAndParts) || 0
+                              totalCost: Number(workOrderData.totalLabAndParts) || 0,
+                              extraOptions: editWorkOrder.extraOptions || extraOptions || []
                             };
                               // Generar PDF
                             const pdf = await generateWorkOrderPDF(pdfData);

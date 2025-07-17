@@ -508,15 +508,42 @@ app.get('/api/trailas/:trailerName/rental-history', async (req, res) => {
   try {
     console.log('[GET] /api/trailas/:trailerName/rental-history - Fetching from database:', req.params.trailerName);
     
-    // Por ahora, devolver un array vacío ya que no tenemos tabla de historial de rentas
-    // En el futuro se puede crear una tabla específica para esto
-    const history = [];
+    // Buscar historial de rentas por número de trailer
+    const [history] = await connection.execute(`
+      SELECT * FROM trailer_rental_history 
+      WHERE trailer_numero = ? 
+      ORDER BY created_at DESC
+    `, [req.params.trailerName]);
     
     console.log(`[GET] /api/trailas/:trailerName/rental-history - Found ${history.length} rental records for trailer ${req.params.trailerName}`);
     res.json(history);
   } catch (error) {
     console.error('[ERROR] GET /api/trailas/:trailerName/rental-history:', error);
-    res.status(500).json({ error: 'Failed to fetch rental history for trailer from database' });
+    
+    // Si la tabla no existe, devolveremos un array vacío pero intentaremos crearla
+    try {
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS trailer_rental_history (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          trailer_id INT NOT NULL,
+          trailer_numero VARCHAR(50),
+          cliente VARCHAR(255),
+          fecha_renta DATE,
+          fecha_devolucion_estimada DATE,
+          fecha_devolucion_real DATE NULL,
+          observaciones TEXT,
+          status VARCHAR(50) DEFAULT 'ACTIVE',
+          usuario VARCHAR(100),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('[INFO] Created trailer_rental_history table');
+      res.json([]);
+    } catch (createError) {
+      console.error('[ERROR] Failed to create trailer_rental_history table:', createError);
+      res.status(500).json({ error: 'Failed to fetch rental history from database' });
+    }
   }
 });
 
@@ -529,7 +556,11 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
     
     console.log(`[PUT] /api/trailas/${trailerId}/rent - Renting trailer:`, req.body);
     
-    // Obtener datos actuales del trailer para auditoría (usando tabla 'trailers')
+    // Primero verificar qué columnas existen en la tabla trailers
+    const [columns] = await connection.execute('DESCRIBE trailers');
+    console.log('[DEBUG] Trailers table columns:', columns.map(col => col.Field));
+    
+    // Obtener datos actuales del trailer para auditoría
     const [current] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [trailerId]);
     const oldData = current[0] || null;
     
@@ -537,18 +568,78 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
       return res.status(404).json({ error: 'Trailer not found' });
     }
     
-    // Actualizar el trailer como rentado (usando tabla 'trailers')
-    await connection.execute(
-      'UPDATE trailers SET status = ?, observaciones = ? WHERE id = ?',
-      ['RENTADO', `Cliente: ${cliente} | Renta: ${fecha_renta} | Devolución: ${fecha_devolucion} | Obs: ${observaciones}`, trailerId]
-    );
+    // Verificar si existe la columna status
+    const hasStatusColumn = columns.some(col => col.Field === 'status');
+    const hasObservacionesColumn = columns.some(col => col.Field === 'observaciones');
+    
+    let updateQuery = 'UPDATE trailers SET ';
+    let updateValues = [];
+    let updateFields = [];
+    
+    // Solo actualizar columnas que existen
+    if (hasStatusColumn) {
+      updateFields.push('status = ?');
+      updateValues.push('RENTADO');
+    }
+    
+    if (hasObservacionesColumn) {
+      updateFields.push('observaciones = ?');
+      updateValues.push(`Cliente: ${cliente} | Renta: ${fecha_renta} | Devolución: ${fecha_devolucion} | Obs: ${observaciones}`);
+    } else {
+      // Si no existe observaciones, usar otra columna disponible o crear registro en tabla separada
+      console.log('[INFO] No observaciones column found, storing rental info in audit trail');
+    }
+    
+    if (updateFields.length > 0) {
+      updateQuery += updateFields.join(', ') + ' WHERE id = ?';
+      updateValues.push(trailerId);
+      
+      await connection.execute(updateQuery, updateValues);
+    }
+    
+    // Crear registro en tabla de historial de rentas (la crearemos si no existe)
+    try {
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS trailer_rental_history (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          trailer_id INT NOT NULL,
+          trailer_numero VARCHAR(50),
+          cliente VARCHAR(255),
+          fecha_renta DATE,
+          fecha_devolucion_estimada DATE,
+          fecha_devolucion_real DATE NULL,
+          observaciones TEXT,
+          status VARCHAR(50) DEFAULT 'ACTIVE',
+          usuario VARCHAR(100),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // Insertar registro de renta
+      await connection.execute(`
+        INSERT INTO trailer_rental_history 
+        (trailer_id, trailer_numero, cliente, fecha_renta, fecha_devolucion_estimada, observaciones, status, usuario)
+        VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+      `, [trailerId, oldData.numero, cliente, fecha_renta, fecha_devolucion, observaciones, usuario]);
+      
+      console.log(`[PUT] /api/trailas/${trailerId}/rent - Rental history record created`);
+    } catch (historyError) {
+      console.error('[ERROR] Creating rental history:', historyError);
+      // No fallar la operación principal por esto
+    }
     
     // Obtener datos actualizados
     const [updated] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [trailerId]);
     const newData = updated[0] || null;
     
     console.log(`[PUT] /api/trailas/${trailerId}/rent - Trailer rented successfully`);
-    res.json({ success: true, trailer: newData, rental_info: { cliente, fecha_renta, fecha_devolucion, observaciones } });
+    res.json({ 
+      success: true, 
+      trailer: newData, 
+      rental_info: { cliente, fecha_renta, fecha_devolucion, observaciones },
+      message: 'Trailer rented successfully and history recorded'
+    });
   } catch (error) {
     console.error(`[ERROR] PUT /api/trailas/${req.params.id}/rent:`, error);
     res.status(500).json({ error: 'Failed to rent trailer', details: error.message });
@@ -559,11 +650,17 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
 app.put('/api/trailas/:id/return', async (req, res) => {
   try {
     const trailerId = req.params.id;
+    const { fecha_devolucion_real, observaciones_devolucion } = req.body;
     const usuario = req.body.usuario || 'SYSTEM';
     
-    console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer`);
+    console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer`, req.body);
     
-    // Obtener datos actuales del trailer para auditoría (usando tabla 'trailers')
+    // Verificar columnas disponibles
+    const [columns] = await connection.execute('DESCRIBE trailers');
+    const hasStatusColumn = columns.some(col => col.Field === 'status');
+    const hasObservacionesColumn = columns.some(col => col.Field === 'observaciones');
+    
+    // Obtener datos actuales del trailer
     const [current] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [trailerId]);
     const oldData = current[0] || null;
     
@@ -571,18 +668,56 @@ app.put('/api/trailas/:id/return', async (req, res) => {
       return res.status(404).json({ error: 'Trailer not found' });
     }
     
-    // Actualizar el trailer como disponible (usando tabla 'trailers')
-    const fechaDevolucionReal = new Date().toISOString().split('T')[0];
-    await connection.execute(
-      'UPDATE trailers SET status = ?, observaciones = ? WHERE id = ?',
-      ['DISPONIBLE', `Devuelto el ${fechaDevolucionReal}`, trailerId]
-    );
+    const fechaDevolucionReal = fecha_devolucion_real || new Date().toISOString().split('T')[0];
+    
+    // Actualizar trailer como disponible
+    let updateQuery = 'UPDATE trailers SET ';
+    let updateValues = [];
+    let updateFields = [];
+    
+    if (hasStatusColumn) {
+      updateFields.push('status = ?');
+      updateValues.push('DISPONIBLE');
+    }
+    
+    if (hasObservacionesColumn) {
+      updateFields.push('observaciones = ?');
+      updateValues.push(`Devuelto el ${fechaDevolucionReal}${observaciones_devolucion ? ' - ' + observaciones_devolucion : ''}`);
+    }
+    
+    if (updateFields.length > 0) {
+      updateQuery += updateFields.join(', ') + ' WHERE id = ?';
+      updateValues.push(trailerId);
+      
+      await connection.execute(updateQuery, updateValues);
+    }
+    
+    // Actualizar registro activo en historial de rentas
+    try {
+      await connection.execute(`
+        UPDATE trailer_rental_history 
+        SET fecha_devolucion_real = ?, status = 'RETURNED', 
+            observaciones = CONCAT(COALESCE(observaciones, ''), ' | Devuelto: ', ?)
+        WHERE trailer_id = ? AND status = 'ACTIVE'
+        ORDER BY created_at DESC LIMIT 1
+      `, [fechaDevolucionReal, observaciones_devolucion || 'Sin observaciones', trailerId]);
+      
+      console.log(`[PUT] /api/trailas/${trailerId}/return - Rental history updated`);
+    } catch (historyError) {
+      console.error('[ERROR] Updating rental history:', historyError);
+    }
     
     // Obtener datos actualizados
     const [updated] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [trailerId]);
     const newData = updated[0] || null;
-      console.log(`[PUT] /api/trailas/${trailerId}/return - Trailer returned successfully`);
-    res.json({ success: true, trailer: newData, return_info: { fecha_devolucion_real: fechaDevolucionReal } });
+      
+    console.log(`[PUT] /api/trailas/${trailerId}/return - Trailer returned successfully`);
+    res.json({ 
+      success: true, 
+      trailer: newData, 
+      return_info: { fecha_devolucion_real: fechaDevolucionReal, observaciones_devolucion },
+      message: 'Trailer returned successfully and history updated'
+    });
   } catch (error) {
     console.error(`[ERROR] PUT /api/trailas/${req.params.id}/return:`, error);
     res.status(500).json({ error: 'Failed to return trailer', details: error.message });

@@ -58,6 +58,7 @@ const TrailasTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTraila, setSelectedTraila] = useState<Traila | null>(null);
   const [showRentalModal, setShowRentalModal] = useState<boolean>(false);  const [showReturnModal, setShowReturnModal] = useState<boolean>(false);
+  const [showAvailableModal, setShowAvailableModal] = useState<boolean>(false);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState<boolean>(false);
   const [rentalHistory, setRentalHistory] = useState<any[]>([]);
@@ -96,13 +97,19 @@ const TrailasTable: React.FC = () => {
       return dateString;
     }
   };
-
   // Return form state
   const [returnForm, setReturnForm] = useState({
     fecha_devolucion: '',
     observaciones: '',
     condicion: ''
-  });  // Fetch data
+  });
+
+  // Available form state  
+  const [availableForm, setAvailableForm] = useState({
+    fecha_disponible: new Date().toISOString().split('T')[0],
+    observaciones: '',
+    motivo: ''
+  });// Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -236,6 +243,38 @@ const TrailasTable: React.FC = () => {
         console.error('Error returning trailer:', error);
         alert('Error al devolver el trailer');
       }
+    }
+  };
+
+  // Handle mark as available
+  const handleMarkAsAvailable = async () => {
+    if (!selectedTraila) return;
+    
+    try {
+      const availableData = {
+        fecha_devolucion_real: availableForm.fecha_disponible,
+        observaciones_devolucion: `${availableForm.motivo ? availableForm.motivo + ' - ' : ''}${availableForm.observaciones}`,
+        usuario: getCurrentUser()
+      };
+      
+      await axios.put(`${API_URL}/trailas/${selectedTraila.id}/return`, availableData);
+      
+      // Refresh data
+      const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
+      setTrailas(response.data || []);
+      
+      // Close modal and reset form
+      setShowAvailableModal(false);
+      setAvailableForm({
+        fecha_disponible: new Date().toISOString().split('T')[0],
+        observaciones: '',
+        motivo: ''
+      });
+      
+      alert('Trailer marcado como disponible exitosamente');
+    } catch (error: any) {
+      console.error('Error marking trailer as available:', error);
+      alert(`Error al marcar trailer como disponible: ${error.response?.data?.error || error.message}`);
     }
   };
 
@@ -724,6 +763,27 @@ const TrailasTable: React.FC = () => {
                           </button>
                         )}
 
+                        {traila.estatus !== 'DISPONIBLE' && traila.estatus !== 'RENTADO' && (
+                          <button
+                            onClick={() => {
+                              setSelectedTraila(traila);
+                              setShowAvailableModal(true);
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              background: '#2e7d32',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            ✅ Marcar Disponible
+                          </button>
+                        )}
+
                         <button
                           onClick={async () => {
                             setSelectedTraila(traila);
@@ -891,6 +951,27 @@ const TrailasTable: React.FC = () => {
                     }}
                   >
                     ↩️ Devolver
+                  </button>
+                )}
+
+                {traila.estatus !== 'DISPONIBLE' && traila.estatus !== 'RENTADO' && (
+                  <button
+                    onClick={() => {
+                      setSelectedTraila(traila);
+                      setShowAvailableModal(true);
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#2e7d32',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    ✅ Marcar Disponible
                   </button>
                 )}
 
@@ -1352,6 +1433,137 @@ const TrailasTable: React.FC = () => {
                 }}
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>      )}
+
+      {/* Mark as Available Modal */}
+      {showAvailableModal && selectedTraila && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '32px',
+            borderRadius: '16px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <h2 style={{ color: '#2e7d32', marginBottom: '24px' }}>
+              ✅ Marcar como Disponible: {selectedTraila.nombre}
+            </h2>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Fecha de Disponibilidad *
+              </label>
+              <input
+                type="date"
+                value={availableForm.fecha_disponible}
+                onChange={(e) => setAvailableForm({...availableForm, fecha_disponible: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+                required
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Motivo
+              </label>
+              <select
+                value={availableForm.motivo}
+                onChange={(e) => setAvailableForm({...availableForm, motivo: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">Seleccione un motivo</option>
+                <option value="MANTENIMIENTO_COMPLETADO">Mantenimiento Completado</option>
+                <option value="REPARACION_COMPLETADA">Reparación Completada</option>
+                <option value="INSPECCION_COMPLETADA">Inspección Completada</option>
+                <option value="DEVOLUCION_CLIENTE">Devolución de Cliente</option>
+                <option value="OTROS">Otros</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Observaciones
+              </label>
+              <textarea
+                value={availableForm.observaciones}
+                onChange={(e) => setAvailableForm({...availableForm, observaciones: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                placeholder="Detalles adicionales sobre el cambio de estado..."
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowAvailableModal(false);
+                  setAvailableForm({
+                    fecha_disponible: new Date().toISOString().split('T')[0],
+                    observaciones: '',
+                    motivo: ''
+                  });
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#9e9e9e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleMarkAsAvailable}
+                disabled={!availableForm.fecha_disponible}
+                style={{
+                  padding: '12px 24px',
+                  background: availableForm.fecha_disponible ? '#2e7d32' : '#cccccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: availableForm.fecha_disponible ? 'pointer' : 'not-allowed',
+                  fontWeight: '600'
+                }}
+              >
+                ✅ Marcar Disponible
               </button>
             </div>
           </div>
