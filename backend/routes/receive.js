@@ -111,16 +111,18 @@ router.get('/pending/:trailer', async (req, res) => {
 // Get trailers with pending parts
 router.get('/trailers/with-pending', async (req, res) => {
   try {
+    // LIMPIEZA AGRESIVA: Forzar limpieza de alertas fantasma antes de responder
+    if (db.cleanReceivesAlerts) {
+      await db.cleanReceivesAlerts();
+    }
     const [results] = await db.query(
       `SELECT DISTINCT destino_trailer
        FROM receives 
        WHERE estatus = 'PENDING' AND qty_remaining > 0
        ORDER BY destino_trailer`
     );
-    
     const trailers = results.map(r => r.destino_trailer);
     console.log('🚛 Trailers con partes pendientes:', trailers);
-    
     res.json(trailers);
   } catch (err) {
     console.error('Error fetching trailers with pending parts:', err);
