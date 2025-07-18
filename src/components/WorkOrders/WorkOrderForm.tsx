@@ -460,10 +460,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               gap: 12 
             }}>
               {pendingParts.map((part: any) => {
-                // Calcular cantidad disponible real
-                const availableQty = part.qty_remaining !== undefined ? part.qty_remaining : (part.qty || 0);
+                // Calcular cantidad disponible real SOLO con qty de receives (no mezclar con master)
+                const availableQty = part.qty !== undefined ? Number(part.qty) : (part.qty_remaining !== undefined ? Number(part.qty_remaining) : 0);
                 const hasQtyAvailable = availableQty > 0;
-                
                 return (
                 <div key={part.id} style={{
                   background: hasQtyAvailable ? 'white' : '#f5f5f5',
