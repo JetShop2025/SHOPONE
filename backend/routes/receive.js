@@ -121,8 +121,19 @@ router.get('/trailers/with-pending', async (req, res) => {
        WHERE estatus = 'PENDING' AND qty_remaining > 0
        ORDER BY destino_trailer`
     );
-    const trailers = results.map(r => r.destino_trailer);
-    console.log('🚛 Trailers con partes pendientes:', trailers);
+    // FILTRO EXTRA: Verificar que realmente existan partes pendientes para cada trailer
+    const trailers = [];
+    for (const r of results) {
+      if (!r.destino_trailer) continue;
+      const [pending] = await db.query(
+        `SELECT COUNT(*) as count FROM receives WHERE destino_trailer = ? AND estatus = 'PENDING' AND qty_remaining > 0`,
+        [r.destino_trailer]
+      );
+      if (pending[0].count > 0) {
+        trailers.push(r.destino_trailer);
+      }
+    }
+    console.log('🚛 Trailers con partes pendientes (verificados):', trailers);
     res.json(trailers);
   } catch (err) {
     console.error('Error fetching trailers with pending parts:', err);
