@@ -683,39 +683,16 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
         // PASO 2: Deducir de lotes PENDING usando FIFO (más antiguos primero)
       for (const lot of availableLots) {
         if (qtyNeeded <= 0) break;
-        
+
         const availableInLot = Number(lot.available_qty) || 0;
         const qtyToTakeFromLot = Math.min(qtyNeeded, availableInLot);
         if (qtyToTakeFromLot > 0) {
-          // Determinar nuevo estado: USED si se agota el lote completamente
-          const newStatus = qtyToTakeFromLot >= availableInLot ? 'USED' : 'PENDING';
-          // Solo actualizar el estatus, no otros campos
-          await connection.execute(
-            'UPDATE receives SET estatus = ? WHERE id = ?',
-            [newStatus, lot.id]
-          );
-
-          // Registrar información del invoice usado
-          partResult.invoicesUsed.push({
-            invoiceId: lot.id,
-            invoice: lot.invoice,
-            invoiceLink: lot.invoiceLink,
-            qtyTaken: qtyToTakeFromLot,
-            receiptDate: lot.receipt_date,
-            destinoTrailer: lot.destino_trailer,
-            originalQty: availableInLot // Mantener referencia a la cantidad original
-          });
-
-          // Si se marcó como USED, registrarlo
-          if (newStatus === 'USED') {
-            partResult.pendingPartsMarkedAsUsed.push({
-              id: lot.id,
-              sku: lot.sku,
-              qty: qtyToTakeFromLot,
-              invoice: lot.invoice,
-              destinoTrailer: lot.destino_trailer
-            });
-
+          // SOLO cambiar estatus a USED si se agota el lote, si no, NO TOCAR NADA MÁS (NO modificar qty, invoice, etc.)
+          if (qtyToTakeFromLot >= availableInLot) {
+            await connection.execute(
+              'UPDATE receives SET estatus = ? WHERE id = ?',
+              ['USED', lot.id]
+            );
             // Registrar en auditoría el cambio de estado
             await logAuditEvent(
               usuario,
@@ -731,15 +708,30 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
                 statusChange: { antes: 'PENDING', despues: 'USED' }
               }
             );
+            partResult.pendingPartsMarkedAsUsed.push({
+              id: lot.id,
+              sku: lot.sku,
+              qty: qtyToTakeFromLot,
+              invoice: lot.invoice,
+              destinoTrailer: lot.destino_trailer
+            });
           }
-
+          // Registrar información del invoice usado (solo para trazabilidad, no modifica receives)
+          partResult.invoicesUsed.push({
+            invoiceId: lot.id,
+            invoice: lot.invoice,
+            invoiceLink: lot.invoiceLink,
+            qtyTaken: qtyToTakeFromLot,
+            receiptDate: lot.receipt_date,
+            destinoTrailer: lot.destino_trailer,
+            originalQty: availableInLot // Mantener referencia a la cantidad original
+          });
           partResult.totalQtyDeducted += qtyToTakeFromLot;
           qtyNeeded -= qtyToTakeFromLot;
-
-          // Eliminar referencia a newQtyInLot (no existe)
-          console.log(`[DB] FIFO: Took ${qtyToTakeFromLot} of ${part.sku} from lot ${lot.id} (invoice: ${lot.invoice}, status: ${newStatus})`);
+          // Log para depuración
+          console.log(`[DB] FIFO: Took ${qtyToTakeFromLot} of ${part.sku} from lot ${lot.id} (invoice: ${lot.invoice}, status: ${qtyToTakeFromLot >= availableInLot ? 'USED' : 'PENDING'})`);
         }
-      }      
+      }
       // PASO 3: Siempre deducir del inventario master la cantidad total deducida (de PENDING o de master)
       if (partResult.totalQtyDeducted > 0) {
         const [inventoryRows] = await connection.execute(
