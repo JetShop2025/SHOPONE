@@ -2424,10 +2424,23 @@ const WorkOrdersTable: React.FC = () => {
                             mechanics: editWorkOrder.mechanics,
                             totalLabAndParts: dataToSend.totalLabAndParts,
                             status: editWorkOrder.status // Mostrar status actual
-                          });// NUEVA FUNCIONALIDAD: Detectar y deducir nuevas partes del inventario usando FIFO
-                          // Obtener partes originales para comparar
-                          const originalWorkOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
-                          const originalParts = originalWorkOrder?.parts || [];
+                          });                          // NUEVA FUNCIONALIDAD: Detectar y deducir nuevas partes del inventario usando FIFO
+                          // Obtener partes originales DIRECTAMENTE DEL SERVIDOR para comparar
+                          console.log('🔍 Obteniendo partes originales del servidor para WO:', editWorkOrder.id);
+                          
+                          let originalParts = [];
+                          try {
+                            const originalPartsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
+                            originalParts = Array.isArray(originalPartsRes.data) ? originalPartsRes.data : [];
+                            console.log('📋 Partes originales desde servidor:', originalParts);
+                          } catch (error) {
+                            console.warn('⚠️ No se pudieron obtener partes originales del servidor:', error);
+                            // Fallback a partes desde workOrders state
+                            const originalWorkOrder = workOrders.find(wo => wo.id === editWorkOrder.id);
+                            originalParts = originalWorkOrder?.parts || [];
+                            console.log('📋 Partes originales desde state (fallback):', originalParts);
+                          }
+                          
                           const currentParts = editWorkOrder.parts || [];
                           
                           // Detectar partes nuevas que se agregaron en la edición
@@ -2435,8 +2448,11 @@ const WorkOrdersTable: React.FC = () => {
                           
                           for (const currentPart of currentParts) {
                             if (currentPart.sku && currentPart.qty && Number(currentPart.qty) > 0) {
-                              // Buscar si esta parte ya existía en la WO original
-                              const originalPart = originalParts.find((op: any) => op.sku === currentPart.sku);
+                              // Buscar si esta parte ya existía en la WO original (comparar por SKU)
+                              const originalPart = originalParts.find((op: any) => 
+                                (op.sku && op.sku === currentPart.sku) || 
+                                (op.part_name && op.part_name === currentPart.sku)
+                              );
                               
                               if (!originalPart) {
                                 // Parte completamente nueva - deducir toda la cantidad
@@ -2445,14 +2461,22 @@ const WorkOrdersTable: React.FC = () => {
                                   qty: Number(currentPart.qty)
                                 });
                                 console.log(`🆕 Parte nueva detectada: ${currentPart.sku} (qty: ${currentPart.qty})`);
-                              } else if (Number(currentPart.qty) > Number(originalPart.qty || 0)) {
-                                // Parte existente con cantidad aumentada - deducir solo la diferencia
-                                const qtyDifference = Number(currentPart.qty) - Number(originalPart.qty || 0);
-                                newPartsToDeduct.push({
-                                  sku: currentPart.sku,
-                                  qty: qtyDifference
-                                });
-                                console.log(`📈 Cantidad aumentada detectada: ${currentPart.sku} (diferencia: ${qtyDifference})`);
+                              } else {
+                                // Comparar cantidades - usar qty_used del servidor vs qty del formulario
+                                const originalQty = Number(originalPart.qty_used || originalPart.qty || 0);
+                                const currentQty = Number(currentPart.qty);
+                                
+                                if (currentQty > originalQty) {
+                                  // Parte existente con cantidad aumentada - deducir solo la diferencia
+                                  const qtyDifference = currentQty - originalQty;
+                                  newPartsToDeduct.push({
+                                    sku: currentPart.sku,
+                                    qty: qtyDifference
+                                  });
+                                  console.log(`📈 Cantidad aumentada detectada: ${currentPart.sku} (original: ${originalQty} → actual: ${currentQty}, diferencia: ${qtyDifference})`);
+                                } else {
+                                  console.log(`➡️ Parte sin cambios: ${currentPart.sku} (qty: ${currentQty})`);
+                                }
                               }
                             }
                           }
@@ -2466,27 +2490,47 @@ const WorkOrdersTable: React.FC = () => {
                                 parts: newPartsToDeduct,
                                 usuario: localStorage.getItem('username') || 'unknown'
                               });
-                              
-                              console.log('✅ FIFO deduction successful en edición:', fifoResponse.data);
-                                // Registrar las nuevas partes en work_order_parts con información FIFO
+                                console.log('✅ FIFO deduction successful en edición:', fifoResponse.data);
+                                
+                              // Actualizar work_order_parts con las nuevas/modificadas partes
                               const fifoResult = fifoResponse.data as any;
+                              
                               for (const part of newPartsToDeduct) {
                                 let fifoInfoForPart = null;
                                 if (fifoResult && fifoResult.details && Array.isArray(fifoResult.details)) {
                                   fifoInfoForPart = fifoResult.details.find((f: any) => f.sku === part.sku);
                                 }
                                 
-                                await axios.post(`${API_URL}/work-order-parts`, {
-                                  work_order_id: editWorkOrder.id,
-                                  sku: part.sku,
-                                  part_name: inventory.find(i => i.sku === part.sku)?.part || '',
-                                  qty_used: part.qty,
-                                  cost: Number(String(currentParts.find((p: any) => p.sku === part.sku)?.cost || 0).replace(/[^0-9.]/g, '')),
-                                  fifo_info: fifoInfoForPart,
-                                  usuario: localStorage.getItem('username') || ''
-                                });
+                                // Verificar si esta parte ya existe en work_order_parts
+                                const currentPartInForm = currentParts.find((p: any) => p.sku === part.sku);
+                                const originalPartInDB = originalParts.find((op: any) => 
+                                  (op.sku && op.sku === part.sku) || 
+                                  (op.part_name && op.part_name === part.sku)
+                                );
                                 
-                                console.log(`✅ Nueva parte ${part.sku} registrada en work_order_parts con FIFO`);
+                                if (originalPartInDB && originalPartInDB.id) {
+                                  // Parte existente - ACTUALIZAR la cantidad total (no agregar nueva entrada)
+                                  const newTotalQty = Number(currentPartInForm?.qty || 0);
+                                  await axios.put(`${API_URL}/work-order-parts/${originalPartInDB.id}`, {
+                                    qty_used: newTotalQty,
+                                    cost: Number(String(currentPartInForm?.cost || 0).replace(/[^0-9.]/g, '')),
+                                    fifo_info: fifoInfoForPart,
+                                    usuario: localStorage.getItem('username') || ''
+                                  });
+                                  console.log(`🔄 Parte existente actualizada: ${part.sku} (nueva qty total: ${newTotalQty})`);
+                                } else {
+                                  // Parte completamente nueva - AGREGAR nueva entrada
+                                  await axios.post(`${API_URL}/work-order-parts`, {
+                                    work_order_id: editWorkOrder.id,
+                                    sku: part.sku,
+                                    part_name: inventory.find(i => i.sku === part.sku)?.part || '',
+                                    qty_used: part.qty,
+                                    cost: Number(String(currentPartInForm?.cost || 0).replace(/[^0-9.]/g, '')),
+                                    fifo_info: fifoInfoForPart,
+                                    usuario: localStorage.getItem('username') || ''
+                                  });
+                                  console.log(`✅ Nueva parte agregada: ${part.sku} (qty: ${part.qty})`);
+                                }
                               }
                               
                             } catch (fifoError) {

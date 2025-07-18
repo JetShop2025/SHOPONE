@@ -99,9 +99,10 @@ async function ensureAuditTableExists() {
   }
 }
 
-// Call test connection and ensure audit table on startup
+// Call test connection and ensure tables structure on startup
 testConnection().then(() => {
   ensureAuditTableExists();
+  ensureReceivesTableStructure();
 });
 
 // Trailers functions
@@ -370,10 +371,12 @@ async function updateOrder(id, order) {
       'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
       safeValues
     );
+      console.log('[DB] Successfully updated work order with ID:', id);
     
-    console.log('[DB] Successfully updated work order with ID:', id);
-    
-    // NUEVA FUNCIONALIDAD: Sincronizar partes con work_order_parts cuando se edita
+    // DESHABILITADO: No sincronizar partes automáticamente en updateOrder
+    // Ya que el frontend maneja la actualización específica de partes
+    // para evitar doble deducción en ediciones
+    /*
     if (order.parts && Array.isArray(order.parts) && order.parts.length > 0) {
       console.log('[DB] Syncing parts to work_order_parts table for work order:', id);
       
@@ -398,6 +401,8 @@ async function updateOrder(id, order) {
         }
       }
     }
+    */
+    console.log('[DB] Skipping automatic parts sync to avoid double deduction in edits');
       // Registrar cambios en auditoría usando función especializada
     await auditWorkOrderOperation(
       usuario,
@@ -566,6 +571,79 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
     };
   } catch (error) {
     console.error('[DB] Error creating work order part:', error.message);
+    throw error;
+  }
+}
+
+async function updateWorkOrderPart(id, updates, fifoInfo = null) {
+  try {
+    console.log('[DB] Updating work order part:', id, updates);
+    
+    // Si tenemos información FIFO, usar el invoice link específico del lote usado
+    let invoiceLink = updates.invoice_link || null;
+    let invoiceNumber = updates.invoice || null;
+    
+    // Si tenemos información FIFO, usar los datos del lote específico
+    if (fifoInfo && fifoInfo.invoicesUsed && fifoInfo.invoicesUsed.length > 0) {
+      // Tomar el primer invoice usado (puede haber múltiples si se tomó de varios lotes)
+      const primaryInvoice = fifoInfo.invoicesUsed[0];
+      invoiceLink = primaryInvoice.invoiceLink;
+      invoiceNumber = primaryInvoice.invoice;
+      
+      console.log(`[DB] Using FIFO invoice info for update: ${invoiceNumber} (${invoiceLink})`);
+    } else if (!invoiceLink && updates.sku) {
+      // Fallback: obtener invoice_link desde el inventario
+      try {
+        const [inventoryRows] = await connection.execute(
+          'SELECT invoiceLink FROM inventory WHERE sku = ?',
+          [updates.sku]
+        );
+        if (inventoryRows.length > 0 && inventoryRows[0].invoiceLink) {
+          invoiceLink = inventoryRows[0].invoiceLink;
+          console.log(`[DB] Found invoice link from inventory for SKU ${updates.sku}: ${invoiceLink}`);
+        }
+      } catch (inventoryError) {
+        console.warn('[DB] Could not fetch invoice link from inventory:', inventoryError.message);
+      }
+    }
+
+    // Actualizar los campos necesarios
+    const [result] = await connection.execute(
+      'UPDATE work_order_parts SET qty_used = ?, cost = ?, invoiceLink = ?, updated_at = NOW() WHERE id = ?',
+      [
+        updates.qty_used || 1,
+        updates.cost || 0,
+        invoiceLink,
+        id
+      ]
+    );
+    
+    // Registrar en auditoría
+    await logAuditEvent(
+      updates.usuario || 'system',
+      'UPDATE',
+      'work_order_parts',
+      id,
+      {
+        action: 'Work order part quantity/cost updated',
+        qty_used: updates.qty_used,
+        cost: updates.cost,
+        invoiceLink: invoiceLink,
+        fifo_info: fifoInfo
+      }
+    );
+    
+    console.log('[DB] Successfully updated work order part with invoiceLink:', invoiceLink);
+    return { 
+      id: id, 
+      ...updates, 
+      invoice_link: invoiceLink,
+      invoice_number: invoiceNumber,
+      fifo_info: fifoInfo,
+      rowsAffected: result.affectedRows
+    };
+  } catch (error) {
+    console.error('[DB] Error updating work order part:', error.message);
     throw error;
   }
 }
@@ -976,10 +1054,9 @@ async function getReceivesParts() {
 async function createPendingPart(pendingPart) {
   try {
     console.log('[DB] Creating pending part in receives table:', pendingPart);
-    
-    // Map the fields from the frontend to the receives table structure
+      // Map the fields from the frontend to the receives table structure
     const [result] = await connection.execute(
-      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, totalPOClassic, fecha, estatus, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO receives (sku, category, item, provider, brand, um, destino_trailer, invoice, qty, costTax, total, totalPOClassic, fecha, estatus, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         pendingPart.sku || null,
         pendingPart.category || null,
@@ -991,6 +1068,7 @@ async function createPendingPart(pendingPart) {
         pendingPart.invoice || null,
         pendingPart.qty || pendingPart.quantity || 1,
         pendingPart.costTax || null,
+        pendingPart.total || null,
         pendingPart.totalPOClassic || null,
         pendingPart.fecha || new Date().toISOString().split('T')[0],
         pendingPart.estatus || 'PENDING',
@@ -1015,8 +1093,7 @@ async function createPendingPart(pendingPart) {
 async function updatePendingPart(id, pendingPart) {
   try {
     console.log('[DB] Updating pending part in receives table, id:', id, 'data:', pendingPart);
-    
-    // Convert undefined values to null for MySQL compatibility
+      // Convert undefined values to null for MySQL compatibility
     const safeValues = [
       pendingPart.sku || null,
       pendingPart.category || null,
@@ -1028,6 +1105,7 @@ async function updatePendingPart(id, pendingPart) {
       pendingPart.invoice || null,
       pendingPart.qty || pendingPart.quantity || 1,
       pendingPart.costTax || null,
+      pendingPart.total || null,
       pendingPart.totalPOClassic || null,
       pendingPart.fecha || new Date().toISOString().split('T')[0],
       pendingPart.estatus || 'PENDING',
@@ -1036,7 +1114,7 @@ async function updatePendingPart(id, pendingPart) {
     ];
 
     await connection.execute(
-      'UPDATE receives SET sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, qty=?, costTax=?, totalPOClassic=?, fecha=?, estatus=?, invoiceLink=? WHERE id=?',
+      'UPDATE receives SET sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, qty=?, costTax=?, total=?, totalPOClassic=?, fecha=?, estatus=?, invoiceLink=? WHERE id=?',
       safeValues
     );
     
@@ -1424,7 +1502,67 @@ async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
   }
 }
 
+// Function to get all work order parts (for calculating used quantities from receive lots)
+async function getAllWorkOrderParts() {
+  try {
+    const [rows] = await connection.execute(`
+      SELECT 
+        wop.*,
+        wop.receive_lot_id,
+        wop.qty_used,
+        wo.trailer,
+        wo.date as work_order_date
+      FROM work_order_parts wop
+      LEFT JOIN work_orders wo ON wo.id = wop.work_order_id
+      WHERE wop.receive_lot_id IS NOT NULL
+      ORDER BY wo.date DESC, wop.id DESC
+    `);
+    return rows;
+  } catch (error) {
+    console.error('[DB] Error getting all work order parts:', error.message);
+    throw error;
+  }
+}
 
+// Función para asegurar que la tabla receives tenga la columna total
+async function ensureReceivesTableStructure() {
+  try {
+    // Verificar si la tabla receives existe
+    const [tables] = await connection.execute(
+      "SHOW TABLES LIKE 'receives'"
+    );
+    
+    if (tables.length > 0) {
+      // La tabla existe, verificar su estructura
+      const [columns] = await connection.execute(
+        "SHOW COLUMNS FROM receives"
+      );
+      
+      const columnNames = columns.map(col => col.Field);
+      console.log('[DB] Existing receives columns:', columnNames);
+      
+      // Verificar si la columna total existe
+      if (!columnNames.includes('total')) {
+        console.log('[DB] Adding missing column: total to receives table');
+        await connection.execute(
+          'ALTER TABLE receives ADD COLUMN total DECIMAL(10,2) DEFAULT 0.00 AFTER costTax'
+        );
+        console.log('[DB] Successfully added total column to receives table');
+      } else {
+        console.log('[DB] Column total already exists in receives table');
+      }
+    } else {
+      console.log('[DB] receives table does not exist');
+    }
+    
+    console.log('[DB] receives table structure verified');
+  } catch (error) {
+    console.error('[DB] Error ensuring receives table structure:', error.message);
+  }
+}
+
+// Llamar a la función para asegurar la estructura de la tabla receives al iniciar
+ensureReceivesTableStructure();
 
 module.exports = {
   connection,
@@ -1446,8 +1584,9 @@ module.exports = {
   getOrderById,
   getWorkOrderParts,
   createWorkOrderPart,
-  deductInventory,
-  deductInventoryFIFO,
+  updateWorkOrderPart,
+  updateWorkOrderPart,
+  deductInventory,  deductInventoryFIFO,
   getPartes,
   createParte,
   updateParte,
@@ -1456,6 +1595,7 @@ module.exports = {
   createPendingPart,
   updatePendingPart,
   deletePendingPart,
+  getAllWorkOrderParts,
   getUsers,
   generatePDF,
   savePDFToWorkOrder,
@@ -1464,5 +1604,6 @@ module.exports = {
   getChangesForAudit,
   auditWorkOrderOperation,
   auditInventoryOperation,
-  auditTrailerOperation
+  auditTrailerOperation,
+  getAllWorkOrderParts
 };

@@ -120,21 +120,13 @@ const ReceiveInventory: React.FC = () => {
         um: selected.um || ''
       }));
     }
-  }, [form.sku, inventory]);
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  }, [form.sku, inventory]);  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     const updatedForm = {
       ...form,
       [name]: value,
       ...(name === 'billToCo' ? { destino_trailer: '' } : {})
     };
-    
-    // Auto-calcular el total cuando cambien qty o costTax
-    if (name === 'qty' || name === 'costTax') {
-      const qty = name === 'qty' ? Number(value) || 0 : Number(updatedForm.qty) || 0;      const costTax = name === 'costTax' ? Number(value) || 0 : Number(updatedForm.costTax) || 0;
-      const calculatedTotal = qty * costTax;
-      updatedForm.total = calculatedTotal > 0 ? calculatedTotal.toFixed(2) : '';
-    }
     
     setForm(updatedForm);
   };
@@ -254,9 +246,9 @@ const ReceiveInventory: React.FC = () => {
           billToCo: found.billToCo || found.bill_to_co || found.billTo || found.bill_to || '',
           destino_trailer: found.destino_trailer || found.destination_trailer || '',
           invoice: found.invoice || '',
-          invoiceLink: found.invoiceLink || found.invoice_link || '',
-          qty: found.qty || found.quantity || '',
+          invoiceLink: found.invoiceLink || found.invoice_link || '',          qty: found.qty || found.quantity || '',
           costTax: found.costTax || found.cost_tax || found.cost || '',
+          total: found.total || '',
           totalPOClassic: found.totalPOClassic || found.total_po_classic || found.po_classic || '',
           fecha: found.fecha ? found.fecha.slice(0, 10) : (found.date ? found.date.slice(0, 10) : (() => {
             const now = new Date();
@@ -481,15 +473,13 @@ const ReceiveInventory: React.FC = () => {
                   required
                 />                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} />
                 <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} />
-                
-                {/* Campo TOTAL - Auto-calculado */}
+                  {/* Campo TOTAL - Editable para ingresar total del invoice */}
                 <input 
                   name="total" 
                   value={form.total} 
                   onChange={handleChange} 
-                  placeholder="Total (Auto-calculated)" 
-                  style={{...inputStyle, backgroundColor: '#f0f8ff', fontWeight: '600'}} 
-                  readOnly 
+                  placeholder="Total Invoice ($)" 
+                  style={{...inputStyle, fontWeight: '600'}} 
                 />
                 
                 <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} />
@@ -622,9 +612,18 @@ const ReceiveInventory: React.FC = () => {
                       required
                     />
                   )}                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
-                  <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />
-                  <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
+                  <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />                  <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
                   <input name="costTax" value={editForm.costTax || ''} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
+                  
+                  {/* Campo TOTAL - Editable para ingresar total del invoice */}
+                  <input 
+                    name="total" 
+                    value={editForm.total || ''} 
+                    onChange={e => setEditForm({ ...editForm, total: e.target.value })} 
+                    placeholder="Total Invoice ($)" 
+                    style={{...inputStyle, fontWeight: '600'}} 
+                  />
+                  
                   <input name="totalPOClassic" value={editForm.totalPOClassic || ''} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
                   
                   {/* Date - mostrar la fecha original tal como se guardó */}
@@ -733,11 +732,10 @@ const ReceiveInventory: React.FC = () => {
                     {r.invoice}
                   </a>
                 ) : r.invoice ? r.invoice : '—'}
-              </td>
-              <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.qty}</td>
+              </td>              <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.qty}</td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.costTax}</td>
-              <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>
-                {r.qty && r.costTax ? (Number(r.qty) * Number(r.costTax)).toFixed(2) : ''}
+              <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2', fontWeight: '600' }}>
+                {r.total ? `$${Number(r.total).toFixed(2)}` : '—'}
               </td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.totalPOClassic}</td>
               <td
