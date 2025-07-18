@@ -1022,7 +1022,7 @@ const WorkOrdersTable: React.FC = () => {
         });
         setExtraOptions(Array.isArray(found.extraOptions) ? found.extraOptions : []);
         
-        // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado
+        // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado.
         if (found.trailer) {
           console.log(`🔄 Cargando partes pendientes para trailer preseleccionado: ${found.trailer}`);
           fetchPendingParts(found.trailer);
