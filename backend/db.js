@@ -686,15 +686,15 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
         
         const availableInLot = Number(lot.available_qty) || 0;
         const qtyToTakeFromLot = Math.min(qtyNeeded, availableInLot);
-          if (qtyToTakeFromLot > 0) {
+        if (qtyToTakeFromLot > 0) {
           // Determinar nuevo estado: USED si se agota el lote completamente
           const newStatus = qtyToTakeFromLot >= availableInLot ? 'USED' : 'PENDING';
-            // MANTENER qty original - Solo actualizar el estado
+          // Solo actualizar el estatus, no otros campos
           await connection.execute(
             'UPDATE receives SET estatus = ? WHERE id = ?',
             [newStatus, lot.id]
           );
-          
+
           // Registrar información del invoice usado
           partResult.invoicesUsed.push({
             invoiceId: lot.id,
@@ -705,7 +705,7 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
             destinoTrailer: lot.destino_trailer,
             originalQty: availableInLot // Mantener referencia a la cantidad original
           });
-          
+
           // Si se marcó como USED, registrarlo
           if (newStatus === 'USED') {
             partResult.pendingPartsMarkedAsUsed.push({
@@ -715,7 +715,7 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
               invoice: lot.invoice,
               destinoTrailer: lot.destino_trailer
             });
-            
+
             // Registrar en auditoría el cambio de estado
             await logAuditEvent(
               usuario,
@@ -732,79 +732,29 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
               }
             );
           }
-          
+
           partResult.totalQtyDeducted += qtyToTakeFromLot;
           qtyNeeded -= qtyToTakeFromLot;
-          
-          console.log(`[DB] FIFO: Took ${qtyToTakeFromLot} of ${part.sku} from lot ${lot.id} (invoice: ${lot.invoice}, remaining: ${newQtyInLot}, status: ${newStatus})`);
+
+          // Eliminar referencia a newQtyInLot (no existe)
+          console.log(`[DB] FIFO: Took ${qtyToTakeFromLot} of ${part.sku} from lot ${lot.id} (invoice: ${lot.invoice}, status: ${newStatus})`);
         }
       }      
-      // PASO 3: Si aún se necesita más cantidad, deducir del inventario master (stock sin destino específico)
-      if (qtyNeeded > 0) {
-        console.log(`[DB] FIFO: ${qtyNeeded} units of ${part.sku} not found in PENDING lots, deducting from master inventory`);
-        
+      // PASO 3: Siempre deducir del inventario master la cantidad total deducida (de PENDING o de master)
+      if (partResult.totalQtyDeducted > 0) {
         const [inventoryRows] = await connection.execute(
           'SELECT onHand, salidasWo FROM inventory WHERE sku = ?',
           [part.sku]
         );
-        
         if (inventoryRows.length > 0) {
           const currentOnHand = Number(inventoryRows[0].onHand) || 0;
           const currentSalidasWo = Number(inventoryRows[0].salidasWo) || 0;
-          const qtyToDeductFromMaster = Math.min(qtyNeeded, currentOnHand);
-          
-          if (qtyToDeductFromMaster > 0) {
-            const newOnHand = currentOnHand - qtyToDeductFromMaster;
-            const newSalidasWo = currentSalidasWo + qtyToDeductFromMaster;
-            
-            await connection.execute(
-              'UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?',
-              [newOnHand, newSalidasWo, part.sku]
-            );
-            
-            // Registrar en auditoría la deducción del inventario master
-            await logAuditEvent(
-              usuario,
-              'UPDATE',
-              'inventory',
-              part.sku,
-              {
-                action: 'Deducción de inventario master por FIFO',
-                sku: part.sku,
-                qtyDeducted: qtyToDeductFromMaster,
-                onHandChange: { antes: currentOnHand, despues: newOnHand },
-                salidasWoChange: { antes: currentSalidasWo, despues: newSalidasWo }
-              }
-            );
-            
-            partResult.totalQtyDeducted += qtyToDeductFromMaster;
-            qtyNeeded -= qtyToDeductFromMaster;
-            
-            console.log(`[DB] FIFO: Deducted ${qtyToDeductFromMaster} of ${part.sku} from master inventory: ${currentOnHand} -> ${newOnHand}`);          }
-        }
-      }
-      
-      // PASO 4: Actualizar inventario master solo si se dedujo exclusivamente de lotes PENDING
-      // Evitar doble deducción: solo actualizar si NO se actualizó en el paso 3
-      if (partResult.totalQtyDeducted > 0 && qtyNeeded === originalQtyNeeded) {
-        // Se dedujo todo de lotes PENDING, necesitamos actualizar inventario master
-        const [inventoryRows] = await connection.execute(
-          'SELECT onHand, salidasWo FROM inventory WHERE sku = ?',
-          [part.sku]
-        );
-        
-        if (inventoryRows.length > 0) {
-          const currentOnHand = Number(inventoryRows[0].onHand) || 0;
-          const currentSalidasWo = Number(inventoryRows[0].salidasWo) || 0;
-          
           const newOnHand = Math.max(0, currentOnHand - partResult.totalQtyDeducted);
           const newSalidasWo = currentSalidasWo + partResult.totalQtyDeducted;
-          
           await connection.execute(
             'UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?',
             [newOnHand, newSalidasWo, part.sku]
           );
-          
           // Registrar en auditoría la actualización del inventario master
           await logAuditEvent(
             usuario,
@@ -812,19 +762,16 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
             'inventory',
             part.sku,
             {
-              action: 'Actualización inventario master (deducción desde PENDING)',
+              action: 'Actualización inventario master (deducción FIFO)',
               sku: part.sku,
               qtyDeducted: partResult.totalQtyDeducted,
               onHandChange: { antes: currentOnHand, despues: newOnHand },
               salidasWoChange: { antes: currentSalidasWo, despues: newSalidasWo },
-              source: 'PENDING_LOTS_ONLY'
+              source: 'FIFO_DEDUCTION'
             }
           );
-          
-          console.log(`[DB] FIFO: Updated master inventory for ${part.sku}: ${currentOnHand} -> ${newOnHand} (all from PENDING lots)`);
+          console.log(`[DB] FIFO: Updated master inventory for ${part.sku}: ${currentOnHand} -> ${newOnHand} (deducted ${partResult.totalQtyDeducted})`);
         }
-      } else if (partResult.totalQtyDeducted > 0) {
-        console.log(`[DB] FIFO: Skipping master inventory update for ${part.sku} - already updated in step 3 (mixed deduction)`);
       }
       
       // PASO 5: Advertir si no se pudo satisfacer completamente la demanda
