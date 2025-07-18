@@ -793,9 +793,24 @@ const WorkOrdersTable: React.FC = () => {
           usuario: localStorage.getItem('username') || ''        });
       }
 
-      // NOTA: Ya no es necesario marcar partes pendientes manualmente porque
-      // el sistema FIFO automáticamente las marca como USED cuando las dedujo
-      console.log('✅ Sistema FIFO manejó automáticamente las partes pending');      // Muestra mensaje de éxito
+      // MARCAR PARTES PENDIENTES COMO USED (crítico para campanitas)
+      // Buscar partes que vienen de partes pendientes (_pendingPartId)
+      const partesConPendingId = datosOrden.parts.filter((p: any) => p._pendingPartId);
+      console.log(`🔍 Partes pendientes encontradas en nueva WO: ${partesConPendingId.length}`);
+      
+      for (const part of partesConPendingId) {
+        try {
+          console.log(`🔄 Marcando parte pendiente ${part._pendingPartId} como USED en nueva WO...`);
+          await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
+            usuario: localStorage.getItem('username') || ''
+          });
+          console.log(`✅ Parte pendiente ${part._pendingPartId} marcada como USED en nueva WO`);
+        } catch (error) {
+          console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED en nueva WO:`, error);
+        }
+      }
+
+      console.log('✅ Partes pendientes procesadas. Sistema FIFO también manejó automáticamente otras partes.');// Muestra mensaje de éxito
       alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);// NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
       try {
         console.log('🔄 Intentando generar PDF para work order:', newWorkOrderId);
@@ -934,12 +949,13 @@ const WorkOrdersTable: React.FC = () => {
       setExtraOptions([]);
       setPendingPartsQty({});
       setSelectedPendingParts([]);
-      setIdClassicError('');
-        // Actualiza la tabla inmediatamente
+      setIdClassicError('');      // Actualiza la tabla inmediatamente
       await fetchWorkOrders();
       
       // 🔔 ACTUALIZAR TRAILERS CON PARTES PENDIENTES para quitar campanitas
+      console.log('🔔 Actualizando trailers con partes pendientes después de crear nueva WO...');
       await fetchTrailersWithPendingParts();
+      console.log('✅ Trailers con partes pendientes actualizados después de crear WO');
       
     } catch (err: any) {
       console.error('Error al guardar la orden:', err);
@@ -990,7 +1006,6 @@ const WorkOrdersTable: React.FC = () => {
     // El formulario debe mostrar exactamente los valores que están en la base de datos
     // sin ningún tipo de recálculo automático
   }, [editWorkOrder?.mechanics, showEditForm]);
-
   const handleEdit = () => {
     if (selectedRow === null) return;
     const pwd = window.prompt('Enter password to edit:');
@@ -1006,6 +1021,16 @@ const WorkOrdersTable: React.FC = () => {
           extraOptions: Array.isArray(found.extraOptions) ? found.extraOptions : [],
         });
         setExtraOptions(Array.isArray(found.extraOptions) ? found.extraOptions : []);
+        
+        // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado
+        if (found.trailer) {
+          console.log(`🔄 Cargando partes pendientes para trailer preseleccionado: ${found.trailer}`);
+          fetchPendingParts(found.trailer);
+        } else {
+          // Si no hay trailer, limpiar partes pendientes
+          setPendingParts([]);
+        }
+        
         setShowEditForm(true);
       }
     } else if (pwd !== null) {
@@ -1220,14 +1245,16 @@ const WorkOrdersTable: React.FC = () => {
         x: e.clientX,
         y: e.clientY,
         info: partInfo
-      });
-    }
+      });    }
   };
+
   // Función para cargar trailers con partes pendientes
   const fetchTrailersWithPendingParts = async () => {
     try {
       console.log('🔍 Cargando trailers con partes pendientes...');
-      const res = await axios.get(`${API_URL}/receive/trailers/with-pending`);
+      // Agregar timestamp para evitar cache
+      const timestamp = Date.now();
+      const res = await axios.get(`${API_URL}/receive/trailers/with-pending?t=${timestamp}`);
       console.log('✅ Trailers con partes pendientes:', res.data);
       setTrailersWithPendingParts(res.data as string[]);
     } catch (error) {
@@ -2547,12 +2574,13 @@ const WorkOrdersTable: React.FC = () => {
                           }
 
                           // Actualizar la work order
-                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
-
-                          // MARCA PARTES PENDIENTES COMO USADAS (si se agregaron nuevas partes pendientes)
+                          await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);                          // MARCA PARTES PENDIENTES COMO USADAS (si se agregaron nuevas partes pendientes)
                           const partesConPendingId = editWorkOrder.parts.filter((p: any) => p._pendingPartId);
+                          console.log(`🔍 Partes con pendingId para marcar como USED: ${partesConPendingId.length}`);
+                          
                           for (const part of partesConPendingId) {
                             try {
+                              console.log(`🔄 Marcando parte pendiente ${part._pendingPartId} como USED...`);
                               await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
                                 usuario: localStorage.getItem('username') || ''
                               });
@@ -2560,6 +2588,13 @@ const WorkOrdersTable: React.FC = () => {
                             } catch (error) {
                               console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED en edición:`, error);
                             }
+                          }
+                          
+                          // FORZAR ACTUALIZACIÓN DE PARTES PENDIENTES después de marcar como USED
+                          if (partesConPendingId.length > 0) {
+                            console.log('🔔 Actualizando trailers con partes pendientes después de marcar partes como USED...');
+                            await fetchTrailersWithPendingParts();
+                            console.log('✅ Actualización forzada de trailers completada');
                           }
                             // Generar nuevo PDF tras la edición
                           try {
@@ -2624,14 +2659,21 @@ const WorkOrdersTable: React.FC = () => {
                             
                             // Mantener el endpoint anterior para compatibilidad
                             await axios.post(`${API_URL}/work-orders/${editWorkOrder.id}/generate-pdf`);
-                            console.log('PDF generado exitosamente tras edición');
-                          } catch (pdfError) {
+                            console.log('PDF generado exitosamente tras edición');                          } catch (pdfError) {
                             console.error('Error generando PDF tras edición:', pdfError);
                             // No interrumpir el flujo si falla el PDF
-                          }// REFRESCA LA TABLA INMEDIATAMENTE CON AWAIT
+                          }
+
+                          // REFRESCA LA TABLA INMEDIATAMENTE CON AWAIT
                           console.log('📋 Refrescando tabla después de actualizar WO...');
                           await fetchWorkOrders();
                           console.log('✅ Tabla refrescada exitosamente');
+                          
+                          // ACTUALIZAR TRAILERS CON PARTES PENDIENTES (CRUCIAL PARA LA CAMPANITA)
+                          console.log('🔔 Actualizando trailers con partes pendientes después de editar WO...');
+                          await fetchTrailersWithPendingParts();
+                          console.log('✅ Trailers con partes pendientes actualizados');
+                          
                             // ACTUALIZA EL ESTADO LOCAL INMEDIATAMENTE PARA REFLEJAR LOS CAMBIOS
                           setWorkOrders(prevOrders => 
                             prevOrders.map(order => 
