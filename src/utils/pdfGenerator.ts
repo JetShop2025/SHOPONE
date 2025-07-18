@@ -248,86 +248,72 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       }
     }
   });
-    // TOTALES - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
+  // TOTALES Y EXTRAS - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
   const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;
+  const totalsStartX = pageWidth - rightMargin - 70; // 70mm para los totales y extras
+  let currentY = finalY + 8;
   
-  // SECCIÓN DE EXTRAS - NUEVA FUNCIONALIDAD
-  let extrasY = finalY + 8;
   const extraOptions = workOrderData.extraOptions || [];
-  
-  // Calcular subtotal para los extras
   const subtotal = (workOrderData.subtotalParts || 0) + (workOrderData.laborCost || 0);
-  
-  if (extraOptions.length > 0 || true) { // Siempre mostrar porque hay 5% automático
-    pdf.setFontSize(10);
-    pdf.setTextColor(0, 150, 255);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('EXTRAS:', leftMargin, extrasY);
-    
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(0, 0, 0);
-    extrasY += 6;
-    
-    // 5% automático (siempre aplicado)
-    const automaticExtra = subtotal * 0.05;
-    pdf.text('• 5% Automático:', leftMargin + 5, extrasY);
-    pdf.text(`$${automaticExtra.toFixed(2)}`, pageWidth - rightMargin, extrasY, { align: 'right' });
-    extrasY += 4;
-    
-    // Extras seleccionados
-    extraOptions.forEach(option => {
-      let extraName = '';
-      let extraCost = 0;
-      
-      if (option === '15shop') {
-        extraName = '• Shop 15%:';
-        extraCost = subtotal * 0.15;
-      } else if (option === '15weld') {
-        extraName = '• Weld 15%:';
-        extraCost = subtotal * 0.15;
-      }
-      
-      if (extraName && extraCost > 0) {
-        pdf.text(extraName, leftMargin + 5, extrasY);
-        pdf.text(`$${extraCost.toFixed(2)}`, pageWidth - rightMargin, extrasY, { align: 'right' });
-        extrasY += 4;
-      }
-    });
-    
-    extrasY += 4; // Espacio extra antes de los totales
-  }
-  
-  const totalsY = extrasY;
-  const totalsStartX = pageWidth - rightMargin - 60; // 60mm para los totales
   
   pdf.setFontSize(10);
   pdf.setTextColor(0, 0, 0);
   
   // Subtotal Parts
-  pdf.text('Subtotal Parts:', totalsStartX, totalsY);
-  pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, pageWidth - rightMargin, totalsY, { align: 'right' });
+  pdf.text('Subtotal Parts:', totalsStartX, currentY);
+  pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+  currentY += 6;
   
   // Labor
-  pdf.text('Labor:', totalsStartX, totalsY + 6);
-  pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, pageWidth - rightMargin, totalsY + 6, { align: 'right' });
+  pdf.text('Labor:', totalsStartX, currentY);
+  pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+  currentY += 6;
+  
+  // EXTRAS - Integrados con los totales
+  // 5% automático (siempre aplicado)
+  const automaticExtra = subtotal * 0.05;
+  pdf.setTextColor(0, 100, 200); // Color azul para extras
+  pdf.text('Extra 5%:', totalsStartX, currentY);
+  pdf.text(`$${automaticExtra.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+  currentY += 6;
+  
+  // Extras seleccionados
+  extraOptions.forEach(option => {
+    let extraName = '';
+    let extraCost = 0;
+    
+    if (option === '15shop') {
+      extraName = 'Shop 15%:';
+      extraCost = subtotal * 0.15;
+    } else if (option === '15weld') {
+      extraName = 'Weld 15%:';
+      extraCost = subtotal * 0.15;
+    }
+    
+    if (extraName && extraCost > 0) {
+      pdf.text(extraName, totalsStartX, currentY);
+      pdf.text(`$${extraCost.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+      currentY += 6;
+    }
+  });
   
   // Línea separadora
   pdf.setDrawColor(0, 0, 0);
   pdf.setLineWidth(0.3);
-  pdf.line(totalsStartX, totalsY + 9, pageWidth - rightMargin, totalsY + 9);
+  pdf.line(totalsStartX, currentY + 2, pageWidth - rightMargin, currentY + 2);
+  currentY += 8;
   
   // TOTAL (en rojo)
   pdf.setFontSize(11);
   pdf.setTextColor(220, 20, 60);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('TOTAL LAB & PARTS:', totalsStartX, totalsY + 15);
-  pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, pageWidth - rightMargin, totalsY + 15, { align: 'right' });
-  
-  // Resetear fuente
+  pdf.text('TOTAL LAB & PARTS:', totalsStartX, currentY);
+  pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+    // Resetear fuente
   pdf.setFont('helvetica', 'normal');
   
   // TERMS & CONDITIONS
-  const termsY = totalsY + 25;
+  const termsY = currentY + 15;
   
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);

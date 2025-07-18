@@ -567,19 +567,26 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
     if (!oldData) {
       return res.status(404).json({ error: 'Trailer not found' });
     }
-    
-    // Verificar si existe la columna status
+      // Verificar si existe la columna status o estatus
     const hasStatusColumn = columns.some(col => col.Field === 'status');
+    const hasEstatusColumn = columns.some(col => col.Field === 'estatus');
     const hasObservacionesColumn = columns.some(col => col.Field === 'observaciones');
     
     let updateQuery = 'UPDATE trailers SET ';
     let updateValues = [];
     let updateFields = [];
     
-    // Solo actualizar columnas que existen
-    if (hasStatusColumn) {
+    // Solo actualizar columnas que existen - priorizar 'estatus' sobre 'status'
+    if (hasEstatusColumn) {
+      updateFields.push('estatus = ?');
+      updateValues.push('RENTADO');
+      console.log('[INFO] Using estatus column for status update');
+    } else if (hasStatusColumn) {
       updateFields.push('status = ?');
       updateValues.push('RENTADO');
+      console.log('[INFO] Using status column for status update');
+    } else {
+      console.log('[WARNING] No status/estatus column found!');
     }
     
     if (hasObservacionesColumn) {
@@ -654,10 +661,10 @@ app.put('/api/trailas/:id/return', async (req, res) => {
     const usuario = req.body.usuario || 'SYSTEM';
     
     console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer`, req.body);
-    
-    // Verificar columnas disponibles
+      // Verificar columnas disponibles
     const [columns] = await connection.execute('DESCRIBE trailers');
     const hasStatusColumn = columns.some(col => col.Field === 'status');
+    const hasEstatusColumn = columns.some(col => col.Field === 'estatus');
     const hasObservacionesColumn = columns.some(col => col.Field === 'observaciones');
     
     // Obtener datos actuales del trailer
@@ -675,9 +682,17 @@ app.put('/api/trailas/:id/return', async (req, res) => {
     let updateValues = [];
     let updateFields = [];
     
-    if (hasStatusColumn) {
+    // Priorizar 'estatus' sobre 'status'
+    if (hasEstatusColumn) {
+      updateFields.push('estatus = ?');
+      updateValues.push('DISPONIBLE');
+      console.log('[INFO] Using estatus column for status update (DISPONIBLE)');
+    } else if (hasStatusColumn) {
       updateFields.push('status = ?');
       updateValues.push('DISPONIBLE');
+      console.log('[INFO] Using status column for status update (DISPONIBLE)');
+    } else {
+      console.log('[WARNING] No status/estatus column found!');
     }
     
     if (hasObservacionesColumn) {
@@ -846,14 +861,24 @@ app.get('/api/receive/trailers/with-pending', async (req, res) => {
   try {
     console.log('[GET] /api/receive/trailers/with-pending - Fetching from database');
     const allParts = await db.getReceivesParts();
-    // Use destino_trailer field instead of trailer - solo PENDING para notificaciones
+    
+    // Solo trailers que tengan partes PENDING con qty > 0
     const trailersWithPending = [...new Set(
       allParts
-        .filter(part => part.estatus === 'PENDING')
+        .filter(part => {
+          // Solo PENDING con cantidad disponible
+          const isPending = part.estatus === 'PENDING';
+          const hasQty = Number(part.qty || 0) > 0;
+          const hasTrailer = Boolean(part.destino_trailer);
+          
+          console.log(`[CHECK] ${part.sku} -> ${part.destino_trailer}: PENDING=${isPending}, QTY=${part.qty}, RESULT=${isPending && hasQty && hasTrailer}`);
+          return isPending && hasQty && hasTrailer;
+        })
         .map(part => part.destino_trailer)
         .filter(Boolean)
     )];
-    console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithPending.length} trailers from database`);
+    
+    console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithPending.length} trailers with actual pending parts`);
     res.json(trailersWithPending);
   } catch (error) {
     console.error('[ERROR] GET /api/receive/trailers/with-pending:', error);

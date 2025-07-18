@@ -454,33 +454,45 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               }}>
                 {pendingParts.length} disponible{pendingParts.length !== 1 ? 's' : ''}
               </span>
-            </h3>
-            <div style={{ 
+            </h3>            <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
               gap: 12 
             }}>
-              {pendingParts.map((part: any) => (
+              {pendingParts.map((part: any) => {
+                // Calcular cantidad disponible real
+                const availableQty = part.qty_remaining !== undefined ? part.qty_remaining : (part.qty || 0);
+                const hasQtyAvailable = availableQty > 0;
+                
+                return (
                 <div key={part.id} style={{
-                  background: 'white',
-                  border: '1px solid #c8e6c9',
+                  background: hasQtyAvailable ? 'white' : '#f5f5f5',
+                  border: hasQtyAvailable ? '1px solid #c8e6c9' : '1px solid #e0e0e0',
                   borderRadius: 6,
                   padding: 12,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 8
+                  gap: 8,
+                  opacity: hasQtyAvailable ? 1 : 0.7
                 }}>
-                  <div style={{ fontWeight: 'bold', color: '#2e7d32' }}>
+                  <div style={{ 
+                    fontWeight: 'bold', 
+                    color: hasQtyAvailable ? '#2e7d32' : '#666' 
+                  }}>
                     {part.sku} - {part.item}
                   </div>
                   <div style={{ fontSize: 14, color: '#666' }}>
-                    Cantidad disponible: <strong>{part.qty_remaining}</strong>
+                    Cantidad disponible: <strong style={{ 
+                      color: hasQtyAvailable ? '#2e7d32' : '#f44336' 
+                    }}>
+                      {availableQty} {hasQtyAvailable ? '' : '(Agotado)'}
+                    </strong>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
                       type="number"
                       min="1"
-                      max={part.qty_remaining}
+                      max={Math.max(1, availableQty)}
                       value={pendingPartsQty?.[part.id] || '1'}
                       onChange={(e) => {                        if (setPendingPartsQty) {
                           setPendingPartsQty((prev: any) => ({
@@ -489,37 +501,40 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                           }));
                         }
                       }}
+                      disabled={!hasQtyAvailable}
                       style={{
                         width: '80px',
                         padding: '4px 8px',
                         border: '1px solid #ccc',
-                        borderRadius: 4
+                        borderRadius: 4,
+                        backgroundColor: hasQtyAvailable ? 'white' : '#f5f5f5'
                       }}
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        if (onAddPendingPart) {
+                        if (onAddPendingPart && hasQtyAvailable) {
                           const qty = parseInt(pendingPartsQty?.[part.id] || '1');
                           onAddPendingPart(part, qty);
                         }
                       }}
+                      disabled={!hasQtyAvailable}
                       style={{
                         padding: '6px 12px',
-                        background: '#4caf50',
+                        background: hasQtyAvailable ? '#4caf50' : '#bdbdbd',
                         color: 'white',
                         border: 'none',
                         borderRadius: 4,
-                        cursor: 'pointer',
+                        cursor: hasQtyAvailable ? 'pointer' : 'not-allowed',
                         fontSize: 12,
                         fontWeight: 'bold'
-                      }}
-                    >
-                      ➕ Agregar a WO
+                      }}                    >
+                      {hasQtyAvailable ? '➕ Agregar a WO' : '❌ Agotado'}
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{ 
               marginTop: 12, 

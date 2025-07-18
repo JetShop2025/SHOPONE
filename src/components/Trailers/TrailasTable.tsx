@@ -203,7 +203,6 @@ const TrailasTable: React.FC = () => {
   const getCurrentUser = () => {
     return localStorage.getItem('username') || 'USER';
   };
-
   // Handle rental
   const handleRental = async () => {
     if (!selectedTraila || !rentalForm.cliente || !rentalForm.fecha_renta) {
@@ -212,56 +211,77 @@ const TrailasTable: React.FC = () => {
     }
 
     try {
+      console.log('🔄 Rentando trailer:', selectedTraila.id, rentalForm);
+      
       const rentalData = {
         ...rentalForm,
         usuario: getCurrentUser()
       };
       
-      await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalData);
+      const response = await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalData);
+      console.log('✅ Trailer rentado exitosamente:', response.data);
+      
       setShowRentalModal(false);
       setRentalForm({ cliente: '', fecha_renta: '', fecha_devolucion: '', observaciones: '' });
+      
       // Refresh data
-      const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
-      setTrailas(response.data || []);
-    } catch (error) {
-      console.error('Error renting trailer:', error);
-      alert('Error al rentar el trailer');
+      console.log('🔄 Refrescando datos de trailers...');
+      const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
+      console.log('📦 Datos refrescados:', trailersResponse.data);
+      setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
+      
+      alert('Trailer rentado exitosamente');
+    } catch (error: any) {
+      console.error('❌ Error renting trailer:', error);
+      alert(`Error al rentar el trailer: ${error.response?.data?.error || error.message}`);
     }
   };  // Handle return
   const handleReturn = async (traila: Traila) => {
     if (window.confirm('¿Está seguro que desea devolver este trailer?')) {
       try {
+        console.log('🔄 Devolviendo trailer:', traila.id);
+        
         const returnData = {
           usuario: getCurrentUser()
         };
         
-        await axios.put(`${API_URL}/trailas/${traila.id}/return`, returnData);
+        const response = await axios.put(`${API_URL}/trailas/${traila.id}/return`, returnData);
+        console.log('✅ Trailer devuelto exitosamente:', response.data);
+        
         // Refresh data
-        const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
-        setTrailas(response.data || []);
-      } catch (error) {
-        console.error('Error returning trailer:', error);
-        alert('Error al devolver el trailer');
+        console.log('🔄 Refrescando datos de trailers...');
+        const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
+        console.log('📦 Datos refrescados:', trailersResponse.data);
+        setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
+        
+        alert('Trailer devuelto exitosamente');
+      } catch (error: any) {
+        console.error('❌ Error returning trailer:', error);
+        alert(`Error al devolver el trailer: ${error.response?.data?.error || error.message}`);
       }
-    }
-  };
+    }  };
 
   // Handle mark as available
   const handleMarkAsAvailable = async () => {
     if (!selectedTraila) return;
     
     try {
+      console.log('🔄 Marcando trailer como disponible:', selectedTraila.id, availableForm);
+      
       const availableData = {
         fecha_devolucion_real: availableForm.fecha_disponible,
         observaciones_devolucion: `${availableForm.motivo ? availableForm.motivo + ' - ' : ''}${availableForm.observaciones}`,
         usuario: getCurrentUser()
       };
       
-      await axios.put(`${API_URL}/trailas/${selectedTraila.id}/return`, availableData);
+      const response = await axios.put(`${API_URL}/trailas/${selectedTraila.id}/return`, availableData);
+      console.log('✅ Trailer marcado como disponible exitosamente:', response.data);
       
       // Refresh data
-      const response = await axios.get<Traila[]>(`${API_URL}/trailas`);
-      setTrailas(response.data || []);
+      console.log('🔄 Refrescando datos de trailers...');
+      const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
+      console.log('📦 Datos refrescados:', trailersResponse.data);
+      setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
       
       // Close modal and reset form
       setShowAvailableModal(false);
@@ -273,7 +293,7 @@ const TrailasTable: React.FC = () => {
       
       alert('Trailer marcado como disponible exitosamente');
     } catch (error: any) {
-      console.error('Error marking trailer as available:', error);
+      console.error('❌ Error marking trailer as available:', error);
       alert(`Error al marcar trailer como disponible: ${error.response?.data?.error || error.message}`);
     }
   };

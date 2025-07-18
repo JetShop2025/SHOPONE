@@ -586,8 +586,7 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
       };
       
       console.log(`[DB] FIFO: Processing ${qtyNeeded} units of ${part.sku}`);
-      
-      // PASO 1: Obtener todos los lotes PENDING disponibles para este SKU (FIFO: más antiguos primero)
+        // PASO 1: Obtener todos los lotes PENDING disponibles para este SKU (FIFO: más antiguos primero)
       const [availableLots] = await connection.execute(`
         SELECT r.*, 
                COALESCE(r.qty, 0) as available_qty,
@@ -597,29 +596,25 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
                r.destino_trailer
         FROM receives r 
         WHERE r.sku = ? 
-          AND r.estatus = 'PENDING' 
+          AND r.estatus = 'PENDING'
           AND COALESCE(r.qty, 0) > 0
         ORDER BY r.fecha ASC, r.id ASC
       `, [part.sku]);
       
       console.log(`[DB] FIFO: Found ${availableLots.length} available PENDING lots for SKU ${part.sku}`);
-      
-      // PASO 2: Deducir de lotes PENDING usando FIFO (más antiguos primero)
+        // PASO 2: Deducir de lotes PENDING usando FIFO (más antiguos primero)
       for (const lot of availableLots) {
         if (qtyNeeded <= 0) break;
         
         const availableInLot = Number(lot.available_qty) || 0;
         const qtyToTakeFromLot = Math.min(qtyNeeded, availableInLot);
-        
-        if (qtyToTakeFromLot > 0) {
-          // Calcular nueva cantidad en el lote
-          const newQtyInLot = availableInLot - qtyToTakeFromLot;
-          const newStatus = newQtyInLot <= 0 ? 'USED' : 'PENDING';
-          
-          // Actualizar el lote en receives
+          if (qtyToTakeFromLot > 0) {
+          // Determinar nuevo estado: USED si se agota el lote completamente
+          const newStatus = qtyToTakeFromLot >= availableInLot ? 'USED' : 'PENDING';
+            // MANTENER qty original - Solo actualizar el estado
           await connection.execute(
-            'UPDATE receives SET qty = ?, estatus = ? WHERE id = ?',
-            [newQtyInLot, newStatus, lot.id]
+            'UPDATE receives SET estatus = ? WHERE id = ?',
+            [newStatus, lot.id]
           );
           
           // Registrar información del invoice usado
@@ -629,7 +624,8 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
             invoiceLink: lot.invoiceLink,
             qtyTaken: qtyToTakeFromLot,
             receiptDate: lot.receipt_date,
-            destinoTrailer: lot.destino_trailer
+            destinoTrailer: lot.destino_trailer,
+            originalQty: availableInLot // Mantener referencia a la cantidad original
           });
           
           // Si se marcó como USED, registrarlo

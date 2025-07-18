@@ -79,6 +79,7 @@ const ReceiveInventory: React.FC = () => {
     invoiceLink: '',
     qty: '',
     costTax: '',
+    total: '',
     totalPOClassic: '',
     fecha: getLocalDate(), // Usar función para fecha actual
     estatus: 'PENDING'
@@ -120,15 +121,25 @@ const ReceiveInventory: React.FC = () => {
       }));
     }
   }, [form.sku, inventory]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
+    const updatedForm = {
+      ...form,
       [name]: value,
       ...(name === 'billToCo' ? { destino_trailer: '' } : {})
-    }));
-  };  const handleSubmit = async (e: React.FormEvent) => {
+    };
+    
+    // Auto-calcular el total cuando cambien qty o costTax
+    if (name === 'qty' || name === 'costTax') {
+      const qty = name === 'qty' ? Number(value) || 0 : Number(updatedForm.qty) || 0;      const costTax = name === 'costTax' ? Number(value) || 0 : Number(updatedForm.costTax) || 0;
+      const calculatedTotal = qty * costTax;
+      updatedForm.total = calculatedTotal > 0 ? calculatedTotal.toFixed(2) : '';
+    }
+    
+    setForm(updatedForm);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Calcula el nuevo precio con 10% extra
@@ -189,8 +200,7 @@ const ReceiveInventory: React.FC = () => {
     
     // Reset form con fecha actual
     const todayDate = getLocalDate();
-    console.log('🗓️ Reseteando formulario con fecha:', todayDate);
-    setForm({
+    console.log('🗓️ Reseteando formulario con fecha:', todayDate);    setForm({
       sku: '',
       category: '',
       item: '',
@@ -203,6 +213,7 @@ const ReceiveInventory: React.FC = () => {
       invoiceLink: '',
       qty: '',
       costTax: '',
+      total: '',
       totalPOClassic: '',
       fecha: todayDate, // Usar fecha local correcta
       estatus: 'PENDING'
@@ -470,6 +481,17 @@ const ReceiveInventory: React.FC = () => {
                   required
                 />                <input name="qty" value={form.qty} onChange={handleChange} placeholder="Quantity" required style={inputStyle} />
                 <input name="costTax" value={form.costTax} onChange={handleChange} placeholder="Cost + Tax" required style={inputStyle} />
+                
+                {/* Campo TOTAL - Auto-calculado */}
+                <input 
+                  name="total" 
+                  value={form.total} 
+                  onChange={handleChange} 
+                  placeholder="Total (Auto-calculated)" 
+                  style={{...inputStyle, backgroundColor: '#f0f8ff', fontWeight: '600'}} 
+                  readOnly 
+                />
+                
                 <input name="totalPOClassic" value={form.totalPOClassic} onChange={handleChange} placeholder="P.O Classic" style={inputStyle} />
                 <input name="fecha" value={form.fecha} onChange={handleChange} type="date" required style={inputStyle} />
               </div>

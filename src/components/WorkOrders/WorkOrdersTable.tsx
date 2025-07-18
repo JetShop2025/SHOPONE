@@ -935,9 +935,11 @@ const WorkOrdersTable: React.FC = () => {
       setPendingPartsQty({});
       setSelectedPendingParts([]);
       setIdClassicError('');
-      
-      // Actualiza la tabla inmediatamente
+        // Actualiza la tabla inmediatamente
       await fetchWorkOrders();
+      
+      // 🔔 ACTUALIZAR TRAILERS CON PARTES PENDIENTES para quitar campanitas
+      await fetchTrailersWithPendingParts();
       
     } catch (err: any) {
       console.error('Error al guardar la orden:', err);
@@ -1194,14 +1196,13 @@ const WorkOrdersTable: React.FC = () => {
         return { ...prev, parts: updatedParts };
       });
     }
-    
-    // Actualizar la cantidad de partes pendientes localmente
+      // Actualizar la cantidad de partes pendientes localmente
     setPendingParts(prevPending => 
       prevPending.map(pp => 
         pp.id === pendingPart.id 
-          ? { ...pp, qty_remaining: pp.qty_remaining - qtyToUse }
+          ? { ...pp, qty_remaining: Math.max(0, (pp.qty_remaining || pp.qty || 0) - qtyToUse) }
           : pp
-      ).filter(pp => pp.qty_remaining > 0) // Remover si no quedan unidades
+      ) // ✅ NO filtrar - mantener todas las partes pendientes visibles
     );
     
     console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO con costo $${cost.toFixed(2)}`);
