@@ -351,6 +351,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   };
 
+  // Solo muestra la campana si el trailer está en trailersWithPendingParts
+  const showBell = (trailerNumber: string) => {
+    return Array.isArray(trailersWithPendingParts) && trailersWithPendingParts.includes(trailerNumber);
+  };
+
   const getTrailerOptionsForBill = (billToCo: string) => {
     return getTrailerOptions ? getTrailerOptions(billToCo) : [];
   };
@@ -422,7 +427,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             />
             <datalist id="trailer-options">
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
+                <option key={opt} value={opt}>
+                  {opt}{showBell(opt) ? ' 🔔' : ''}
+                </option>
               ))}
             </datalist>          </label>
         </div>
