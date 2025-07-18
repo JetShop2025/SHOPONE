@@ -347,12 +347,26 @@ async function updateOrder(id, order) {
   try {
     console.log('[DB] Updating order with ID:', id, 'and data:', order);
     const usuario = order.usuario || 'system';
-    
+
     // Obtener datos actuales para comparación
     const [currentRows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
     const currentData = currentRows[0];
-    
-    // Convert undefined values to null for MySQL compatibility
+
+    // Parse old parts (from DB) and new parts (from request)
+    let oldParts = [];
+    try {
+      oldParts = currentData && currentData.parts ? JSON.parse(currentData.parts) : [];
+    } catch (e) {
+      oldParts = [];
+    }
+    const newParts = Array.isArray(order.parts) ? order.parts : [];
+
+    // Detectar partes nuevas (por SKU y part_name)
+    const oldPartsKeySet = new Set(oldParts.map(p => `${p.sku || ''}__${p.part || p.part_name || ''}`));
+    const newPartsKeySet = new Set(newParts.map(p => `${p.sku || ''}__${p.part || p.part_name || ''}`));
+    const newPartsToAdd = newParts.filter(p => !oldPartsKeySet.has(`${p.sku || ''}__${p.part || p.part_name || ''}`) && p.sku);
+
+    // Actualizar la work order (sin tocar work_order_parts aún)
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
@@ -367,43 +381,38 @@ async function updateOrder(id, order) {
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(order.parts || []),
       id
-    ];    const [result] = await connection.execute(
+    ];
+    const [result] = await connection.execute(
       'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
       safeValues
     );
-      console.log('[DB] Successfully updated work order with ID:', id);
-    
-    // DESHABILITADO: No sincronizar partes automáticamente en updateOrder
-    // Ya que el frontend maneja la actualización específica de partes
-    // para evitar doble deducción en ediciones
-    /*
-    if (order.parts && Array.isArray(order.parts) && order.parts.length > 0) {
-      console.log('[DB] Syncing parts to work_order_parts table for work order:', id);
-      
-      // Primero, eliminar partes existentes para esta work order
-      await connection.execute('DELETE FROM work_order_parts WHERE work_order_id = ?', [id]);
-      
-      // Luego, insertar las partes actuales
-      for (const part of order.parts) {
-        if (part.sku && part.sku.trim() !== '') {
-          await connection.execute(
-            'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-              id,
-              part.sku,
-              part.part || '',
-              Number(part.qty) || 0,
-              Number(part.cost) || 0,
-              usuario || ''
-            ]
-          );
-          console.log(`[DB] Synced part ${part.sku} to work_order_parts`);
+    console.log('[DB] Successfully updated work order with ID:', id);
+
+    // --- NUEVO: Descontar del inventario master para partes nuevas ---
+    if (newPartsToAdd.length > 0) {
+      console.log(`[DB] Detected ${newPartsToAdd.length} new parts to add and deduct from inventory (FIFO)`);
+      // Ejecutar deducción FIFO para todas las partes nuevas
+      const fifoResult = await module.exports.deductInventoryFIFO(newPartsToAdd, usuario);
+      // Insertar las partes nuevas en work_order_parts
+      for (let i = 0; i < newPartsToAdd.length; i++) {
+        const part = newPartsToAdd[i];
+        // Buscar info FIFO para este SKU
+        let fifoInfo = null;
+        if (fifoResult && fifoResult.details && Array.isArray(fifoResult.details)) {
+          fifoInfo = fifoResult.details.find(r => r.sku === part.sku);
         }
+        await module.exports.createWorkOrderPart({
+          work_order_id: id,
+          sku: part.sku,
+          part_name: part.part || part.part_name || '',
+          qty_used: Number(part.qty) || 1,
+          cost: Number(part.cost) || 0,
+          usuario: usuario
+        }, fifoInfo);
       }
     }
-    */
-    console.log('[DB] Skipping automatic parts sync to avoid double deduction in edits');
-      // Registrar cambios en auditoría usando función especializada
+
+    // Registrar cambios en auditoría usando función especializada
     await auditWorkOrderOperation(
       usuario,
       'UPDATE',
@@ -422,7 +431,7 @@ async function updateOrder(id, order) {
         idClassic: order.idClassic
       }
     );
-    
+
     return { id, ...order };
   } catch (error) {
     console.error('[DB] Error updating order:', error.message);
@@ -1033,10 +1042,18 @@ async function updatePendingPart(id, pendingPart) {
     let newStatus = pendingPart.estatus || 'PENDING';
     const usuario = pendingPart.usuario || 'SYSTEM';
     console.log('[DB] Updating ONLY status of pending part in receives table, id:', id, 'new status:', newStatus);
-    await connection.execute(
-      'UPDATE receives SET estatus = ? WHERE id = ?',
-      [newStatus, id]
-    );
+    // Si el nuevo estatus es USED, también poner qty_remaining = 0
+    if (newStatus === 'USED') {
+      await connection.execute(
+        'UPDATE receives SET estatus = ?, qty_remaining = 0 WHERE id = ?',
+        [newStatus, id]
+      );
+    } else {
+      await connection.execute(
+        'UPDATE receives SET estatus = ? WHERE id = ?',
+        [newStatus, id]
+      );
+    }
     // Registrar en auditoría
     await logAuditEvent(
       usuario,
