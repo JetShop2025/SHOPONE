@@ -856,44 +856,25 @@ app.delete('/api/receive/:id', async (req, res) => {
 
 app.get('/api/receive/pending/:trailer', async (req, res) => {
   try {
-    console.log(`[GET] /api/receive/pending/${req.params.trailer} - Fetching from database with smart filtering`);
+    console.log(`[GET] /api/receive/pending/${req.params.trailer} - Fetching from database`);
     
     // Obtener todas las partes de receives
     const allParts = await db.getReceivesParts();
     
-    // Obtener todas las work order parts para calcular qué se ha usado
-    const workOrderParts = await db.getAllWorkOrderParts();
-    
-    // Crear un mapa de cuánto se ha usado de cada lote de receives
-    const usedQuantities = new Map();
-    
-    for (const woPart of workOrderParts) {
-      if (woPart.receive_lot_id) {
-        const currentUsed = usedQuantities.get(woPart.receive_lot_id) || 0;
-        usedQuantities.set(woPart.receive_lot_id, currentUsed + (Number(woPart.qty_used) || 0));
-      }
-    }
-    
-    // Filtrar por trailer y calcular cantidades reales disponibles
+    // Filtrar por trailer y estado PENDING (simplificado - ya no necesitamos calcular uso)
     const filtered = allParts
-      .filter(part => part.destino_trailer === req.params.trailer && part.estatus === 'PENDING')
-      .map(part => {
-        const originalQty = Number(part.qty || 0);
-        const usedQty = usedQuantities.get(part.id) || 0;
-        const availableQty = originalQty - usedQty;
+      .filter(part => {
+        const isCorrectTrailer = part.destino_trailer === req.params.trailer;
+        const isPending = part.estatus === 'PENDING';
+        const hasQty = Number(part.qty || 0) > 0;
         
         console.log(`[PENDING_CHECK] ${part.sku} for ${req.params.trailer}: 
-          Original=${originalQty}, Used=${usedQty}, Available=${availableQty}`);
+          Status=${part.estatus}, Qty=${part.qty}, Match=${isCorrectTrailer && isPending && hasQty}`);
         
-        return {
-          ...part,
-          qty_remaining: availableQty,
-          qty_used: usedQty
-        };
-      })
-      .filter(part => part.qty_remaining > 0); // Solo partes con cantidad realmente disponible
+        return isCorrectTrailer && isPending && hasQty;
+      });
     
-    console.log(`[GET] /api/receive/pending/${req.params.trailer} - Found ${filtered.length} actually available pending parts`);
+    console.log(`[GET] /api/receive/pending/${req.params.trailer} - Found ${filtered.length} pending parts`);
     res.json(filtered);
   } catch (error) {
     console.error(`[ERROR] GET /api/receive/pending/${req.params.trailer}:`, error);
@@ -903,51 +884,29 @@ app.get('/api/receive/pending/:trailer', async (req, res) => {
 
 app.get('/api/receive/trailers/with-pending', async (req, res) => {
   try {
-    console.log('[GET] /api/receive/trailers/with-pending - Fetching from database with smart filtering');
+    console.log('[GET] /api/receive/trailers/with-pending - Fetching from database with simple filtering');
     
     // Obtener todas las partes de receives
     const allParts = await db.getReceivesParts();
     
-    // Obtener todas las work order parts para calcular qué se ha usado
-    const workOrderParts = await db.getAllWorkOrderParts();
-    
-    // Crear un mapa de cuánto se ha usado de cada lote de receives
-    const usedQuantities = new Map();
-    
-    for (const woPart of workOrderParts) {
-      if (woPart.receive_lot_id) {
-        const currentUsed = usedQuantities.get(woPart.receive_lot_id) || 0;
-        usedQuantities.set(woPart.receive_lot_id, currentUsed + (Number(woPart.qty_used) || 0));
-      }
-    }
-    
-    // Filtrar trailers que tengan partes realmente disponibles
-    const trailersWithRealPending = [...new Set(
+    // Solo trailers que tengan partes PENDING con qty > 0
+    const trailersWithPending = [...new Set(
       allParts
         .filter(part => {
-          // Solo considerar partes PENDING
-          if (part.estatus !== 'PENDING') return false;
+          // Solo PENDING con cantidad disponible
+          const isPending = part.estatus === 'PENDING';
+          const hasQty = Number(part.qty || 0) > 0;
+          const hasTrailer = Boolean(part.destino_trailer);
           
-          // Verificar si tiene trailer destino
-          if (!part.destino_trailer) return false;
-          
-          // Calcular cantidad realmente disponible
-          const originalQty = Number(part.qty || 0);
-          const usedQty = usedQuantities.get(part.id) || 0;
-          const availableQty = originalQty - usedQty;
-          
-          console.log(`[SMART_CHECK] ${part.sku} -> ${part.destino_trailer}: 
-            Original=${originalQty}, Used=${usedQty}, Available=${availableQty}, 
-            Status=${part.estatus}, RESULT=${availableQty > 0}`);
-          
-          return availableQty > 0;
+          console.log(`[CHECK] ${part.sku} -> ${part.destino_trailer}: PENDING=${isPending}, QTY=${part.qty}, RESULT=${isPending && hasQty && hasTrailer}`);
+          return isPending && hasQty && hasTrailer;
         })
         .map(part => part.destino_trailer)
         .filter(Boolean)
     )];
     
-    console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithRealPending.length} trailers with actually available pending parts:`, trailersWithRealPending);
-    res.json(trailersWithRealPending);
+    console.log(`[GET] /api/receive/trailers/with-pending - Found ${trailersWithPending.length} trailers with pending parts (simple logic)`);
+    res.json(trailersWithPending);
   } catch (error) {
     console.error('[ERROR] GET /api/receive/trailers/with-pending:', error);
     res.status(500).json({ error: 'Failed to fetch trailers with pending parts from database' });
