@@ -698,8 +698,9 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
         if (qtyToTakeFromLot > 0) {
           // SOLO cambiar estatus a USED si se agota el lote, si no, NO TOCAR NADA MÁS (NO modificar qty, invoice, etc.)
           if (qtyToTakeFromLot >= availableInLot) {
+            // Cambiar estatus a USED y qty_remaining a 0
             await connection.execute(
-              'UPDATE receives SET estatus = ? WHERE id = ?',
+              'UPDATE receives SET estatus = ?, qty_remaining = 0 WHERE id = ?',
               ['USED', lot.id]
             );
             // Registrar en auditoría el cambio de estado
