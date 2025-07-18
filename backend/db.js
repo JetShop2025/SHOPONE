@@ -1,3 +1,15 @@
+// Limpieza automática de receives para evitar alertas fantasma
+async function cleanReceivesAlerts() {
+  try {
+    // 1. Si hay USED con qty_remaining > 0, poner qty_remaining = 0
+    await connection.execute("UPDATE receives SET qty_remaining = 0 WHERE estatus = 'USED' AND qty_remaining > 0");
+    // 2. Si hay PENDING con qty_remaining = 0, poner estatus = 'USED'
+    await connection.execute("UPDATE receives SET estatus = 'USED' WHERE estatus = 'PENDING' AND qty_remaining = 0");
+    console.log('[DB] Limpieza de receives para alertas fantasma ejecutada');
+  } catch (err) {
+    console.error('[DB] Error en limpieza de receives:', err.message);
+  }
+}
 // Load environment variables
 require('dotenv').config();
 
@@ -671,9 +683,9 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
         invoicesUsed: [],
         pendingPartsMarkedAsUsed: []
       };
-      
+
       console.log(`[DB] FIFO: Processing ${qtyNeeded} units of ${part.sku}`);
-        // PASO 1: Obtener todos los lotes PENDING disponibles para este SKU (FIFO: más antiguos primero)
+      // PASO 1: Obtener todos los lotes PENDING disponibles para este SKU (FIFO: más antiguos primero)
       const [availableLots] = await connection.execute(`
         SELECT r.*, 
                COALESCE(r.qty, 0) as available_qty,
@@ -687,9 +699,9 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
           AND COALESCE(r.qty, 0) > 0
         ORDER BY r.fecha ASC, r.id ASC
       `, [part.sku]);
-      
+
       console.log(`[DB] FIFO: Found ${availableLots.length} available PENDING lots for SKU ${part.sku}`);
-        // PASO 2: Deducir de lotes PENDING usando FIFO (más antiguos primero)
+      // PASO 2: Deducir de lotes PENDING usando FIFO (más antiguos primero)
       for (const lot of availableLots) {
         if (qtyNeeded <= 0) break;
 
@@ -725,6 +737,21 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
               invoice: lot.invoice,
               destinoTrailer: lot.destino_trailer
             });
+
+            // NUEVO: Si la parte estaba destinada a un trailer, y ya no quedan partes pendientes para ese trailer, limpiar alerta/campana
+            if (lot.destino_trailer) {
+              // Verificar si quedan partes PENDING para ese trailer
+              const [pendingForTrailer] = await connection.execute(
+                'SELECT COUNT(*) as count FROM receives WHERE destino_trailer = ? AND estatus = "PENDING" AND qty_remaining > 0',
+                [lot.destino_trailer]
+              );
+              if (pendingForTrailer[0].count === 0) {
+                // Limpiar alerta/campana para ese trailer (si tienes una tabla/campo de alertas, aquí deberías actualizarla)
+                // Si la alerta depende solo de los receives, esto es suficiente. Si tienes una tabla de alertas, agrega aquí el UPDATE necesario.
+                console.log(`[DB] Campana/alerta eliminada para trailer ${lot.destino_trailer} (ya no tiene partes pendientes)`);
+                // Si tienes lógica extra para limpiar alertas, agrégala aquí.
+              }
+            }
           }
           // Registrar información del invoice usado (solo para trazabilidad, no modifica receives)
           partResult.invoicesUsed.push({
@@ -742,6 +769,8 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
           console.log(`[DB] FIFO: Took ${qtyToTakeFromLot} of ${part.sku} from lot ${lot.id} (invoice: ${lot.invoice}, status: ${qtyToTakeFromLot >= availableInLot ? 'USED' : 'PENDING'})`);
         }
       }
+      // Limpieza de alertas fantasma después de cada deducción
+      await cleanReceivesAlerts();
       // PASO 3: Siempre deducir del inventario master la cantidad total deducida (de PENDING o de master)
       if (partResult.totalQtyDeducted > 0) {
         const [inventoryRows] = await connection.execute(
