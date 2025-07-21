@@ -649,17 +649,14 @@ router.post('/', async (req, res) => {
     let extra = 0;
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     
-    // SIEMPRE aplicar 5% automático
-    extra += subtotal * 0.05;
-    
-    extras.forEach(opt => {
-      if (opt === '15shop') {
-        extra += subtotal * 0.15;
-      }
-      if (opt === '15weld') {
-        extra += subtotal * 0.15;
-      }
-    });
+    // SIEMPRE aplicar 5% SHOPMISC
+    const shopMisc = subtotal * 0.05;
+    extra += shopMisc;
+
+    // Calcular WELDING SUPPLIES (editable %)
+    const weldPercent = typeof fields.weldPercent !== 'undefined' ? Number(fields.weldPercent) : 15;
+    const weldSupplies = subtotal * (weldPercent / 100);
+    extra += weldSupplies;
 
     // Calcula el total final
     let totalLabAndPartsFinal;
@@ -673,7 +670,7 @@ router.post('/', async (req, res) => {
       totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       // Usa el cálculo automático
-      totalLabAndPartsFinal = subtotal + extra;
+      totalLabAndPartsFinal = subtotal + shopMisc + weldSupplies;
     }    console.log(`💾 [${requestId}] Preparando inserción en DB...`);
     console.log(`📊 [${requestId}] Memoria antes de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
     
@@ -896,17 +893,14 @@ router.put('/:id', async (req, res) => {
     let extra = 0;
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
     
-    // SIEMPRE aplicar 5% automático
-    extra += subtotal * 0.05;
-    
-    extras.forEach(opt => {
-      if (opt === '15shop') {
-        extra += subtotal * 0.15;
-      } 
-      if (opt === '15weld') {
-        extra += subtotal * 0.15;
-      }
-    });
+    // SIEMPRE aplicar 5% SHOPMISC
+    const shopMisc = subtotal * 0.05;
+    extra += shopMisc;
+
+    // Calcular WELDING SUPPLIES (editable %)
+    const weldPercent = typeof fields.weldPercent !== 'undefined' ? Number(fields.weldPercent) : 15;
+    const weldSupplies = subtotal * (weldPercent / 100);
+    extra += weldSupplies;
     
     // Calcula el total final
     let totalLabAndPartsFinal;
@@ -920,7 +914,7 @@ router.put('/:id', async (req, res) => {
       totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       // Usa el cálculo automático
-      totalLabAndPartsFinal = subtotal + extra;
+      totalLabAndPartsFinal = subtotal + shopMisc + weldSupplies;
     }    console.log(`💾 [${requestId}] Preparando actualización en DB...`);
     console.log(`📊 [${requestId}] Memoria antes de actualización: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 

@@ -24,8 +24,6 @@ interface WorkOrderFormProps {
   billToCoOptions: string[];
   getTrailerOptions: (billToCo: string) => string[];
   inventory: any[];
-  extraOptions: string[];
-  setExtraOptions: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   idClassicError?: string;
@@ -57,8 +55,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   billToCoOptions, 
   getTrailerOptions, 
   inventory, 
-  extraOptions, 
-  setExtraOptions, 
   loading, 
   setLoading,
   idClassicError,
@@ -115,20 +111,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       sampleFields: inventory?.[0] ? Object.keys(inventory[0]) : []
     });
   }, [inventory]);
-  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o extras
+  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)
   React.useEffect(() => {
-    // Si no hay ID, es una nueva orden, entonces auto-calcular
     if (!workOrder.id) {
       const calculatedTotal = calculateTotalLabAndParts();
       const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
-      
-      // Solo actualizar si el valor calculado es diferente al actual
       if (workOrder.totalLabAndParts !== formattedTotal) {
         onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
       }
     }
-  }, [workOrder.parts, workOrder.mechanics, extraOptions, workOrder.id]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -270,23 +263,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }, 0);
   };
 
-  // Calcular total LAB & PARTS automáticamente
+  // Calcular total LAB & PARTS + Miscellaneous
   const calculateTotalLabAndParts = () => {
     const totalHours = calculateTotalHours();
     const laborTotal = totalHours * 60; // $60 por hora
     const partsTotal = calculatePartsTotal();
     const subtotal = laborTotal + partsTotal;
-    
-    // Siempre agregar 5% automático
-    let extraTotal = subtotal * 0.05;
-    
-    // Agregar extras seleccionados
-    extraOptions.forEach(option => {
-      if (option === '15shop') extraTotal += subtotal * 0.15;
-      if (option === '15weld') extraTotal += subtotal * 0.15;
-    });
-    
-    return subtotal + extraTotal;
+    // Miscellaneous: porcentaje extra definido por el usuario
+    const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
+    const miscAmount = subtotal * (miscPercent / 100);
+    return subtotal + miscAmount;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -309,10 +295,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }      const dataToSend = {
         ...workOrder,
         parts: cleanParts,
-        extraOptions, // Sin agregar el 5% manualmente, el backend lo hará automáticamente
-        totalHrs: calculateTotalHours(), // Asegurar que se envíen las horas actuales
+        totalHrs: calculateTotalHours(),
         usuario: localStorage.getItem('username') || '',
-        forceUpdate: true // Flag para forzar actualización del PDF en edición
+        forceUpdate: true
       };
 
       await onSubmit(dataToSend);
@@ -343,17 +328,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const newMechanics = (workOrder.mechanics || []).filter((_: any, i: number) => i !== index);
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
-  const handleExtraChange = (optionValue: string, checked: boolean) => {
-    if (checked) {
-      setExtraOptions([...extraOptions, optionValue]);
-    } else {
-      setExtraOptions(extraOptions.filter(opt => opt !== optionValue));
-    }
-  };
+  // Eliminar lógica de extras anteriores
 
 
-  // Solo muestra la campana si el trailer está en trailersWithPendingParts
+  // Solo muestra la campana si el trailer tiene partes pendientes NO usadas
   const showBell = (trailerNumber: string) => {
+    // Si hay pendingParts, filtra por trailer y partes no usadas
+    if (Array.isArray(pendingParts) && pendingParts.length > 0) {
+      // Busca si hay alguna parte pendiente para este trailer que no esté usada
+      return pendingParts.some(
+        (part: any) =>
+          (part.trailer === trailerNumber || part.trailerNumber === trailerNumber) &&
+          (!part.status || part.status !== 'USED') &&
+          (Number(part.qty) > 0 || Number(part.qty_remaining) > 0)
+      );
+    }
+    // Fallback: lógica anterior
     return Array.isArray(trailersWithPendingParts) && trailersWithPendingParts.includes(trailerNumber);
   };
 
@@ -847,27 +837,32 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </div>
         
         <div style={{ marginBottom: 16 }}>
-          <strong>Extras</strong>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 8 }}>
-            <div style={{ color: '#666', fontStyle: 'italic', marginBottom: 8 }}>
-              * Se aplica automáticamente un 5% extra a todas las órdenes
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <strong>Miscellaneous</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
+            <label style={{ fontWeight: 500, color: '#1976d2', marginRight: 8 }}>
+              % Miscellaneous:
               <input
-                type="checkbox"
-                checked={extraOptions.includes('15shop')}
-                onChange={e => handleExtraChange('15shop', e.target.checked)}
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                name="miscellaneous"
+                value={workOrder.miscellaneous || ''}
+                onChange={onChange}
+                style={{ width: 80, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
+                placeholder="%"
               />
-              Shop 15%
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                type="checkbox"
-                checked={extraOptions.includes('15weld')}
-                onChange={e => handleExtraChange('15weld', e.target.checked)}
-              />
-              Weld 15%
-            </label>
+            <span style={{ color: '#1976d2', fontWeight: 700 }}>
+              Cargo extra: ${(() => {
+                const totalHours = calculateTotalHours();
+                const laborTotal = totalHours * 60;
+                const partsTotal = calculatePartsTotal();
+                const subtotal = laborTotal + partsTotal;
+                const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
+                return (subtotal * (miscPercent / 100)).toFixed(2);
+              })()}
+            </span>
           </div>
         </div>
 
@@ -914,7 +909,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </button>
           </div>
           <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
-            Cálculo sugerido: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + 5% automático + Extras = ${calculateTotalLabAndParts().toFixed(2)}
+            Cálculo sugerido: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + Miscellaneous (${(() => {
+              const totalHours = calculateTotalHours();
+              const laborTotal = totalHours * 60;
+              const partsTotal = calculatePartsTotal();
+              const subtotal = laborTotal + partsTotal;
+              const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
+              return (subtotal * (miscPercent / 100)).toFixed(2);
+            })()}) = ${calculateTotalLabAndParts().toFixed(2)}
           </div>
         </div>
 
