@@ -270,11 +270,34 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   currentY += 6;
   
   // EXTRAS - Integrados con los totales
-  // 5% automático (siempre aplicado)
-  const automaticExtra = subtotal * 0.05;
-  pdf.setTextColor(0, 100, 200); // Color azul para extras
-  pdf.text('Extra 5%:', totalsStartX, currentY);
-  pdf.text(`$${automaticExtra.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+  // MISCELLANEOUS - Usar porcentaje y leyenda personalizada
+  let miscPercent = 0;
+  let miscLabel = '';
+  let miscAmount = 0;
+  // Si hay extraOptions, buscar el porcentaje y mostrarlo como Miscellaneous
+  if (extraOptions && extraOptions.length > 0) {
+    if (extraOptions.includes('15shop')) {
+      miscPercent = 15;
+      miscLabel = 'Miscellaneous 15%:';
+      miscAmount = subtotal * 0.15;
+    } else if (extraOptions.includes('15weld')) {
+      miscPercent = 15;
+      miscLabel = 'Miscellaneous 15%:';
+      miscAmount = subtotal * 0.15;
+    } else if (extraOptions.includes('5')) {
+      miscPercent = 5;
+      miscLabel = 'Miscellaneous 5%:';
+      miscAmount = subtotal * 0.05;
+    }
+  } else {
+    // Si no hay extraOptions, usar el 5% automático como Miscellaneous
+    miscPercent = 5;
+    miscLabel = 'Miscellaneous 5%:';
+    miscAmount = subtotal * 0.05;
+  }
+  pdf.setTextColor(0, 100, 200); // Color azul para Miscellaneous
+  pdf.text(miscLabel, totalsStartX, currentY);
+  pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
   
   // Extras seleccionados
@@ -282,19 +305,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     let extraName = '';
     let extraCost = 0;
     
-    if (option === '15shop') {
-      extraName = 'Shop 15%:';
-      extraCost = subtotal * 0.15;
-    } else if (option === '15weld') {
-      extraName = 'Weld 15%:';
-      extraCost = subtotal * 0.15;
-    }
-    
-    if (extraName && extraCost > 0) {
-      pdf.text(extraName, totalsStartX, currentY);
-      pdf.text(`$${extraCost.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
-      currentY += 6;
-    }
+    // Ya se muestra como Miscellaneous arriba, no repetir aquí
+    // Si tienes otros extras diferentes, agrégalos aquí si es necesario
   });
   
   // Línea separadora

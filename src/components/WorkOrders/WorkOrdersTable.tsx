@@ -464,19 +464,20 @@ const WorkOrdersTable: React.FC = () => {
       axios.get(`${API_URL}/receive?estatus=PENDING`)
         .then(res => {
           // Cast explícito para TypeScript
-          const receives = res.data as { destino_trailer?: string }[];
+          // Elimina el tipado estricto para acceder a estatus y qty
+          const receives = res.data as any[];
           console.log('📦 Receives PENDING cargados:', receives.length, 'registros');
           console.log('📦 Primeros 3 receives:', receives.slice(0, 3));
-          
+          // Filtrar solo los que tienen destino_trailer, estatus !== 'USED' y qty > 0
           const trailers = Array.from(
             new Set(
               receives
+                .filter(r => r.destino_trailer && r.estatus !== 'USED' && Number(r.qty) > 0)
                 .map(r => r.destino_trailer)
-                .filter((t): t is string => !!t)
             )
           );
-          console.log('🚛 Trailers con partes pendientes encontrados:', trailers);
           setTrailersWithPendingParts(trailers);
+          console.log('🚛 Trailers con partes pendientes encontrados:', trailers);
         })
         .catch(err => {
           console.error('❌ Error cargando receives PENDING:', err);
