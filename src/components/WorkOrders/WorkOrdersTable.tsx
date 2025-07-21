@@ -291,11 +291,18 @@ const WorkOrdersTable: React.FC = () => {
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
           // Usar el valor manual del total si existe, respetando edición
-          totalCost: (editWorkOrder.totalLabAndParts !== undefined && editWorkOrder.totalLabAndParts !== null && editWorkOrder.totalLabAndParts !== '')
-            ? (isNaN(Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, '')))
-                ? 0
-                : Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, '')))
-            : (isNaN(Number(workOrderData.totalLabAndParts)) ? 0 : Number(workOrderData.totalLabAndParts)),
+          totalCost: (() => {
+            // Always parse and sanitize the total value, fallback to 0 if invalid
+            let manualTotal = editWorkOrder.totalLabAndParts;
+            let autoTotal = workOrderData.totalLabAndParts;
+            let valueToParse = (manualTotal !== undefined && manualTotal !== null && manualTotal !== '') ? manualTotal : autoTotal;
+            // Remove all non-numeric except dot
+            let parsed = Number(String(valueToParse).replace(/[^0-9.]/g, ''));
+            if (isNaN(parsed) || valueToParse === '' || valueToParse === null || valueToParse === undefined) {
+              return 0;
+            }
+            return parsed;
+          })(),
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
@@ -320,7 +327,18 @@ const WorkOrdersTable: React.FC = () => {
       setEditWorkOrder(null);
       setEditId('');
       setEditError('');
-      alert('Work Order updated successfully and PDF regenerated.');
+      // Always show a valid total value in the alert
+      let totalValue = (() => {
+        let manualTotal = editWorkOrder?.totalLabAndParts;
+        // Use the last known value from editWorkOrder or fallback to 0
+        let valueToParse = (manualTotal !== undefined && manualTotal !== null && manualTotal !== '') ? manualTotal : 0;
+        let parsed = Number(String(valueToParse).replace(/[^0-9.]/g, ''));
+        if (isNaN(parsed) || valueToParse === '' || valueToParse === null || valueToParse === undefined) {
+          return '$0.00';
+        }
+        return `$${parsed.toFixed(2)}`;
+      })();
+      alert(`Work Order updated successfully and PDF regenerated. Total: ${totalValue}`);
     } catch (err) {
       alert('Error updating Work Order.');
     } finally {
