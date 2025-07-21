@@ -292,8 +292,10 @@ const WorkOrdersTable: React.FC = () => {
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
           // Usar el valor manual del total si existe, respetando edición
           totalCost: (editWorkOrder.totalLabAndParts !== undefined && editWorkOrder.totalLabAndParts !== null && editWorkOrder.totalLabAndParts !== '')
-            ? Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
-            : Number(workOrderData.totalLabAndParts) || 0,
+            ? (isNaN(Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, '')))
+                ? 0
+                : Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, '')))
+            : (isNaN(Number(workOrderData.totalLabAndParts)) ? 0 : Number(workOrderData.totalLabAndParts)),
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
@@ -318,9 +320,9 @@ const WorkOrdersTable: React.FC = () => {
       setEditWorkOrder(null);
       setEditId('');
       setEditError('');
-      alert('Order updated successfully and PDF regenerated.');
+      alert('Work Order updated successfully and PDF regenerated.');
     } catch (err) {
-      alert('Error updating order.');
+      alert('Error updating Work Order.');
     } finally {
       setLoading(false);
     }
