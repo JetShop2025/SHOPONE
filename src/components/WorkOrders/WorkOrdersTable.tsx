@@ -664,8 +664,7 @@ const WorkOrdersTable: React.FC = () => {
           const statusValue = name === 'status' ? value : updatedWorkOrder.status;
           validateIdClassic(idClassicValue || '', statusValue);
         }
-        
-        if (name === 'trailer') fetchPendingParts(value);
+        // NO llamar fetchPendingParts aquí, lo maneja el useEffect
       } else if (showEditForm && editWorkOrder) {
         const updatedEditWorkOrder = { ...editWorkOrder, [name]: value };
         setEditWorkOrder(updatedEditWorkOrder);
@@ -676,8 +675,7 @@ const WorkOrdersTable: React.FC = () => {
           const statusValue = name === 'status' ? value : updatedEditWorkOrder.status;
           validateIdClassic(idClassicValue || '', statusValue);
         }
-        
-        if (name === 'trailer') fetchPendingParts(value);
+        // NO llamar fetchPendingParts aquí, lo maneja el useEffect
       }
     }
     // Si es un objeto (por ejemplo, desde useEffect o cambios automáticos)
