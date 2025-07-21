@@ -654,24 +654,25 @@ const WorkOrdersTable: React.FC = () => {
     if (e && e.target) {
       const { name, value } = e.target;
       if (showForm) {
-        const updatedWorkOrder = { ...newWorkOrder, [name]: value };
-        setNewWorkOrder(updatedWorkOrder);
-        // Validar ID Classic cuando cambia el ID Classic o el status
-        if (name === 'idClassic' || name === 'status') {
-          const idClassicValue = name === 'idClassic' ? value : updatedWorkOrder.idClassic;
-          const statusValue = name === 'status' ? value : updatedWorkOrder.status;
-          validateIdClassic(idClassicValue || '', statusValue);
-        }
+        setNewWorkOrder(prev => {
+          const updated = { ...prev, [name]: value };
+          if (name === 'idClassic' || name === 'status') {
+            const idClassicValue = name === 'idClassic' ? value : updated.idClassic;
+            const statusValue = name === 'status' ? value : updated.status;
+            validateIdClassic(idClassicValue || '', statusValue);
+          }
+          return updated;
+        });
       } else if (showEditForm && editWorkOrder) {
-        // Actualizar el estado correctamente para el modal de edición
-        const updatedEditWorkOrder = { ...editWorkOrder, [name]: value };
-        setEditWorkOrder(updatedEditWorkOrder);
-        // Validar ID Classic cuando cambia el ID Classic o el status
-        if (name === 'idClassic' || name === 'status') {
-          const idClassicValue = name === 'idClassic' ? value : updatedEditWorkOrder.idClassic;
-          const statusValue = name === 'status' ? value : updatedEditWorkOrder.status;
-          validateIdClassic(idClassicValue || '', statusValue);
-        }
+        setEditWorkOrder((prev: any) => {
+          const updated = { ...prev, [name]: value };
+          if (name === 'idClassic' || name === 'status') {
+            const idClassicValue = name === 'idClassic' ? value : updated.idClassic;
+            const statusValue = name === 'status' ? value : updated.status;
+            validateIdClassic(idClassicValue || '', statusValue);
+          }
+          return updated;
+        });
       }
     }
     // Si es un objeto (por ejemplo, desde useEffect o cambios automáticos)
