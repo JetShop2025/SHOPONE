@@ -108,6 +108,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)
   React.useEffect(() => {
+    // Solo auto-calcular para nuevas órdenes, nunca sobrescribir en edición
     if (!workOrder.id) {
       const calculatedTotal = calculateTotalLabAndParts();
       const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
@@ -115,6 +116,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
       }
     }
+    // Si es edición, nunca auto-calcular ni sobrescribir el total
   }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
   
   // Buscar parte en inventario por SKU

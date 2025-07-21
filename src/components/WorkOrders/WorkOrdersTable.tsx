@@ -290,7 +290,10 @@ const WorkOrdersTable: React.FC = () => {
           })),
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
-          totalCost: Number(workOrderData.totalLabAndParts) || 0,
+          // Usar el valor manual del total si existe, respetando edición
+          totalCost: (editWorkOrder.totalLabAndParts !== undefined && editWorkOrder.totalLabAndParts !== null && editWorkOrder.totalLabAndParts !== '')
+            ? Number(String(editWorkOrder.totalLabAndParts).replace(/[^0-9.]/g, ''))
+            : Number(workOrderData.totalLabAndParts) || 0,
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
