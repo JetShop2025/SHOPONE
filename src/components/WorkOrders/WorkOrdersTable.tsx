@@ -278,7 +278,7 @@ const WorkOrdersTable: React.FC = () => {
       setFetchingData(true);
       const targetPage = pageToLoad || currentPageData;      // Si hay búsqueda específica por ID Classic, usar búsqueda directa (OPTIMIZADA)
       if (searchIdClassic.trim()) {
-        console.log(`🔍 Buscando ID Classic: ${searchIdClassic}`);
+        // Only log if debugging
         const res = await axios.get(`${API_URL}/work-orders`, {
           params: { searchIdClassic: searchIdClassic.trim() },
           timeout: 30000 // AUMENTADO timeout para servidor gratuito
@@ -295,7 +295,7 @@ const WorkOrdersTable: React.FC = () => {
         setRetryCount(0);
         return;
       }      // Carga paginada normal (OPTIMIZADA para plan gratuito - 100 registros)
-      console.log(`📄 Cargando página ${targetPage} con ${pageSize} registros por página`);
+      // Only log if debugging
       const res = await axios.get<WorkOrdersApiResponse | any[]>(`${API_URL}/work-orders`, {
         params: {
           page: targetPage,
@@ -309,7 +309,7 @@ const WorkOrdersTable: React.FC = () => {
       if (res.data && typeof res.data === 'object' && 'pagination' in res.data) {
         const paginatedResponse = res.data as PaginatedWorkOrdersResponse;
         const { data, pagination } = paginatedResponse;
-        console.log(`📊 Página ${pagination.currentPage}/${pagination.totalPages} - ${pagination.totalRecords} total registros`);
+        // Only log if debugging
         
         setWorkOrders(data || []);
         setCurrentPageData(pagination.currentPage);
@@ -325,36 +325,24 @@ const WorkOrdersTable: React.FC = () => {
         setTotalRecords(fetchedOrders.length);
         setHasNextPage(false);
         setHasPreviousPage(false);
-        console.log('✅ Modo tradicional:', fetchedOrders.length, 'órdenes cargadas');
+        // Only log if debugging
       }
       
       setServerStatus('online');
       setRetryCount(0);
-      console.log('✅ Órdenes cargadas exitosamente');
+      // Only log if debugging
     } catch (err: any) {
       console.error('Error cargando órdenes:', err);
         // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
       if ((err?.response?.status === 502 || err?.response?.status === 503 || err.code === 'ECONNABORTED') && retryCount < maxRetries) {
         if (!isRetry) {
           setServerStatus('waking');
-          console.log(`🔄 Servidor dormido, intento ${retryCount + 1}/${maxRetries} de reactivación...`);
-          
-          // Usar el servicio keepAlive para intentar despertar el servidor
+          // Only log if debugging
           try {
-            console.log('🚀 Enviando ping de reactivación...');
             const pingSuccess = await keepAliveService.manualPing();
-            if (pingSuccess) {
-              console.log('✅ Ping exitoso, esperando que el servidor termine de despertar...');
-            } else {
-              console.log('⚠️ Ping falló, el servidor puede estar iniciando...');
-            }
-          } catch (keepAliveError) {
-            console.log('⚠️ Error en keep-alive ping, continuando con reintento...', keepAliveError);
-          }
+          } catch (keepAliveError) {}
             setRetryCount(prev => prev + 1);
-          // AUMENTADO tiempo para despertar servidor gratuito
-          const retryDelay = Math.min(30000 * Math.pow(2, retryCount), 120000); // Más tiempo para despertar
-          console.log(`⏰ Reintentando en ${retryDelay / 1000} segundos...`);
+          const retryDelay = Math.min(30000 * Math.pow(2, retryCount), 120000);
           setTimeout(() => {
             fetchWorkOrders(true, pageToLoad || currentPageData);
           }, retryDelay);
@@ -362,9 +350,7 @@ const WorkOrdersTable: React.FC = () => {
       } else {
         setServerStatus('offline');
         if (retryCount >= maxRetries) {
-          console.error('❌ Max reintentos alcanzados. El servidor no responde después de múltiples intentos.');
-          console.log('💡 Sugerencia: Espera 1-2 minutos y recarga la página manualmente.');
-          console.log('💡 NOTA: Servidor gratuito de Render - actualiza al plan de $29 para mejor rendimiento.');
+          // Only log if debugging
         }
       }
     } finally {
@@ -402,7 +388,7 @@ const WorkOrdersTable: React.FC = () => {
     
     try {
       setIsSearching(true);
-      console.log(`🔍 Búsqueda inteligente por ID Classic: ${searchTerm}`);
+      // Only log if debugging
       
       const res = await axios.get(`${API_URL}/work-orders`, {
         params: { searchIdClassic: searchTerm.trim() },
@@ -411,10 +397,10 @@ const WorkOrdersTable: React.FC = () => {
       
       const searchResults = Array.isArray(res.data) ? res.data : [];
       setWorkOrders(searchResults);
-      console.log(`✅ Búsqueda completada: ${searchResults.length} resultados encontrados`);
+      // Only log if debugging
       
       if (searchResults.length === 0) {
-        console.log('⚠️ No se encontraron resultados para:', searchTerm);
+        // Only log if debugging
       }
       
     } catch (error) {
@@ -429,16 +415,11 @@ const WorkOrdersTable: React.FC = () => {
   // Función para cargar inventario con reintentos inteligentes
   const fetchInventory = useCallback(async () => {
     try {
-      console.log('🔄 Cargando inventario...');
+      // Only log if debugging
       const res = await axios.get(`${API_URL}/inventory`, { timeout: 15000 });
       const inventoryData = Array.isArray(res.data) ? res.data : [];
       setInventory(inventoryData);
-      console.log('✅ Inventario cargado:', inventoryData.length, 'items');
-      console.log('📋 Primeros 3 items del inventario:', inventoryData.slice(0, 3));
-      console.log('📋 Campos disponibles en inventory[0]:', inventoryData[0] ? Object.keys(inventoryData[0]) : 'N/A');
-      // Verificar que tenemos campos de precio
-      const withPrice = inventoryData.filter(item => item.precio || item.cost || item.price).length;
-      console.log(`💰 Items con precio: ${withPrice}/${inventoryData.length}`);
+      // Only log if debugging
     } catch (err) {
       console.error('❌ Error cargando inventario:', err);
       setInventory([]);

@@ -103,14 +103,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   };
     // Debug: verificar inventario
-  React.useEffect(() => {
-    console.log('📋 WorkOrderForm - Inventario recibido:', {
-      inventoryLength: inventory?.length || 0,
-      firstItems: inventory?.slice(0, 2) || [],
-      isArray: Array.isArray(inventory),
-      sampleFields: inventory?.[0] ? Object.keys(inventory[0]) : []
-    });
-  }, [inventory]);
+  // Remove excessive inventory debug logging
+  React.useEffect(() => {}, [inventory]);
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)
   React.useEffect(() => {
@@ -126,107 +120,54 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
     if (!sku || !inventory || inventory.length === 0) {
-      console.log('❌ findPartBySku: SKU vacío o inventario no disponible');
       return null;
     }
-    
-    console.log('🔍 Buscando SKU:', sku, 'en inventario de', inventory.length, 'items');
-    
     // Buscar por SKU exacto (case insensitive)
     const exactMatch = inventory.find((item: any) => 
       String(item.sku).toLowerCase() === String(sku).toLowerCase()
     );
-    
-    if (exactMatch) {      console.log('✅ Parte encontrada por SKU exacto:', {
-        sku: exactMatch.sku,
-        name: exactMatch.part || exactMatch.description || exactMatch.name,
-        precio: exactMatch.precio, // Campo correcto de inventario
-        cost: exactMatch.cost || exactMatch.price || exactMatch.unitCost || exactMatch.unit_cost,
-        allFields: exactMatch
-      });
+    if (exactMatch) {
       return exactMatch;
     }
-    
     // Si no encuentra coincidencia exacta, buscar que contenga el SKU
     const partialMatch = inventory.find((item: any) => 
       String(item.sku).toLowerCase().includes(String(sku).toLowerCase())
     );
-    
-    if (partialMatch) {      console.log('⚠️ Parte encontrada por coincidencia parcial:', {
-        sku: partialMatch.sku,
-        name: partialMatch.part || partialMatch.description || partialMatch.name,
-        precio: partialMatch.precio, // Campo correcto de inventario
-        cost: partialMatch.cost || partialMatch.price || partialMatch.unitCost || partialMatch.unit_cost,
-        allFields: partialMatch
-      });
+    if (partialMatch) {
       return partialMatch;
     }
-    
-    console.log('❌ No se encontró parte para SKU:', sku);
     return null;
   };// Manejar cambios en las partes con auto-completado
   const handlePartChange = (index: number, field: string, value: string) => {
-    console.log('🔧 handlePartChange llamado:', { 
-      index, 
-      field, 
-      value, 
-      inventoryLength: inventory.length,
-      sampleInventoryItem: inventory[0] // Para debug
-    });
-    
+    // Remove excessive logging
     const newParts = [...(workOrder.parts || [])];
     newParts[index] = { ...newParts[index], [field]: value };
 
     // Auto-completado cuando se cambia el SKU
     if (field === 'sku' && value && value.trim() !== '') {
       const foundPart = findPartBySku(value);
-      console.log('🔍 Buscando parte con SKU:', value);
-      console.log('📦 Parte encontrada:', foundPart);
-      
       if (foundPart) {
         // Autocompletar nombre de la parte
-        newParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';        // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
+        newParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';
+        // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
         let cost = 0;
-        console.log('🔍 Campos de precio disponibles:', {
-          precio: foundPart.precio,
-          cost: foundPart.cost,
-          price: foundPart.price,
-          allKeys: Object.keys(foundPart)
-        });
-        
         if (foundPart.precio) {
           cost = parseFloat(String(foundPart.precio)) || 0;
-          console.log('💰 Usando campo "precio":', foundPart.precio, '→', cost);
         } else if (foundPart.cost) {
           cost = foundPart.cost;
-          console.log('💰 Usando campo "cost":', foundPart.cost, '→', cost);
         } else if (foundPart.price) {
           cost = foundPart.price;
-          console.log('💰 Usando campo "price":', foundPart.price, '→', cost);
         } else if (foundPart.unitCost) {
           cost = foundPart.unitCost;
-          console.log('💰 Usando campo "unitCost":', foundPart.unitCost, '→', cost);
         } else if (foundPart.unit_cost) {
           cost = foundPart.unit_cost;
-          console.log('💰 Usando campo "unit_cost":', foundPart.unit_cost, '→', cost);
-        } else {
-          console.log('❌ No se encontró ningún campo de precio válido');
-        }        // Formatear el costo correctamente
+        }
+        // Formatear el costo correctamente
         if (cost > 0) {
           newParts[index].cost = cost.toFixed(2);
         } else {
           newParts[index].cost = '0.00';
         }
-        
-        console.log('✅ Auto-completando parte:', {
-          sku: value,
-          part: newParts[index].part,
-          cost: newParts[index].cost,
-          originalCostField: cost,
-          foundPartKeys: Object.keys(foundPart)
-        });
-      } else {
-        console.log('❌ No se encontró parte para SKU:', value);
       }
     }
 
@@ -235,11 +176,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const qty = parseFloat(field === 'qty' ? value : newParts[index].qty) || 0;
       const unitCost = parseFloat(String(field === 'cost' ? value : newParts[index].cost).replace(/[^0-9.]/g, '')) || 0;
       newParts[index].totalCost = qty * unitCost;
-      console.log('💰 Calculando total parte:', { qty, unitCost, total: newParts[index].totalCost });
     }
 
     // Siempre actualizar el estado usando onChange
-    onChange({ target: { name: 'parts', value: newParts } } as any);    // Llamar a onPartChange si está disponible (para compatibilidad)
+    onChange({ target: { name: 'parts', value: newParts } } as any);
+    // Llamar a onPartChange si está disponible (para compatibilidad)
     if (onPartChange) {
       onPartChange(index, field, value);
     }
@@ -292,7 +233,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         window.alert('Hay partes con cantidad inválida.');
         setLoading(false);
         return;
-      }      const dataToSend = {
+      }
+
+      // Validate ID Classic if status is FINISHED
+      if (workOrder.status === 'FINISHED' && (!workOrder.idClassic || workOrder.idClassic.trim() === '')) {
+        window.alert('ID Classic es requerido para órdenes con status FINISHED.');
+        setLoading(false);
+        return;
+      }
+
+      const dataToSend = {
         ...workOrder,
         parts: cleanParts,
         totalHrs: calculateTotalHours(),
