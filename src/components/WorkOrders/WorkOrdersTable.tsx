@@ -653,11 +653,9 @@ const WorkOrdersTable: React.FC = () => {
     // Si es un evento (input, select, textarea)
     if (e && e.target) {
       const { name, value } = e.target;
-      
       if (showForm) {
         const updatedWorkOrder = { ...newWorkOrder, [name]: value };
-        setNewWorkOrder(updatedWorkOrder);
-        
+        setNewWorkOrder({ ...updatedWorkOrder });
         // Validar ID Classic cuando cambia el ID Classic o el status
         if (name === 'idClassic' || name === 'status') {
           const idClassicValue = name === 'idClassic' ? value : updatedWorkOrder.idClassic;
@@ -667,8 +665,7 @@ const WorkOrdersTable: React.FC = () => {
         // NO llamar fetchPendingParts aquí, lo maneja el useEffect
       } else if (showEditForm && editWorkOrder) {
         const updatedEditWorkOrder = { ...editWorkOrder, [name]: value };
-        setEditWorkOrder(updatedEditWorkOrder);
-        
+        setEditWorkOrder({ ...updatedEditWorkOrder });
         // Validar ID Classic cuando cambia el ID Classic o el status
         if (name === 'idClassic' || name === 'status') {
           const idClassicValue = name === 'idClassic' ? value : updatedEditWorkOrder.idClassic;
