@@ -2298,8 +2298,7 @@ const WorkOrdersTable: React.FC = () => {
                   addPendingPart(part, qty || part.qty || 1);
                 }}                onAddEmptyPart={addEmptyPart}
                 onDeletePart={deletePart}
-                extraOptions={extraOptions}
-                setExtraOptions={setExtraOptions}
+                // extraOptions and setExtraOptions removed
                 loading={loading}
                 setLoading={setLoading}
                 idClassicError={idClassicError}
@@ -2707,8 +2706,7 @@ const WorkOrdersTable: React.FC = () => {
                       pendingParts={pendingParts}
                       pendingPartsQty={pendingPartsQty}
                       setPendingPartsQty={setPendingPartsQty}
-                      extraOptions={extraOptions}
-                      setExtraOptions={setExtraOptions}
+                      // extraOptions and setExtraOptions removed
                       loading={loading}
                       setLoading={setLoading}
                       idClassicError={idClassicError}
