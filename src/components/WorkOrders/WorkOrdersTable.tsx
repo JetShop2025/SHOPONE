@@ -655,24 +655,23 @@ const WorkOrdersTable: React.FC = () => {
       const { name, value } = e.target;
       if (showForm) {
         const updatedWorkOrder = { ...newWorkOrder, [name]: value };
-        setNewWorkOrder({ ...updatedWorkOrder });
+        setNewWorkOrder(updatedWorkOrder);
         // Validar ID Classic cuando cambia el ID Classic o el status
         if (name === 'idClassic' || name === 'status') {
           const idClassicValue = name === 'idClassic' ? value : updatedWorkOrder.idClassic;
           const statusValue = name === 'status' ? value : updatedWorkOrder.status;
           validateIdClassic(idClassicValue || '', statusValue);
         }
-        // NO llamar fetchPendingParts aquí, lo maneja el useEffect
       } else if (showEditForm && editWorkOrder) {
+        // Actualizar el estado correctamente para el modal de edición
         const updatedEditWorkOrder = { ...editWorkOrder, [name]: value };
-        setEditWorkOrder({ ...updatedEditWorkOrder });
+        setEditWorkOrder(updatedEditWorkOrder);
         // Validar ID Classic cuando cambia el ID Classic o el status
         if (name === 'idClassic' || name === 'status') {
           const idClassicValue = name === 'idClassic' ? value : updatedEditWorkOrder.idClassic;
           const statusValue = name === 'status' ? value : updatedEditWorkOrder.status;
           validateIdClassic(idClassicValue || '', statusValue);
         }
-        // NO llamar fetchPendingParts aquí, lo maneja el useEffect
       }
     }
     // Si es un objeto (por ejemplo, desde useEffect o cambios automáticos)
@@ -683,7 +682,7 @@ const WorkOrdersTable: React.FC = () => {
         setEditWorkOrder(e);
       }
     }
-  };// Cambios en partes con autocompletado
+  };
   const handlePartChange = (index: number, field: string, value: string) => {
     // Función para buscar parte en inventario por SKU con logging mejorado
     const findPartBySku = (sku: string) => {

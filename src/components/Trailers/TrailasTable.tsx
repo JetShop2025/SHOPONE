@@ -212,54 +212,87 @@ const TrailasTable: React.FC = () => {
 
     try {
       console.log('🔄 Rentando trailer:', selectedTraila.id, rentalForm);
-      
       const rentalData = {
         ...rentalForm,
-        usuario: getCurrentUser()
+        usuario: getCurrentUser(),
+        trailer_id: selectedTraila.id,
+        trailer_nombre: selectedTraila.nombre
       };
-      
+
+      // Rent trailer and save rental history
       const response = await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalData);
       console.log('✅ Trailer rentado exitosamente:', response.data);
-      
+
+      // Registrar historial de renta
+      try {
+        await axios.post(`${API_URL}/trailas/${selectedTraila.nombre}/rental-history`, {
+          ...rentalData,
+          fecha_renta: rentalForm.fecha_renta,
+          fecha_devolucion: rentalForm.fecha_devolucion,
+          observaciones: rentalForm.observaciones
+        });
+        console.log('📝 Historial de renta registrado');
+      } catch (historyError) {
+        console.error('❌ Error registrando historial de renta:', historyError);
+      }
+
       setShowRentalModal(false);
       setRentalForm({ cliente: '', fecha_renta: '', fecha_devolucion: '', observaciones: '' });
-      
+
       // Refresh data
       console.log('🔄 Refrescando datos de trailers...');
       const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
       console.log('📦 Datos refrescados:', trailersResponse.data);
       setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
-      
+
       alert('Trailer rentado exitosamente');
     } catch (error: any) {
       console.error('❌ Error renting trailer:', error);
       alert(`Error al rentar el trailer: ${error.response?.data?.error || error.message}`);
     }
-  };  // Handle return
+  };
   const handleReturn = async (traila: Traila) => {
     if (window.confirm('¿Está seguro que desea devolver este trailer?')) {
       try {
         console.log('🔄 Devolviendo trailer:', traila.id);
-        
         const returnData = {
-          usuario: getCurrentUser()
+          usuario: getCurrentUser(),
+          fecha_devolucion: new Date().toISOString().split('T')[0],
+          observaciones: '',
+          trailer_id: traila.id,
+          trailer_nombre: traila.nombre,
+          cliente: traila.cliente
         };
-        
+
         const response = await axios.put(`${API_URL}/trailas/${traila.id}/return`, returnData);
         console.log('✅ Trailer devuelto exitosamente:', response.data);
-        
+
+        // Registrar historial de devolución
+        try {
+          await axios.post(`${API_URL}/trailas/${traila.nombre}/rental-history`, {
+            ...returnData,
+            fecha_renta: traila.fecha_renta,
+            fecha_devolucion: returnData.fecha_devolucion,
+            observaciones: returnData.observaciones
+          });
+          console.log('📝 Historial de devolución registrado');
+        } catch (historyError) {
+          console.error('❌ Error registrando historial de devolución:', historyError);
+        }
+
         // Refresh data
         console.log('🔄 Refrescando datos de trailers...');
         const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
         console.log('📦 Datos refrescados:', trailersResponse.data);
         setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
-        
+
         alert('Trailer devuelto exitosamente');
       } catch (error: any) {
         console.error('❌ Error returning trailer:', error);
         alert(`Error al devolver el trailer: ${error.response?.data?.error || error.message}`);
       }
-    }  };
+    }
+  };
 
   // Handle mark as available
   const handleMarkAsAvailable = async () => {
