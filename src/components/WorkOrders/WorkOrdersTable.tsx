@@ -620,15 +620,16 @@ const WorkOrdersTable: React.FC = () => {
     fetchTrailersWithPendingParts();
   }, []);
   
+  // Solo cargar partes pendientes cuando el trailer cambie, no en cada render ni al abrir/cerrar el formulario
   useEffect(() => {
-    if (showForm && newWorkOrder.trailer) {
+    if (newWorkOrder.trailer) {
       console.log('� Cargando partes pendientes para trailer:', newWorkOrder.trailer);
       fetchPendingParts(newWorkOrder.trailer);
     } else {
-      console.log('🔄 Limpiando partes pendientes (sin trailer o formulario cerrado)');
+      console.log('🔄 Limpiando partes pendientes (sin trailer seleccionado)');
       setPendingParts([]);
     }
-  }, [showForm, newWorkOrder.trailer]);
+  }, [newWorkOrder.trailer]);
 
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
