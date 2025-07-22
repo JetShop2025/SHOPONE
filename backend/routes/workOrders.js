@@ -834,7 +834,8 @@ router.put('/:id', async (req, res) => {
   console.log(`🔄 [${requestId}] INICIANDO EDICIÓN DE WORK ORDER ID: ${id}`);
   console.log(`📊 [${requestId}] Memoria inicial: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
   
-  const {
+  // LIMPIAR Y FORMATEAR CAMPOS CRÍTICOS
+  let {
     billToCo,
     trailer,
     mechanic,
@@ -845,10 +846,30 @@ router.put('/:id', async (req, res) => {
     status,
     extraOptions,
     usuario,
-    idClassic
+    idClassic,
+    totalLabAndParts
   } = fields;
-  
-  console.log(`📝 [${requestId}] Datos recibidos - Parts: ${parts?.length || 0}, Status: ${status}, Trailer: ${trailer}`);
+
+  // 1. Fecha: asegurar formato YYYY-MM-DD
+  if (date && typeof date === 'string') {
+    if (date.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      // MM/DD/YYYY → YYYY-MM-DD
+      const [month, day, year] = date.split('/');
+      date = `${year}-${month}-${day}`;
+    } else if (date.match(/^\d{4}-\d{2}-\d{2}/)) {
+      date = date.slice(0, 10);
+    }
+  }
+
+  // 2. Total: asegurar que sea número
+  if (typeof totalLabAndParts === 'string') {
+    totalLabAndParts = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
+  }
+  if (!totalLabAndParts || isNaN(totalLabAndParts)) {
+    totalLabAndParts = 0;
+  }
+
+  console.log(`📝 [${requestId}] Datos recibidos - Parts: ${parts?.length || 0}, Status: ${status}, Trailer: ${trailer}, Fecha: ${date}, Total: ${totalLabAndParts}`);
   try {
     console.log(`🔍 [${requestId}] Verificando que la orden exista...`);
     
@@ -903,19 +924,9 @@ router.put('/:id', async (req, res) => {
     extra += weldSupplies;
     
     // Calcula el total final
-    let totalLabAndPartsFinal;
-    if (
-      fields.totalLabAndParts !== undefined &&
-      fields.totalLabAndParts !== null &&
-      fields.totalLabAndParts !== '' &&
-      !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
-    ) {
-      // Respeta el valor manual del usuario
-      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
-    } else {
-      // Usa el cálculo automático
-      totalLabAndPartsFinal = subtotal + shopMisc + weldSupplies;
-    }    console.log(`💾 [${requestId}] Preparando actualización en DB...`);
+    // Usar SIEMPRE el valor limpio de totalLabAndParts
+    let totalLabAndPartsFinal = totalLabAndParts;
+    console.log(`💾 [${requestId}] Preparando actualización en DB...`);
     console.log(`📊 [${requestId}] Memoria antes de actualización: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 
     // 4. Actualiza la orden en la base de datos
@@ -931,7 +942,7 @@ router.put('/:id', async (req, res) => {
     ];
     if (status === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
-      updateFields.push(fields.idClassic || null);
+      updateFields.push(idClassic || null);
     }
     updateQuery += ` WHERE id = ?`;
     updateFields.push(id);

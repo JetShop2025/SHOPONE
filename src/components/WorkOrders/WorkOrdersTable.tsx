@@ -245,16 +245,26 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       // Update the work order
-      // Usar la fecha tal cual la selecciona el usuario, sin modificar ni formatear
-      const dataToSend = { ...safeData, date: data.date, totalLabAndParts: data.totalLabAndParts };
-      // Validar el total: si es NaN, poner $0.00; si es número, formatear; si es string, respetar
-      if (!dataToSend.totalLabAndParts || isNaN(Number(String(dataToSend.totalLabAndParts).replace(/[^0-9.]/g, '')))) {
-        dataToSend.totalLabAndParts = '$0.00';
-      } else if (typeof dataToSend.totalLabAndParts === 'number') {
-        dataToSend.totalLabAndParts = `$${dataToSend.totalLabAndParts.toFixed(2)}`;
-      } else if (typeof dataToSend.totalLabAndParts === 'string' && !dataToSend.totalLabAndParts.startsWith('$')) {
-        dataToSend.totalLabAndParts = `$${Number(dataToSend.totalLabAndParts).toFixed(2)}`;
+      // 1. Fecha: enviar SIEMPRE en formato YYYY-MM-DD
+      let dateToSend = data.date;
+      if (dateToSend && dateToSend.length >= 10) {
+        if (dateToSend.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+          const [month, day, year] = dateToSend.split('/');
+          dateToSend = `${year}-${month}-${day}`;
+        } else if (dateToSend.match(/^\d{4}-\d{2}-\d{2}/)) {
+          dateToSend = dateToSend.slice(0, 10);
+        }
       }
+      // 2. Total: enviar SIEMPRE como número (sin $)
+      let totalToSend = data.totalLabAndParts;
+      if (typeof totalToSend === 'string') {
+        totalToSend = Number(String(totalToSend).replace(/[^0-9.]/g, ''));
+      }
+      if (!totalToSend || isNaN(totalToSend)) {
+        totalToSend = 0;
+      }
+      // 3. Guardar el valor EXACTO que el usuario editó/calculó, sin recalcular ni modificar
+      const dataToSend = { ...safeData, date: dateToSend, totalLabAndParts: totalToSend };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
