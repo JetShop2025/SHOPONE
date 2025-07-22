@@ -383,6 +383,8 @@ const WorkOrdersTable: React.FC = () => {
   const [activeWorkOrders, setActiveWorkOrders] = useState<any[]>([]);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [activeWOsCount, setActiveWOsCount] = useState(0);
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
     if (!idClassic || idClassic.trim() === '') return false;
@@ -2622,6 +2624,11 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           className={rowClass + (selectedRow === order.id ? ' wo-row-selected' : '')}
           style={{ fontWeight: 600, cursor: 'pointer' }}
           onClick={() => setSelectedRow(order.id)}
+          onContextMenu={e => {
+            e.preventDefault();
+            setSelectedRow(order.id);
+            setContextMenu({ visible: true, x: e.clientX, y: e.clientY, order });
+          }}
         >
           <td>
             {hasMoreParts && (
@@ -2724,6 +2731,48 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           </table>
         </div>       
       </div>
+      {/* Context Menu for Editar/Eliminar */}
+      {contextMenu.visible && contextMenu.order && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            background: '#fff',
+            border: '1px solid #1976d2',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            zIndex: 9999,
+            minWidth: 120,
+            padding: '8px 0',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            style={{ ...primaryBtn, width: '100%', margin: 0, borderRadius: 0, borderBottom: '1px solid #eee' }}
+            onClick={() => {
+              setShowEditForm(true);
+              setEditWorkOrder(contextMenu.order);
+              setEditId(contextMenu.order.id);
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+          >Editar</button>
+          <button
+            style={{ ...dangerBtn, width: '100%', margin: 0, borderRadius: 0 }}
+            onClick={() => {
+              handleDelete(contextMenu.order.id);
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+          >Eliminar</button>
+        </div>
+      )}
+      {/* Hide context menu on click elsewhere */}
+      {contextMenu.visible && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+          onClick={() => setContextMenu({ ...contextMenu, visible: false })}
+        />
+      )}
       {tooltip.visible && tooltip.info && (
   <div
     style={{

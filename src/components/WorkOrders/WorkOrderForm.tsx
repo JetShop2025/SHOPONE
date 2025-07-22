@@ -206,10 +206,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Calcular total de partes automáticamente
   const calculatePartsTotal = () => {
-    if (!workOrder.parts || workOrder.parts.length === 0) return 0;
+    // Si no hay partes, retorna 0
+    if (!workOrder.parts || !Array.isArray(workOrder.parts) || workOrder.parts.length === 0) return 0;
     return workOrder.parts.reduce((total: number, part: any) => {
-      const qty = parseFloat(part.qty) || 0;
-      const cost = parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0;
+      // Si qty o cost no son válidos, ignora esa parte
+      const qty = part && part.qty !== undefined && !isNaN(Number(part.qty)) ? parseFloat(part.qty) : 0;
+      const cost = part && part.cost !== undefined && !isNaN(Number(part.cost)) ? parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) : 0;
       return total + (qty * cost);
     }, 0);
   };
