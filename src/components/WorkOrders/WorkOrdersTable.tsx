@@ -290,10 +290,11 @@ const WorkOrdersTable: React.FC = () => {
           idClassic: workOrderData.idClassic || workOrderData.id.toString(),
           customer: workOrderData.billToCo || workOrderData.customer || '',
           trailer: workOrderData.trailer || '',
+          // Usar SIEMPRE el valor exacto que el usuario seleccionó/guardó
           date: workOrderData.date || workOrderData.fecha || '',
-          mechanics: Array.isArray(workOrderData.mechanics) ?
-            workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
-            workOrderData.mechanics || workOrderData.mechanic || '',
+          mechanics: Array.isArray(workOrderData.mechanics)
+            ? workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ')
+            : workOrderData.mechanics || workOrderData.mechanic || '',
           description: workOrderData.description || '',
           status: workOrderData.status || editWorkOrder.status || 'PROCESSING',
           parts: partsWithInvoices.map((part: any) => ({
@@ -302,14 +303,17 @@ const WorkOrdersTable: React.FC = () => {
             um: 'EA',
             qty: part.qty_used,
             unitCost: part.cost || 0,
-            total: (part.qty_used || 0) * (part.cost || 0),
+            total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
+              ? Number(part.qty_used) * Number(part.cost)
+              : 0,
             invoice: part.invoice_number || 'N/A',
             invoiceLink: part.invoice_link
           })),
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
-          totalLabAndParts: dataToSend.totalLabAndParts,
-          totalCost: dataToSend.totalLabAndParts,
+          // Usar SIEMPRE el valor exacto que el usuario editó/calculó, sin recalcular ni modificar
+          totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
+          totalCost: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
@@ -326,7 +330,11 @@ const WorkOrdersTable: React.FC = () => {
       setWorkOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === editWorkOrder.id
-            ? { ...order, ...editWorkOrder, ...data }
+            ? { ...order, ...editWorkOrder, ...data,
+                // Asegura que el total nunca sea NaN ni undefined
+                totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
+                date: dataToSend.date || editWorkOrder.date || ''
+              }
             : order
         )
       );
