@@ -269,7 +269,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         miscValue = '5';
       }
 
-      // Calcular total SOLO si el campo está vacío o inválido
+
+      // Calcular total automático
       let miscPercentNum = parseFloat(miscValue) || 0;
       const totalHours = calculateTotalHours();
       const laborTotal = totalHours * 60;
@@ -278,9 +279,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const miscAmount = subtotal * (miscPercentNum / 100);
       const calculatedTotal = subtotal + miscAmount;
 
-      // Si el usuario puso un valor manual válido, respétalo
+      // Si el usuario puso un valor manual válido, respétalo. Si no, usa el cálculo automático.
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      if (!totalLabAndPartsValue || isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
+      if (totalLabAndPartsValue && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
+        // Si el usuario puso un valor manual válido, úsalo tal cual
+        totalLabAndPartsValue = String(totalLabAndPartsValue).startsWith('$')
+          ? totalLabAndPartsValue
+          : `$${Number(totalLabAndPartsValue).toFixed(2)}`;
+      } else {
+        // Si no hay valor manual válido, usa el cálculo automático
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
@@ -452,7 +459,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
-          </label>            <label style={{ flex: '1 1 120px' }}>
+          </label>
+          <label style={{ flex: '1 1 120px' }}>
             Trailer
             <input
               list="trailer-options"
@@ -472,7 +480,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   {opt}{showBell(opt) ? ' 🔔' : ''}
                 </option>
               ))}
-            </datalist>          </label>
+            </datalist>
+          </label>
         </div>
 
         {/* Previsualizador de Partes Pendientes */}
@@ -511,114 +520,75 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 // Calcular cantidad disponible real SOLO con qty de receives (no mezclar con master)
                 const availableQty = part.qty !== undefined ? Number(part.qty) : (part.qty_remaining !== undefined ? Number(part.qty_remaining) : 0);
                 const hasQtyAvailable = availableQty > 0;
-  // Helper to format date to MM/DD/YYYY
-  const formatDateMMDDYYYY = (date: string | undefined): string => {
-    if (!date) return '';
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const [year, month, day] = date.split('-');
-      return `${month}/${day}/${year}`;
-    }
-    const d = new Date(date);
-    if (!isNaN(d.getTime())) {
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      return `${mm}/${dd}/${yyyy}`;
-    }
-    return date;
-  };
-
-  // Handler for date input change
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const [year, month, day] = value.split('-');
-      value = `${month}/${day}/${year}`;
-    }
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-      onChange({ target: { name: 'date', value } } as any);
-    } else {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
-      } else {
-        onChange({ target: { name: 'date', value } } as any);
-      }
-    }
-  };
-  return (
-                <div key={part.id} style={{
-                  background: hasQtyAvailable ? 'white' : '#f5f5f5',
-                  border: hasQtyAvailable ? '1px solid #c8e6c9' : '1px solid #e0e0e0',
-                  borderRadius: 6,
-                  padding: 12,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  opacity: hasQtyAvailable ? 1 : 0.7
-                }}>
-                  <div style={{ 
-                    fontWeight: 'bold', 
-                    color: hasQtyAvailable ? '#2e7d32' : '#666' 
+                return (
+                  <div key={part.id} style={{
+                    background: hasQtyAvailable ? 'white' : '#f5f5f5',
+                    border: hasQtyAvailable ? '1px solid #c8e6c9' : '1px solid #e0e0e0',
+                    borderRadius: 6,
+                    padding: 12,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    opacity: hasQtyAvailable ? 1 : 0.7
                   }}>
-                    {part.sku} - {part.item}
-                  </div>
-                  <div style={{ fontSize: 14, color: '#666' }}>
-                    Cantidad disponible: <strong style={{ 
-                      color: hasQtyAvailable ? '#2e7d32' : '#f44336' 
+                    <div style={{ 
+                      fontWeight: 'bold', 
+                      color: hasQtyAvailable ? '#2e7d32' : '#666' 
                     }}>
-                      {availableQty} {hasQtyAvailable ? '' : '(Agotado)'}
-                    </strong>
+                      {part.sku} - {part.item}
+                    </div>
+                    <div style={{ fontSize: 14, color: '#666' }}>
+                      Cantidad disponible: <strong style={{ 
+                        color: hasQtyAvailable ? '#2e7d32' : '#f44336' 
+                      }}>
+                        {availableQty} {hasQtyAvailable ? '' : '(Agotado)'}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="number"
+                        min="1"
+                        max={Math.max(1, availableQty)}
+                        value={pendingPartsQty?.[part.id] || '1'}
+                        onChange={(e) => {                        if (setPendingPartsQty) {
+                            setPendingPartsQty((prev: any) => ({
+                              ...prev,
+                              [part.id]: e.target.value
+                            }));
+                          }
+                        }}
+                        disabled={!hasQtyAvailable}
+                        style={{
+                          width: '80px',
+                          padding: '4px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: 4,
+                          backgroundColor: hasQtyAvailable ? 'white' : '#f5f5f5'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onAddPendingPart && hasQtyAvailable) {
+                            const qty = parseInt(pendingPartsQty?.[part.id] || '1');
+                            onAddPendingPart(part, qty);
+                          }
+                        }}
+                        disabled={!hasQtyAvailable}
+                        style={{
+                          padding: '6px 12px',
+                          background: hasQtyAvailable ? '#4caf50' : '#bdbdbd',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: hasQtyAvailable ? 'pointer' : 'not-allowed',
+                          fontSize: 12,
+                          fontWeight: 'bold'
+                        }}                    >
+                        {hasQtyAvailable ? '➕ Agregar a WO' : '❌ Agotado'}
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="number"
-                      min="1"
-                      max={Math.max(1, availableQty)}
-                      value={pendingPartsQty?.[part.id] || '1'}
-                      onChange={(e) => {                        if (setPendingPartsQty) {
-                          setPendingPartsQty((prev: any) => ({
-                            ...prev,
-                            [part.id]: e.target.value
-                          }));
-                        }
-                      }}
-                      disabled={!hasQtyAvailable}
-                      style={{
-                        width: '80px',
-                        padding: '4px 8px',
-                        border: '1px solid #ccc',
-                        borderRadius: 4,
-                        backgroundColor: hasQtyAvailable ? 'white' : '#f5f5f5'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onAddPendingPart && hasQtyAvailable) {
-                          const qty = parseInt(pendingPartsQty?.[part.id] || '1');
-                          onAddPendingPart(part, qty);
-                        }
-                      }}
-                      disabled={!hasQtyAvailable}
-                      style={{
-                        padding: '6px 12px',
-                        background: hasQtyAvailable ? '#4caf50' : '#bdbdbd',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: hasQtyAvailable ? 'pointer' : 'not-allowed',
-                        fontSize: 12,
-                        fontWeight: 'bold'
-                      }}                    >
-                      {hasQtyAvailable ? '➕ Agregar a WO' : '❌ Agotado'}
-                    </button>
-                  </div>
-                </div>
                 );
               })}
             </div>
