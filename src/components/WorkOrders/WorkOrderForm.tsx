@@ -440,12 +440,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 120px' }}>
             Date<span style={{ color: 'red' }}>*</span>
             <input
+              type="date"
+              name="date"
+              value={workOrder.date ? workOrder.date.slice(0, 10) : ''}
+              onChange={handleDateChange}
+              required
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+            />
+            <input
               type="text"
               name="date"
               value={formatDateMMDDYYYY(workOrder.date)}
               onChange={handleDateChange}
               required
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
+              style={{ width: '100%', marginTop: 8, padding: 8 }}
               placeholder="MM/DD/YYYY"
               pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$"
               title="Date must be in MM/DD/YYYY format"
