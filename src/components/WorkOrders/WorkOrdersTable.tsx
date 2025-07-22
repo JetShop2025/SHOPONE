@@ -245,47 +245,16 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       // Update the work order
-      // Formatear la fecha correctamente antes de enviar (siempre YYYY-MM-DD para backend)
-      let formattedDate = data.date;
-      if (formattedDate) {
-        // Si viene en formato MM/DD/YYYY, convertir a YYYY-MM-DD
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
-          const [mm, dd, yyyy] = formattedDate.split('/');
-          formattedDate = `${yyyy}-${mm}-${dd}`;
-        }
-        // Si viene en formato YYYY-MM-DD, dejar igual
-        else if (/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
-          // Ya está en formato correcto
-        }
-        // Si viene en formato ISO (YYYY-MM-DDTHH:mm:ss), extraer solo la fecha
-        else if (/^\d{4}-\d{2}-\d{2}T/.test(formattedDate)) {
-          formattedDate = formattedDate.split('T')[0];
-        }
-        // Si viene en otro formato, intentar parsear con Date
-        else {
-          const d = new Date(formattedDate);
-          if (!isNaN(d.getTime())) {
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            formattedDate = `${yyyy}-${mm}-${dd}`;
-          }
-        }
+      // Usar la fecha tal cual la selecciona el usuario, sin modificar ni formatear
+      const dataToSend = { ...safeData, date: data.date, totalLabAndParts: data.totalLabAndParts };
+      // Validar el total: si es NaN, poner $0.00; si es número, formatear; si es string, respetar
+      if (!dataToSend.totalLabAndParts || isNaN(Number(String(dataToSend.totalLabAndParts).replace(/[^0-9.]/g, '')))) {
+        dataToSend.totalLabAndParts = '$0.00';
+      } else if (typeof dataToSend.totalLabAndParts === 'number') {
+        dataToSend.totalLabAndParts = `$${dataToSend.totalLabAndParts.toFixed(2)}`;
+      } else if (typeof dataToSend.totalLabAndParts === 'string' && !dataToSend.totalLabAndParts.startsWith('$')) {
+        dataToSend.totalLabAndParts = `$${Number(dataToSend.totalLabAndParts).toFixed(2)}`;
       }
-      // Validar y formatear el total exactamente como el usuario lo editó
-      let totalLabAndPartsValue = data.totalLabAndParts;
-      if (typeof totalLabAndPartsValue === 'string') {
-        // Si el usuario ya puso el símbolo $, lo dejamos, si no lo agregamos
-        totalLabAndPartsValue = totalLabAndPartsValue.replace(/[^0-9.]/g, '')
-          ? `$${Number(totalLabAndPartsValue.replace(/[^0-9.]/g, '')).toFixed(2)}`
-          : '$0.00';
-      } else if (typeof totalLabAndPartsValue === 'number') {
-        totalLabAndPartsValue = `$${totalLabAndPartsValue.toFixed(2)}`;
-      } else {
-        totalLabAndPartsValue = '$0.00';
-      }
-      // Guardar el total EXACTAMENTE como el usuario lo editó, sin recalcular
-      const dataToSend = { ...safeData, date: formattedDate, totalLabAndParts: totalLabAndPartsValue };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
@@ -311,7 +280,7 @@ const WorkOrdersTable: React.FC = () => {
           idClassic: workOrderData.idClassic || workOrderData.id.toString(),
           customer: workOrderData.billToCo || workOrderData.customer || '',
           trailer: workOrderData.trailer || '',
-          date: formatDateSafely(workOrderData.date || workOrderData.fecha || ''),
+          date: workOrderData.date || workOrderData.fecha || '',
           mechanics: Array.isArray(workOrderData.mechanics) ?
             workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
             workOrderData.mechanics || workOrderData.mechanic || '',
