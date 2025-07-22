@@ -156,6 +156,22 @@ function calcularTotalWO(order: any) {
 const WorkOrdersTable: React.FC = () => {
   // Handler for Edit Work Order submit
   const handleEditWorkOrderSubmit = async (data: any) => {
+      // Validar y limpiar campos obligatorios antes de enviar
+      const safeData = { ...data };
+      // Si mechanic es array, usar el primero como string para compatibilidad
+      if (Array.isArray(safeData.mechanics) && safeData.mechanics.length > 0) {
+        safeData.mechanic = safeData.mechanics[0]?.name || '';
+      } else if (typeof safeData.mechanic !== 'string') {
+        safeData.mechanic = '';
+      }
+      // Asegurar que date, description, status, totalLabAndParts no sean nulos
+      safeData.date = safeData.date || '';
+      safeData.description = safeData.description || '';
+      safeData.status = safeData.status || 'PROCESSING';
+      safeData.totalLabAndParts = safeData.totalLabAndParts || '$0.00';
+      // Asegurar que parts y mechanics sean arrays
+      safeData.parts = Array.isArray(safeData.parts) ? safeData.parts : [];
+      safeData.mechanics = Array.isArray(safeData.mechanics) ? safeData.mechanics : [];
     if (!editWorkOrder) {
       alert('No work order loaded for editing.');
       return;
@@ -260,7 +276,7 @@ const WorkOrdersTable: React.FC = () => {
       } else {
         totalLabAndPartsValue = Number(totalLabAndPartsValue).toFixed(2);
       }
-      const dataToSend = { ...data, date: formattedDate, totalLabAndParts: `$${totalLabAndPartsValue}` };
+      const dataToSend = { ...safeData, date: formattedDate, totalLabAndParts: `$${totalLabAndPartsValue}` };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
