@@ -272,19 +272,21 @@ const WorkOrdersTable: React.FC = () => {
           }
         }
       }
-      // Limpiar y validar el total antes de guardar
+      // Validar y formatear el total exactamente como el usuario lo editó
       let totalLabAndPartsValue = data.totalLabAndParts;
       if (typeof totalLabAndPartsValue === 'string') {
-        totalLabAndPartsValue = totalLabAndPartsValue.replace(/[^0-9.]/g, '');
-      }
-      if (!totalLabAndPartsValue || isNaN(Number(totalLabAndPartsValue))) {
-        totalLabAndPartsValue = '0.00';
+        // Si el usuario ya puso el símbolo $, lo dejamos, si no lo agregamos
+        totalLabAndPartsValue = totalLabAndPartsValue.replace(/[^0-9.]/g, '')
+          ? `$${Number(totalLabAndPartsValue.replace(/[^0-9.]/g, '')).toFixed(2)}`
+          : '$0.00';
+      } else if (typeof totalLabAndPartsValue === 'number') {
+        totalLabAndPartsValue = `$${totalLabAndPartsValue.toFixed(2)}`;
       } else {
-        totalLabAndPartsValue = Number(totalLabAndPartsValue).toFixed(2);
+        totalLabAndPartsValue = '$0.00';
       }
-      // Siempre guardar el total como string con $ para PDF y tabla, y como número para backend
-      const dataToSend = { ...safeData, date: formattedDate, totalLabAndParts: `$${totalLabAndPartsValue}` };
-      await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, { ...dataToSend, totalLabAndParts: Number(totalLabAndPartsValue) });
+      // Guardar el total EXACTAMENTE como el usuario lo editó, sin recalcular
+      const dataToSend = { ...safeData, date: formattedDate, totalLabAndParts: totalLabAndPartsValue };
+      await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
       for (const part of partesConPendingId) {
@@ -303,11 +305,7 @@ const WorkOrdersTable: React.FC = () => {
         const workOrderData = workOrderRes.data as any;
         const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
         const partsWithInvoices = partsRes.data as any[];
-        // Usar SIEMPRE el valor que el usuario puso en el formulario, formateado correctamente y consistente
-        let pdfTotal = `$${totalLabAndPartsValue}`;
-        if (!pdfTotal || isNaN(Number(totalLabAndPartsValue))) {
-          pdfTotal = '$0.00';
-        }
+        // Usar SIEMPRE el valor que el usuario puso en el formulario, sin recalcular ni modificar
         const pdfData = {
           id: workOrderData.id,
           idClassic: workOrderData.idClassic || workOrderData.id.toString(),
@@ -331,8 +329,8 @@ const WorkOrdersTable: React.FC = () => {
           })),
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
-          totalCost: Number(totalLabAndPartsValue),
-          totalLabAndParts: pdfTotal,
+          totalLabAndParts: dataToSend.totalLabAndParts,
+          totalCost: dataToSend.totalLabAndParts,
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
@@ -358,8 +356,8 @@ const WorkOrdersTable: React.FC = () => {
       setEditId('');
       setEditError('');
       // Always show a valid total value in the alert
-      let totalValue = `$${totalLabAndPartsValue}`;
-      if (!totalValue || isNaN(Number(totalLabAndPartsValue))) {
+      let totalValue = dataToSend.totalLabAndParts;
+      if (!totalValue || isNaN(Number(String(totalValue).replace(/[^0-9.]/g, '')))) {
         totalValue = '$0.00';
       }
       alert(`Work Order updated successfully and PDF regenerated. Total: ${totalValue}`);
@@ -702,13 +700,14 @@ const WorkOrdersTable: React.FC = () => {
     // Si es un evento (input, select, textarea)
     if (e && e.target) {
       const { name, value, type } = e.target;
-      // Permitir edición libre en el input de fecha, sin conversiones forzadas
-      if (type === 'date' || name === 'date') {
-        if (showForm) {
-          setNewWorkOrder(prev => ({ ...prev, [name]: value }));
-        } else if (showEditForm && editWorkOrder) {
-          setEditWorkOrder((prev: any) => ({ ...prev, [name]: value }));
-        }
+      // Permitir edición y selección libre en el input de fecha tipo date
+      if (type === 'date' && showForm) {
+        // Siempre guardar el valor en formato YYYY-MM-DD
+        setNewWorkOrder(prev => ({ ...prev, date: value }));
+        return;
+      }
+      if (type === 'date' && showEditForm && editWorkOrder) {
+        setEditWorkOrder((prev: any) => ({ ...prev, date: value }));
         return;
       }
       if (showForm) {
