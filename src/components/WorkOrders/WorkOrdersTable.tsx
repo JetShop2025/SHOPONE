@@ -275,16 +275,14 @@ const WorkOrdersTable: React.FC = () => {
       // Limpiar y validar el total antes de guardar
       let totalLabAndPartsValue = data.totalLabAndParts;
       if (typeof totalLabAndPartsValue === 'string') {
-        // Quitar símbolos y espacios
         totalLabAndPartsValue = totalLabAndPartsValue.replace(/[^0-9.]/g, '');
       }
-      // Si no es número válido, poner 0
       if (!totalLabAndPartsValue || isNaN(Number(totalLabAndPartsValue))) {
         totalLabAndPartsValue = '0.00';
       } else {
         totalLabAndPartsValue = Number(totalLabAndPartsValue).toFixed(2);
       }
-      // Enviar el total como número (sin $) para backend, pero guardar el string con $ para PDF y tabla
+      // Siempre guardar el total como string con $ para PDF y tabla, y como número para backend
       const dataToSend = { ...safeData, date: formattedDate, totalLabAndParts: `$${totalLabAndPartsValue}` };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, { ...dataToSend, totalLabAndParts: Number(totalLabAndPartsValue) });
       // Mark pending parts as used
@@ -305,7 +303,7 @@ const WorkOrdersTable: React.FC = () => {
         const workOrderData = workOrderRes.data as any;
         const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
         const partsWithInvoices = partsRes.data as any[];
-        // Usar SIEMPRE el valor que el usuario puso en el formulario, formateado correctamente
+        // Usar SIEMPRE el valor que el usuario puso en el formulario, formateado correctamente y consistente
         let pdfTotal = `$${totalLabAndPartsValue}`;
         if (!pdfTotal || isNaN(Number(totalLabAndPartsValue))) {
           pdfTotal = '$0.00';
@@ -334,6 +332,7 @@ const WorkOrdersTable: React.FC = () => {
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
           totalCost: Number(totalLabAndPartsValue),
+          totalLabAndParts: pdfTotal,
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
@@ -360,6 +359,9 @@ const WorkOrdersTable: React.FC = () => {
       setEditError('');
       // Always show a valid total value in the alert
       let totalValue = `$${totalLabAndPartsValue}`;
+      if (!totalValue || isNaN(Number(totalLabAndPartsValue))) {
+        totalValue = '$0.00';
+      }
       alert(`Work Order updated successfully and PDF regenerated. Total: ${totalValue}`);
     } catch (err) {
       alert('Error updating Work Order.');
@@ -700,8 +702,8 @@ const WorkOrdersTable: React.FC = () => {
     // Si es un evento (input, select, textarea)
     if (e && e.target) {
       const { name, value, type } = e.target;
-      // Restaurar el input de fecha para permitir edición libre
-      if (type === 'date') {
+      // Permitir edición libre en el input de fecha, sin conversiones forzadas
+      if (type === 'date' || name === 'date') {
         if (showForm) {
           setNewWorkOrder(prev => ({ ...prev, [name]: value }));
         } else if (showEditForm && editWorkOrder) {
