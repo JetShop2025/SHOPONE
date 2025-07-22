@@ -2791,6 +2791,51 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               setContextMenu({ ...contextMenu, visible: false });
             }}
           >Eliminar</button>
+          <button
+            style={{ ...primaryBtn, width: '100%', margin: 0, borderRadius: 0, borderTop: '1px solid #eee', color: '#1976d2' }}
+            onClick={async () => {
+              setContextMenu({ ...contextMenu, visible: false });
+              try {
+                const workOrderRes = await axios.get(`${API_URL}/work-orders/${contextMenu.order.id}`);
+                const workOrderData: any = workOrderRes.data;
+                const partsRes = await axios.get(`${API_URL}/work-order-parts/${contextMenu.order.id}`);
+                const partsWithInvoices: any[] = partsRes.data;
+                const pdfData = {
+                  id: workOrderData.id,
+                  idClassic: workOrderData.idClassic || workOrderData.id.toString(),
+                  customer: workOrderData.billToCo || workOrderData.customer || '',
+                  trailer: workOrderData.trailer || '',
+                  date: workOrderData.date || workOrderData.fecha || '',
+                  mechanics: Array.isArray(workOrderData.mechanics)
+                    ? workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ')
+                    : workOrderData.mechanics || workOrderData.mechanic || '',
+                  description: workOrderData.description || '',
+                  status: workOrderData.status || 'PROCESSING',
+                  parts: partsWithInvoices.map((part: any) => ({
+                    sku: part.sku,
+                    description: part.part_name || part.sku,
+                    um: 'EA',
+                    qty: part.qty_used,
+                    unitCost: part.cost || 0,
+                    total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
+                      ? Number(part.qty_used) * Number(part.cost)
+                      : 0,
+                    invoice: part.invoice_number || 'N/A',
+                    invoiceLink: part.invoice_link
+                  })),
+                  laborCost: Number(workOrderData.laborCost) || 0,
+                  subtotalParts: Number(workOrderData.subtotalParts) || 0,
+                  totalLabAndParts: !isNaN(Number(workOrderData.totalLabAndParts)) ? Number(workOrderData.totalLabAndParts) : 0,
+                  totalCost: !isNaN(Number(workOrderData.totalLabAndParts)) ? Number(workOrderData.totalLabAndParts) : 0,
+                  extraOptions: workOrderData.extraOptions || []
+                };
+                const pdf = await generateWorkOrderPDF(pdfData);
+                openPDFInNewTab(pdf, `work_order_${workOrderData.idClassic || workOrderData.id}.pdf`);
+              } catch (err) {
+                window.alert('Error al generar el PDF');
+              }
+            }}
+          >Ver PDF</button>
         </div>
       )}
       {/* Hide context menu on click elsewhere */}

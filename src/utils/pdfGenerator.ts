@@ -122,7 +122,24 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(0, 150, 255);
   pdf.text('Date:', rightBoxX + 3, firstRowY + 6);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.date || ''), rightBoxX + 25, firstRowY + 6);
+  // Format date to MM/DD/YYYY before rendering
+  const formatDateMMDDYYYY = (date: string | undefined): string => {
+    if (!date) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-');
+      return `${month}/${day}/${year}`;
+    }
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    return date;
+  };
+  pdf.text(formatDateMMDDYYYY(workOrderData.date), rightBoxX + 25, firstRowY + 6);
   
   pdf.setTextColor(0, 150, 255);
   pdf.text('Invoice #:', rightBoxX + 3, firstRowY + 12);
