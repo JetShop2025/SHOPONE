@@ -248,24 +248,18 @@ const WorkOrdersTable: React.FC = () => {
       // Formatear la fecha correctamente antes de enviar (siempre YYYY-MM-DD para backend)
       let formattedDate = data.date;
       if (formattedDate) {
-        // Si viene en formato ISO (YYYY-MM-DDTHH:mm:ss), extraer solo la fecha
-        if (/^\d{4}-\d{2}-\d{2}T/.test(formattedDate)) {
-          const d = new Date(formattedDate);
-          if (!isNaN(d.getTime())) {
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            formattedDate = `${yyyy}-${mm}-${dd}`;
-          }
-        }
         // Si viene en formato MM/DD/YYYY, convertir a YYYY-MM-DD
-        else if (/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
           const [mm, dd, yyyy] = formattedDate.split('/');
           formattedDate = `${yyyy}-${mm}-${dd}`;
         }
         // Si viene en formato YYYY-MM-DD, dejar igual
         else if (/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
           // Ya está en formato correcto
+        }
+        // Si viene en formato ISO (YYYY-MM-DDTHH:mm:ss), extraer solo la fecha
+        else if (/^\d{4}-\d{2}-\d{2}T/.test(formattedDate)) {
+          formattedDate = formattedDate.split('T')[0];
         }
         // Si viene en otro formato, intentar parsear con Date
         else {
@@ -954,7 +948,9 @@ const WorkOrdersTable: React.FC = () => {
 
       // LIMPIA EL TOTAL ANTES DE ENVIAR
       const totalLabAndPartsLimpio = Number(String(datosOrden.totalLabAndParts).replace(/[^0-9.]/g, ''));
-      // 4. Guarda la orden
+      // Formatear la fecha SOLO si está en formato MM/DD/YYYY, para mostrar y PDF, pero backend acepta lo que el usuario puso
+      let dateToSend = datosOrden.date;
+      // NO modificar el formato para el backend, solo enviar lo que el usuario puso
       const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
         totalLabAndParts: totalLabAndPartsLimpio, // <-- ENVÍA EL TOTAL LIMPIO
