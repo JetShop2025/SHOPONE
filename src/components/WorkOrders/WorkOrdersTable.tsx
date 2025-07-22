@@ -2633,7 +2633,24 @@ const WorkOrdersTable: React.FC = () => {
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>  {filteredOrders.map((order, index) => {
+            <tbody>  {filteredOrders
+              .slice() // copy array to avoid mutating original
+              .sort((a, b) => {
+                // Try to parse date in MM/DD/YYYY or YYYY-MM-DD
+                const parseDate = (d: string): number => {
+                  if (!d) return 0;
+                  if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+                    const [mm, dd, yyyy] = d.split('/');
+                    return new Date(`${yyyy}-${mm}-${dd}`).getTime();
+                  }
+                  if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
+                    return new Date(d).getTime();
+                  }
+                  return new Date(d).getTime();
+                };
+                return parseDate(b.date) - parseDate(a.date);
+              })
+              .map((order, index) => {
     let rowClass = '';
     if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
     else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';

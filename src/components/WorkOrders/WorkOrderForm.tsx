@@ -454,8 +454,33 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <input
               type="date"
               name="date"
-              value={workOrder.date ? workOrder.date.slice(0, 10) : ''}
-              onChange={handleDateChange}
+              value={(() => {
+                // Always show as yyyy-MM-dd for input type="date"
+                if (!workOrder.date) return '';
+                if (/^\d{4}-\d{2}-\d{2}/.test(workOrder.date)) {
+                  return workOrder.date.slice(0, 10);
+                }
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(workOrder.date)) {
+                  const [mm, dd, yyyy] = workOrder.date.split('/');
+                  return `${yyyy}-${mm}-${dd}`;
+                }
+                // fallback: try to parse
+                const d = new Date(workOrder.date);
+                if (!isNaN(d.getTime())) {
+                  return d.toISOString().slice(0, 10);
+                }
+                return '';
+              })()}
+              onChange={e => {
+                // Always store as MM/DD/YYYY in state
+                const value = e.target.value;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                  const [yyyy, mm, dd] = value.split('-');
+                  onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+                } else {
+                  onChange(e);
+                }
+              }}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
@@ -891,8 +916,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 max="100"
                 step="0.01"
                 name="miscellaneous"
-                value={workOrder.miscellaneous || ''}
-                onChange={onChange}
+                value={workOrder.miscellaneous ?? ''}
+                onChange={e => {
+                  // Always update as string, allow empty
+                  onChange({ target: { name: 'miscellaneous', value: e.target.value } } as any);
+                }}
                 style={{ width: 80, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
                 placeholder="%"
               />
