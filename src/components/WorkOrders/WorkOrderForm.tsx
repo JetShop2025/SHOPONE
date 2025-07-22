@@ -120,9 +120,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (!workOrder.id) {
       const calculatedTotal = calculateTotalLabAndParts();
       const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
-      if (workOrder.totalLabAndParts !== formattedTotal) {
-        onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
+      // Si el campo está vacío, NaN, o igual al cálculo anterior, actualiza automáticamente
+      const currentValue = workOrder.totalLabAndParts;
+      const isNaNOrEmpty = !currentValue || isNaN(Number(String(currentValue).replace(/[^0-9.]/g, '')));
+      // Si el usuario no ha escrito nada, o el valor es NaN, o coincide con el cálculo anterior, actualiza
+      if (isNaNOrEmpty || currentValue === formattedTotal) {
+        if (currentValue !== formattedTotal) {
+          onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
+        }
       }
+      // Si el usuario ya puso un valor manual diferente y válido, no lo sobrescribas
     }
     // Si es edición, nunca auto-calcular ni sobrescribir el total
   }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
