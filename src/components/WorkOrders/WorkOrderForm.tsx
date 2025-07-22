@@ -120,16 +120,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (!workOrder.id) {
       const calculatedTotal = calculateTotalLabAndParts();
       const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
-      // Si el campo está vacío, NaN, o igual al cálculo anterior, actualiza automáticamente
+      // Si el campo está vacío o coincide con el cálculo anterior, actualiza automáticamente
       const currentValue = workOrder.totalLabAndParts;
-      const isNaNOrEmpty = !currentValue || isNaN(Number(String(currentValue).replace(/[^0-9.]/g, '')));
-      // Si el usuario no ha escrito nada, o el valor es NaN, o coincide con el cálculo anterior, actualiza
-      if (isNaNOrEmpty || currentValue === formattedTotal) {
+      if (!currentValue || currentValue === formattedTotal) {
         if (currentValue !== formattedTotal) {
           onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
         }
       }
-      // Si el usuario ya puso un valor manual diferente y válido, no lo sobrescribas
+      // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
     }
     // Si es edición, nunca auto-calcular ni sobrescribir el total
   }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
@@ -277,7 +275,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
 
 
-      // Calcular total automático
+      // Calcular total automático (horas, partes y extras)
       let miscPercentNum = parseFloat(miscValue) || 0;
       const totalHours = calculateTotalHours();
       const laborTotal = totalHours * 60;
@@ -286,15 +284,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const miscAmount = subtotal * (miscPercentNum / 100);
       const calculatedTotal = subtotal + miscAmount;
 
-      // Si el usuario puso un valor manual válido, respétalo. Si no, usa el cálculo automático.
+      // Si el usuario puso un valor manual, respétalo. Si no, usa el cálculo automático.
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      if (totalLabAndPartsValue && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
-        // Si el usuario puso un valor manual válido, úsalo tal cual
+      if (totalLabAndPartsValue) {
         totalLabAndPartsValue = String(totalLabAndPartsValue).startsWith('$')
           ? totalLabAndPartsValue
           : `$${Number(totalLabAndPartsValue).toFixed(2)}`;
       } else {
-        // Si no hay valor manual válido, usa el cálculo automático
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
