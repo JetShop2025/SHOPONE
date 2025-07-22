@@ -216,6 +216,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Si no hay partes, retorna 0
     if (!workOrder.parts || !Array.isArray(workOrder.parts) || workOrder.parts.length === 0) return 0;
     return workOrder.parts.reduce((total: number, part: any) => {
+      // Si la parte está vacía, ignórala
+      if (!part || (!part.sku && !part.part && !part.qty && !part.cost)) return total;
       // Solo sumar si qty y cost son números válidos y mayores o iguales a 0
       const qty = Number(part && part.qty);
       const cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
