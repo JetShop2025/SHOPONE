@@ -267,9 +267,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         miscValue = '5';
       }
 
-      // Asegurar que totalLabAndParts nunca sea NaN ni $NaN
-      let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      // Si el valor no es válido, recalcular usando miscValue
+      // Calcular total siempre desde cero para evitar $NaN
       let miscPercentNum = parseFloat(miscValue) || 0;
       const totalHours = calculateTotalHours();
       const laborTotal = totalHours * 60;
@@ -277,9 +275,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const subtotal = laborTotal + partsTotal;
       const miscAmount = subtotal * (miscPercentNum / 100);
       const calculatedTotal = subtotal + miscAmount;
-      if (!totalLabAndPartsValue || isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
-        totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
-      }
+      const totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
 
       const dataToSend = {
         ...workOrder,
