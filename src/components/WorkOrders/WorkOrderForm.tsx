@@ -269,7 +269,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         miscValue = '5';
       }
 
-      // Calcular total siempre desde cero para evitar $NaN
+      // Calcular total SOLO si el campo está vacío o inválido
       let miscPercentNum = parseFloat(miscValue) || 0;
       const totalHours = calculateTotalHours();
       const laborTotal = totalHours * 60;
@@ -277,7 +277,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const subtotal = laborTotal + partsTotal;
       const miscAmount = subtotal * (miscPercentNum / 100);
       const calculatedTotal = subtotal + miscAmount;
-      const totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+
+      // Si el usuario puso un valor manual válido, respétalo
+      let totalLabAndPartsValue = workOrder.totalLabAndParts;
+      if (!totalLabAndPartsValue || isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
+        totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+      }
 
       const dataToSend = {
         ...workOrder,
@@ -446,17 +451,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               onChange={handleDateChange}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-            />
-            <input
-              type="text"
-              name="date"
-              value={formatDateMMDDYYYY(workOrder.date)}
-              onChange={handleDateChange}
-              required
-              style={{ width: '100%', marginTop: 8, padding: 8 }}
-              placeholder="MM/DD/YYYY"
-              pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$"
-              title="Date must be in MM/DD/YYYY format"
             />
           </label>            <label style={{ flex: '1 1 120px' }}>
             Trailer
