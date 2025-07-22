@@ -301,6 +301,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
+      // Convertir fecha a formato YYYY-MM-DD para la base de datos
+      let dateToSend = workOrder.date;
+      if (dateToSend && /^\d{2}\/\d{2}\/\d{4}$/.test(dateToSend)) {
+        const [mm, dd, yyyy] = dateToSend.split('/');
+        dateToSend = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+      }
+
       const dataToSend = {
         ...workOrder,
         idClassic: idClassicToSend,
@@ -309,7 +316,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         totalLabAndParts: totalLabAndPartsValue,
         miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
-        forceUpdate: true
+        forceUpdate: true,
+        date: dateToSend
       };
 
       await onSubmit(dataToSend);
