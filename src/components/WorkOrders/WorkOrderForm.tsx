@@ -205,7 +205,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const calculateTotalHours = () => {
     if (!workOrder.mechanics || workOrder.mechanics.length === 0) return 0;
     return workOrder.mechanics.reduce((total: number, mechanic: any) => {
-      return total + (parseFloat(mechanic.hrs) || 0);
+      // Sumar solo si mechanic.hrs es un número válido y mayor o igual a 0
+      const hrs = Number(mechanic.hrs);
+      return total + (!isNaN(hrs) && hrs > 0 ? hrs : 0);
     }, 0);
   };
 
@@ -214,10 +216,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Si no hay partes, retorna 0
     if (!workOrder.parts || !Array.isArray(workOrder.parts) || workOrder.parts.length === 0) return 0;
     return workOrder.parts.reduce((total: number, part: any) => {
-      // Si qty o cost no son válidos, ignora esa parte
-      const qty = part && part.qty !== undefined && !isNaN(Number(part.qty)) ? parseFloat(part.qty) : 0;
-      const cost = part && part.cost !== undefined && !isNaN(Number(part.cost)) ? parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) : 0;
-      return total + (qty * cost);
+      // Solo sumar si qty y cost son números válidos y mayores o iguales a 0
+      const qty = Number(part && part.qty);
+      const cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
+      const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+      const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+      return total + (validQty * validCost);
     }, 0);
   };
 
@@ -228,9 +232,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const partsTotal = calculatePartsTotal();
     const subtotal = laborTotal + partsTotal;
     // Miscellaneous: porcentaje extra definido por el usuario
-    const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
+    let miscPercent = Number(workOrder.miscellaneous);
+    miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
     const miscAmount = subtotal * (miscPercent / 100);
-    return subtotal + miscAmount;
+    const total = subtotal + miscAmount;
+    return !isNaN(total) && total >= 0 ? total : 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -287,9 +293,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       // Si el usuario puso un valor manual, respétalo. Si no, usa el cálculo automático.
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
       if (totalLabAndPartsValue) {
-        totalLabAndPartsValue = String(totalLabAndPartsValue).startsWith('$')
-          ? totalLabAndPartsValue
-          : `$${Number(totalLabAndPartsValue).toFixed(2)}`;
+        const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
+        totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
       } else {
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
@@ -962,7 +967,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <input
                 type="text"
                 name="totalLabAndParts"
-                value={workOrder.totalLabAndParts || ''}
+                value={
+                  workOrder.totalLabAndParts === undefined || workOrder.totalLabAndParts === null || workOrder.totalLabAndParts === '' || isNaN(Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, '')))
+                    ? '$0.00'
+                    : workOrder.totalLabAndParts
+                }
                 onChange={onChange}
                 style={{ 
                   width: '100%', 
