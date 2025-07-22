@@ -245,23 +245,37 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       // Update the work order
-      // Formatear la fecha correctamente antes de enviar
+      // Formatear la fecha correctamente antes de enviar (siempre YYYY-MM-DD para backend)
       let formattedDate = data.date;
       if (formattedDate) {
-        // Si viene en formato ISO, convertir a MM/DD/YYYY
+        // Si viene en formato ISO (YYYY-MM-DDTHH:mm:ss), extraer solo la fecha
         if (/^\d{4}-\d{2}-\d{2}T/.test(formattedDate)) {
           const d = new Date(formattedDate);
           if (!isNaN(d.getTime())) {
+            const yyyy = d.getFullYear();
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            formattedDate = `${mm}/${dd}/${yyyy}`;
+            formattedDate = `${yyyy}-${mm}-${dd}`;
           }
         }
-        // Si viene en formato YYYY-MM-DD, convertir a MM/DD/YYYY
+        // Si viene en formato MM/DD/YYYY, convertir a YYYY-MM-DD
+        else if (/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
+          const [mm, dd, yyyy] = formattedDate.split('/');
+          formattedDate = `${yyyy}-${mm}-${dd}`;
+        }
+        // Si viene en formato YYYY-MM-DD, dejar igual
         else if (/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
-          const [yyyy, mm, dd] = formattedDate.split('-');
-          formattedDate = `${mm}/${dd}/${yyyy}`;
+          // Ya está en formato correcto
+        }
+        // Si viene en otro formato, intentar parsear con Date
+        else {
+          const d = new Date(formattedDate);
+          if (!isNaN(d.getTime())) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            formattedDate = `${yyyy}-${mm}-${dd}`;
+          }
         }
       }
       // Limpiar y validar el total antes de guardar
