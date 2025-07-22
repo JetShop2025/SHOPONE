@@ -248,7 +248,27 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       // Update the work order
-      await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, data);
+      // Formatear la fecha correctamente antes de enviar
+      let formattedDate = data.date;
+      if (formattedDate) {
+        // Si viene en formato ISO, convertir a MM/DD/YYYY
+        if (/^\d{4}-\d{2}-\d{2}T/.test(formattedDate)) {
+          const d = new Date(formattedDate);
+          if (!isNaN(d.getTime())) {
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            formattedDate = `${mm}/${dd}/${yyyy}`;
+          }
+        }
+        // Si viene en formato YYYY-MM-DD, convertir a MM/DD/YYYY
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
+          const [yyyy, mm, dd] = formattedDate.split('-');
+          formattedDate = `${mm}/${dd}/${yyyy}`;
+        }
+      }
+      const dataToSend = { ...data, date: formattedDate };
+      await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
       for (const part of partesConPendingId) {
