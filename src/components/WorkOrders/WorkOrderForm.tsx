@@ -107,7 +107,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   React.useEffect(() => {}, [inventory]);
   // Set default miscellaneous to 5% for new Work Orders
   React.useEffect(() => {
-    if (!workOrder.id && (workOrder.miscellaneous === undefined || workOrder.miscellaneous === '' || workOrder.miscellaneous === null)) {
+    // Siempre poner 5% por defecto si no hay valor válido
+    if (workOrder.miscellaneous === undefined || workOrder.miscellaneous === null || workOrder.miscellaneous === '' || isNaN(Number(workOrder.miscellaneous))) {
       onChange({ target: { name: 'miscellaneous', value: '5' } } as any);
     }
   }, [workOrder.id, workOrder.miscellaneous, onChange]);
@@ -260,11 +261,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         idClassicToSend = workOrder.idClassic && workOrder.idClassic.trim() !== '' ? workOrder.idClassic : '';
       }
 
+      // Asegurar que miscellaneous tenga valor por defecto '5' si está vacío o no es número válido
+      let miscValue = workOrder.miscellaneous;
+      if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
+        miscValue = '5';
+      }
+
       // Asegurar que totalLabAndParts nunca sea NaN ni $NaN
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      // Si el valor no es válido, recalcular
+      // Si el valor no es válido, recalcular usando miscValue
+      let miscPercentNum = parseFloat(miscValue) || 0;
+      const totalHours = calculateTotalHours();
+      const laborTotal = totalHours * 60;
+      const partsTotal = calculatePartsTotal();
+      const subtotal = laborTotal + partsTotal;
+      const miscAmount = subtotal * (miscPercentNum / 100);
+      const calculatedTotal = subtotal + miscAmount;
       if (!totalLabAndPartsValue || isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
-        const calculatedTotal = calculateTotalLabAndParts();
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
@@ -274,6 +287,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         parts: cleanParts,
         totalHrs: calculateTotalHours(),
         totalLabAndParts: totalLabAndPartsValue,
+        miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true
       };
