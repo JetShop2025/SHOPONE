@@ -105,6 +105,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Debug: verificar inventario
   // Remove excessive inventory debug logging
   React.useEffect(() => {}, [inventory]);
+  // Set default miscellaneous to 5% for new Work Orders
+  React.useEffect(() => {
+    if (!workOrder.id && (workOrder.miscellaneous === undefined || workOrder.miscellaneous === '' || workOrder.miscellaneous === null)) {
+      onChange({ target: { name: 'miscellaneous', value: '5' } } as any);
+    }
+  }, [workOrder.id, workOrder.miscellaneous, onChange]);
+
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)
   React.useEffect(() => {
@@ -244,10 +251,29 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         return;
       }
 
+      // Si no se coloca el ID Classic, debe ir en blanco (no el id del sistema)
+      let idClassicToSend = '';
+      if (workOrder.status === 'FINISHED') {
+        idClassicToSend = workOrder.idClassic || '';
+      } else {
+        // Para creación/edición, si no hay idClassic, enviar vacío
+        idClassicToSend = workOrder.idClassic && workOrder.idClassic.trim() !== '' ? workOrder.idClassic : '';
+      }
+
+      // Asegurar que totalLabAndParts nunca sea NaN ni $NaN
+      let totalLabAndPartsValue = workOrder.totalLabAndParts;
+      // Si el valor no es válido, recalcular
+      if (!totalLabAndPartsValue || isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
+        const calculatedTotal = calculateTotalLabAndParts();
+        totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+      }
+
       const dataToSend = {
         ...workOrder,
+        idClassic: idClassicToSend,
         parts: cleanParts,
         totalHrs: calculateTotalHours(),
+        totalLabAndParts: totalLabAndPartsValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true
       };
@@ -317,6 +343,46 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const getTrailerOptionsForBill = (billToCo: string) => {
     return getTrailerOptions ? getTrailerOptions(billToCo) : [];
   };
+
+  // Helper to format date to MM/DD/YYYY
+  const formatDateMMDDYYYY = (date: string | undefined): string => {
+    if (!date) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-');
+      return `${month}/${day}/${year}`;
+    }
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    return date;
+  };
+
+  // Handler for date input change
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split('-');
+      value = `${month}/${day}/${year}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      onChange({ target: { name: 'date', value } } as any);
+    } else {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+      } else {
+        onChange({ target: { name: 'date', value } } as any);
+      }
+    }
+  };
   return (
     <div style={{
       marginTop: '20px',
@@ -352,7 +418,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               required
             >
-              <option value="">Selecciona...</option>
+              <option value="">Select...</option>
               {billToCoOptions.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
@@ -360,14 +426,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </label>
           
           <label style={{ flex: '1 1 120px' }}>
-            Fecha<span style={{ color: 'red' }}>*</span>
+            Date<span style={{ color: 'red' }}>*</span>
             <input
-              type="date"
+              type="text"
               name="date"
-              value={workOrder.date || ''}
-              onChange={onChange}
+              value={formatDateMMDDYYYY(workOrder.date)}
+              onChange={handleDateChange}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
+              placeholder="MM/DD/YYYY"
+              pattern="^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$"
+              title="Date must be in MM/DD/YYYY format"
             />
           </label>            <label style={{ flex: '1 1 120px' }}>
             Trailer
@@ -428,7 +497,46 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 // Calcular cantidad disponible real SOLO con qty de receives (no mezclar con master)
                 const availableQty = part.qty !== undefined ? Number(part.qty) : (part.qty_remaining !== undefined ? Number(part.qty_remaining) : 0);
                 const hasQtyAvailable = availableQty > 0;
-                return (
+  // Helper to format date to MM/DD/YYYY
+  const formatDateMMDDYYYY = (date: string | undefined): string => {
+    if (!date) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-');
+      return `${month}/${day}/${year}`;
+    }
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    return date;
+  };
+
+  // Handler for date input change
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split('-');
+      value = `${month}/${day}/${year}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      onChange({ target: { name: 'date', value } } as any);
+    } else {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+      } else {
+        onChange({ target: { name: 'date', value } } as any);
+      }
+    }
+  };
+  return (
                 <div key={part.id} style={{
                   background: hasQtyAvailable ? 'white' : '#f5f5f5',
                   border: hasQtyAvailable ? '1px solid #c8e6c9' : '1px solid #e0e0e0',
