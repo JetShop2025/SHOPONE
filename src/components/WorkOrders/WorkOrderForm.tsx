@@ -457,12 +457,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               value={(() => {
                 // Always show as yyyy-MM-dd for input type="date"
                 if (!workOrder.date) return '';
-                if (/^\d{4}-\d{2}-\d{2}/.test(workOrder.date)) {
-                  return workOrder.date.slice(0, 10);
-                }
+                // Accept MM/DD/YYYY or YYYY-MM-DD
                 if (/^\d{2}\/\d{2}\/\d{4}$/.test(workOrder.date)) {
                   const [mm, dd, yyyy] = workOrder.date.split('/');
-                  return `${yyyy}-${mm}-${dd}`;
+                  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+                }
+                if (/^\d{4}-\d{2}-\d{2}/.test(workOrder.date)) {
+                  return workOrder.date.slice(0, 10);
                 }
                 // fallback: try to parse
                 const d = new Date(workOrder.date);
@@ -476,9 +477,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 const value = e.target.value;
                 if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
                   const [yyyy, mm, dd] = value.split('-');
-                  onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+                  // Only update if value is valid
+                  if (yyyy && mm && dd) {
+                    // For date input, always update state immediately
+                    onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+                  }
                 } else {
-                  onChange(e);
+                  // fallback: try to parse and format as MM/DD/YYYY
+                  const d = new Date(value);
+                  if (!isNaN(d.getTime())) {
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+                  } else {
+                    onChange({ target: { name: 'date', value } } as any);
+                  }
                 }
               }}
               required

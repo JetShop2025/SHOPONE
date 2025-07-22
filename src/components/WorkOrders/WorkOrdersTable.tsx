@@ -2636,19 +2636,14 @@ const WorkOrdersTable: React.FC = () => {
             <tbody>  {filteredOrders
               .slice() // copy array to avoid mutating original
               .sort((a, b) => {
-                // Try to parse date in MM/DD/YYYY or YYYY-MM-DD
-                const parseDate = (d: string): number => {
+                // Use dayjs for robust date parsing (handles both MM/DD/YYYY and YYYY-MM-DD)
+                // Fallback: invalid/missing dates are treated as oldest
+                const getTime = (d: string) => {
                   if (!d) return 0;
-                  if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
-                    const [mm, dd, yyyy] = d.split('/');
-                    return new Date(`${yyyy}-${mm}-${dd}`).getTime();
-                  }
-                  if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
-                    return new Date(d).getTime();
-                  }
-                  return new Date(d).getTime();
+                  const parsed = dayjs(d, ["MM/DD/YYYY", "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY/MM/DD"], true);
+                  return parsed.isValid() ? parsed.valueOf() : 0;
                 };
-                return parseDate(b.date) - parseDate(a.date);
+                return getTime(b.date) - getTime(a.date); // Descending: most recent first
               })
               .map((order, index) => {
     let rowClass = '';
