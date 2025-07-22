@@ -136,40 +136,21 @@ const secondaryBtn = {
 
 function calcularTotalWO(order: any) {
   // Si el usuario editó el total manualmente, respétalo
+  // Si el usuario editó el total manualmente, respétalo y muéstralo tal cual
   if (
-    order.totalLabAndParts !== undefined &&
-    order.totalLabAndParts !== null &&
-    order.totalLabAndParts !== ''
+    typeof order.totalLabAndParts === 'string' &&
+    order.totalLabAndParts.trim() &&
+    order.totalLabAndParts.trim() !== '$NaN'
   ) {
-    return Number(String(order.totalLabAndParts).replace(/[^0-9.]/g, ''));
+    return order.totalLabAndParts.trim();
   }
-  // Suma el total de partes
-  const partsTotal = order.parts?.reduce((sum: number, part: any) => {
-    const qty = Number(part.qty);
-    const cost = Number(part.cost?.toString().replace(/[^0-9.]/g, ''));
-    return sum + (isNaN(qty) || isNaN(cost) ? 0 : qty * cost);
-  }, 0) || 0;
-
-  // Suma las horas de todos los mecánicos
-  let laborHrs = 0;
-  if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
-    laborHrs = order.mechanics.reduce((sum: number, m: any) => sum + (parseFloat(m.hrs) || 0), 0);
-  } else if (order.totalHrs) {
-    laborHrs = parseFloat(order.totalHrs) || 0;
+  if (
+    typeof order.totalLabAndParts === 'number' && !isNaN(order.totalLabAndParts)
+  ) {
+    return `$${order.totalLabAndParts.toFixed(2)}`;
   }
-  const laborTotal = laborHrs * 60;
-
-  const subtotal = partsTotal + laborTotal;
-
-  // Suma extras
-  let extra = 0;
-  (order.extraOptions || []).forEach((opt: string) => {
-    if (opt === '5') extra += subtotal * 0.05;
-    if (opt === '15shop') extra += subtotal * 0.15;
-    if (opt === '15weld') extra += subtotal * 0.15;
-  });
-
-  return subtotal + extra;
+  // Si no hay valor válido, mostrar $0.00
+  return '$0.00';
 }
 
 const WorkOrdersTable: React.FC = () => {
@@ -267,7 +248,19 @@ const WorkOrdersTable: React.FC = () => {
           formattedDate = `${mm}/${dd}/${yyyy}`;
         }
       }
-      const dataToSend = { ...data, date: formattedDate };
+      // Limpiar y validar el total antes de guardar
+      let totalLabAndPartsValue = data.totalLabAndParts;
+      if (typeof totalLabAndPartsValue === 'string') {
+        // Quitar símbolos y espacios
+        totalLabAndPartsValue = totalLabAndPartsValue.replace(/[^0-9.]/g, '');
+      }
+      // Si no es número válido, poner 0
+      if (!totalLabAndPartsValue || isNaN(Number(totalLabAndPartsValue))) {
+        totalLabAndPartsValue = '0.00';
+      } else {
+        totalLabAndPartsValue = Number(totalLabAndPartsValue).toFixed(2);
+      }
+      const dataToSend = { ...data, date: formattedDate, totalLabAndParts: `$${totalLabAndPartsValue}` };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
@@ -287,6 +280,11 @@ const WorkOrdersTable: React.FC = () => {
         const workOrderData = workOrderRes.data as any;
         const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
         const partsWithInvoices = partsRes.data as any[];
+        // Usar SIEMPRE el valor que el usuario puso en el formulario
+        let pdfTotal = dataToSend.totalLabAndParts;
+        if (!pdfTotal || isNaN(Number(pdfTotal.replace(/[^0-9.]/g, '')))) {
+          pdfTotal = '$0.00';
+        }
         const pdfData = {
           id: workOrderData.id,
           idClassic: workOrderData.idClassic || workOrderData.id.toString(),
@@ -310,19 +308,7 @@ const WorkOrdersTable: React.FC = () => {
           })),
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
-          // Usar el valor manual del total si existe, respetando edición
-          totalCost: (() => {
-            // Always parse and sanitize the total value, fallback to 0 if invalid
-            let manualTotal = editWorkOrder.totalLabAndParts;
-            let autoTotal = workOrderData.totalLabAndParts;
-            let valueToParse = (manualTotal !== undefined && manualTotal !== null && manualTotal !== '') ? manualTotal : autoTotal;
-            // Remove all non-numeric except dot
-            let parsed = Number(String(valueToParse).replace(/[^0-9.]/g, ''));
-            if (isNaN(parsed) || valueToParse === '' || valueToParse === null || valueToParse === undefined) {
-              return 0;
-            }
-            return parsed;
-          })(),
+          totalCost: Number(pdfTotal.replace(/[^0-9.]/g, '')),
           extraOptions: editWorkOrder.extraOptions || extraOptions || []
         };
         const pdf = await generateWorkOrderPDF(pdfData);
