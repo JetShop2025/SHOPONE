@@ -409,22 +409,12 @@ async function updateOrder(id, order) {
     }
 
     // Actualizar la work order (sin tocar work_order_parts aún)
-    // Mantener la fecha original si no viene en el request, y forzar formato YYYY-MM-DD
-    let newDate = order.date;
-    if (!newDate) {
-      newDate = currentData.date;
-    } else if (typeof newDate === 'string' && newDate.length > 10) {
-      // Si viene como string con hora, tomar solo la parte de la fecha
-      newDate = newDate.slice(0, 10);
-    } else if (newDate instanceof Date) {
-      // Si viene como objeto Date, formatear a YYYY-MM-DD
-      newDate = newDate.toISOString().slice(0, 10);
-    }
+    // Siempre mantener la fecha original de la W.O. al editar
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      newDate || null,
+      currentData.date || null,
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
