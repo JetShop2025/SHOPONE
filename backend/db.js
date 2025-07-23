@@ -363,6 +363,8 @@ async function updateOrder(id, order) {
     // Obtener datos actuales para comparación
     const [currentRows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
     const currentData = currentRows[0];
+    // LOG: Valor crudo de la fecha antes de cualquier transformación
+    console.log('[DEBUG][W.O. DATE] Valor crudo de currentData.date desde DB:', currentData.date, 'Tipo:', typeof currentData.date);
 
     // Agrupar partes por SKU+nombre para evitar duplicados y sumar cantidades
     function groupParts(partsArr) {
@@ -409,17 +411,13 @@ async function updateOrder(id, order) {
     }
 
     // Actualizar la work order (sin tocar work_order_parts aún)
-    // Siempre mantener la fecha original de la W.O. al editar
-    // Forzar la fecha a YYYY-MM-DD para evitar desfase por zona horaria
-    let originalDate = currentData.date;
-    if (typeof originalDate === 'string' && originalDate.length > 10) {
-      originalDate = originalDate.slice(0, 10);
-    }
+    // SIEMPRE mantener la fecha EXACTA de la W.O. como está en la base de datos, sin modificarla ni formatearla
+    // Esto previene cualquier cambio por zona horaria, formato, o entrada del frontend
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      originalDate || null,
+      currentData.date, // usar el valor crudo de la base de datos, sin tocar
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
@@ -430,11 +428,15 @@ async function updateOrder(id, order) {
       JSON.stringify(Object.values(groupedNew)), // partes agrupadas y sumadas
       id
     ];
+    // LOG: Valor de la fecha que se usará en el UPDATE
+    console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE:', currentData.date, 'Tipo:', typeof currentData.date);
     const [result] = await connection.execute(
       'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
       safeValues
     );
     console.log('[DB] Successfully updated work order with ID:', id);
+    // LOG: Valor de la fecha después de UPDATE
+    console.log('[DEBUG][W.O. DATE] UPDATE ejecutado con date =', currentData.date);
 
     // Descontar solo la diferencia positiva de inventario (por parte agrupada)
     if (partsToDeduct.length > 0) {
