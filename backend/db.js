@@ -411,13 +411,18 @@ async function updateOrder(id, order) {
     }
 
     // Actualizar la work order (sin tocar work_order_parts aún)
-    // SIEMPRE mantener la fecha EXACTA de la W.O. como está en la base de datos, sin modificarla ni formatearla
-    // Esto previene cualquier cambio por zona horaria, formato, o entrada del frontend
+    // SIEMPRE guardar la fecha como string YYYY-MM-DD (sin hora, sin zona horaria)
+    let originalDate = currentData.date;
+    if (originalDate instanceof Date) {
+      originalDate = originalDate.toISOString().slice(0, 10);
+    } else if (typeof originalDate === 'string') {
+      originalDate = originalDate.slice(0, 10);
+    }
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      currentData.date, // usar el valor crudo de la base de datos, sin tocar
+      originalDate || null,
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
@@ -429,14 +434,14 @@ async function updateOrder(id, order) {
       id
     ];
     // LOG: Valor de la fecha que se usará en el UPDATE
-    console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE:', currentData.date, 'Tipo:', typeof currentData.date);
+    console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE:', originalDate, 'Tipo:', typeof originalDate);
     const [result] = await connection.execute(
       'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
       safeValues
     );
     console.log('[DB] Successfully updated work order with ID:', id);
     // LOG: Valor de la fecha después de UPDATE
-    console.log('[DEBUG][W.O. DATE] UPDATE ejecutado con date =', currentData.date);
+    console.log('[DEBUG][W.O. DATE] UPDATE ejecutado con date =', originalDate);
 
     // Descontar solo la diferencia positiva de inventario (por parte agrupada)
     if (partsToDeduct.length > 0) {
