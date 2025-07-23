@@ -364,7 +364,22 @@ async function updateOrder(id, order) {
     const [currentRows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
     const currentData = currentRows[0];
 
-    // Parse old parts (from DB) and new parts (from request)
+    // Agrupar partes por SKU+nombre para evitar duplicados y sumar cantidades
+    function groupParts(partsArr) {
+      const grouped = {};
+      for (const p of partsArr) {
+        if (!p.sku) continue;
+        const key = `${p.sku || ''}__${p.part || p.part_name || ''}`;
+        const qty = Number(p.qty) || 0;
+        if (!grouped[key]) {
+          grouped[key] = { ...p, qty };
+        } else {
+          grouped[key].qty += qty;
+        }
+      }
+      return grouped;
+    }
+
     let oldParts = [];
     try {
       oldParts = currentData && currentData.parts ? JSON.parse(currentData.parts) : [];
@@ -373,13 +388,14 @@ async function updateOrder(id, order) {
     }
     const newParts = Array.isArray(order.parts) ? order.parts : [];
 
-    // Detectar partes nuevas o aumentos de cantidad (por SKU y part_name)
-    // Solo descontar la diferencia positiva (nunca reponer si bajan la cantidad)
+    const groupedOld = groupParts(oldParts);
+    const groupedNew = groupParts(newParts);
+
+    // Detectar partes nuevas o aumentos de cantidad (por clave agrupada)
     const partsToDeduct = [];
-    for (const newPart of newParts) {
-      if (!newPart.sku) continue;
-      const key = `${newPart.sku || ''}__${newPart.part || newPart.part_name || ''}`;
-      const oldPart = oldParts.find(p => `${p.sku || ''}__${p.part || p.part_name || ''}` === key);
+    for (const key of Object.keys(groupedNew)) {
+      const newPart = groupedNew[key];
+      const oldPart = groupedOld[key];
       const newQty = Number(newPart.qty) || 0;
       const oldQty = oldPart ? (Number(oldPart.qty) || 0) : 0;
       if (!oldPart && newQty > 0) {
@@ -393,11 +409,22 @@ async function updateOrder(id, order) {
     }
 
     // Actualizar la work order (sin tocar work_order_parts aún)
+    // Mantener la fecha original si no viene en el request, y forzar formato YYYY-MM-DD
+    let newDate = order.date;
+    if (!newDate) {
+      newDate = currentData.date;
+    } else if (typeof newDate === 'string' && newDate.length > 10) {
+      // Si viene como string con hora, tomar solo la parte de la fecha
+      newDate = newDate.slice(0, 10);
+    } else if (newDate instanceof Date) {
+      // Si viene como objeto Date, formatear a YYYY-MM-DD
+      newDate = newDate.toISOString().slice(0, 10);
+    }
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      order.date || null,
+      newDate || null,
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
@@ -405,7 +432,7 @@ async function updateOrder(id, order) {
       order.idClassic || null,
       JSON.stringify(order.mechanics || []),
       JSON.stringify(order.extraOptions || []),
-      JSON.stringify(order.parts || []),
+      JSON.stringify(Object.values(groupedNew)), // partes agrupadas y sumadas
       id
     ];
     const [result] = await connection.execute(
@@ -414,11 +441,11 @@ async function updateOrder(id, order) {
     );
     console.log('[DB] Successfully updated work order with ID:', id);
 
-    // Descontar solo la diferencia positiva de inventario
+    // Descontar solo la diferencia positiva de inventario (por parte agrupada)
     if (partsToDeduct.length > 0) {
-      console.log(`[DB] Detected ${partsToDeduct.length} parts to deduct from inventory (FIFO, only positive difference)`);
+      console.log(`[DB] Detected ${partsToDeduct.length} grouped parts to deduct from inventory (FIFO, only positive difference)`);
       const fifoResult = await module.exports.deductInventoryFIFO(partsToDeduct, usuario);
-      // Insertar solo los work_order_parts correspondientes a la diferencia
+      // Insertar solo los work_order_parts correspondientes a la diferencia agrupada
       for (let i = 0; i < partsToDeduct.length; i++) {
         const part = partsToDeduct[i];
         let fifoInfo = null;
