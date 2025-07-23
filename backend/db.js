@@ -565,12 +565,22 @@ async function getOrderById(id) {
       return null;
     }
     
-    // Parse JSON fields y formatear fecha
-    let dateStr = rows[0].date;
+    // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
+    let dateStr = '';
     if (rows[0].date instanceof Date) {
       dateStr = rows[0].date.toISOString().slice(0, 10);
     } else if (typeof rows[0].date === 'string') {
-      dateStr = rows[0].date.slice(0, 10);
+      // Puede venir como '2025-07-15T00:00:00.000Z', '2025-07-15', etc
+      // Si es string y tiene formato ISO, tomar solo la parte de fecha
+      const match = rows[0].date.match(/^\d{4}-\d{2}-\d{2}/);
+      dateStr = match ? match[0] : rows[0].date;
+    } else if (rows[0].date && typeof rows[0].date === 'object' && typeof rows[0].date.toString === 'function') {
+      // Si es un objeto raro (por ejemplo, un objeto fecha de MySQL), intentar convertirlo a string y extraer la fecha
+      const str = rows[0].date.toString();
+      const match = str.match(/^\d{4}-\d{2}-\d{2}/);
+      dateStr = match ? match[0] : str;
+    } else {
+      dateStr = '';
     }
     const order = {
       ...rows[0],
