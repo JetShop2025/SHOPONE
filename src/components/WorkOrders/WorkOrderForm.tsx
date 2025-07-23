@@ -329,6 +329,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         }
       }
 
+      // No parseo ni conversión: solo enviar la fecha tal como está (debe ser YYYY-MM-DD)
       const dataToSend = {
         ...workOrder,
         idClassic: idClassicToSend,
@@ -338,7 +339,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
-        date: dateToSend
+        date: workOrder.date // debe ser YYYY-MM-DD
       };
 
       await onSubmit(dataToSend);
@@ -400,37 +401,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const formatDateYYYYMMDD = (date: string | undefined): string => {
     if (!date) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
-      const [mm, dd, yyyy] = date.split('/');
-      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-    }
-    // fallback: try to parse
-    const d = new Date(date);
-    if (!isNaN(d.getTime())) {
-      return d.toISOString().slice(0, 10);
-    }
     return '';
   };
 
-  // Handler for date input change (always store as YYYY-MM-DD string)
+  // Handler for date input change (always store as YYYY-MM-DD string, never parse or convert)
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Always store as YYYY-MM-DD string, never as Date object or MM/DD/YYYY
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       onChange({ target: { name: 'date', value } } as any);
-    } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-      // Convert MM/DD/YYYY to YYYY-MM-DD
-      const [mm, dd, yyyy] = value.split('/');
-      onChange({ target: { name: 'date', value: `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}` } } as any);
-    } else {
-      // fallback: try to parse
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        onChange({ target: { name: 'date', value: d.toISOString().slice(0, 10) } } as any);
-      } else {
-        onChange({ target: { name: 'date', value } } as any);
-      }
     }
+    // Ignore any other format (do not update state)
   };
   return (
     <div style={{
@@ -483,6 +463,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               onChange={handleDateChange}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
+              pattern="\d{4}-\d{2}-\d{2}"
+              inputMode="numeric"
+              autoComplete="off"
             />
           </label>
           <label style={{ flex: '1 1 120px' }}>
