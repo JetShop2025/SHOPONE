@@ -396,40 +396,37 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return getTrailerOptions ? getTrailerOptions(billToCo) : [];
   };
 
-  // Helper to format date to MM/DD/YYYY
-  const formatDateMMDDYYYY = (date: string | undefined): string => {
+  // Helper to format date to YYYY-MM-DD (for input type="date")
+  const formatDateYYYYMMDD = (date: string | undefined): string => {
     if (!date) return '';
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const [year, month, day] = date.split('-');
-      return `${month}/${day}/${year}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+      const [mm, dd, yyyy] = date.split('/');
+      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
     }
+    // fallback: try to parse
     const d = new Date(date);
     if (!isNaN(d.getTime())) {
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      return `${mm}/${dd}/${yyyy}`;
+      return d.toISOString().slice(0, 10);
     }
-    return date;
+    return '';
   };
 
-  // Handler for date input change
+  // Handler for date input change (always store as YYYY-MM-DD string)
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
+    const value = e.target.value;
+    // Always store as YYYY-MM-DD string, never as Date object or MM/DD/YYYY
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const [year, month, day] = value.split('-');
-      value = `${month}/${day}/${year}`;
-    }
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
       onChange({ target: { name: 'date', value } } as any);
+    } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      // Convert MM/DD/YYYY to YYYY-MM-DD
+      const [mm, dd, yyyy] = value.split('/');
+      onChange({ target: { name: 'date', value: `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}` } } as any);
     } else {
+      // fallback: try to parse
       const d = new Date(value);
       if (!isNaN(d.getTime())) {
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
+        onChange({ target: { name: 'date', value: d.toISOString().slice(0, 10) } } as any);
       } else {
         onChange({ target: { name: 'date', value } } as any);
       }
@@ -482,47 +479,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <input
               type="date"
               name="date"
-              value={(() => {
-                // Always show as yyyy-MM-dd for input type="date"
-                if (!workOrder.date) return '';
-                // Accept MM/DD/YYYY or YYYY-MM-DD
-                if (/^\d{2}\/\d{2}\/\d{4}$/.test(workOrder.date)) {
-                  const [mm, dd, yyyy] = workOrder.date.split('/');
-                  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-                }
-                if (/^\d{4}-\d{2}-\d{2}/.test(workOrder.date)) {
-                  return workOrder.date.slice(0, 10);
-                }
-                // fallback: try to parse
-                const d = new Date(workOrder.date);
-                if (!isNaN(d.getTime())) {
-                  return d.toISOString().slice(0, 10);
-                }
-                return '';
-              })()}
-              onChange={e => {
-                // Always store as MM/DD/YYYY in state
-                const value = e.target.value;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                  const [yyyy, mm, dd] = value.split('-');
-                  // Only update if value is valid
-                  if (yyyy && mm && dd) {
-                    // For date input, always update state immediately
-                    onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
-                  }
-                } else {
-                  // fallback: try to parse and format as MM/DD/YYYY
-                  const d = new Date(value);
-                  if (!isNaN(d.getTime())) {
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    const yyyy = d.getFullYear();
-                    onChange({ target: { name: 'date', value: `${mm}/${dd}/${yyyy}` } } as any);
-                  } else {
-                    onChange({ target: { name: 'date', value } } as any);
-                  }
-                }
-              }}
+              value={formatDateYYYYMMDD(workOrder.date)}
+              onChange={handleDateChange}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             />
