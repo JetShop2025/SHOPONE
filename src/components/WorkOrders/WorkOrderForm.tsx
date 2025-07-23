@@ -390,18 +390,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Si trailersWithPendingParts cambia y el trailer seleccionado YA NO tiene partes pendientes,
   // limpia la campana visual y fuerza refresco del input si es necesario
-  React.useEffect(() => {
-    if (
-      workOrder.trailer &&
-      Array.isArray(trailersWithPendingParts) &&
-      !trailersWithPendingParts.includes(workOrder.trailer)
-    ) {
-      // Si el trailer seleccionado ya no tiene partes pendientes, forzar refresco visual
-      // Opcional: podrías limpiar el valor, o solo forzar un re-render
-      // Aquí solo forzamos un cambio para que el datalist se actualice
-      onChange({ target: { name: 'trailer', value: workOrder.trailer } } as any);
-    }
-  }, [trailersWithPendingParts, workOrder.trailer, onChange]);
+  // Eliminar efecto que forzaba el valor del trailer y bloqueaba edición
 
   const getTrailerOptionsForBill = (billToCo: string) => {
     return getTrailerOptions ? getTrailerOptions(billToCo) : [];

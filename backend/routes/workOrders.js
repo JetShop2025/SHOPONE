@@ -88,8 +88,47 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
     }
 
     console.log(`✅ [${fifoId}] FIFO completado - Total deducido: ${totalDeducted}`);
+    // Si aún queda cantidad por deducir, deducir del inventario master (onHand)
+    if (qtyToDeduct > 0) {
+      console.log(`⚠️ [${fifoId}] No hay suficientes recibos PENDING, deduciendo ${qtyToDeduct} de inventario master (onHand)`);
+      // Obtener inventario actual
+      const [invRows] = await db.query('SELECT onHand, salidasWo FROM inventory WHERE sku = ?', [sku]);
+      if (invRows.length > 0) {
+        const currentOnHand = Number(invRows[0].onHand) || 0;
+        const currentSalidasWo = Number(invRows[0].salidasWo) || 0;
+        const newOnHand = Math.max(0, currentOnHand - qtyToDeduct);
+        const newSalidasWo = currentSalidasWo + qtyToDeduct;
+        await db.query('UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?', [newOnHand, newSalidasWo, sku]);
+        // Registrar en work_order_parts (sin invoice/invoiceLink)
+        await db.query(
+          'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, usuario]
+        );
+        // (Opcional) Registrar en log/auditoría
+        if (db.logAuditEvent) {
+          await db.logAuditEvent(
+            usuario,
+            'UPDATE',
+            'inventory',
+            sku,
+            {
+              action: 'Deducción directa de inventario master por falta de recibos PENDING',
+              sku,
+              qtyDeducted: qtyToDeduct,
+              onHandChange: { antes: currentOnHand, despues: newOnHand },
+              salidasWoChange: { antes: currentSalidasWo, despues: newSalidasWo },
+              source: 'FIFO_REGISTER_PART',
+            }
+          );
+        }
+        totalDeducted += qtyToDeduct;
+        qtyToDeduct = 0;
+      } else {
+        console.error(`💀 [${fifoId}] No se encontró inventario master para SKU: ${sku}`);
+        return { success: false, error: 'No se encontró inventario master para el SKU' };
+      }
+    }
     console.log(`📊 [${fifoId}] Memoria final: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
-    
     return { success: true, totalDeducted };
   } catch (error) {
     console.error(`💀 [${fifoId}] ERROR CRÍTICO en registerPartFifo:`, error.message);
