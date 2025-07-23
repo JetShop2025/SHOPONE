@@ -805,12 +805,50 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
         }
       }
       
-      // PASO 5: Advertir si no se pudo satisfacer completamente la demanda
+      // PASO 4: Si aún queda cantidad por deducir, deducir del inventario master (onHand)
+      if (qtyNeeded > 0) {
+        console.warn(`[DB] FIFO: No hay suficientes recibos PENDING para ${part.sku}, deduciendo ${qtyNeeded} de inventario master (onHand)`);
+        // Obtener inventario actual
+        const [inventoryRows] = await connection.execute(
+          'SELECT onHand, salidasWo FROM inventory WHERE sku = ?',
+          [part.sku]
+        );
+        if (inventoryRows.length > 0) {
+          const currentOnHand = Number(inventoryRows[0].onHand) || 0;
+          const currentSalidasWo = Number(inventoryRows[0].salidasWo) || 0;
+          const newOnHand = Math.max(0, currentOnHand - qtyNeeded);
+          const newSalidasWo = currentSalidasWo + qtyNeeded;
+          await connection.execute(
+            'UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?',
+            [newOnHand, newSalidasWo, part.sku]
+          );
+          // Registrar en auditoría la actualización del inventario master
+          await logAuditEvent(
+            usuario,
+            'UPDATE',
+            'inventory',
+            part.sku,
+            {
+              action: 'Deducción directa de inventario master por falta de recibos PENDING',
+              sku: part.sku,
+              qtyDeducted: qtyNeeded,
+              onHandChange: { antes: currentOnHand, despues: newOnHand },
+              salidasWoChange: { antes: currentSalidasWo, despues: newSalidasWo },
+              source: 'FIFO_DEDUCTION_NO_RECEIVES'
+            }
+          );
+          partResult.totalQtyDeducted += qtyNeeded;
+          qtyNeeded = 0;
+        } else {
+          console.error(`[DB] FIFO: No se encontró inventario master para SKU: ${part.sku}`);
+          partResult.shortage = qtyNeeded;
+        }
+      }
+      // PASO 5: Advertir si no se pudo satisfacer completamente la demanda (solo si sigue faltando después de intentar descontar de master)
       if (qtyNeeded > 0) {
         console.warn(`[DB] FIFO: Could not satisfy full demand for ${part.sku}. Missing: ${qtyNeeded} (needed: ${originalQtyNeeded}, deducted: ${partResult.totalQtyDeducted})`);
         partResult.shortage = qtyNeeded;
       }
-      
       console.log(`[DB] FIFO: Completed processing ${part.sku}:`, {
         originalQtyNeeded,
         totalQtyDeducted: partResult.totalQtyDeducted,
@@ -818,7 +856,6 @@ async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
         pendingPartsUsed: partResult.pendingPartsMarkedAsUsed.length,
         invoicesUsed: partResult.invoicesUsed.length
       });
-      
       result.push(partResult);
     }
     
