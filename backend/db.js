@@ -244,14 +244,20 @@ async function getOrders(limit = 100, offset = 0) {
     const [rows] = await connection.execute(query);
     console.log(`[DB] Found ${rows.length} work orders in database`);
     
-    // Parse JSON fields con manejo de errores optimizado y formatear fecha
+    // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
     const parsedRows = rows.map(row => {
-      let dateStr = row.date;
+      let dateStr = '';
       if (row.date instanceof Date) {
         dateStr = row.date.toISOString().slice(0, 10);
       } else if (typeof row.date === 'string') {
-        // Puede venir como '2025-07-15T00:00:00.000Z' o similar
-        dateStr = row.date.slice(0, 10);
+        const match = row.date.match(/^\d{4}-\d{2}-\d{2}/);
+        dateStr = match ? match[0] : row.date;
+      } else if (row.date && typeof row.date === 'object' && typeof row.date.toString === 'function') {
+        const str = row.date.toString();
+        const match = str.match(/^\d{4}-\d{2}-\d{2}/);
+        dateStr = match ? match[0] : str;
+      } else {
+        dateStr = '';
       }
       try {
         return {
@@ -287,13 +293,20 @@ async function getOrdersByTrailer(trailerId) {
     const [rows] = await connection.execute('SELECT * FROM work_orders WHERE trailer = ?', [trailerId]);
     console.log(`[DB] Found ${rows.length} work orders for trailer ${trailerId}`);
     
-    // Parse JSON fields y formatear fecha
+    // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
     const parsedRows = rows.map(row => {
-      let dateStr = row.date;
+      let dateStr = '';
       if (row.date instanceof Date) {
         dateStr = row.date.toISOString().slice(0, 10);
       } else if (typeof row.date === 'string') {
-        dateStr = row.date.slice(0, 10);
+        const match = row.date.match(/^\d{4}-\d{2}-\d{2}/);
+        dateStr = match ? match[0] : row.date;
+      } else if (row.date && typeof row.date === 'object' && typeof row.date.toString === 'function') {
+        const str = row.date.toString();
+        const match = str.match(/^\d{4}-\d{2}-\d{2}/);
+        dateStr = match ? match[0] : str;
+      } else {
+        dateStr = '';
       }
       return {
         ...row,
