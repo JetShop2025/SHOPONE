@@ -244,11 +244,19 @@ async function getOrders(limit = 100, offset = 0) {
     const [rows] = await connection.execute(query);
     console.log(`[DB] Found ${rows.length} work orders in database`);
     
-    // Parse JSON fields con manejo de errores optimizado
+    // Parse JSON fields con manejo de errores optimizado y formatear fecha
     const parsedRows = rows.map(row => {
+      let dateStr = row.date;
+      if (row.date instanceof Date) {
+        dateStr = row.date.toISOString().slice(0, 10);
+      } else if (typeof row.date === 'string') {
+        // Puede venir como '2025-07-15T00:00:00.000Z' o similar
+        dateStr = row.date.slice(0, 10);
+      }
       try {
         return {
           ...row,
+          date: dateStr,
           parts: row.parts ? JSON.parse(row.parts) : [],
           mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
           extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
@@ -257,13 +265,13 @@ async function getOrders(limit = 100, offset = 0) {
         console.warn(`[DB] Error parsing JSON for work order ${row.id}:`, parseError.message);
         return {
           ...row,
+          date: dateStr,
           parts: [],
           mechanics: [],
           extraOptions: []
         };
       }
     });
-    
     return parsedRows;
   } catch (error) {
     console.error('[DB] Error getting work orders:', error.message);
@@ -279,14 +287,22 @@ async function getOrdersByTrailer(trailerId) {
     const [rows] = await connection.execute('SELECT * FROM work_orders WHERE trailer = ?', [trailerId]);
     console.log(`[DB] Found ${rows.length} work orders for trailer ${trailerId}`);
     
-    // Parse JSON fields
-    const parsedRows = rows.map(row => ({
-      ...row,
-      parts: row.parts ? JSON.parse(row.parts) : [],
-      mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
-      extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
-    }));
-    
+    // Parse JSON fields y formatear fecha
+    const parsedRows = rows.map(row => {
+      let dateStr = row.date;
+      if (row.date instanceof Date) {
+        dateStr = row.date.toISOString().slice(0, 10);
+      } else if (typeof row.date === 'string') {
+        dateStr = row.date.slice(0, 10);
+      }
+      return {
+        ...row,
+        date: dateStr,
+        parts: row.parts ? JSON.parse(row.parts) : [],
+        mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
+        extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
+      };
+    });
     return parsedRows;
   } catch (error) {
     console.error('[DB] Error getting work orders by trailer:', error.message);
@@ -549,14 +565,20 @@ async function getOrderById(id) {
       return null;
     }
     
-    // Parse JSON fields
+    // Parse JSON fields y formatear fecha
+    let dateStr = rows[0].date;
+    if (rows[0].date instanceof Date) {
+      dateStr = rows[0].date.toISOString().slice(0, 10);
+    } else if (typeof rows[0].date === 'string') {
+      dateStr = rows[0].date.slice(0, 10);
+    }
     const order = {
       ...rows[0],
+      date: dateStr,
       parts: rows[0].parts ? JSON.parse(rows[0].parts) : [],
       mechanics: rows[0].mechanics ? JSON.parse(rows[0].mechanics) : [],
       extraOptions: rows[0].extraOptions ? JSON.parse(rows[0].extraOptions) : []
     };
-    
     return order;
   } catch (error) {
     console.error('[DB] Error getting work order by ID:', error.message);
