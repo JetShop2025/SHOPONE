@@ -301,11 +301,32 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
-      // Convertir fecha a formato YYYY-MM-DD para la base de datos
+
+      // Convertir fecha a formato YYYY-MM-DD para la base de datos (siempre, sin importar el formato)
       let dateToSend = workOrder.date;
-      if (dateToSend && /^\d{2}\/\d{2}\/\d{4}$/.test(dateToSend)) {
-        const [mm, dd, yyyy] = dateToSend.split('/');
-        dateToSend = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+      if (dateToSend) {
+        let yyyy = '', mm = '', dd = '';
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateToSend)) {
+          // MM/DD/YYYY
+          [mm, dd, yyyy] = dateToSend.split('/');
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateToSend)) {
+          // YYYY-MM-DD
+          [yyyy, mm, dd] = dateToSend.split('-');
+        } else {
+          // Intentar parsear cualquier otro formato
+          const d = new Date(dateToSend);
+          if (!isNaN(d.getTime())) {
+            yyyy = String(d.getFullYear());
+            mm = String(d.getMonth() + 1).padStart(2, '0');
+            dd = String(d.getDate()).padStart(2, '0');
+          }
+        }
+        if (yyyy && mm && dd) {
+          dateToSend = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+        } else {
+          // Si no se pudo parsear, dejar como estaba
+          dateToSend = workOrder.date;
+        }
       }
 
       const dataToSend = {
@@ -523,13 +544,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               list="trailer-options"
               name="trailer"
               value={workOrder.trailer || ''}
-              onChange={(e) => {
-                // Remover el indicador 🔔 del valor antes de guardarlo
+              onChange={e => {
+                // Permitir cualquier texto y quitar solo el emoji si existe
                 const cleanValue = e.target.value.replace(' 🔔', '');
                 onChange({ target: { name: 'trailer', value: cleanValue } } as any);
               }}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               placeholder="Selecciona o escribe el trailer..."
+              autoComplete="off"
             />
             <datalist id="trailer-options">
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
