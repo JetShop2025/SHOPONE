@@ -127,10 +127,31 @@ router.post('/', async (req, res) => {
               
               for (const part of partsArr) {
                 if (part.sku && part.qty && Number(part.qty) > 0) {
-                  const available = inventoryMap[part.sku];
-                  if (available && available >= Number(part.qty)) {
-                    updates.push([Number(part.qty), Number(part.qty), part.sku]);
-                    logs.push({ sku: part.sku, qty: part.qty, wo: id });
+                  const requestedQty = Number(part.qty);
+                  const available = inventoryMap[part.sku] || 0;
+                  let toDeductFromInventory = 0;
+                  if (available >= requestedQty) {
+                    // All can be deducted from inventory
+                    toDeductFromInventory = requestedQty;
+                  } else if (available > 0) {
+                    // Partially deduct from inventory, rest from master
+                    toDeductFromInventory = available;
+                  }
+                  if (toDeductFromInventory > 0) {
+                    updates.push([toDeductFromInventory, toDeductFromInventory, part.sku]);
+                    logs.push({ sku: part.sku, qty: toDeductFromInventory, wo: id });
+                  }
+                  // Deduct missing qty from master inventory if needed
+                  const missingQty = requestedQty - toDeductFromInventory;
+                  if (missingQty > 0) {
+                    // Deduct from master inventory (onHand)
+                    await db.query(
+                      'UPDATE inventory SET onHand = onHand - ? WHERE sku = ?',
+                      [missingQty, part.sku]
+                    );
+                    if (typeof logAccion === 'function') {
+                      await logAccion(fields.usuario || 'system', 'DEDUCT_MASTER', 'inventory', part.sku, JSON.stringify({ qty: missingQty, wo: id }));
+                    }
                   }
                 }
               }

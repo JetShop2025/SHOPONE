@@ -541,7 +541,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 120px' }}>
             Trailer
             <input
-              list="trailer-options"
               name="trailer"
               value={workOrder.trailer || ''}
               onChange={e => {
@@ -552,6 +551,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               placeholder="Selecciona o escribe el trailer..."
               autoComplete="off"
+              list="trailer-options"
             />
             <datalist id="trailer-options">
               {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
