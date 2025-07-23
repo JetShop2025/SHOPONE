@@ -410,11 +410,16 @@ async function updateOrder(id, order) {
 
     // Actualizar la work order (sin tocar work_order_parts aún)
     // Siempre mantener la fecha original de la W.O. al editar
+    // Forzar la fecha a YYYY-MM-DD para evitar desfase por zona horaria
+    let originalDate = currentData.date;
+    if (typeof originalDate === 'string' && originalDate.length > 10) {
+      originalDate = originalDate.slice(0, 10);
+    }
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      currentData.date || null,
+      originalDate || null,
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
