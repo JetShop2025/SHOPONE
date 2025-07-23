@@ -373,10 +373,24 @@ async function updateOrder(id, order) {
     }
     const newParts = Array.isArray(order.parts) ? order.parts : [];
 
-    // Detectar partes nuevas (por SKU y part_name)
-    const oldPartsKeySet = new Set(oldParts.map(p => `${p.sku || ''}__${p.part || p.part_name || ''}`));
-    const newPartsKeySet = new Set(newParts.map(p => `${p.sku || ''}__${p.part || p.part_name || ''}`));
-    const newPartsToAdd = newParts.filter(p => !oldPartsKeySet.has(`${p.sku || ''}__${p.part || p.part_name || ''}`) && p.sku);
+    // Detectar partes nuevas o aumentos de cantidad (por SKU y part_name)
+    // Solo descontar la diferencia positiva (nunca reponer si bajan la cantidad)
+    const partsToDeduct = [];
+    for (const newPart of newParts) {
+      if (!newPart.sku) continue;
+      const key = `${newPart.sku || ''}__${newPart.part || newPart.part_name || ''}`;
+      const oldPart = oldParts.find(p => `${p.sku || ''}__${p.part || p.part_name || ''}` === key);
+      const newQty = Number(newPart.qty) || 0;
+      const oldQty = oldPart ? (Number(oldPart.qty) || 0) : 0;
+      if (!oldPart && newQty > 0) {
+        // Parte completamente nueva
+        partsToDeduct.push({ ...newPart, qty: newQty });
+      } else if (oldPart && newQty > oldQty) {
+        // Parte existente, pero aumentó la cantidad
+        partsToDeduct.push({ ...newPart, qty: newQty - oldQty });
+      }
+      // Si la cantidad bajó o es igual, no descontar nada
+    }
 
     // Actualizar la work order (sin tocar work_order_parts aún)
     const safeValues = [
@@ -400,15 +414,13 @@ async function updateOrder(id, order) {
     );
     console.log('[DB] Successfully updated work order with ID:', id);
 
-    // --- NUEVO: Descontar del inventario master para partes nuevas ---
-    if (newPartsToAdd.length > 0) {
-      console.log(`[DB] Detected ${newPartsToAdd.length} new parts to add and deduct from inventory (FIFO)`);
-      // Ejecutar deducción FIFO para todas las partes nuevas
-      const fifoResult = await module.exports.deductInventoryFIFO(newPartsToAdd, usuario);
-      // Insertar las partes nuevas en work_order_parts
-      for (let i = 0; i < newPartsToAdd.length; i++) {
-        const part = newPartsToAdd[i];
-        // Buscar info FIFO para este SKU
+    // Descontar solo la diferencia positiva de inventario
+    if (partsToDeduct.length > 0) {
+      console.log(`[DB] Detected ${partsToDeduct.length} parts to deduct from inventory (FIFO, only positive difference)`);
+      const fifoResult = await module.exports.deductInventoryFIFO(partsToDeduct, usuario);
+      // Insertar solo los work_order_parts correspondientes a la diferencia
+      for (let i = 0; i < partsToDeduct.length; i++) {
+        const part = partsToDeduct[i];
         let fifoInfo = null;
         if (fifoResult && fifoResult.details && Array.isArray(fifoResult.details)) {
           fifoInfo = fifoResult.details.find(r => r.sku === part.sku);
