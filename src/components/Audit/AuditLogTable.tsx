@@ -35,7 +35,35 @@ function renderDetalles(detalles: string | null | undefined) {
     return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
   }
 
-  // Si tiene summary, mostrarlo primero como encabezado principal
+  // Si tiene summary y el único cambio es estado, mostrar solo la tabla de cambio de estado
+  if (
+    parsed.summary &&
+    parsed.changes &&
+    typeof parsed.changes === 'object' &&
+    Object.keys(parsed.changes).length === 1 &&
+    Object.keys(parsed.changes)[0].toLowerCase() === 'estado'
+  ) {
+    return (
+      <div style={{ fontSize: 13 }}>
+        <div style={{ 
+          fontWeight: 600, 
+          color: '#1565c0', 
+          marginBottom: 12,
+          padding: '8px 12px',
+          background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+          borderRadius: 8,
+          border: '1px solid #2196f3',
+          boxShadow: '0 2px 4px rgba(33, 150, 243, 0.1)'
+        }}>
+          📋 {parsed.summary}
+        </div>
+        {/* Solo mostrar la tabla de cambio de estado */}
+        {renderChangesTable(parsed.changes)}
+      </div>
+    );
+  }
+
+  // Si tiene summary, mostrarlo primero como encabezado principal (completo)
   if (parsed.summary) {
     return (
       <div style={{ fontSize: 13 }}>
@@ -51,13 +79,10 @@ function renderDetalles(detalles: string | null | undefined) {
         }}>
           📋 {parsed.summary}
         </div>
-        
         {/* Mostrar información contextual si existe */}
         {renderContextInfo(parsed)}
-        
         {/* Mostrar cambios si existen */}
         {parsed.changes && renderChangesTable(parsed.changes)}
-        
         {/* Mostrar detalles adicionales */}
         {parsed.detalles && renderDataTable(parsed.detalles, 'Detalles', '#4caf50')}
         {parsed.datosEliminados && renderDataTable(parsed.datosEliminados, 'Datos Eliminados', '#f44336')}
