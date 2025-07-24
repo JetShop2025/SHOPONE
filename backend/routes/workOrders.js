@@ -842,7 +842,7 @@ router.delete('/:id', async (req, res) => {
     const oldData = results[0];
     await db.query('DELETE FROM work_orders WHERE id = ?', [id]);
     await logAccion(
-      usuario,
+      usuario || req.body.usuario || req.headers['x-usuario'] || 'UNKNOWN',
       'DELETE',
       'work_orders',
       id,
@@ -988,6 +988,16 @@ router.put('/:id', async (req, res) => {
 
     console.log(`🗄️ [${requestId}] Ejecutando query de actualización...`);
     await db.query(updateQuery, updateFields);
+    // AUDIT LOG SOLO PARA CAMBIO DE STATUS
+    if (typeof logAccion === 'function' && oldResults[0].status !== status) {
+      await logAccion(
+        usuario || 'SYSTEM',
+        'STATUS_CHANGE',
+        'work_orders',
+        id,
+        JSON.stringify({ before: oldResults[0].status, after: status })
+      );
+    }
     
     console.log(`✅ [${requestId}] WO actualizada exitosamente`);
     console.log(`📊 [${requestId}] Memoria después de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);    // 5. Responder inmediatamente
