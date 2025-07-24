@@ -988,15 +988,26 @@ router.put('/:id', async (req, res) => {
 
     console.log(`🗄️ [${requestId}] Ejecutando query de actualización...`);
     await db.query(updateQuery, updateFields);
-    // AUDIT LOG SOLO PARA CAMBIO DE STATUS
-    if (typeof logAccion === 'function' && oldResults[0].status !== status) {
-      await logAccion(
-        usuario || 'SYSTEM',
-        'STATUS_CHANGE',
-        'work_orders',
-        id,
-        JSON.stringify({ before: oldResults[0].status, after: status })
-      );
+    // AUDIT LOG: Si el único cambio es el estado, registrar solo ese campo
+    if (typeof logAccion === 'function') {
+      const changes = {};
+      if (oldResults[0].status !== status) {
+        changes.estado = {
+          antes: oldResults[0].status,
+          despues: status
+        };
+      }
+      // Si solo cambió el estado, registrar solo ese campo
+      if (Object.keys(changes).length === 1) {
+        await logAccion(
+          usuario || 'SYSTEM',
+          'STATUS_CHANGE',
+          'work_orders',
+          id,
+          JSON.stringify({ summary: 'Aprobación de Work Order', changes })
+        );
+      }
+      // Si hay otros cambios, puedes agregar aquí la lógica para registrar el objeto completo si lo deseas
     }
     
     console.log(`✅ [${requestId}] WO actualizada exitosamente`);

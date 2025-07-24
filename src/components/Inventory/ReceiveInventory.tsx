@@ -12,7 +12,7 @@ const getLocalDate = () => {
 };
 
 const billToCoOptions = [
-  "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE"
+  "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","INVENTARIO"
 ];
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
@@ -433,30 +433,33 @@ const ReceiveInventory: React.FC = () => {
                   <option value="">Bill To Co</option>
                   {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
-                {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(form.billToCo) ? (
-                  <select
-                    name="destino_trailer"
-                    value={form.destino_trailer}
-                    onChange={handleChange}
-                    style={inputStyle}
-                    required
-                  >
-                    <option value="">Destination Trailer</option>
-                    {getTrailerOptions(form.billToCo).map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    name="destino_trailer"
-                    value={form.destino_trailer}
-                    onChange={handleChange}
-                    placeholder="Destination Trailer"
-                    style={inputStyle}
-                    required
-                  />
-                )}                {/* Campo para número de invoice */}
+                {/* Si es INVENTARIO, no pedir destino_trailer */}
+                {form.billToCo === "INVENTARIO" ? null :
+                  (["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(form.billToCo) ? (
+                    <select
+                      name="destino_trailer"
+                      value={form.destino_trailer}
+                      onChange={handleChange}
+                      style={inputStyle}
+                      required
+                    >
+                      <option value="">Destination Trailer</option>
+                      {getTrailerOptions(form.billToCo).map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      name="destino_trailer"
+                      value={form.destino_trailer}
+                      onChange={handleChange}
+                      placeholder="Destination Trailer"
+                      style={inputStyle}
+                      required
+                    />
+                  ))
+                }                {/* Campo para número de invoice */}
                 <input
                   type="text"
                   name="invoice"                  value={form.invoice}
