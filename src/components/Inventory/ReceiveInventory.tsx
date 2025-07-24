@@ -230,25 +230,14 @@ const ReceiveInventory: React.FC = () => {
   const handleEdit = () => {
     if (selectedRow === null) return;
     const pwd = window.prompt('Enter password to edit:');
-    if (pwd === '6214') {      const found = receives.find(r => r.id === selectedRow);
+    if (pwd === '6214') {
+      const found = receives.find(r => r.id === selectedRow);
       if (found) {
-        console.log('📋 Datos del receive encontrado para edición:', found);
-        console.log('📋 Campos disponibles:', Object.keys(found));
-        
-        setEditId(found.id);setEditForm({
-          id: found.id,
-          sku: found.sku || '',
-          category: found.category || '',
-          item: found.item || '',
-          provider: found.provider || '',
-          brand: found.brand || '',
-          um: found.um || '',
+        setEditId(found.id);
+        setEditForm({
+          ...found,
           billToCo: found.billToCo || found.bill_to_co || found.billTo || found.bill_to || '',
           destino_trailer: found.destino_trailer || found.destination_trailer || '',
-          invoice: found.invoice || '',
-          invoiceLink: found.invoiceLink || found.invoice_link || '',          qty: found.qty || found.quantity || '',
-          costTax: found.costTax || found.cost_tax || found.cost || '',
-          total: found.total || '',
           totalPOClassic: found.totalPOClassic || found.total_po_classic || found.po_classic || '',
           fecha: found.fecha ? found.fecha.slice(0, 10) : (found.date ? found.date.slice(0, 10) : (() => {
             const now = new Date();
@@ -256,7 +245,7 @@ const ReceiveInventory: React.FC = () => {
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
-          })()), // Formato correcto para input date sin dayjs
+          })()),
           estatus: found.estatus || found.status || 'PENDING'
         });
         setShowEditForm(true);
@@ -581,7 +570,7 @@ const ReceiveInventory: React.FC = () => {
                   <input
                     name="billToCo"
                     value={editForm.billToCo || ''}
-                    onChange={e => setEditForm({ ...editForm, billToCo: e.target.value, destino_trailer: '' })}
+                    onChange={e => setEditForm({ ...editForm, billToCo: e.target.value })}
                     placeholder="Bill To Co"
                     style={inputStyle}
                     required
@@ -741,6 +730,15 @@ const ReceiveInventory: React.FC = () => {
                 {r.total ? `$${Number(r.total).toFixed(2)}` : '—'}
               </td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.totalPOClassic || r.total_po_classic || r.po_classic || '—'}</td>
+              <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{
+                r.totalPOClassic !== undefined && r.totalPOClassic !== null && r.totalPOClassic !== ''
+                  ? r.totalPOClassic
+                  : r.total_po_classic !== undefined && r.total_po_classic !== null && r.total_po_classic !== ''
+                  ? r.total_po_classic
+                  : r.po_classic !== undefined && r.po_classic !== null && r.po_classic !== ''
+                  ? r.po_classic
+                  : '—'
+              }</td>
               <td
                 style={{
                   padding: '8px 6px',
