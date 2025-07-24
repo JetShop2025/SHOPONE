@@ -2796,7 +2796,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               if (pwd === 'Soledad14') {
                 // Cambiar status a APPROVED
                 try {
-                  await axios.put(`${API_URL}/workorders/${contextMenu.order.id}`, {
+                  await axios.put(`${API_URL}/work-orders/${contextMenu.order.id}`, {
                     ...contextMenu.order,
                     status: 'APPROVED',
                     usuario: localStorage.getItem('username') || ''
