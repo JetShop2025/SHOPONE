@@ -27,13 +27,18 @@ router.post('/', async (req, res) => {  const {
   const qty_remaining = qty; // Inicializa qty_remaining igual a qty recibido
 
   try {
+    // Normalize totalPOClassic field for compatibility
+    let poClassic = totalPOClassic;
+    if (poClassic === undefined || poClassic === null || poClassic === '') {
+      poClassic = req.body.total_po_classic || req.body.po_classic || '';
+    }
     const [result] = await db.query(
       `INSERT INTO receives
         (sku, category, item, provider, brand, um, destino_trailer, invoice, invoiceLink, qty, costTax, totalPOClassic, fecha, estatus, qty_remaining)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sku, category, item, provider, brand, um,
-        destino_trailer, req.body.invoice, req.body.invoiceLink, qty, costTax, totalPOClassic, fecha, 'PENDING', qty_remaining
+        destino_trailer, req.body.invoice, req.body.invoiceLink, qty, costTax, poClassic, fecha, 'PENDING', qty_remaining
       ]
     );
     const { usuario: user, ...rest } = req.body;
@@ -149,17 +154,23 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
   let invoicePath = req.file ? `/uploads/${req.file.filename}` : (fields.invoice || '');
 
   try {
+    // Normalize totalPOClassic field for compatibility
+    let poClassic = fields.totalPOClassic;
+    if (poClassic === undefined || poClassic === null || poClassic === '') {
+      poClassic = fields.total_po_classic || fields.po_classic || '';
+    }
     const [oldResults] = await db.query('SELECT * FROM receives WHERE id = ?', [id]);
     if (!oldResults || oldResults.length === 0) {
       return res.status(404).send('Receipt not found');
     }
-    const oldData = oldResults[0];    await db.query(
+    const oldData = oldResults[0];
+    await db.query(
       `UPDATE receives SET 
         sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, invoiceLink=?, qty=?, costTax=?, totalPOClassic=?, fecha=?, estatus=?
        WHERE id=?`,
       [
         fields.sku, fields.category, fields.item, fields.provider, fields.brand, fields.um,
-        fields.destino_trailer, invoicePath, fields.invoiceLink, fields.qty, fields.costTax, fields.totalPOClassic, fields.fecha, fields.estatus, id
+        fields.destino_trailer, invoicePath, fields.invoiceLink, fields.qty, fields.costTax, poClassic, fields.fecha, fields.estatus, id
       ]
     );
 
