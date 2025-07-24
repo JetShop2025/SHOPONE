@@ -729,7 +729,6 @@ const ReceiveInventory: React.FC = () => {
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2', fontWeight: '600' }}>
                 {r.total ? `$${Number(r.total).toFixed(2)}` : '—'}
               </td>
-              <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{r.totalPOClassic || r.total_po_classic || r.po_classic || '—'}</td>
               <td style={{ padding: '8px 6px', textAlign: 'right', borderRight: '1px solid #e3eaf2' }}>{
                 r.totalPOClassic !== undefined && r.totalPOClassic !== null && r.totalPOClassic !== ''
                   ? r.totalPOClassic

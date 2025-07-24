@@ -19,26 +19,22 @@ async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
 }
 
 // Add receipt
-router.post('/', async (req, res) => {  const {
-    sku, category, item, provider, brand, um,
-    destino_trailer, qty, costTax, totalPOClassic, fecha, usuario, invoiceLink
-  } = req.body;
-
-  const qty_remaining = qty; // Inicializa qty_remaining igual a qty recibido
-
+router.post('/', async (req, res) => {
   try {
-    // Normalize totalPOClassic field for compatibility
-    let poClassic = totalPOClassic;
+    // Normaliza el campo totalPOClassic para aceptar cualquier variante
+    let poClassic = req.body.totalPOClassic;
     if (poClassic === undefined || poClassic === null || poClassic === '') {
       poClassic = req.body.total_po_classic || req.body.po_classic || '';
     }
+    const qty = req.body.qty;
+    const qty_remaining = qty;
     const [result] = await db.query(
       `INSERT INTO receives
         (sku, category, item, provider, brand, um, destino_trailer, invoice, invoiceLink, qty, costTax, totalPOClassic, fecha, estatus, qty_remaining)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        sku, category, item, provider, brand, um,
-        destino_trailer, req.body.invoice, req.body.invoiceLink, qty, costTax, poClassic, fecha, 'PENDING', qty_remaining
+        req.body.sku, req.body.category, req.body.item, req.body.provider, req.body.brand, req.body.um,
+        req.body.destino_trailer, req.body.invoice, req.body.invoiceLink, qty, req.body.costTax, poClassic, req.body.fecha, 'PENDING', qty_remaining
       ]
     );
     const { usuario: user, ...rest } = req.body;
