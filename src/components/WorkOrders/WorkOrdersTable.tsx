@@ -2090,18 +2090,13 @@ const WorkOrdersTable: React.FC = () => {
             </select>
           </label>
 
-          {/* Búsqueda inteligente por ID Classic */}
+          {/* Filtro local por ID Classic (sin consulta al servidor) */}
           <label className="wo-filter-label">
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
             <input
               type="text"
               value={searchIdClassic}
               onChange={e => setSearchIdClassic(e.target.value)}
-              onKeyPress={e => {
-                if (e.key === 'Enter') {
-                  searchWorkOrderByIdClassic(searchIdClassic);
-                }
-              }}
               className="wo-filter-input"
               style={{ 
                 minWidth: 160, 
@@ -2109,14 +2104,10 @@ const WorkOrdersTable: React.FC = () => {
                 border: searchIdClassic ? '2px solid #1976d2' : '1px solid #ddd'
               }}
               placeholder="W.O. 19417"
-              disabled={isSearching}
             />
             {searchIdClassic && (
               <button
-                onClick={() => {
-                  setSearchIdClassic('');
-                  fetchWorkOrders(); // Volver a cargar todas las órdenes
-                }}
+                onClick={() => setSearchIdClassic('')}
                 style={{ 
                   marginLeft: '5px', 
                   padding: '2px 6px', 
@@ -2132,30 +2123,7 @@ const WorkOrdersTable: React.FC = () => {
                 ✕
               </button>
             )}
-            {isSearching && (
-              <span style={{ marginLeft: '5px', fontSize: '12px', color: '#1976d2' }}>
-                🔄 Searching...
-              </span>            )}
           </label>
-          
-          {/* Botón de búsqueda */}
-          {searchIdClassic && (
-            <button
-              onClick={() => searchWorkOrderByIdClassic(searchIdClassic)}
-              disabled={isSearching}
-              style={{
-                marginLeft: '8px',
-                padding: '8px 16px',
-                backgroundColor: '#1976d2',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isSearching ? 'not-allowed' : 'pointer',
-                fontWeight: '600',
-                fontSize: '14px'
-              }}
-            >
-              {isSearching ? '🔄 Searching...' : '🔍 Search'}            </button>          )}
         </div>
         
         {/* Indicador de Estado del Servidor */}
@@ -2634,6 +2602,12 @@ const WorkOrdersTable: React.FC = () => {
               </tr>
             </thead>
             <tbody>  {filteredOrders
+              .filter(order => {
+                if (!searchIdClassic) return true;
+                return (
+                  (order.idClassic && order.idClassic.toString().toLowerCase().includes(searchIdClassic.toLowerCase()))
+                );
+              })
               .slice() // copy array to avoid mutating original
               .sort((a, b) => {
                 // Use dayjs for robust date parsing (handles both MM/DD/YYYY and YYYY-MM-DD)
@@ -2778,17 +2752,21 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
             top: contextMenu.y,
             left: contextMenu.x,
             background: '#fff',
-            border: '1px solid #1976d2',
-            borderRadius: 8,
-            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            border: '2px solid #1976d2',
+            borderRadius: 12,
+            boxShadow: '0 4px 16px rgba(25,118,210,0.18)',
             zIndex: 9999,
-            minWidth: 120,
-            padding: '8px 0',
+            minWidth: 180,
+            padding: '0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            overflow: 'hidden'
           }}
           onClick={e => e.stopPropagation()}
         >
           <button
-            style={{ ...primaryBtn, width: '100%', margin: 0, borderRadius: 0, borderBottom: '1px solid #eee' }}
+            style={{ background: '#1976d2', color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
             onClick={() => {
               setShowEditForm(true);
               setEditWorkOrder(contextMenu.order);
@@ -2797,19 +2775,43 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
             }}
           >Editar</button>
           <button
-            style={{ ...dangerBtn, width: '100%', margin: 0, borderRadius: 0 }}
+            style={{ background: '#d32f2f', color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
             onClick={() => {
               handleDelete(contextMenu.order.id);
               setContextMenu({ ...contextMenu, visible: false });
             }}
           >Eliminar</button>
           <button
-            style={{ ...primaryBtn, width: '100%', margin: 0, borderRadius: 0, borderTop: '1px solid #eee', color: '#1976d2' }}
+            style={{ background: '#fff', color: '#1976d2', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
             onClick={() => {
               setContextMenu({ ...contextMenu, visible: false });
               handleViewPDF(contextMenu.order.id);
             }}
           >Ver PDF</button>
+          <button
+            style={{ background: '#ff9800', color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', width: '100%', cursor: 'pointer' }}
+            onClick={async () => {
+              setContextMenu({ ...contextMenu, visible: false });
+              const pwd = window.prompt('Enter password to approve:');
+              if (pwd === 'Soledad14') {
+                // Cambiar status a APPROVED
+                try {
+                  await axios.put(`${API_URL}/workorders/${contextMenu.order.id}`, {
+                    ...contextMenu.order,
+                    status: 'APPROVED',
+                    usuario: localStorage.getItem('username') || ''
+                  });
+                  // Opcional: recargar órdenes
+                  if (typeof fetchWorkOrders === 'function') fetchWorkOrders();
+                  alert('Work Order approved!');
+                } catch (err) {
+                  alert('Error approving Work Order');
+                }
+              } else if (pwd !== null) {
+                alert('Incorrect password');
+              }
+            }}
+          >TO APPROVE</button>
         </div>
       )}
       {/* Hide context menu on click elsewhere */}
