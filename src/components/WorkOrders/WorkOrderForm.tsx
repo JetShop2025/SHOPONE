@@ -120,12 +120,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (!workOrder.id) {
       const calculatedTotal = calculateTotalLabAndParts();
       const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
-      // Si el campo está vacío o coincide con el cálculo anterior, actualiza automáticamente
+      // Si el campo está vacío, actualiza automáticamente
       const currentValue = workOrder.totalLabAndParts;
-      if (!currentValue || currentValue === formattedTotal) {
-        if (currentValue !== formattedTotal) {
-          onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
-        }
+      if (!currentValue) {
+        onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
       }
       // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
     }

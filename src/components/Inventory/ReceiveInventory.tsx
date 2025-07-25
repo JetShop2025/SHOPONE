@@ -492,8 +492,15 @@ const ReceiveInventory: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             {editForm && (              <form onSubmit={async e => {
                 e.preventDefault();
-                // Normalizar y asegurar que el campo P.O Classic se envía correctamente
-                const poClassicValue = editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''));
+                // Normalizar y asegurar que el campo P.O Classic se envía correctamente y nunca se pierde
+                let poClassicValue = '';
+                if (editForm.totalPOClassic !== undefined && editForm.totalPOClassic !== null && editForm.totalPOClassic !== '') {
+                  poClassicValue = editForm.totalPOClassic;
+                } else if (editForm.total_po_classic !== undefined && editForm.total_po_classic !== null && editForm.total_po_classic !== '') {
+                  poClassicValue = editForm.total_po_classic;
+                } else if (editForm.po_classic !== undefined && editForm.po_classic !== null && editForm.po_classic !== '') {
+                  poClassicValue = editForm.po_classic;
+                }
                 // Solo incluir el campo normalizado y eliminar duplicados
                 const dataToSend = {
                   ...editForm,
