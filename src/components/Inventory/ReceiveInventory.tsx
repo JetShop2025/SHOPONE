@@ -624,6 +624,18 @@ const ReceiveInventory: React.FC = () => {
                   />
                   
                   <input name="totalPOClassic" value={editForm.totalPOClassic || ''} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
+                <input
+                  name="totalPOClassic"
+                  value={editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''))}
+                  onChange={e => setEditForm({
+                    ...editForm,
+                    totalPOClassic: e.target.value,
+                    total_po_classic: e.target.value,
+                    po_classic: e.target.value
+                  })}
+                  placeholder="P.O Classic"
+                  style={inputStyle}
+                />
                   
                   {/* Date - mostrar la fecha original tal como se guardó */}
                   <input 
