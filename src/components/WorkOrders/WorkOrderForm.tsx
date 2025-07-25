@@ -122,7 +122,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
       // Si el campo está vacío, actualiza automáticamente
       const currentValue = workOrder.totalLabAndParts;
-      if (!currentValue) {
+      if (!currentValue || currentValue === '$0.00') {
         onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
       }
       // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
