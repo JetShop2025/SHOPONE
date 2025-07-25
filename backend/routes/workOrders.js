@@ -904,8 +904,9 @@ router.put('/:id', async (req, res) => {
   if (typeof totalLabAndParts === 'string') {
     totalLabAndParts = Number(String(totalLabAndParts).replace(/[^0-9.]/g, ''));
   }
-  if (!totalLabAndParts || isNaN(totalLabAndParts)) {
-    totalLabAndParts = 0;
+  // Si no se envía un total válido, usa el valor actual de la DB
+  if ((!totalLabAndParts && totalLabAndParts !== 0) || isNaN(totalLabAndParts)) {
+    totalLabAndParts = oldResults && oldResults[0] && oldResults[0].totalLabAndParts ? oldResults[0].totalLabAndParts : 0;
   }
 
   console.log(`📝 [${requestId}] Datos recibidos - Parts: ${parts?.length || 0}, Status: ${status}, Trailer: ${trailer}, Fecha: ${date}, Total: ${totalLabAndParts}`);
@@ -972,12 +973,12 @@ router.put('/:id', async (req, res) => {
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
     let updateQuery = `
       UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?
     `;
     const updateFields = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status,
-      JSON.stringify(extraOptions || [])
+      JSON.stringify(extraOptions || []), fields.poClassic || null
     ];
     if (status === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
