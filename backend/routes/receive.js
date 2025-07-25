@@ -150,7 +150,7 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
   let invoicePath = req.file ? `/uploads/${req.file.filename}` : (fields.invoice || '');
 
   try {
-    // Normalize totalPOClassic field for compatibility
+    // Normalize P.O Classic field for compatibility
     let poClassic = fields.totalPOClassic;
     if (poClassic === undefined || poClassic === null || poClassic === '') {
       poClassic = fields.total_po_classic || fields.po_classic || '';
@@ -160,13 +160,15 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
       return res.status(404).send('Receipt not found');
     }
     const oldData = oldResults[0];
+
+    // Update all possible variants of P.O Classic in the database for consistency
     await db.query(
       `UPDATE receives SET 
-        sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, invoiceLink=?, qty=?, costTax=?, totalPOClassic=?, fecha=?, estatus=?
+        sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, invoiceLink=?, qty=?, costTax=?, totalPOClassic=?, total_po_classic=?, po_classic=?, fecha=?, estatus=?
        WHERE id=?`,
       [
         fields.sku, fields.category, fields.item, fields.provider, fields.brand, fields.um,
-        fields.destino_trailer, invoicePath, fields.invoiceLink, fields.qty, fields.costTax, poClassic, fields.fecha, fields.estatus, id
+        fields.destino_trailer, invoicePath, fields.invoiceLink, fields.qty, fields.costTax, poClassic, poClassic, poClassic, fields.fecha, fields.estatus, id
       ]
     );
 
@@ -174,13 +176,18 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
     const after = { ...rest };
     delete after.usuario;
 
-    // Only compare changed fields
+    // Only compare changed fields, including all P.O Classic variants
     const changes = {};
+    ['totalPOClassic', 'total_po_classic', 'po_classic'].forEach(key => {
+      if (String(oldData[key] ?? '') !== String(poClassic ?? '')) {
+        changes[key] = { before: oldData[key], after: poClassic };
+      }
+    });
     Object.keys(after).forEach(key => {
-      if (
-        String(oldData[key] ?? '') !== String(after[key] ?? '')
-      ) {
-        changes[key] = { before: oldData[key], after: after[key] };
+      if (!['totalPOClassic', 'total_po_classic', 'po_classic'].includes(key)) {
+        if (String(oldData[key] ?? '') !== String(after[key] ?? '')) {
+          changes[key] = { before: oldData[key], after: after[key] };
+        }
       }
     });
 
@@ -192,7 +199,7 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
       Object.keys(changes).length > 0
         ? JSON.stringify({
             before: Object.fromEntries(Object.entries(oldData).filter(([k]) => changes[k])),
-            after: Object.fromEntries(Object.entries(after).filter(([k]) => changes[k]))
+            after: Object.fromEntries(Object.entries({ ...after, totalPOClassic: poClassic, total_po_classic: poClassic, po_classic: poClassic }).filter(([k]) => changes[k]))
           })
         : 'No real changes'
     );
