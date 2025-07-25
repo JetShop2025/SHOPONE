@@ -127,7 +127,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
       // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
     }
-    // Si es edición, nunca auto-calcular ni sobrescribir el total
+    // Si es edición, nunca sobrescribas el total, solo muestra el cálculo sugerido en la UI
   }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
   
   // Buscar parte en inventario por SKU
@@ -305,14 +305,25 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const miscAmount = subtotal * (miscPercentNum / 100);
       const calculatedTotal = subtotal + miscAmount;
 
-      // Si el usuario puso un valor manual, respétalo. Si no, usa el cálculo automático.
+      // Si el usuario puso un valor manual válido, respétalo. Si no, usa el cálculo automático SOLO en creación
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      // Si el campo existe y es válido, mantener el valor original
-      if (totalLabAndPartsValue !== undefined && totalLabAndPartsValue !== null && totalLabAndPartsValue !== '' && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
-        const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
-        totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
+      if (workOrder.id) {
+        // EDICIÓN: Si el campo existe y es válido, mantener el valor original, si está vacío NO lo sobrescribas
+        if (totalLabAndPartsValue !== undefined && totalLabAndPartsValue !== null && totalLabAndPartsValue !== '' && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
+          const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
+          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
+        } else {
+          // Si está vacío, NO lo sobrescribas, deja el valor como vacío para que el backend conserve el original
+          totalLabAndPartsValue = workOrder.totalLabAndParts;
+        }
       } else {
-        totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+        // CREACIÓN: Si está vacío, calcula automáticamente
+        if (totalLabAndPartsValue !== undefined && totalLabAndPartsValue !== null && totalLabAndPartsValue !== '' && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
+          const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
+          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
+        } else {
+          totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+        }
       }
 
       // Convertir fecha a formato YYYY-MM-DD
@@ -941,9 +952,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 type="text"
                 name="totalLabAndParts"
                 value={
-                  workOrder.totalLabAndParts === undefined || workOrder.totalLabAndParts === null || workOrder.totalLabAndParts === '' || isNaN(Number(String(workOrder.totalLabAndParts).replace(/[^0-9.]/g, '')))
-                    ? '$0.00'
-                    : workOrder.totalLabAndParts
+                  workOrder.id
+                    ? (workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
+                        ? workOrder.totalLabAndParts
+                        : `$${calculateTotalLabAndParts().toFixed(2)}`)
+                    : (workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
+                        ? workOrder.totalLabAndParts
+                        : `$${calculateTotalLabAndParts().toFixed(2)}`)
                 }
                 onChange={onChange}
                 style={{ 
