@@ -492,18 +492,14 @@ const ReceiveInventory: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             {editForm && (              <form onSubmit={async e => {
                 e.preventDefault();
-                // Obtener datos originales antes de la edición
-                const originalReceive = receives.find(r => r.id === editForm.id);
                 // Normalizar PO Classic para el backend y asegurar que se envía correctamente
                 const poClassicValue = editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''));
                 const dataToSend = {
                   ...editForm,
                   totalPOClassic: poClassicValue,
-                  total_po_classic: poClassicValue,
-                  po_classic: poClassicValue,
                   usuario: localStorage.getItem('username') || ''
                 };
-                // Actualizar el receive en el backend
+                // Actualizar el receive en el backend (solo enviar el campo normalizado)
                 await axios.put(`${API_URL}/receive/${editForm.id}`, dataToSend);
                 // ACTUALIZAR INVENTARIO MASTER SI HAY CAMBIOS EN COSTO O INVOICE
                 if (editForm.sku && (editForm.costTax || editForm.invoice)) {
@@ -515,7 +511,7 @@ const ReceiveInventory: React.FC = () => {
                     const newPrice = editForm.costTax ? (Number(editForm.costTax) * 1.1).toFixed(2) : '';
                     // Verificar si hay cambios en precio o invoice
                     const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
-                    const shouldUpdatePrice = newPrice && newPrice !== currentPrice && editForm.costTax !== originalReceive?.costTax;
+                    const shouldUpdatePrice = newPrice && newPrice !== currentPrice && editForm.costTax !== receives.find(r => r.id === editForm.id)?.costTax;
                     // SIEMPRE actualizar invoiceLink si se proporciona uno en la edición (enlace real)
                     const newInvoiceLink = editForm.invoiceLink ? editForm.invoiceLink.trim() : '';
                     const shouldUpdateInvoiceLink = newInvoiceLink !== '';

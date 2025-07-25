@@ -889,6 +889,27 @@ router.put('/:id', async (req, res) => {
     totalLabAndParts
   } = fields;
 
+  // Obtener datos actuales de la orden
+  const [oldResults] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
+  if (!oldResults || oldResults.length === 0) {
+    console.log(`❌ [${requestId}] Orden no encontrada`);
+    return res.status(404).send('WORK ORDER NOT FOUND');
+  }
+  const oldData = oldResults[0];
+
+  // Si no se envían partes, usar las actuales
+  if (!parts || !Array.isArray(parts) || parts.length === 0) {
+    try {
+      parts = JSON.parse(oldData.parts || '[]');
+    } catch { parts = []; }
+  }
+  // Si no se envían mecánicos, usar los actuales
+  if (!fields.mechanics || !Array.isArray(fields.mechanics) || fields.mechanics.length === 0) {
+    try {
+      fields.mechanics = JSON.parse(oldData.mechanics || '[]');
+    } catch { fields.mechanics = []; }
+  }
+
   // 1. Fecha: asegurar formato YYYY-MM-DD
   if (date && typeof date === 'string') {
     if (date.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
