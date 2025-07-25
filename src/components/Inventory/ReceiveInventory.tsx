@@ -495,10 +495,16 @@ const ReceiveInventory: React.FC = () => {
                 
                 // Obtener datos originales antes de la edición
                 const originalReceive = receives.find(r => r.id === editForm.id);
-                
+
+                // Normalizar idClassic para el backend
+                const dataToSend = {
+                  ...editForm,
+                  idClassic: editForm.idClassic || editForm.id_classic || '',
+                  usuario: localStorage.getItem('username') || ''
+                };
                 // Actualizar el receive
-                await axios.put(`${API_URL}/receive/${editForm.id}`, { ...editForm, usuario: localStorage.getItem('username') || '' });
-                
+                await axios.put(`${API_URL}/receive/${editForm.id}`, dataToSend);
+
                 // ACTUALIZAR INVENTARIO MASTER SI HAY CAMBIOS EN COSTO O INVOICE
                 if (editForm.sku && (editForm.costTax || editForm.invoice)) {
                   const invRes = await axios.get(`${API_URL}/inventory`);
@@ -566,7 +572,10 @@ const ReceiveInventory: React.FC = () => {
                   <input name="item" value={editForm.item || ''} onChange={e => setEditForm({ ...editForm, item: e.target.value })} placeholder="Item" style={inputStyle} />
                   <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
-                  <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />                  {/* Bill To Co - lista editable que permite texto personalizado */}
+                  <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
+                  {/* ID Classic - nuevo campo editable */}
+                  <input name="idClassic" value={editForm.idClassic || ''} onChange={e => setEditForm({ ...editForm, idClassic: e.target.value })} placeholder="ID Classic" style={inputStyle} />
+                  {/* Bill To Co - lista editable que permite texto personalizado */}
                   <input
                     name="billToCo"
                     value={editForm.billToCo || ''}

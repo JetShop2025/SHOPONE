@@ -2635,7 +2635,11 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
       <React.Fragment key={order.id}>
         <tr
           className={rowClass + (selectedRow === order.id ? ' wo-row-selected' : '')}
-          style={{ fontWeight: 600, cursor: 'pointer' }}
+          style={{
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: order.status === 'MISSING_PARTS' ? '#ff9800' : undefined
+          }}
           onClick={() => setSelectedRow(order.id)}
           onContextMenu={e => {
             e.preventDefault();

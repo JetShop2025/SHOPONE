@@ -620,15 +620,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 150px' }}>
             Status
             <select
-              name="status"              value={workOrder.status || 'PROCESSING'}
+              name="status"
+              value={workOrder.status || 'PROCESSING'}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             >
               <option value="PROCESSING">PROCESSING</option>
               <option value="APPROVED">APPROVED</option>
               <option value="FINISHED">FINISHED</option>
+              <option value="MISSING_PARTS">MISSING PARTS</option>
             </select>
-          </label>          {/* ID CLASSIC - Solo habilitado cuando status es FINISHED */}
+          </label>
           <label style={{ flex: '1 1 150px' }}>
             ID CLASSIC {workOrder.status === 'FINISHED' && <span style={{ color: 'red' }}>*</span>}
             <input
@@ -986,7 +988,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             disabled={loading}
             style={{
               padding: '12px 24px',
-              background: loading ? '#ccc' : '#1976d2',
+              background: loading
+                ? '#ccc'
+                : workOrder.status === 'MISSING_PARTS'
+                ? '#ff9800'
+                : '#1976d2',
               color: '#fff',
               border: 'none',
               borderRadius: 6,
@@ -995,9 +1001,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Procesando...' : 'Save'}
+            {loading ? 'Procesando...' : workOrder.status === 'MISSING_PARTS' ? 'Save (MISSING PARTS)' : 'Save'}
           </button>
-          
           <button
             type="button"
             onClick={onCancel}
@@ -1013,7 +1018,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             }}
           >
             Cancel
-          </button>        </div>
+          </button>
+        </div>
       </form>
       
       {/* Tooltip para mostrar información de la parte */}
