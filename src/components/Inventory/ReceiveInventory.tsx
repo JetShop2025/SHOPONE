@@ -496,10 +496,10 @@ const ReceiveInventory: React.FC = () => {
                 // Obtener datos originales antes de la edición
                 const originalReceive = receives.find(r => r.id === editForm.id);
 
-                // Normalizar idClassic para el backend
+                // Normalizar PO Classic para el backend
                 const dataToSend = {
                   ...editForm,
-                  idClassic: editForm.idClassic || editForm.id_classic || '',
+                  totalPOClassic: editForm.totalPOClassic || editForm.total_po_classic || editForm.po_classic || '',
                   usuario: localStorage.getItem('username') || ''
                 };
                 // Actualizar el receive
@@ -573,8 +573,6 @@ const ReceiveInventory: React.FC = () => {
                   <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
                   <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
-                  {/* ID Classic - nuevo campo editable */}
-                  <input name="idClassic" value={editForm.idClassic || ''} onChange={e => setEditForm({ ...editForm, idClassic: e.target.value })} placeholder="ID Classic" style={inputStyle} />
                   {/* Bill To Co - lista editable que permite texto personalizado */}
                   <input
                     name="billToCo"
