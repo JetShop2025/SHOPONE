@@ -492,14 +492,18 @@ const ReceiveInventory: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             {editForm && (              <form onSubmit={async e => {
                 e.preventDefault();
-                // Normalizar PO Classic para el backend y asegurar que se envía correctamente
+                // Normalizar y asegurar que el campo P.O Classic se envía correctamente
                 const poClassicValue = editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''));
+                // Solo incluir el campo normalizado y eliminar duplicados
                 const dataToSend = {
                   ...editForm,
                   totalPOClassic: poClassicValue,
                   usuario: localStorage.getItem('username') || ''
                 };
-                // Actualizar el receive en el backend (solo enviar el campo normalizado)
+                // Eliminar duplicados para evitar que el backend ignore el valor
+                delete dataToSend.total_po_classic;
+                delete dataToSend.po_classic;
+                // Actualizar el receive en el backend
                 await axios.put(`${API_URL}/receive/${editForm.id}`, dataToSend);
                 // ACTUALIZAR INVENTARIO MASTER SI HAY CAMBIOS EN COSTO O INVOICE
                 if (editForm.sku && (editForm.costTax || editForm.invoice)) {

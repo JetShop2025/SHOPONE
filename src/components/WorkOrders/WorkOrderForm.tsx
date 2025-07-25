@@ -246,44 +246,59 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     setLoading(true);
 
     try {
+      // Limpiar partes y mantener los valores originales si no se editan
       const cleanParts = workOrder.parts
         .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
-        .map((p: Part) => ({
-          ...p,
-          cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
-        }));
+        .map((p: Part) => {
+          let costValue = p.cost;
+          if (typeof costValue === 'string') {
+            costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
+          }
+          let qtyValue = p.qty;
+          if (typeof qtyValue === 'string') {
+            qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
+          }
+          return {
+            ...p,
+            cost: costValue,
+            qty: qtyValue
+          };
+        });
 
-      const hasInvalidQty = cleanParts.some((p: Part) => !p.qty || Number(p.qty) <= 0);
+      // Validar cantidades solo si se editan
+      const hasInvalidQty = cleanParts.some((p: Part) => {
+        let qtyValue = p.qty;
+        let qtyNum = typeof qtyValue === 'string' ? (qtyValue !== '' ? Number(qtyValue) : NaN) : qtyValue;
+        return qtyNum !== undefined && qtyNum !== null && !isNaN(qtyNum) && qtyNum <= 0;
+      });
       if (hasInvalidQty) {
         window.alert('Hay partes con cantidad inválida.');
         setLoading(false);
         return;
       }
 
-      // Validate ID Classic if status is FINISHED
+      // Validar ID Classic si status es FINISHED
       if (workOrder.status === 'FINISHED' && (!workOrder.idClassic || workOrder.idClassic.trim() === '')) {
         window.alert('ID Classic es requerido para órdenes con status FINISHED.');
         setLoading(false);
         return;
       }
 
-      // Si no se coloca el ID Classic, debe ir en blanco (no el id del sistema)
+      // Si no se coloca el ID Classic, debe ir en blanco
       let idClassicToSend = '';
       if (workOrder.status === 'FINISHED') {
         idClassicToSend = workOrder.idClassic || '';
       } else {
-        // Para creación/edición, si no hay idClassic, enviar vacío
         idClassicToSend = workOrder.idClassic && workOrder.idClassic.trim() !== '' ? workOrder.idClassic : '';
       }
 
-      // Asegurar que miscellaneous tenga valor por defecto '5' si está vacío o no es número válido
+      // Miscellaneous por defecto '5' si está vacío o no es número válido
       let miscValue = workOrder.miscellaneous;
       if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
         miscValue = '5';
       }
 
-
-      // Calcular total automático (horas, partes y extras)
+      // Calcular total automático
       let miscPercentNum = parseFloat(miscValue) || 0;
       const totalHours = calculateTotalHours();
       const laborTotal = totalHours * 60;
@@ -294,26 +309,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
       // Si el usuario puso un valor manual, respétalo. Si no, usa el cálculo automático.
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      if (totalLabAndPartsValue) {
+      // Si el campo existe y es válido, mantener el valor original
+      if (totalLabAndPartsValue !== undefined && totalLabAndPartsValue !== null && totalLabAndPartsValue !== '' && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
         const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
         totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
       } else {
         totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
-
-      // Convertir fecha a formato YYYY-MM-DD para la base de datos (siempre, sin importar el formato)
+      // Convertir fecha a formato YYYY-MM-DD
       let dateToSend = workOrder.date;
       if (dateToSend) {
         let yyyy = '', mm = '', dd = '';
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateToSend)) {
-          // MM/DD/YYYY
           [mm, dd, yyyy] = dateToSend.split('/');
         } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateToSend)) {
-          // YYYY-MM-DD
           [yyyy, mm, dd] = dateToSend.split('-');
         } else {
-          // Intentar parsear cualquier otro formato
           const d = new Date(dateToSend);
           if (!isNaN(d.getTime())) {
             yyyy = String(d.getFullYear());
@@ -324,12 +336,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         if (yyyy && mm && dd) {
           dateToSend = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
         } else {
-          // Si no se pudo parsear, dejar como estaba
           dateToSend = workOrder.date;
         }
       }
 
-      // No parseo ni conversión: solo enviar la fecha tal como está (debe ser YYYY-MM-DD)
+      // Mantener los valores originales de totales/cantidades si no se editan
       const dataToSend = {
         ...workOrder,
         idClassic: idClassicToSend,
@@ -339,7 +350,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
-        date: workOrder.date // debe ser YYYY-MM-DD
+        date: workOrder.date
       };
 
       await onSubmit(dataToSend);
