@@ -2084,9 +2084,11 @@ const WorkOrdersTable: React.FC = () => {
               className="wo-filter-input"
               style={{ minWidth: 160 }}
             >
-              <option value="">All</option>              {STATUS_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
+              <option value="">All</option>
+              <option value="PROCESSING">PROCESSING</option>
+              <option value="APPROVED">APPROVED</option>
+              <option value="FINISHED">FINISHED</option>
+              <option value="MISSING_PARTS">MISSING PARTS</option>
             </select>
           </label>
 
@@ -2631,6 +2633,20 @@ const WorkOrdersTable: React.FC = () => {
 const [yyyy, mm, dd] = dateStr.split('-');
 const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
 
+    // Nuevo: usar status MISSING_PARTS para marcar y guardar en BD
+    const isMissingParts = order.status === 'MISSING_PARTS';
+    const handleMissingPartsClick = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        const newStatus = isMissingParts ? 'PROCESSING' : 'MISSING_PARTS';
+        await axios.put(`${API_URL}/workOrders/${order.id}`, { ...order, status: newStatus });
+        order.status = newStatus;
+        setSelectedRow(order.id);
+        setContextMenu({ ...contextMenu, order: { ...order } });
+      } catch (err) {
+        alert('Error actualizando status de Missing Parts');
+      }
+    };
     return (
       <React.Fragment key={order.id}>
         <tr
@@ -2638,7 +2654,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           style={{
             fontWeight: 600,
             cursor: 'pointer',
-            background: order.status === 'MISSING_PARTS' ? '#ff9800' : undefined
+            background: isMissingParts ? '#ff9800' : undefined
           }}
           onClick={() => setSelectedRow(order.id)}
           onContextMenu={e => {
@@ -2668,6 +2684,25 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               </button>
             )}
             {order.id}
+            {/* Botón para marcar como missing parts manualmente */}
+            {selectedRow === order.id && (
+              <button
+                style={{
+                  marginLeft: 8,
+                  padding: '4px 10px',
+                  background: isMissingParts ? '#ff9800' : '#fff3e0',
+                  color: isMissingParts ? '#fff' : '#ff9800',
+                  border: '1px solid #ff9800',
+                  borderRadius: 6,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontSize: 13
+                }}
+                onClick={handleMissingPartsClick}
+              >
+                {isMissingParts ? 'Quitar Missing Parts' : 'Missing Parts'}
+              </button>
+            )}
           </td>
           <td>{order.idClassic || ''}</td>
           <td>{order.billToCo}</td>
