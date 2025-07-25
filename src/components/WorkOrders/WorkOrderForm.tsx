@@ -988,11 +988,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             disabled={loading}
             style={{
               padding: '12px 24px',
-              background: loading
-                ? '#ccc'
-                : workOrder.status === 'MISSING_PARTS'
-                ? '#ff9800'
-                : '#1976d2',
+              background: loading ? '#ccc' : '#1976d2',
               color: '#fff',
               border: 'none',
               borderRadius: 6,
@@ -1001,7 +997,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Procesando...' : workOrder.status === 'MISSING_PARTS' ? 'Save (MISSING PARTS)' : 'Save'}
+            {loading ? 'Procesando...' : 'Save'}
           </button>
           <button
             type="button"

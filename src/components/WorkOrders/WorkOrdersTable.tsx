@@ -2684,7 +2684,6 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               </button>
             )}
             {order.id}
-            // ...existing code...
           </td>
           <td>{order.idClassic || ''}</td>
           <td>{order.billToCo}</td>
