@@ -2684,25 +2684,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               </button>
             )}
             {order.id}
-            {/* Botón para marcar como missing parts manualmente */}
-            {selectedRow === order.id && (
-              <button
-                style={{
-                  marginLeft: 8,
-                  padding: '4px 10px',
-                  background: isMissingParts ? '#ff9800' : '#fff3e0',
-                  color: isMissingParts ? '#fff' : '#ff9800',
-                  border: '1px solid #ff9800',
-                  borderRadius: 6,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: 13
-                }}
-                onClick={handleMissingPartsClick}
-              >
-                {isMissingParts ? 'Quitar Missing Parts' : 'Missing Parts'}
-              </button>
-            )}
+            // ...existing code...
           </td>
           <td>{order.idClassic || ''}</td>
           <td>{order.billToCo}</td>

@@ -492,70 +492,51 @@ const ReceiveInventory: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             {editForm && (              <form onSubmit={async e => {
                 e.preventDefault();
-                
                 // Obtener datos originales antes de la edición
                 const originalReceive = receives.find(r => r.id === editForm.id);
-
-                // Normalizar PO Classic para el backend
+                // Normalizar PO Classic para el backend y asegurar que se envía correctamente
+                const poClassicValue = editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''));
                 const dataToSend = {
                   ...editForm,
-                  totalPOClassic: editForm.totalPOClassic || editForm.total_po_classic || editForm.po_classic || '',
+                  totalPOClassic: poClassicValue,
+                  total_po_classic: poClassicValue,
+                  po_classic: poClassicValue,
                   usuario: localStorage.getItem('username') || ''
                 };
-                // Actualizar el receive
+                // Actualizar el receive en el backend
                 await axios.put(`${API_URL}/receive/${editForm.id}`, dataToSend);
-
                 // ACTUALIZAR INVENTARIO MASTER SI HAY CAMBIOS EN COSTO O INVOICE
                 if (editForm.sku && (editForm.costTax || editForm.invoice)) {
                   const invRes = await axios.get(`${API_URL}/inventory`);
                   const inventoryList = invRes.data as any[];
                   const part = inventoryList.find((p: any) => p.sku === editForm.sku);
-                  
                   if (part && part.id) {
                     // Calcula el nuevo precio con 10% extra si cambió el costo
                     const newPrice = editForm.costTax ? (Number(editForm.costTax) * 1.1).toFixed(2) : '';
-                      // Verificar si hay cambios en precio o invoice
+                    // Verificar si hay cambios en precio o invoice
                     const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
-                    const shouldUpdatePrice = newPrice && newPrice !== currentPrice && 
-                                            editForm.costTax !== originalReceive?.costTax;
-                      // SIEMPRE actualizar invoiceLink si se proporciona uno en la edición (enlace real)
+                    const shouldUpdatePrice = newPrice && newPrice !== currentPrice && editForm.costTax !== originalReceive?.costTax;
+                    // SIEMPRE actualizar invoiceLink si se proporciona uno en la edición (enlace real)
                     const newInvoiceLink = editForm.invoiceLink ? editForm.invoiceLink.trim() : '';
                     const shouldUpdateInvoiceLink = newInvoiceLink !== '';
-                      console.log(`🔍 Editando receive - comparando datos para SKU ${editForm.sku}:`, {
-                      shouldUpdatePrice,
-                      shouldUpdateInvoiceLink,
-                      oldCost: originalReceive?.costTax,
-                      newCost: editForm.costTax,
-                      oldInvoiceLink: originalReceive?.invoiceLink,
-                      newInvoiceLink: editForm.invoiceLink
-                    });
-                    
                     // Solo actualizar si hay cambios reales
                     if (shouldUpdatePrice || shouldUpdateInvoiceLink) {
                       const updateData = {
                         ...part,
                         usuario: localStorage.getItem('username') || ''
                       };
-                      
                       // Actualizar precio solo si es diferente
                       if (shouldUpdatePrice) {
                         updateData.precio = newPrice;
-                        console.log(`💰 Actualizando precio de ${editForm.sku}: ${currentPrice} → ${newPrice}`);
                       }
-                      
                       // Actualizar invoiceLink si se proporciona (enlace real)
                       if (shouldUpdateInvoiceLink) {
-                        updateData.invoiceLink = editForm.invoiceLink; // Usar el enlace real
-                        console.log(`📄 Actualizando invoiceLink de ${editForm.sku}: → "${editForm.invoiceLink}"`);
+                        updateData.invoiceLink = editForm.invoiceLink;
                       }
-                      
                       await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
-                      
-                      console.log(`✅ Inventario master actualizado para SKU ${editForm.sku} desde edición de receive`);
                     }
                   }
                 }
-                
                 setShowEditForm(false);
                 const res = await axios.get(`${API_URL}/receive`);
                 setReceives(res.data as any[]);
@@ -611,9 +592,9 @@ const ReceiveInventory: React.FC = () => {
                       required
                     />
                   )}                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
-                  <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />                  <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
+                  <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />
+                  <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
                   <input name="costTax" value={editForm.costTax || ''} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
-                  
                   {/* Campo TOTAL - Editable para ingresar total del invoice */}
                   <input 
                     name="total" 
@@ -622,20 +603,19 @@ const ReceiveInventory: React.FC = () => {
                     placeholder="Total Invoice ($)" 
                     style={{...inputStyle, fontWeight: '600'}} 
                   />
-                  
-                  <input name="totalPOClassic" value={editForm.totalPOClassic || ''} onChange={e => setEditForm({ ...editForm, totalPOClassic: e.target.value })} placeholder="P.O Classic" style={inputStyle} />
-                <input
-                  name="totalPOClassic"
-                  value={editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''))}
-                  onChange={e => setEditForm({
-                    ...editForm,
-                    totalPOClassic: e.target.value,
-                    total_po_classic: e.target.value,
-                    po_classic: e.target.value
-                  })}
-                  placeholder="P.O Classic"
-                  style={inputStyle}
-                />
+                  {/* SOLO UN CAMPO P.O Classic, normalizado */}
+                  <input
+                    name="totalPOClassic"
+                    value={editForm.totalPOClassic !== undefined ? editForm.totalPOClassic : (editForm.total_po_classic !== undefined ? editForm.total_po_classic : (editForm.po_classic !== undefined ? editForm.po_classic : ''))}
+                    onChange={e => setEditForm({
+                      ...editForm,
+                      totalPOClassic: e.target.value,
+                      total_po_classic: e.target.value,
+                      po_classic: e.target.value
+                    })}
+                    placeholder="P.O Classic"
+                    style={inputStyle}
+                  />
                   
                   {/* Date - mostrar la fecha original tal como se guardó */}
                   <input 
