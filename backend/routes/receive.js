@@ -178,18 +178,9 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
     // Si viene más de un campo, actualiza todos los campos relevantes
     // Si solo viene estatus, no sobrescribas los demás campos
 
-    // Si el body solo trae estatus, actualiza solo estatus
-    const onlyStatus = Object.keys(fields).length === 2 && fields.estatus !== undefined && fields.usuario !== undefined;
-    const onlyStatusAndPOClassic = Object.keys(fields).length === 3 && fields.estatus !== undefined && fields.usuario !== undefined && poClassic !== '';
-
-    if (onlyStatus) {
-      await db.query('UPDATE receives SET estatus=? WHERE id=?', [fields.estatus, id]);
-      // Audit log
-      await logAccion(usuario, 'UPDATE', 'receives', id, JSON.stringify({ before: { estatus: oldData.estatus }, after: { estatus: fields.estatus } }));
-      return res.status(200).send('Receipt updated successfully (estatus only)');
-    }
-
-    if (onlyStatusAndPOClassic) {
+    // Si el body trae totalPOClassic, actualiza SIEMPRE ese campo junto con estatus (aunque solo vengan esos dos)
+    const hasPOClassic = poClassic !== undefined && poClassic !== null && poClassic !== '';
+    if (fields.estatus !== undefined && hasPOClassic) {
       // LOG extra: mostrar el update que se va a hacer
       console.log('[DEBUG] Ejecutando UPDATE receives SET estatus=?, totalPOClassic=? WHERE id=?', [fields.estatus, poClassic, id]);
       await db.query('UPDATE receives SET estatus=?, totalPOClassic=? WHERE id=?', [fields.estatus, poClassic, id]);
@@ -198,6 +189,14 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
       const [check] = await db.query('SELECT totalPOClassic FROM receives WHERE id=?', [id]);
       console.log('[DEBUG] Valor en BD después del UPDATE:', check && check[0] ? check[0].totalPOClassic : '(no encontrado)');
       return res.status(200).send('Receipt updated successfully (estatus + totalPOClassic)');
+    }
+    // Si el body solo trae estatus y NO trae totalPOClassic, solo actualiza estatus
+    const onlyStatus = Object.keys(fields).length === 2 && fields.estatus !== undefined && fields.usuario !== undefined;
+    if (onlyStatus) {
+      await db.query('UPDATE receives SET estatus=? WHERE id=?', [fields.estatus, id]);
+      // Audit log
+      await logAccion(usuario, 'UPDATE', 'receives', id, JSON.stringify({ before: { estatus: oldData.estatus }, after: { estatus: fields.estatus } }));
+      return res.status(200).send('Receipt updated successfully (estatus only)');
     }
 
     // Si viene más de un campo, actualiza todos los campos relevantes
