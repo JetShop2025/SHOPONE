@@ -162,7 +162,37 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
     }
     const oldData = oldResults[0];
 
-    // Construir el objeto de actualización dinámicamente para evitar sobrescribir con undefined
+    // LOG para depuración: ver qué se va a actualizar
+    console.log('[PUT] /api/receive/' + id + ' - Updating in database:', {
+      ...fields,
+      totalPOClassic: poClassic,
+      id
+    });
+
+    // Actualizar SOLO el campo totalPOClassic si es lo único que viene en el body
+    // Si solo se manda estatus, solo actualiza estatus
+    // Si viene totalPOClassic, actualiza ese campo también
+    // Si viene más de un campo, actualiza todos los campos relevantes
+    // Si solo viene estatus, no sobrescribas los demás campos
+
+    // Si el body solo trae estatus, actualiza solo estatus
+    const onlyStatus = Object.keys(fields).length === 2 && fields.estatus !== undefined && fields.usuario !== undefined;
+    const onlyStatusAndPOClassic = Object.keys(fields).length === 3 && fields.estatus !== undefined && fields.usuario !== undefined && poClassic !== '';
+
+    if (onlyStatus) {
+      await db.query('UPDATE receives SET estatus=? WHERE id=?', [fields.estatus, id]);
+      // Audit log
+      await logAccion(usuario, 'UPDATE', 'receives', id, JSON.stringify({ before: { estatus: oldData.estatus }, after: { estatus: fields.estatus } }));
+      return res.status(200).send('Receipt updated successfully (estatus only)');
+    }
+
+    if (onlyStatusAndPOClassic) {
+      await db.query('UPDATE receives SET estatus=?, totalPOClassic=? WHERE id=?', [fields.estatus, poClassic, id]);
+      await logAccion(usuario, 'UPDATE', 'receives', id, JSON.stringify({ before: { estatus: oldData.estatus, totalPOClassic: oldData.totalPOClassic }, after: { estatus: fields.estatus, totalPOClassic: poClassic } }));
+      return res.status(200).send('Receipt updated successfully (estatus + totalPOClassic)');
+    }
+
+    // Si viene más de un campo, actualiza todos los campos relevantes
     const updateFields = {
       sku: fields.sku !== undefined ? fields.sku : oldData.sku,
       category: fields.category !== undefined ? fields.category : oldData.category,
