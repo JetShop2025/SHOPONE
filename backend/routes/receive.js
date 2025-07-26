@@ -168,6 +168,9 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
       totalPOClassic: poClassic,
       id
     });
+    // LOG extra: mostrar el body recibido y el valor de totalPOClassic
+    console.log('[DEBUG] Body recibido en PUT /api/receive:', JSON.stringify(fields));
+    console.log('[DEBUG] Valor normalizado de totalPOClassic:', poClassic, '| Tipo:', typeof poClassic);
 
     // Actualizar SOLO el campo totalPOClassic si es lo único que viene en el body
     // Si solo se manda estatus, solo actualiza estatus
@@ -187,8 +190,13 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
     }
 
     if (onlyStatusAndPOClassic) {
+      // LOG extra: mostrar el update que se va a hacer
+      console.log('[DEBUG] Ejecutando UPDATE receives SET estatus=?, totalPOClassic=? WHERE id=?', [fields.estatus, poClassic, id]);
       await db.query('UPDATE receives SET estatus=?, totalPOClassic=? WHERE id=?', [fields.estatus, poClassic, id]);
       await logAccion(usuario, 'UPDATE', 'receives', id, JSON.stringify({ before: { estatus: oldData.estatus, totalPOClassic: oldData.totalPOClassic }, after: { estatus: fields.estatus, totalPOClassic: poClassic } }));
+      // LOG después del update
+      const [check] = await db.query('SELECT totalPOClassic FROM receives WHERE id=?', [id]);
+      console.log('[DEBUG] Valor en BD después del UPDATE:', check && check[0] ? check[0].totalPOClassic : '(no encontrado)');
       return res.status(200).send('Receipt updated successfully (estatus + totalPOClassic)');
     }
 
