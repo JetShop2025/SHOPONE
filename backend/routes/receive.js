@@ -178,7 +178,7 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
     // Si viene más de un campo, actualiza todos los campos relevantes
     // Si solo viene estatus, no sobrescribas los demás campos
 
-    // Si el body trae totalPOClassic, actualiza SIEMPRE ese campo junto con estatus (aunque solo vengan esos dos)
+    // Si el body trae totalPOClassic, actualiza SIEMPRE ese campo junto con estatus (aunque vengan otros campos extra)
     const hasPOClassic = poClassic !== undefined && poClassic !== null && poClassic !== '';
     if (fields.estatus !== undefined && hasPOClassic) {
       // LOG extra: mostrar el update que se va a hacer
@@ -188,7 +188,12 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
       // LOG después del update
       const [check] = await db.query('SELECT totalPOClassic FROM receives WHERE id=?', [id]);
       console.log('[DEBUG] Valor en BD después del UPDATE:', check && check[0] ? check[0].totalPOClassic : '(no encontrado)');
-      return res.status(200).send('Receipt updated successfully (estatus + totalPOClassic)');
+      // Si el body solo trae estatus y totalPOClassic, termina aquí
+      const onlyStatusAndPOClassic = Object.keys(fields).length === 3 && fields.usuario !== undefined && fields.estatus !== undefined;
+      if (onlyStatusAndPOClassic) {
+        return res.status(200).send('Receipt updated successfully (estatus + totalPOClassic)');
+      }
+      // Si vienen más campos, sigue y actualiza el resto abajo
     }
     // Si el body solo trae estatus y NO trae totalPOClassic, solo actualiza estatus
     const onlyStatus = Object.keys(fields).length === 2 && fields.estatus !== undefined && fields.usuario !== undefined;
