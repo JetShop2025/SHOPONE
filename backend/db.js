@@ -1191,31 +1191,61 @@ async function createPendingPart(pendingPart) {
 
 async function updatePendingPart(id, pendingPart) {
   try {
-    // SOLO permitir cambiar el estatus, ignorar cualquier otro campo
-    let newStatus = pendingPart.estatus || 'PENDING';
+    // Permitir actualizar cualquier campo relevante, no solo estatus
     const usuario = pendingPart.usuario || 'SYSTEM';
-    console.log('[DB] Updating ONLY status of pending part in receives table, id:', id, 'new status:', newStatus);
-    // Si el nuevo estatus es USED, también poner qty_remaining = 0
-    if (newStatus === 'USED') {
-      await connection.execute(
-        'UPDATE receives SET estatus = ?, qty_remaining = 0 WHERE id = ?',
-        [newStatus, id]
-      );
-    } else {
-      await connection.execute(
-        'UPDATE receives SET estatus = ? WHERE id = ?',
-        [newStatus, id]
-      );
+    // Obtener los datos actuales
+    const [oldResults] = await connection.execute('SELECT * FROM receives WHERE id = ?', [id]);
+    if (!oldResults || oldResults.length === 0) {
+      throw new Error('Pending part not found');
     }
+    const oldData = oldResults[0];
+
+    // Normalizar totalPOClassic
+    let poClassic = pendingPart.totalPOClassic;
+    if (poClassic === undefined || poClassic === null || poClassic === '') {
+      poClassic = pendingPart.total_po_classic || pendingPart.po_classic || oldData.totalPOClassic || '';
+    }
+
+    // Construir objeto de actualización
+    const updateFields = {
+      sku: pendingPart.sku !== undefined ? pendingPart.sku : oldData.sku,
+      category: pendingPart.category !== undefined ? pendingPart.category : oldData.category,
+      item: pendingPart.item !== undefined ? pendingPart.item : oldData.item,
+      provider: pendingPart.provider !== undefined ? pendingPart.provider : oldData.provider,
+      brand: pendingPart.brand !== undefined ? pendingPart.brand : oldData.brand,
+      um: pendingPart.um !== undefined ? pendingPart.um : oldData.um,
+      destino_trailer: pendingPart.destino_trailer !== undefined ? pendingPart.destino_trailer : oldData.destino_trailer,
+      invoice: pendingPart.invoice !== undefined ? pendingPart.invoice : oldData.invoice,
+      invoiceLink: pendingPart.invoiceLink !== undefined ? pendingPart.invoiceLink : oldData.invoiceLink,
+      qty: pendingPart.qty !== undefined ? pendingPart.qty : oldData.qty,
+      costTax: pendingPart.costTax !== undefined ? pendingPart.costTax : oldData.costTax,
+      totalPOClassic: poClassic !== undefined ? poClassic : oldData.totalPOClassic,
+      total: pendingPart.total !== undefined ? pendingPart.total : oldData.total,
+      fecha: pendingPart.fecha !== undefined ? pendingPart.fecha : oldData.fecha,
+      estatus: pendingPart.estatus !== undefined ? pendingPart.estatus : oldData.estatus,
+      qty_remaining: pendingPart.qty_remaining !== undefined ? pendingPart.qty_remaining : oldData.qty_remaining
+    };
+
+    // Ejecutar el UPDATE
+    await connection.execute(
+      `UPDATE receives SET 
+        sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, invoiceLink=?, qty=?, costTax=?, totalPOClassic=?, total=?, fecha=?, estatus=?, qty_remaining=?
+       WHERE id=?`,
+      [
+        updateFields.sku, updateFields.category, updateFields.item, updateFields.provider, updateFields.brand, updateFields.um,
+        updateFields.destino_trailer, updateFields.invoice, updateFields.invoiceLink, updateFields.qty, updateFields.costTax, updateFields.totalPOClassic, updateFields.total, updateFields.fecha, updateFields.estatus, updateFields.qty_remaining, id
+      ]
+    );
+
     // Registrar en auditoría
     await logAuditEvent(
       usuario,
       'UPDATE',
       'receives',
       id,
-      { action: 'Cambio de estatus manual en receives', nuevoEstatus: newStatus }
+      { action: 'Actualización de pending part', cambios: updateFields }
     );
-    return { id, estatus: newStatus };
+    return { id, ...updateFields };
   } catch (error) {
     console.error('[DB] Error updating pending part in receives table:', error.message);
     throw error;
