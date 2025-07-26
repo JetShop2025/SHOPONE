@@ -150,39 +150,61 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
   let invoicePath = req.file ? `/uploads/${req.file.filename}` : (fields.invoice || '');
 
   try {
-    // Normalize and persist only the correct column for P.O Classic
+    // Normaliza el campo totalPOClassic para aceptar cualquier variante
     let poClassic = fields.totalPOClassic;
     if (poClassic === undefined || poClassic === null || poClassic === '') {
       poClassic = fields.total_po_classic || fields.po_classic || '';
     }
+    // Obtener los datos actuales
     const [oldResults] = await db.query('SELECT * FROM receives WHERE id = ?', [id]);
     if (!oldResults || oldResults.length === 0) {
       return res.status(404).send('Receipt not found');
     }
     const oldData = oldResults[0];
 
-    // Update only the totalPOClassic column
+    // Construir el objeto de actualización dinámicamente para evitar sobrescribir con undefined
+    const updateFields = {
+      sku: fields.sku !== undefined ? fields.sku : oldData.sku,
+      category: fields.category !== undefined ? fields.category : oldData.category,
+      item: fields.item !== undefined ? fields.item : oldData.item,
+      provider: fields.provider !== undefined ? fields.provider : oldData.provider,
+      brand: fields.brand !== undefined ? fields.brand : oldData.brand,
+      um: fields.um !== undefined ? fields.um : oldData.um,
+      destino_trailer: fields.destino_trailer !== undefined ? fields.destino_trailer : oldData.destino_trailer,
+      invoice: invoicePath !== undefined ? invoicePath : oldData.invoice,
+      invoiceLink: fields.invoiceLink !== undefined ? fields.invoiceLink : oldData.invoiceLink,
+      qty: fields.qty !== undefined ? fields.qty : oldData.qty,
+      costTax: fields.costTax !== undefined ? fields.costTax : oldData.costTax,
+      totalPOClassic: poClassic !== undefined ? poClassic : oldData.totalPOClassic,
+      total: fields.total !== undefined ? fields.total : oldData.total,
+      fecha: fields.fecha !== undefined ? fields.fecha : oldData.fecha,
+      estatus: fields.estatus !== undefined ? fields.estatus : oldData.estatus,
+      qty_remaining: fields.qty_remaining !== undefined ? fields.qty_remaining : oldData.qty_remaining
+    };
+
     await db.query(
       `UPDATE receives SET 
         sku=?, category=?, item=?, provider=?, brand=?, um=?, destino_trailer=?, invoice=?, invoiceLink=?, qty=?, costTax=?, totalPOClassic=?, total=?, fecha=?, estatus=?, qty_remaining=?
        WHERE id=?`,
       [
-        fields.sku, fields.category, fields.item, fields.provider, fields.brand, fields.um,
-        fields.destino_trailer, invoicePath, fields.invoiceLink, fields.qty, fields.costTax, poClassic, fields.total, fields.fecha, fields.estatus, fields.qty_remaining, id
+        updateFields.sku, updateFields.category, updateFields.item, updateFields.provider, updateFields.brand, updateFields.um,
+        updateFields.destino_trailer, updateFields.invoice, updateFields.invoiceLink, updateFields.qty, updateFields.costTax, updateFields.totalPOClassic, updateFields.total, updateFields.fecha, updateFields.estatus, updateFields.qty_remaining, id
       ]
     );
 
     const { usuario: user, ...rest } = fields;
-    const after = { ...rest };
+    const after = { ...oldData, ...rest, totalPOClassic: poClassic };
     delete after.usuario;
 
-    // Only compare changed fields for existing columns
+    // Solo comparar campos existentes
     const changes = {};
     if (String(oldData['totalPOClassic'] ?? '') !== String(poClassic ?? '')) {
       changes['totalPOClassic'] = { before: oldData['totalPOClassic'], after: poClassic };
     }
     Object.keys(after).forEach(key => {
-      if (['sku','category','item','provider','brand','um','destino_trailer','invoice','invoiceLink','qty','costTax','total','fecha','estatus','qty_remaining'].includes(key)) {
+      if ([
+        'sku','category','item','provider','brand','um','destino_trailer','invoice','invoiceLink','qty','costTax','total','fecha','estatus','qty_remaining'
+      ].includes(key)) {
         if (String(oldData[key] ?? '') !== String(after[key] ?? '')) {
           changes[key] = { before: oldData[key], after: after[key] };
         }
@@ -197,7 +219,7 @@ router.put('/:id', upload.single('invoice'), async (req, res) => {
       Object.keys(changes).length > 0
         ? JSON.stringify({
             before: Object.fromEntries(Object.entries(oldData).filter(([k]) => changes[k])),
-            after: Object.fromEntries(Object.entries({ ...after, totalPOClassic: poClassic }).filter(([k]) => changes[k]))
+            after: Object.fromEntries(Object.entries(after).filter(([k]) => changes[k]))
           })
         : 'No real changes'
     );
