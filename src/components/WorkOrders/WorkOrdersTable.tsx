@@ -2788,10 +2788,15 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           <button
             style={{ background: '#1976d2', color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
             onClick={() => {
-              setShowEditForm(true);
-              setEditWorkOrder(contextMenu.order);
-              setEditId(contextMenu.order.id);
-              setContextMenu({ ...contextMenu, visible: false });
+              const pwd = window.prompt('Ingrese la contraseña para editar:');
+              if (pwd === '6214') {
+                setShowEditForm(true);
+                setEditWorkOrder(contextMenu.order);
+                setEditId(contextMenu.order.id);
+                setContextMenu({ ...contextMenu, visible: false });
+              } else {
+                alert('Contraseña incorrecta');
+              }
             }}
           >Editar</button>
           <button

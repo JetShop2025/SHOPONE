@@ -239,38 +239,44 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return !isNaN(total) && total >= 0 ? total : 0;
   };
 
+
+  // Comparación shallow por campos clave para partes y mecánicos
+  function shallowArrayEqual(arr1: any[], arr2: any[], keys: string[]) {
+    if (!Array.isArray(arr1) || !Array.isArray(arr2)) return false;
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+      for (const key of keys) {
+        if ((arr1[i]?.[key] ?? '') !== (arr2[i]?.[key] ?? '')) return false;
+      }
+    }
+    return true;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Detectar si el usuario modificó partes, mecánicos o las horas
+      // Detectar si el usuario modificó partes, mecánicos o las horas (shallow)
       const originalParts = workOrder.originalParts || [];
       const originalMechanics = workOrder.originalMechanics || [];
-      const partsChanged = JSON.stringify(workOrder.parts) !== JSON.stringify(originalParts);
-      const mechanicsChanged = JSON.stringify(workOrder.mechanics) !== JSON.stringify(originalMechanics);
-      // Detectar si cambió alguna hora
-      let hoursChanged = false;
-      if (Array.isArray(workOrder.mechanics) && Array.isArray(originalMechanics)) {
-        if (workOrder.mechanics.length !== originalMechanics.length) {
-          hoursChanged = true;
-        } else {
-          for (let i = 0; i < workOrder.mechanics.length; i++) {
-            if (String(workOrder.mechanics[i]?.hrs) !== String(originalMechanics[i]?.hrs)) {
-              hoursChanged = true;
-              break;
-            }
-          }
-        }
-      }
+      const currentParts = Array.isArray(workOrder.parts) ? workOrder.parts : [];
+      const currentMechanics = Array.isArray(workOrder.mechanics) ? workOrder.mechanics : [];
+      const partsChanged = !shallowArrayEqual(currentParts, originalParts, ['sku', 'part', 'qty', 'cost']);
+      const mechanicsChanged = !shallowArrayEqual(currentMechanics, originalMechanics, ['name', 'hrs']);
+      const originalTotalHrs = workOrder.originalTotalHrs !== undefined ? Number(workOrder.originalTotalHrs) : undefined;
+      const currentTotalHrs = calculateTotalHours();
+      const hoursChanged = originalTotalHrs !== undefined ? (Number(originalTotalHrs) !== Number(currentTotalHrs)) : false;
 
       // Si NO cambió nada, usar los valores originales
-      let cleanParts = workOrder.parts;
-      let totalHrs = workOrder.totalHrs;
+      let cleanParts = currentParts;
+      let cleanMechanics = currentMechanics;
+      let totalHrs = currentTotalHrs;
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
       if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged) {
         cleanParts = originalParts;
-        totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : workOrder.totalHrs;
+        cleanMechanics = originalMechanics;
+        totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
         totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
       } else {
         // Si cambió algo, limpiar partes y recalcular totales
@@ -293,7 +299,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               };
             });
         }
-        // Recalcular totalHrs y totalLabAndParts
+        // Recalcular totalHrs
         totalHrs = calculateTotalHours();
         // Miscellaneous por defecto '5' si está vacío o no es número válido
         let miscValue = workOrder.miscellaneous;
@@ -312,7 +318,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         const subtotal = laborTotal + partsTotal;
         const miscAmount = subtotal * (miscPercentNum / 100);
         const calculatedTotal = subtotal + miscAmount;
-        totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+
+        // Si el usuario puso un valor manual válido, respétalo
+        let manualTotal = workOrder.totalLabAndParts;
+        if (manualTotal !== undefined && manualTotal !== null && manualTotal !== '' && !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))) {
+          const num = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
+          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : `$${calculatedTotal.toFixed(2)}`;
+        } else {
+          totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+        }
       }
 
       // Validar cantidades solo si se editan
@@ -371,17 +385,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         }
       }
 
+
       // Mantener los valores originales de totales/cantidades si no se editan
       const dataToSend = {
         ...workOrder,
         idClassic: idClassicToSend,
         parts: cleanParts,
+        mechanics: cleanMechanics,
         totalHrs: totalHrs,
         totalLabAndParts: totalLabAndPartsValue,
         miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
-        date: workOrder.date
+        date: dateToSend
       };
 
       await onSubmit(dataToSend);
