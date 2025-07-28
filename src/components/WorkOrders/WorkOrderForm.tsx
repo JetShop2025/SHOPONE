@@ -244,27 +244,37 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     setLoading(true);
 
     try {
-      // Limpiar partes y mantener los valores originales si no se editan
-      const cleanParts = workOrder.parts
-        .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
-        .map((p: Part) => {
-          let costValue = p.cost;
-          if (typeof costValue === 'string') {
-            costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
-          }
-          let qtyValue = p.qty;
-          if (typeof qtyValue === 'string') {
-            qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
-          }
-          return {
-            ...p,
-            cost: costValue,
-            qty: qtyValue
-          };
-        });
+      // Si es edición y el usuario NO editó partes ni labor, preserva los valores originales
+      let cleanParts = workOrder.parts;
+      if (workOrder.id) {
+        // Si no hay partes nuevas ni cambios, usa las originales
+        if (!Array.isArray(workOrder.parts) || workOrder.parts.length === 0) {
+          cleanParts = workOrder.originalParts || [];
+        }
+      }
+      // Limpiar partes (solo si existen)
+      if (Array.isArray(cleanParts)) {
+        cleanParts = cleanParts
+          .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
+          .map((p: Part) => {
+            let costValue = p.cost;
+            if (typeof costValue === 'string') {
+              costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
+            }
+            let qtyValue = p.qty;
+            if (typeof qtyValue === 'string') {
+              qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
+            }
+            return {
+              ...p,
+              cost: costValue,
+              qty: qtyValue
+            };
+          });
+      }
 
       // Validar cantidades solo si se editan
-      const hasInvalidQty = cleanParts.some((p: Part) => {
+      const hasInvalidQty = Array.isArray(cleanParts) && cleanParts.some((p: Part) => {
         let qtyValue = p.qty;
         let qtyNum = typeof qtyValue === 'string' ? (qtyValue !== '' ? Number(qtyValue) : NaN) : qtyValue;
         return qtyNum !== undefined && qtyNum !== null && !isNaN(qtyNum) && qtyNum <= 0;
@@ -300,7 +310,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       let miscPercentNum = parseFloat(miscValue) || 0;
       const totalHours = calculateTotalHours();
       const laborTotal = totalHours * 60;
-      const partsTotal = calculatePartsTotal();
+      const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
+        const qty = Number(part && part.qty);
+        const cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
+        const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+        const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+        return total + (validQty * validCost);
+      }, 0) : 0;
       const subtotal = laborTotal + partsTotal;
       const miscAmount = subtotal * (miscPercentNum / 100);
       const calculatedTotal = subtotal + miscAmount;
