@@ -2787,14 +2787,26 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
         >
           <button
             style={{ background: '#1976d2', color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
-            onClick={() => {
+            onClick={async () => {
+              // Forzar SIEMPRE el prompt de password ANTES de editar
               const pwd = window.prompt('Ingrese la contraseña para editar:');
               if (pwd === '6214') {
+                // Buscar la W.O. más reciente del backend (por si hay cambios)
+                try {
+                  const res = await fetch(`${API_URL}/workOrders/${contextMenu.order.id}`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    setEditWorkOrder({ ...data, date: data.date ? data.date.slice(0, 10) : '', parts: Array.isArray(data.parts) ? data.parts : [] });
+                  } else {
+                    setEditWorkOrder({ ...contextMenu.order, date: contextMenu.order.date ? contextMenu.order.date.slice(0, 10) : '', parts: Array.isArray(contextMenu.order.parts) ? contextMenu.order.parts : [] });
+                  }
+                } catch {
+                  setEditWorkOrder({ ...contextMenu.order, date: contextMenu.order.date ? contextMenu.order.date.slice(0, 10) : '', parts: Array.isArray(contextMenu.order.parts) ? contextMenu.order.parts : [] });
+                }
                 setShowEditForm(true);
-                setEditWorkOrder(contextMenu.order);
                 setEditId(contextMenu.order.id);
                 setContextMenu({ ...contextMenu, visible: false });
-              } else {
+              } else if (pwd !== null) {
                 alert('Contraseña incorrecta');
               }
             }}
