@@ -510,22 +510,34 @@ async function generateProfessionalPDF(order, id) {
       const laborTotal = totalHours * 60;
       // SIEMPRE usar el valor exacto de totalLabAndParts de la base de datos
       const grandTotal = Number(order.totalLabAndParts) || 0;
-      
+
+      // === NUEVO: Mostrar el porcentaje de Miscellaneous personalizado ===
+      // Buscar el porcentaje de Miscellaneous (puede venir como miscellaneousPercent, miscellaneous, o default 5)
+      let miscPercent = 5;
+      if (typeof order.miscellaneousPercent !== 'undefined' && order.miscellaneousPercent !== null && order.miscellaneousPercent !== '') {
+        miscPercent = Number(order.miscellaneousPercent);
+      } else if (typeof order.miscellaneous !== 'undefined' && order.miscellaneous !== null && order.miscellaneous !== '') {
+        miscPercent = Number(order.miscellaneous);
+      }
+      // Calcular el cargo extra de Miscellaneous
+      const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
+
       // Debug log para verificar valores
       console.log(`PDF Debug - Orden ${id}:`);
       console.log(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
       console.log(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
+      console.log(`  - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
       console.log(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
       console.log(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
-      
+
       // Caja de totales en el lado derecho
       const summaryBoxWidth = 200;
-      const summaryBoxHeight = 80;
+      const summaryBoxHeight = 100;
       const summaryX = margin + contentWidth - summaryBoxWidth;
-      
+
       doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).fillColor(lightGray).fill();
       doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).strokeColor(primaryBlue).lineWidth(1).stroke();
-      
+
       // Header del resumen
       doc.rect(summaryX, yPos, summaryBoxWidth, 20).fillColor(primaryBlue).fill();
       doc.font('Courier-Bold').fontSize(9).fillColor(white);
@@ -533,25 +545,29 @@ async function generateProfessionalPDF(order, id) {
       const summaryHeaderWidth = doc.widthOfString(summaryHeaderText);
       const summaryHeaderX = summaryX + (summaryBoxWidth / 2) - (summaryHeaderWidth / 2);
       doc.text(summaryHeaderText, summaryHeaderX, yPos + 6);
-      
+
       // Líneas de totales
       doc.font('Courier').fontSize(8).fillColor(black);
       doc.text(`Parts Subtotal:`, summaryX + 10, yPos + 30);
       doc.text(`$${subtotalParts.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 30);
-      
+
       doc.text(`Labor (${totalHours} hrs):`, summaryX + 10, yPos + 45);
       doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 45);
-      
+
+      // Miscellaneous personalizado
+      doc.text(`Miscellaneous ${miscPercent}%:`, summaryX + 10, yPos + 60);
+      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60);
+
       // Línea separadora
       doc.strokeColor(primaryBlue).lineWidth(1);
-      doc.moveTo(summaryX + 10, yPos + 60).lineTo(summaryX + summaryBoxWidth - 10, yPos + 60).stroke();
-      
+      doc.moveTo(summaryX + 10, yPos + 75).lineTo(summaryX + summaryBoxWidth - 10, yPos + 75).stroke();
+
       // Total final
       doc.font('Courier-Bold').fontSize(9).fillColor(successGreen);
-      doc.text(`TOTAL:`, summaryX + 10, yPos + 68);
-      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 70, yPos + 68);
-      
-      yPos += 100;
+      doc.text(`TOTAL:`, summaryX + 10, yPos + 83);
+      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 70, yPos + 83);
+
+      yPos += 110;
       
       // ================================
       // TÉRMINOS Y CONDICIONES - SIN FONDO, SIN FIRMAS

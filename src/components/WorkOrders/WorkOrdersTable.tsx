@@ -314,7 +314,13 @@ const WorkOrdersTable: React.FC = () => {
           // Usar SIEMPRE el valor exacto que el usuario editó/calculó, sin recalcular ni modificar
           totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
           totalCost: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
-          extraOptions: editWorkOrder.extraOptions || extraOptions || []
+          extraOptions: editWorkOrder.extraOptions || extraOptions || [],
+          // NUEVO: Agregar el porcentaje de Miscellaneous EXACTO que el usuario colocó
+          miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
+            ? Number(workOrderData.miscellaneous)
+            : (typeof dataToSend.miscellaneous !== 'undefined' && dataToSend.miscellaneous !== null && dataToSend.miscellaneous !== '')
+              ? Number(dataToSend.miscellaneous)
+              : 5 // fallback por defecto
         };
         const pdf = await generateWorkOrderPDF(pdfData);
         const pdfBlob = pdf.output('blob');
@@ -907,9 +913,12 @@ const WorkOrdersTable: React.FC = () => {
             (wo.status === 'PROCESSING' || wo.status === 'APPROVED')
         );
         if (duplicateWO) {
-          alert(`Ya existe una Work Order para la traila "${trailerToCheck}" en estado PROCESSING o APPROVED (ID: ${duplicateWO.id}, Fecha: ${duplicateWO.date ? duplicateWO.date.slice(0,10) : ''}).\nNo se puede crear otra hasta que cambie de estado.`);
-          setLoading(false);
-          return;
+          const msg = `Ya existe una Work Order para la traila "${trailerToCheck}" en estado PROCESSING o APPROVED (ID: ${duplicateWO.id}, Fecha: ${duplicateWO.date ? duplicateWO.date.slice(0,10) : ''}).\n¿Desea continuar y crear la orden de todos modos?`;
+          const proceed = window.confirm(msg);
+          if (!proceed) {
+            setLoading(false);
+            return;
+          }
         }
       }
 
@@ -1045,7 +1054,8 @@ const WorkOrdersTable: React.FC = () => {
           date: formatDateSafely(workOrderData.date || workOrderData.fecha || ''),
           mechanics: Array.isArray(workOrderData.mechanics) ? 
             workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
-            workOrderData.mechanics || workOrderData.mechanic || '',          description: workOrderData.description || '',
+            workOrderData.mechanics || workOrderData.mechanic || '',
+          description: workOrderData.description || '',
           status: workOrderData.status || datosOrden.status || 'PROCESSING', // Incluir status actual
           parts: enrichedParts.map((part: any) => ({
             sku: part.sku || '',
@@ -1056,11 +1066,18 @@ const WorkOrdersTable: React.FC = () => {
             total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
             invoice: part.invoice_number || 'N/A',
             invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
-          })),          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
+          })),
+          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
           subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
             sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
           totalCost: Number(workOrderData.totalLabAndParts) || 0,
-          extraOptions: datosOrden.extraOptions || extraOptions || []
+          extraOptions: datosOrden.extraOptions || extraOptions || [],
+          // NUEVO: Agregar el porcentaje de Miscellaneous EXACTO que el usuario colocó
+          miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
+            ? Number(workOrderData.miscellaneous)
+            : (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
+              ? Number(datosOrden.miscellaneous)
+              : 5 // fallback por defecto
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
@@ -1079,11 +1096,27 @@ const WorkOrdersTable: React.FC = () => {
         }
           // Abrir PDF en nueva pestaña
         openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}.pdf`);
-        
-        // Abrir enlaces de facturas automáticamente
+
+        // Abrir enlaces de facturas automáticamente (Drive o PDF)
         openInvoiceLinks(pdfData.parts);
-        
-        console.log('✅ PDF generado y enlaces de facturas abiertos');
+
+        // NUEVO: Abrir PDF generado en el backend (si existe) en una nueva pestaña, sin forzar descarga
+        if (data.pdfUrl) {
+          // Forzar apertura en nueva pestaña, sin descargar
+          window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
+        }
+
+        // NUEVO: Abrir links de Drive de las partes usadas (si existen)
+        pdfData.parts.forEach((part: any) => {
+          if (part.invoiceLink && typeof part.invoiceLink === 'string') {
+            // Si es un link de Google Drive, abrir en nueva pestaña
+            if (part.invoiceLink.includes('drive.google.com')) {
+              window.open(part.invoiceLink, '_blank', 'noopener,noreferrer');
+            }
+          }
+        });
+
+        console.log('✅ PDF generado y enlaces de facturas/Drive abiertos');
       } catch (pdfError: any) {
         console.error('❌ Error generando PDF:', pdfError);
         console.error('❌ Detalles del error:', {
