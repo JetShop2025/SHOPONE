@@ -662,6 +662,20 @@ router.post('/', async (req, res) => {
     const status = fields.status || 'PENDING';
     const idClassic = fields.idClassic || null;
 
+    // VALIDACIÓN: No permitir crear W.O. si ya existe una para la misma traila en PROCESSING o APPROVED
+    if (trailer) {
+      const [existing] = await db.query(
+        'SELECT id, status, date FROM work_orders WHERE trailer = ? AND (status = "PROCESSING" OR status = "APPROVED")',
+        [trailer]
+      );
+      if (existing && existing.length > 0) {
+        return res.status(400).json({
+          error: 'Ya existe una Work Order en estado PROCESSING o APPROVED para esta traila.',
+          existingWO: existing
+        });
+      }
+    }
+
     // Limpia y valida partes
     const partsArr = Array.isArray(parts)
       ? parts

@@ -890,13 +890,27 @@ const WorkOrdersTable: React.FC = () => {
           return;
         }
       }
-      
+
       // 0b. Validate ID Classic doesn't already exist (when provided)
       if (datosOrden.idClassic && checkIdClassicExists(datosOrden.idClassic)) {
         setIdClassicError(`⚠️ Work Order with ID Classic "${datosOrden.idClassic}" already exists!`);
         alert(`Error: Work Order with ID Classic "${datosOrden.idClassic}" already exists. Please use a different ID.`);
         setLoading(false);
         return;
+      }
+
+      // 0c. Validar que no exista una W.O. activa (PROCESSING o APPROVED) para la misma traila
+      const trailerToCheck = datosOrden.trailer?.trim();
+      if (trailerToCheck) {
+        const duplicateWO = workOrders.find(
+          wo => wo.trailer && wo.trailer.toString().trim().toLowerCase() === trailerToCheck.toLowerCase() &&
+            (wo.status === 'PROCESSING' || wo.status === 'APPROVED')
+        );
+        if (duplicateWO) {
+          alert(`Ya existe una Work Order para la traila "${trailerToCheck}" en estado PROCESSING o APPROVED (ID: ${duplicateWO.id}, Fecha: ${duplicateWO.date ? duplicateWO.date.slice(0,10) : ''}).\nNo se puede crear otra hasta que cambie de estado.`);
+          setLoading(false);
+          return;
+        }
       }
 
       // 1. Prepara las partes a descontar

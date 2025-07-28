@@ -279,7 +279,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
         totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
       } else {
-        // Si cambió algo, limpiar partes y recalcular totales
+        // Si cambió algo, limpiar partes y recalcular subtotales
         if (Array.isArray(cleanParts)) {
           cleanParts = cleanParts
             .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
@@ -319,13 +319,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         const miscAmount = subtotal * (miscPercentNum / 100);
         const calculatedTotal = subtotal + miscAmount;
 
-        // Si el usuario puso un valor manual válido, respétalo
+        // Si el usuario puso un valor manual válido, respétalo y ENVÍA SIEMPRE COMO NÚMERO
         let manualTotal = workOrder.totalLabAndParts;
         if (manualTotal !== undefined && manualTotal !== null && manualTotal !== '' && !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))) {
           const num = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
-          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : `$${calculatedTotal.toFixed(2)}`;
+          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? num : calculatedTotal;
         } else {
-          totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
+          totalLabAndPartsValue = calculatedTotal;
         }
       }
 
@@ -393,7 +393,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         parts: cleanParts,
         mechanics: cleanMechanics,
         totalHrs: totalHrs,
-        totalLabAndParts: totalLabAndPartsValue,
+        totalLabAndParts: totalLabAndPartsValue, // SIEMPRE número, nunca string con $
         miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
