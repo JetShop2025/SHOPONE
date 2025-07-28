@@ -244,33 +244,75 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     setLoading(true);
 
     try {
-      // Si es edición y el usuario NO editó partes ni labor, preserva los valores originales
-      let cleanParts = workOrder.parts;
-      if (workOrder.id) {
-        // Si no hay partes nuevas ni cambios, usa las originales
-        if (!Array.isArray(workOrder.parts) || workOrder.parts.length === 0) {
-          cleanParts = workOrder.originalParts || [];
+      // Detectar si el usuario modificó partes, mecánicos o las horas
+      const originalParts = workOrder.originalParts || [];
+      const originalMechanics = workOrder.originalMechanics || [];
+      const partsChanged = JSON.stringify(workOrder.parts) !== JSON.stringify(originalParts);
+      const mechanicsChanged = JSON.stringify(workOrder.mechanics) !== JSON.stringify(originalMechanics);
+      // Detectar si cambió alguna hora
+      let hoursChanged = false;
+      if (Array.isArray(workOrder.mechanics) && Array.isArray(originalMechanics)) {
+        if (workOrder.mechanics.length !== originalMechanics.length) {
+          hoursChanged = true;
+        } else {
+          for (let i = 0; i < workOrder.mechanics.length; i++) {
+            if (String(workOrder.mechanics[i]?.hrs) !== String(originalMechanics[i]?.hrs)) {
+              hoursChanged = true;
+              break;
+            }
+          }
         }
       }
-      // Limpiar partes (solo si existen)
-      if (Array.isArray(cleanParts)) {
-        cleanParts = cleanParts
-          .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
-          .map((p: Part) => {
-            let costValue = p.cost;
-            if (typeof costValue === 'string') {
-              costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
-            }
-            let qtyValue = p.qty;
-            if (typeof qtyValue === 'string') {
-              qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
-            }
-            return {
-              ...p,
-              cost: costValue,
-              qty: qtyValue
-            };
-          });
+
+      // Si NO cambió nada, usar los valores originales
+      let cleanParts = workOrder.parts;
+      let totalHrs = workOrder.totalHrs;
+      let totalLabAndPartsValue = workOrder.totalLabAndParts;
+      if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged) {
+        cleanParts = originalParts;
+        totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : workOrder.totalHrs;
+        totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
+      } else {
+        // Si cambió algo, limpiar partes y recalcular totales
+        if (Array.isArray(cleanParts)) {
+          cleanParts = cleanParts
+            .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
+            .map((p: Part) => {
+              let costValue = p.cost;
+              if (typeof costValue === 'string') {
+                costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
+              }
+              let qtyValue = p.qty;
+              if (typeof qtyValue === 'string') {
+                qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
+              }
+              return {
+                ...p,
+                cost: costValue,
+                qty: qtyValue
+              };
+            });
+        }
+        // Recalcular totalHrs y totalLabAndParts
+        totalHrs = calculateTotalHours();
+        // Miscellaneous por defecto '5' si está vacío o no es número válido
+        let miscValue = workOrder.miscellaneous;
+        if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
+          miscValue = '5';
+        }
+        let miscPercentNum = parseFloat(miscValue) || 0;
+        const laborTotal = totalHrs * 60;
+        const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
+          const qty = Number(part && part.qty);
+          const cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
+          const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+          const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+          return total + (validQty * validCost);
+        }, 0) : 0;
+        const subtotal = laborTotal + partsTotal;
+        const miscAmount = subtotal * (miscPercentNum / 100);
+        const calculatedTotal = subtotal + miscAmount;
+        totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
       }
 
       // Validar cantidades solo si se editan
@@ -306,42 +348,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         miscValue = '5';
       }
 
-      // Calcular total automático
-      let miscPercentNum = parseFloat(miscValue) || 0;
-      const totalHours = calculateTotalHours();
-      const laborTotal = totalHours * 60;
-      const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
-        const qty = Number(part && part.qty);
-        const cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
-        const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
-        const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
-        return total + (validQty * validCost);
-      }, 0) : 0;
-      const subtotal = laborTotal + partsTotal;
-      const miscAmount = subtotal * (miscPercentNum / 100);
-      const calculatedTotal = subtotal + miscAmount;
-
-      // Si el usuario puso un valor manual válido, respétalo. Si no, usa el cálculo automático SOLO en creación
-      let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      if (workOrder.id) {
-        // EDICIÓN: Si el campo existe y es válido, mantener el valor original, si está vacío NO lo sobrescribas
-        if (totalLabAndPartsValue !== undefined && totalLabAndPartsValue !== null && totalLabAndPartsValue !== '' && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
-          const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
-          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
-        } else {
-          // Si está vacío, NO lo sobrescribas, deja el valor como vacío para que el backend conserve el original
-          totalLabAndPartsValue = workOrder.totalLabAndParts;
-        }
-      } else {
-        // CREACIÓN: Si está vacío, calcula automáticamente
-        if (totalLabAndPartsValue !== undefined && totalLabAndPartsValue !== null && totalLabAndPartsValue !== '' && !isNaN(Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, '')))) {
-          const num = Number(String(totalLabAndPartsValue).replace(/[^0-9.]/g, ''));
-          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? `$${num.toFixed(2)}` : '$0.00';
-        } else {
-          totalLabAndPartsValue = `$${calculatedTotal.toFixed(2)}`;
-        }
-      }
-
       // Convertir fecha a formato YYYY-MM-DD
       let dateToSend = workOrder.date;
       if (dateToSend) {
@@ -370,7 +376,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         ...workOrder,
         idClassic: idClassicToSend,
         parts: cleanParts,
-        totalHrs: calculateTotalHours(),
+        totalHrs: totalHrs,
         totalLabAndParts: totalLabAndPartsValue,
         miscellaneous: miscValue,
         usuario: localStorage.getItem('username') || '',
