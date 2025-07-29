@@ -106,16 +106,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Remove excessive inventory debug logging
   React.useEffect(() => {}, [inventory]);
   // Set default miscellaneous to 5% for new Work Orders
+  // Solo poner valor por defecto al crear una nueva orden
   React.useEffect(() => {
-    // Siempre poner 5% por defecto si no hay valor válido
-    if (workOrder.miscellaneous === undefined || workOrder.miscellaneous === null || workOrder.miscellaneous === '' || isNaN(Number(workOrder.miscellaneous))) {
-      onChange({ target: { name: 'miscellaneous', value: '5' } } as any);
+    if (!workOrder.id) {
+      if (
+        workOrder.miscellaneous === undefined ||
+        workOrder.miscellaneous === null ||
+        workOrder.miscellaneous === '' ||
+        isNaN(Number(workOrder.miscellaneous))
+      ) {
+        onChange({ target: { name: 'miscellaneous', value: '0' } } as any);
+      }
+      if (
+        workOrder.weldPercent === undefined ||
+        workOrder.weldPercent === null ||
+        workOrder.weldPercent === '' ||
+        isNaN(Number(workOrder.weldPercent))
+      ) {
+        onChange({ target: { name: 'weldPercent', value: '0' } } as any);
+      }
     }
-    // Siempre poner 15% por defecto si no hay valor válido para weldPercent
-    if (workOrder.weldPercent === undefined || workOrder.weldPercent === null || workOrder.weldPercent === '' || isNaN(Number(workOrder.weldPercent))) {
-      onChange({ target: { name: 'weldPercent', value: '15' } } as any);
-    }
-  }, [workOrder.id, workOrder.miscellaneous, workOrder.weldPercent, onChange]);
+  }, [workOrder.id]);
 
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)

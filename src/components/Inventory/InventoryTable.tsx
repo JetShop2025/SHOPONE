@@ -1,17 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Barcode from 'react-barcode';
 
-// Simple barcode component fallback
+// Barcode component using react-barcode
 const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
-  <div style={{ 
-    fontFamily: 'monospace', 
-    fontSize: '12px', 
-    border: '1px solid #ccc', 
-    padding: '4px',
-    backgroundColor: '#f9f9f9',
-    display: 'inline-block'
-  }}>
-    {value}
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <Barcode value={value} height={40} width={1.5} fontSize={12} margin={0} displayValue={true} background="#fff" />
   </div>
 );
 
