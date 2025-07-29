@@ -1250,7 +1250,7 @@ router.get('/audit-log', async (req, res) => {
   }
 });
 
-// Obtener PDF por ID de orden (desde base de datos) - DESHABILITADO PARA EVITAR CRASHES
+// Obtener PDF por ID de orden (desde base de datos) - DESHABILITADO PARA EVITAR CRASHES.
 router.get('/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;
