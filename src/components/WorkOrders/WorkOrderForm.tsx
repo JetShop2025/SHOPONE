@@ -111,7 +111,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (workOrder.miscellaneous === undefined || workOrder.miscellaneous === null || workOrder.miscellaneous === '' || isNaN(Number(workOrder.miscellaneous))) {
       onChange({ target: { name: 'miscellaneous', value: '5' } } as any);
     }
-  }, [workOrder.id, workOrder.miscellaneous, onChange]);
+    // Siempre poner 15% por defecto si no hay valor válido para weldPercent
+    if (workOrder.weldPercent === undefined || workOrder.weldPercent === null || workOrder.weldPercent === '' || isNaN(Number(workOrder.weldPercent))) {
+      onChange({ target: { name: 'weldPercent', value: '15' } } as any);
+    }
+  }, [workOrder.id, workOrder.miscellaneous, workOrder.weldPercent, onChange]);
 
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)
@@ -235,7 +239,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     let miscPercent = Number(workOrder.miscellaneous);
     miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
     const miscAmount = subtotal * (miscPercent / 100);
-    const total = subtotal + miscAmount;
+    // Welding Supplies: porcentaje extra definido por el usuario
+    let weldPercent = Number(workOrder.weldPercent);
+    weldPercent = !isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0;
+    const weldAmount = subtotal * (weldPercent / 100);
+    const total = subtotal + miscAmount + weldAmount;
     return !isNaN(total) && total >= 0 ? total : 0;
   };
 
@@ -306,6 +314,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
           miscValue = '5';
         }
+        // Welding Supplies por defecto '15' si está vacío o no es número válido
+        let weldValue = workOrder.weldPercent;
+        if (weldValue === undefined || weldValue === null || weldValue === '' || isNaN(Number(weldValue))) {
+          weldValue = '15';
+        }
         let miscPercentNum = parseFloat(miscValue) || 0;
         const laborTotal = totalHrs * 60;
         const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
@@ -361,6 +374,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
         miscValue = '5';
       }
+      // Welding Supplies por defecto '15' si está vacío o no es número válido
+      let weldValue = workOrder.weldPercent;
+      if (weldValue === undefined || weldValue === null || weldValue === '' || isNaN(Number(weldValue))) {
+        weldValue = '15';
+      }
 
       // Convertir fecha a formato YYYY-MM-DD
       let dateToSend = workOrder.date;
@@ -395,6 +413,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         totalHrs: totalHrs,
         totalLabAndParts: totalLabAndPartsValue, // SIEMPRE número, nunca string con $
         miscellaneous: miscValue,
+        weldPercent: weldValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
         date: dateToSend
@@ -962,7 +981,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 name="miscellaneous"
                 value={workOrder.miscellaneous ?? ''}
                 onChange={e => {
-                  // Always update as string, allow empty
                   onChange({ target: { name: 'miscellaneous', value: e.target.value } } as any);
                 }}
                 style={{ width: 80, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
@@ -977,6 +995,38 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 const subtotal = laborTotal + partsTotal;
                 const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
                 return (subtotal * (miscPercent / 100)).toFixed(2);
+              })()}
+            </span>
+          </div>
+        </div>
+        {/* Welding Supplies field */}
+        <div style={{ marginBottom: 16 }}>
+          <strong>Welding Supplies</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
+            <label style={{ fontWeight: 500, color: '#1976d2', marginRight: 8 }}>
+              % Welding Supplies:
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                name="weldPercent"
+                value={workOrder.weldPercent ?? ''}
+                onChange={e => {
+                  onChange({ target: { name: 'weldPercent', value: e.target.value } } as any);
+                }}
+                style={{ width: 80, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
+                placeholder="%"
+              />
+            </label>
+            <span style={{ color: '#1976d2', fontWeight: 700 }}>
+              Cargo extra: ${(() => {
+                const totalHours = calculateTotalHours();
+                const laborTotal = totalHours * 60;
+                const partsTotal = calculatePartsTotal();
+                const subtotal = laborTotal + partsTotal;
+                const weldPercent = parseFloat(workOrder.weldPercent) || 0;
+                return (subtotal * (weldPercent / 100)).toFixed(2);
               })()}
             </span>
           </div>
@@ -1040,7 +1090,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               const subtotal = laborTotal + partsTotal;
               const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
               return (subtotal * (miscPercent / 100)).toFixed(2);
-            })()}) = ${calculateTotalLabAndParts().toFixed(2)}
+            })()}) + Welding Supplies (${(() => {
+              const totalHours = calculateTotalHours();
+              const laborTotal = totalHours * 60;
+              const partsTotal = calculatePartsTotal();
+              const subtotal = laborTotal + partsTotal;
+              const weldPercent = parseFloat(workOrder.weldPercent) || 0;
+              return (subtotal * (weldPercent / 100)).toFixed(2);
+            })()}) = ${(() => {
+              const totalHours = calculateTotalHours();
+              const laborTotal = totalHours * 60;
+              const partsTotal = calculatePartsTotal();
+              const subtotal = laborTotal + partsTotal;
+              const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
+              const weldPercent = parseFloat(workOrder.weldPercent) || 0;
+              return (subtotal + (subtotal * (miscPercent / 100)) + (subtotal * (weldPercent / 100))).toFixed(2);
+            })()}
           </div>
         </div>
 

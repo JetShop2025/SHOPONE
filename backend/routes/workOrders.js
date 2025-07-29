@@ -511,28 +511,36 @@ async function generateProfessionalPDF(order, id) {
       // SIEMPRE usar el valor exacto de totalLabAndParts de la base de datos
       const grandTotal = Number(order.totalLabAndParts) || 0;
 
-      // === NUEVO: Mostrar el porcentaje de Miscellaneous personalizado ===
-      // Buscar el porcentaje de Miscellaneous (puede venir como miscellaneousPercent, miscellaneous, o default 5)
+
+      // === NUEVO: Mostrar el porcentaje de Miscellaneous y Welding Supplies ===
+      // Miscellaneous
       let miscPercent = 5;
       if (typeof order.miscellaneousPercent !== 'undefined' && order.miscellaneousPercent !== null && order.miscellaneousPercent !== '') {
         miscPercent = Number(order.miscellaneousPercent);
       } else if (typeof order.miscellaneous !== 'undefined' && order.miscellaneous !== null && order.miscellaneous !== '') {
         miscPercent = Number(order.miscellaneous);
       }
-      // Calcular el cargo extra de Miscellaneous
       const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
+
+      // Welding Supplies
+      let weldPercent = 15;
+      if (typeof order.weldPercent !== 'undefined' && order.weldPercent !== null && order.weldPercent !== '') {
+        weldPercent = Number(order.weldPercent);
+      }
+      const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
 
       // Debug log para verificar valores
       console.log(`PDF Debug - Orden ${id}:`);
       console.log(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
       console.log(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
       console.log(`  - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
+      console.log(`  - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
       console.log(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
       console.log(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
 
       // Caja de totales en el lado derecho
       const summaryBoxWidth = 200;
-      const summaryBoxHeight = 100;
+      const summaryBoxHeight = 120;
       const summaryX = margin + contentWidth - summaryBoxWidth;
 
       doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).fillColor(lightGray).fill();
@@ -558,16 +566,20 @@ async function generateProfessionalPDF(order, id) {
       doc.text(`Miscellaneous ${miscPercent}%:`, summaryX + 10, yPos + 60);
       doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60);
 
+      // Welding Supplies personalizado
+      doc.text(`Welding Supplies ${weldPercent}%:`, summaryX + 10, yPos + 75);
+      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75);
+
       // Línea separadora
       doc.strokeColor(primaryBlue).lineWidth(1);
-      doc.moveTo(summaryX + 10, yPos + 75).lineTo(summaryX + summaryBoxWidth - 10, yPos + 75).stroke();
+      doc.moveTo(summaryX + 10, yPos + 90).lineTo(summaryX + summaryBoxWidth - 10, yPos + 90).stroke();
 
       // Total final
       doc.font('Courier-Bold').fontSize(9).fillColor(successGreen);
-      doc.text(`TOTAL:`, summaryX + 10, yPos + 83);
-      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 70, yPos + 83);
+      doc.text(`TOTAL:`, summaryX + 10, yPos + 98);
+      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 70, yPos + 98);
 
-      yPos += 110;
+      yPos += 130;
       
       // ================================
       // TÉRMINOS Y CONDICIONES - SIN FONDO, SIN FIRMAS
@@ -717,12 +729,18 @@ router.post('/', async (req, res) => {
 
     let extra = 0;
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
-    
-    // SIEMPRE aplicar 5% SHOPMISC
-    const shopMisc = subtotal * 0.05;
+
+    // Miscellaneous (editable %)
+    let miscPercent = 5;
+    if (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '') {
+      miscPercent = Number(fields.miscellaneousPercent);
+    } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
+      miscPercent = Number(fields.miscellaneous);
+    }
+    const shopMisc = subtotal * (miscPercent / 100);
     extra += shopMisc;
 
-    // Calcular WELDING SUPPLIES (editable %)
+    // Welding Supplies (editable %)
     const weldPercent = typeof fields.weldPercent !== 'undefined' ? Number(fields.weldPercent) : 15;
     const weldSupplies = subtotal * (weldPercent / 100);
     extra += weldSupplies;
@@ -740,18 +758,19 @@ router.post('/', async (req, res) => {
     } else {
       // Usa el cálculo automático
       totalLabAndPartsFinal = subtotal + shopMisc + weldSupplies;
-    }    console.log(`💾 [${requestId}] Preparando inserción en DB...`);
+    }
+    console.log(`💾 [${requestId}] Preparando inserción en DB...`);
     console.log(`📊 [${requestId}] Memoria antes de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
     
     // INSERTAR EN DB SIMPLE
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, idClassic,
-      JSON.stringify(extraOptions || [])
+      JSON.stringify(extraOptions || []), miscPercent, weldPercent
     ];
     
     console.log(`🗄️ [${requestId}] Ejecutando query de inserción...`);
@@ -916,7 +935,9 @@ router.put('/:id', async (req, res) => {
     extraOptions,
     usuario,
     idClassic,
-    totalLabAndParts
+    totalLabAndParts,
+    miscellaneousPercent,
+    weldPercent
   } = fields;
 
   // Obtener datos actuales de la orden
@@ -1004,16 +1025,27 @@ router.put('/:id', async (req, res) => {
 
     let extra = 0;
     const extras = Array.isArray(extraOptions) ? extraOptions : [];
-    
-    // SIEMPRE aplicar 5% SHOPMISC
-    const shopMisc = subtotal * 0.05;
+
+    // Miscellaneous (editable %)
+    let miscPercent = 5;
+    if (typeof miscellaneousPercent !== 'undefined' && miscellaneousPercent !== null && miscellaneousPercent !== '') {
+      miscPercent = Number(miscellaneousPercent);
+    } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
+      miscPercent = Number(fields.miscellaneous);
+    }
+    const shopMisc = subtotal * (miscPercent / 100);
     extra += shopMisc;
 
-    // Calcular WELDING SUPPLIES (editable %)
-    const weldPercent = typeof fields.weldPercent !== 'undefined' ? Number(fields.weldPercent) : 15;
-    const weldSupplies = subtotal * (weldPercent / 100);
+    // Welding Supplies (editable %)
+    let weldPercentFinal = 15;
+    if (typeof weldPercent !== 'undefined' && weldPercent !== null && weldPercent !== '') {
+      weldPercentFinal = Number(weldPercent);
+    } else if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
+      weldPercentFinal = Number(fields.weldPercent);
+    }
+    const weldSupplies = subtotal * (weldPercentFinal / 100);
     extra += weldSupplies;
-    
+
     // Calcula el total final
     // Usar SIEMPRE el valor limpio de totalLabAndParts
     let totalLabAndPartsFinal = totalLabAndParts;
@@ -1024,12 +1056,12 @@ router.put('/:id', async (req, res) => {
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
     let updateQuery = `
       UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?
     `;
     const updateFields = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status,
-      JSON.stringify(extraOptions || []), fields.poClassic || null
+      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal
     ];
     if (status === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
