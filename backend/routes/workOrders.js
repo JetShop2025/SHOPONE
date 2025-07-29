@@ -1250,72 +1250,30 @@ router.get('/audit-log', async (req, res) => {
   }
 });
 
-// Obtener PDF por ID de orden (desde base de datos) - DESHABILITADO PARA EVITAR CRASHES.
+// Obtener PDF por ID de orden (desde base de datos) - DESHABILITADO PARA EVITAR CRASHES
 router.get('/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // TEMPORALMENTE DESHABILITADO - Generar PDFs causa crashes en plan gratuito
-    console.log(`⚠️ Generación de PDF deshabilitada temporalmente para evitar crashes de memoria`);
-    console.log(`📄 Solicitado PDF para orden ${id} - Respuesta: mensaje informativo`);
-    
-    res.status(503).json({
-      error: 'PDF generation temporarily disabled',
-      message: 'Para evitar crashes del sistema, la generación de PDFs está temporalmente deshabilitada. Actualice a un plan de pago para habilitar esta funcionalidad.',
-      workOrderId: id,
-      suggestion: 'Los datos de la orden están disponibles en la interfaz principal.'
-    });
-    
-    return;
-    
-    /* CÓDIGO DESHABILITADO - CAUSA CRASHES EN PLAN GRATUITO
-    const [results] = await db.query('SELECT pdf_file, idClassic FROM work_orders WHERE id = ?', [id]);
-    
-    if (!results || results.length === 0) {
-      return res.status(404).send('WORK ORDER NOT FOUND');
+    // Obtener datos completos de la orden para generar PDF actualizado
+    const [fullOrder] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
+    if (!fullOrder || fullOrder.length === 0) {
+      return res.status(404).send('WORK ORDER DATA NOT FOUND');
     }
-    
-    const order = results[0];
-    
-    // Si no hay PDF en la base de datos, generar uno nuevo
-    if (!order.pdf_file) {
-      console.log(`PDF no encontrado para orden ${id}, generando nuevo PDF...`);
-      
-      // Obtener datos completos de la orden para generar PDF
-      const [fullOrder] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
-      if (!fullOrder || fullOrder.length === 0) {
-        return res.status(404).send('WORK ORDER DATA NOT FOUND');
-      }
-      
-      try {
-        // Generar PDF profesional
-        const pdfBuffer = await generateProfessionalPDF(fullOrder[0], id);
-        
-        // Guardar PDF en la base de datos
-        await db.query('UPDATE work_orders SET pdf_file = ? WHERE id = ?', [pdfBuffer, id]);
-        
-        // Enviar el PDF generado
-        const fileName = `workorder_${order.idClassic || id}.pdf`;
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-        res.send(pdfBuffer);
-        
-        console.log(`PDF generado y guardado para orden ${id}`);
-        return;
-        
-      } catch (pdfError) {
-        console.error('Error generando PDF:', pdfError);
-        return res.status(500).send('ERROR GENERATING PDF');
-      }
+    const order = fullOrder[0];
+    try {
+      // Generar PDF profesional SIEMPRE con los datos actuales (incluye weldPercent)
+      const pdfBuffer = await generateProfessionalPDF(order, id);
+      // Enviar el PDF generado
+      const fileName = `workorder_${order.idClassic || id}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+      res.send(pdfBuffer);
+      console.log(`PDF generado y enviado para orden ${id}`);
+      return;
+    } catch (pdfError) {
+      console.error('Error generando PDF:', pdfError);
+      return res.status(500).send('ERROR GENERATING PDF');
     }
-    
-    // Enviar PDF existente desde la base de datos
-    const fileName = `workorder_${order.idClassic || id}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-    res.send(order.pdf_file);
-    */
-    
   } catch (error) {
     console.error('Error en endpoint PDF:', error);
     res.status(500).json({ 
