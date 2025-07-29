@@ -562,13 +562,15 @@ async function generateProfessionalPDF(order, id) {
       doc.text(`Labor (${totalHours} hrs):`, summaryX + 10, yPos + 45);
       doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 45);
 
-      // Miscellaneous personalizado
-      doc.text(`Miscellaneous ${miscPercent}%:`, summaryX + 10, yPos + 60);
-      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60);
 
-      // Welding Supplies personalizado
-      doc.text(`Welding Supplies ${weldPercent}%:`, summaryX + 10, yPos + 75);
-      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75);
+      // Miscellaneous personalizado
+      doc.text(`Miscellaneous ${miscPercent}%:`, summaryX + 10, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
+      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
+
+      // Mostrar Welding Supplies SOLO si weldPercent > 0
+      // SIEMPRE mostrar Welding Supplies, aunque el valor sea 0
+      doc.text(`Welding Supplies ${weldPercent}%:`, summaryX + 10, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined});
+      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined});
 
       // Línea separadora
       doc.strokeColor(primaryBlue).lineWidth(1);
