@@ -158,50 +158,41 @@ async function generateProfessionalPDF(order, id) {
   const path = require('path');
   
   return new Promise(async (resolve, reject) => {
+    const PDFDocument = require('pdfkit');
     let doc;
     const chunks = [];
-    
     try {
-      // Configuración mínima para reducir memoria
-      doc = new PDFDocument({ 
+      doc = new PDFDocument({
         margin: 40,
         size: 'LETTER',
         bufferPages: true,
         autoFirstPage: true,
-        compress: true // Comprimir PDF
+        compress: true
       });
-      
-      // Handlers optimizados
-      doc.on('data', chunk => {
-        chunks.push(chunk);
-        // Limitar el número de chunks en memoria
-        if (chunks.length > 100) {
-          console.warn('Demasiados chunks PDF, posible memory leak');
-        }
-      });
-      
+      doc.on('data', chunk => chunks.push(chunk));
       doc.on('end', () => {
         try {
           const pdfBuffer = Buffer.concat(chunks);
-          // Limpiar inmediatamente
-          chunks.length = 0;
           resolve(pdfBuffer);
         } catch (error) {
           reject(error);
-        } finally {
-          // Forzar cleanup
-          if (chunks.length > 0) {
-            chunks.splice(0, chunks.length);
-          }
         }
       });
-      
       doc.on('error', (error) => {
-        if (chunks.length > 0) {
-          chunks.splice(0, chunks.length);
-        }
         reject(error);
       });
+
+      // --- TEST: Always write something to the PDF to avoid blank output ---
+      doc.font('Courier-Bold').fontSize(20).fillColor('red').text('WORK ORDER PDF', 100, 100);
+
+      // ...existing code for PDF content...
+
+      // --- END TEST ---
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
 
       // VARIABLES DE DISEÑO
       const pageWidth = 612;
