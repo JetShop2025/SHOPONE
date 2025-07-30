@@ -157,7 +157,7 @@ async function generateProfessionalPDF(order, id) {
   const fs = require('fs');
   const path = require('path');
   
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const PDFDocument = require('pdfkit');
     let doc;
     const chunks = [];
@@ -182,12 +182,13 @@ async function generateProfessionalPDF(order, id) {
         reject(error);
       });
 
-      // --- TEST: Always write something to the PDF to avoid blank output ---
-      doc.font('Courier-Bold').fontSize(20).fillColor('red').text('WORK ORDER PDF', 100, 100);
+      // --- TEST: Write at the very top ---
+      doc.font('Courier-Bold').fontSize(20).fillColor('red').text('TEST 1 - START', 100, 100);
 
       // ...existing code for PDF content...
 
-      // --- END TEST ---
+      // --- TEST: Write at the very end, just before doc.end() ---
+      doc.font('Courier-Bold').fontSize(20).fillColor('blue').text('TEST 2 - END', 100, 700);
       doc.end();
     } catch (error) {
       reject(error);
@@ -638,26 +639,8 @@ async function generateProfessionalPDF(order, id) {
       
       yPos += 60;
       
-      // Mensaje final centrado
-      doc.font('Courier-Bold').fontSize(10).fillColor(accentBlue);
-      const finalText = 'Thanks for your business!';
-      const finalTextWidth = doc.widthOfString(finalText);
-      const finalTextX = centerX - (finalTextWidth / 2);
-      doc.text(finalText, finalTextX, yPos);
-        doc.end();
-      
-    } catch (error) {
-      if (doc) {
-        doc.end();
-      }
-      reject(error);
-    } finally {
-      // Forzar garbage collection si está disponible
-      if (global.gc) {
-        global.gc();
-      }
-    }
-  });
+      // ...existing code...
+      // (REMOVED: duplicate/old generateProfessionalPDF function implementation)
 }
 
 async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
