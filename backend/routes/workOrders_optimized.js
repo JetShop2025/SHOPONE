@@ -261,8 +261,22 @@ router.post('/', async (req, res) => {
                 });
               }
 
-              // Totales
+
+              // === RESUMEN FINANCIERO: Miscellaneous y Welding Supplies SIEMPRE visibles ===
               y += 20;
+              // Calcular porcentajes y montos
+              const miscPercent = (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '') ? Number(fields.miscellaneousPercent) : 0;
+              const weldPercent = (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') ? Number(fields.weldPercent) : 0;
+              const miscAmount = subtotal * (miscPercent / 100);
+              const weldAmount = subtotal * (weldPercent / 100);
+
+              doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
+              doc.text(`Miscellaneous ${miscPercent}%: $${miscAmount.toFixed(2)}`, 350, y);
+              y += 18;
+              doc.text(`Welding Supplies ${weldPercent}%: $${weldAmount.toFixed(2)}`, 350, y);
+              y += 18;
+
+              // TOTAL
               doc.font('Courier-Bold').fontSize(12).fillColor('#d32f2f');
               doc.text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 350, y);
 
