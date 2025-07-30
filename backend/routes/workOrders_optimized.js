@@ -266,25 +266,43 @@ router.post('/', async (req, res) => {
               // === RESUMEN FINANCIERO: Miscellaneous y Welding Supplies SIEMPRE visibles ===
               y += 20;
 
-              // Log para depuración de porcentajes y montos
-              const miscPercent =
-                (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '')
-                  ? Number(fields.miscellaneousPercent)
-                  : (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '')
-                    ? Number(fields.miscellaneous)
-                    : 0;
-              const weldPercent =
-                (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '')
-                  ? Number(fields.weldPercent)
-                  : 0;
-              console.error(`[PDF-OPT] miscPercent:`, miscPercent, '| weldPercent:', weldPercent);
-              const miscAmount = subtotal * (miscPercent / 100);
-              const weldAmount = subtotal * (weldPercent / 100);
+              // === LOGS Y VALIDACIÓN DE CAMPOS ===
+              let miscPercent = 0;
+              if (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '') {
+                miscPercent = Number(fields.miscellaneousPercent);
+              } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
+                miscPercent = Number(fields.miscellaneous);
+              }
+              let weldPercent = 0;
+              if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
+                weldPercent = Number(fields.weldPercent);
+              }
+
+              // Forzar a 0 si NaN
+              miscPercent = isNaN(miscPercent) ? 0 : miscPercent;
+              weldPercent = isNaN(weldPercent) ? 0 : weldPercent;
+
+              // Asegurar que subtotal es numérico
+              const subtotalNum = Number(subtotal) || 0;
+              const miscAmount = subtotalNum * (miscPercent / 100);
+              const weldAmount = subtotalNum * (weldPercent / 100);
+
+              // LOGS DETALLADOS
+              console.error(`[PDF-OPT] subtotal:`, subtotalNum, '| miscPercent:', miscPercent, '| weldPercent:', weldPercent, '| miscAmount:', miscAmount, '| weldAmount:', weldAmount);
+
+              // SIEMPRE mostrar ambas líneas, aunque sean 0
+
+              // Ensure y does not go off the page
+              if (y > 750) {
+                doc.addPage();
+                y = 50;
+              }
 
               doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-              doc.text(`Miscellaneous ${miscPercent}%: $${miscAmount.toFixed(2)}`, 350, y);
+              doc.text(`Miscellaneous ${miscPercent}%: $${miscAmount.toFixed(2)}`, 350, y, { continued: false });
               y += 18;
-              doc.text(`Welding Supplies ${weldPercent}%: $${weldAmount.toFixed(2)}`, 350, y);
+              doc.font('Courier-Bold').fontSize(10).fillColor('#d32f2f');
+              doc.text(`Welding Supplies ${weldPercent}%: $${weldAmount.toFixed(2)}`, 350, y, { continued: false });
               y += 18;
 
               // TOTAL
@@ -292,6 +310,10 @@ router.post('/', async (req, res) => {
               doc.text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 350, y);
 
               doc.end();
+              // Log after PDF is finalized
+              stream.on('finish', () => {
+                console.error(`[PDF-OPT] PDF generated at: ${pdfPath}`);
+              });
             } catch (err) {
               console.error('ERROR PDF (async):', err);
             }
