@@ -287,44 +287,28 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   currentY += 6;
   
   // EXTRAS - Integrados con los totales
-  // MISCELLANEOUS - Usar porcentaje y leyenda personalizada
-  let miscPercent = 0;
-  let miscLabel = '';
-  let miscAmount = 0;
-  // Si hay extraOptions, buscar el porcentaje y mostrarlo como Miscellaneous
-  if (extraOptions && extraOptions.length > 0) {
-    if (extraOptions.includes('15shop')) {
-      miscPercent = 15;
-      miscLabel = 'Miscellaneous 15%:';
-      miscAmount = subtotal * 0.15;
-    } else if (extraOptions.includes('15weld')) {
-      miscPercent = 15;
-      miscLabel = 'Miscellaneous 15%:';
-      miscAmount = subtotal * 0.15;
-    } else if (extraOptions.includes('5')) {
-      miscPercent = 5;
-      miscLabel = 'Miscellaneous 5%:';
-      miscAmount = subtotal * 0.05;
-    }
-  } else {
-    // Si no hay extraOptions, usar el 5% automático como Miscellaneous
-    miscPercent = 5;
-    miscLabel = 'Miscellaneous 5%:';
-    miscAmount = subtotal * 0.05;
-  }
-  pdf.setTextColor(0, 100, 200); // Color azul para Miscellaneous
-  pdf.text(miscLabel, totalsStartX, currentY);
+
+  // === SIEMPRE mostrar ambas líneas: Miscellaneous y Welding Supplies ===
+  // Obtener los porcentajes y montos exactos del objeto workOrderData
+  // Permitir que vengan como string o número, y forzar a 0 si no existen
+  const miscPercent = Number((workOrderData as any).miscellaneousPercent ?? (workOrderData as any).miscellaneous ?? 0) || 0;
+  const weldPercent = Number((workOrderData as any).weldPercent ?? 0) || 0;
+  const miscAmount = subtotal * (miscPercent / 100);
+  const weldAmount = subtotal * (weldPercent / 100);
+
+  // Línea Miscellaneous
+  pdf.setTextColor(0, 100, 200); // Azul
+  pdf.text(`Miscellaneous ${miscPercent}%:`, totalsStartX, currentY);
   pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
-  
-  // Extras seleccionados
-  extraOptions.forEach(option => {
-    let extraName = '';
-    let extraCost = 0;
-    
-    // Ya se muestra como Miscellaneous arriba, no repetir aquí
-    // Si tienes otros extras diferentes, agrégalos aquí si es necesario
-  });
+
+  // Línea Welding Supplies
+  pdf.setTextColor(220, 20, 60); // Rojo
+  pdf.text(`Welding Supplies ${weldPercent}%:`, totalsStartX, currentY);
+  pdf.text(`$${weldAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+  currentY += 6;
+
+  // Si quieres mostrar otros extras, agrégalos aquí
   
   // Línea separadora
   pdf.setDrawColor(0, 0, 0);
