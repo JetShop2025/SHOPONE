@@ -523,10 +523,17 @@ async function generateProfessionalPDF(order, id) {
       const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
 
       // Welding Supplies
-      let weldPercent = 15;
-      if (typeof order.weldPercent !== 'undefined' && order.weldPercent !== null && order.weldPercent !== '') {
+      let weldPercent = 0;
+      // Aceptar weldPercent de la orden, aunque sea 0 o string '0'
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
+        order.weldPercent !== null &&
+        order.weldPercent !== '' &&
+        !isNaN(Number(order.weldPercent))
+      ) {
         weldPercent = Number(order.weldPercent);
       }
+      if (isNaN(weldPercent)) weldPercent = 0;
       const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
 
       // Debug log para verificar valores
