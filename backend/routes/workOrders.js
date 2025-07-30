@@ -571,8 +571,9 @@ async function generateProfessionalPDF(order, id) {
       doc.text(`Labor (${totalHours} hrs):`, summaryX + 10, yPos + 45);
       doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 45);
 
-      // Miscellaneous personalizado (mostrar el porcentaje exacto que viene en la orden)
+
       // SIEMPRE mostrar ambas líneas, aunque sean 0
+      // Miscellaneous
       let miscPercentLabel = 0;
       if (
         Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
@@ -590,10 +591,10 @@ async function generateProfessionalPDF(order, id) {
         miscPercentLabel = Number(order.miscellaneous);
       }
       if (isNaN(miscPercentLabel)) miscPercentLabel = 0;
-      doc.text(`Miscellaneous ${miscPercentLabel}%:`, summaryX + 10, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined, opacity: 1});
-      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined, opacity: 1});
+      doc.text(`Miscellaneous ${miscPercentLabel}%:`, summaryX + 10, yPos + 60);
+      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60);
 
-      // Forzar siempre la línea de Welding Supplies
+      // Welding Supplies
       let weldPercentLabel = 0;
       if (
         Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
@@ -604,10 +605,8 @@ async function generateProfessionalPDF(order, id) {
         weldPercentLabel = Number(order.weldPercent);
       }
       if (isNaN(weldPercentLabel)) weldPercentLabel = 0;
-      // Log para depuración
-      console.log('DEBUG PDF: weldPercent recibido en orden:', order.weldPercent, typeof order.weldPercent, 'weldPercentLabel:', weldPercentLabel, 'weldAmount:', weldAmount);
-      doc.text(`Welding Supplies ${weldPercentLabel}%:`, summaryX + 10, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined, opacity: 1});
-      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined, opacity: 1});
+      doc.text(`Welding Supplies ${weldPercentLabel}%:`, summaryX + 10, yPos + 75);
+      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75);
 
       // Línea separadora
       doc.strokeColor(primaryBlue).lineWidth(1);
