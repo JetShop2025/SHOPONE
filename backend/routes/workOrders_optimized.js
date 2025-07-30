@@ -288,7 +288,8 @@ router.post('/', async (req, res) => {
               const weldAmount = subtotalNum * (weldPercent / 100);
 
               // LOGS DETALLADOS
-              console.error(`[PDF-OPT] subtotal:`, subtotalNum, '| miscPercent:', miscPercent, '| weldPercent:', weldPercent, '| miscAmount:', miscAmount, '| weldAmount:', weldAmount);
+              // LOGS DETALLADOS (move before doc.end for visibility)
+              console.error(`[PDF-OPT] subtotal: ${subtotalNum} | miscPercent: ${miscPercent} | weldPercent: ${weldPercent} | miscAmount: ${miscAmount} | weldAmount: ${weldAmount}`);
 
               // SIEMPRE mostrar ambas líneas, aunque sean 0
 
@@ -303,6 +304,11 @@ router.post('/', async (req, res) => {
               y += 18;
               doc.font('Courier-Bold').fontSize(10).fillColor('#d32f2f');
               doc.text(`Welding Supplies ${weldPercent}%: $${weldAmount.toFixed(2)}`, 350, y, { continued: false });
+              y += 18;
+
+              // Add a visible debug line for PDF troubleshooting
+              doc.font('Courier-Bold').fontSize(10).fillColor('#00bcd4');
+              doc.text(`PDF DEBUG LINE - ${new Date().toISOString()}`, 50, y);
               y += 18;
 
               // TOTAL
