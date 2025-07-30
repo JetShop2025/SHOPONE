@@ -262,9 +262,11 @@ router.post('/', async (req, res) => {
               }
 
 
+
               // === RESUMEN FINANCIERO: Miscellaneous y Welding Supplies SIEMPRE visibles ===
               y += 20;
-              // Calcular porcentajes y montos
+              // Log para depuración de porcentajes y montos
+              console.error(`[PDF-OPT] miscPercent:`, fields.miscellaneousPercent, '->', (typeof fields.miscellaneousPercent), '| weldPercent:', fields.weldPercent, '->', (typeof fields.weldPercent));
               const miscPercent = (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '') ? Number(fields.miscellaneousPercent) : 0;
               const weldPercent = (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') ? Number(fields.weldPercent) : 0;
               const miscAmount = subtotal * (miscPercent / 100);
