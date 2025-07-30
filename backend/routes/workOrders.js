@@ -539,13 +539,13 @@ async function generateProfessionalPDF(order, id) {
       const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
 
       // Debug log para verificar valores
-      console.log(`PDF Debug - Orden ${id}:`);
-      console.log(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
-      console.log(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
-      console.log(`  - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
-      console.log(`  - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
-      console.log(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
-      console.log(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
+      console.error(`PDF Debug - Orden ${id}:`);
+      console.error(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
+      console.error(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
+      console.error(`  - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
+      console.error(`  - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
+      console.error(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
+      console.error(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
 
       // Caja de totales en el lado derecho
       const summaryBoxWidth = 200;
