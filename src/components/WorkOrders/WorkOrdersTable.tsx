@@ -471,41 +471,54 @@ const WorkOrdersTable: React.FC = () => {
   const fetchWorkOrders = useCallback(async (isRetry = false, pageToLoad?: number) => {
     try {
       setFetchingData(true);
-      const targetPage = pageToLoad || currentPageData;      // Si hay búsqueda específica por ID Classic, usar búsqueda directa (OPTIMIZADA)
+      const targetPage = pageToLoad || currentPageData;
+      // Si hay búsqueda específica por ID Classic, usar búsqueda directa (pero paginada)
       if (searchIdClassic.trim()) {
-        // Only log if debugging
+        // Siempre paginar la búsqueda por ID Classic
         const res = await axios.get(`${API_URL}/work-orders`, {
-          params: { searchIdClassic: searchIdClassic.trim() },
-          timeout: 30000 // AUMENTADO timeout para servidor gratuito
+          params: {
+            searchIdClassic: searchIdClassic.trim(),
+            page: targetPage,
+            pageSize: pageSize
+          },
+          timeout: 30000
         });
-        
-        const searchResults = Array.isArray(res.data) ? res.data : [];
-        setWorkOrders(searchResults);
-        // Para búsquedas, no mostrar paginación
-        setTotalPages(1);
-        setTotalRecords(searchResults.length);
-        setHasNextPage(false);
-        setHasPreviousPage(false);
+        // Si el backend soporta paginación en búsqueda, usarla
+        if (res.data && typeof res.data === 'object' && 'pagination' in res.data) {
+          const paginatedResponse = res.data as PaginatedWorkOrdersResponse;
+          const { data, pagination } = paginatedResponse;
+          setWorkOrders(data || []);
+          setCurrentPageData(pagination.currentPage);
+          setTotalPages(pagination.totalPages);
+          setTotalRecords(pagination.totalRecords);
+          setHasNextPage(pagination.hasNextPage);
+          setHasPreviousPage(pagination.hasPreviousPage);
+        } else {
+          // Fallback: si no hay paginación, mostrar solo los primeros pageSize
+          const searchResults = Array.isArray(res.data) ? res.data : [];
+          setWorkOrders(searchResults.slice(0, pageSize));
+          setCurrentPageData(1);
+          setTotalPages(1);
+          setTotalRecords(searchResults.length);
+          setHasNextPage(false);
+          setHasPreviousPage(false);
+        }
         setServerStatus('online');
         setRetryCount(0);
         return;
-      }      // Carga paginada normal (OPTIMIZADA para plan gratuito - 100 registros)
-      // Only log if debugging
+      }
+      // Carga paginada normal (nunca traer todo)
       const res = await axios.get<WorkOrdersApiResponse | any[]>(`${API_URL}/work-orders`, {
         params: {
           page: targetPage,
           pageSize: pageSize,
-          includeArchived: false // Por defecto no incluir archivadas para mejor rendimiento
+          includeArchived: false
         },
-        timeout: 30000 // AUMENTADO timeout para servidor gratuito
+        timeout: 30000
       });
-      
-      // Manejar respuesta paginada
       if (res.data && typeof res.data === 'object' && 'pagination' in res.data) {
         const paginatedResponse = res.data as PaginatedWorkOrdersResponse;
         const { data, pagination } = paginatedResponse;
-        // Only log if debugging
-        
         setWorkOrders(data || []);
         setCurrentPageData(pagination.currentPage);
         setTotalPages(pagination.totalPages);
@@ -513,27 +526,24 @@ const WorkOrdersTable: React.FC = () => {
         setHasNextPage(pagination.hasNextPage);
         setHasPreviousPage(pagination.hasPreviousPage);
       } else {
-        // Fallback si la respuesta no tiene paginación (modo tradicional)
+        // Fallback: nunca mostrar más de pageSize
         const fetchedOrders = Array.isArray(res.data) ? res.data : [];
-        setWorkOrders(fetchedOrders);
+        setWorkOrders(fetchedOrders.slice(0, pageSize));
+        setCurrentPageData(1);
         setTotalPages(1);
         setTotalRecords(fetchedOrders.length);
         setHasNextPage(false);
         setHasPreviousPage(false);
-        // Only log if debugging
       }
-      
       setServerStatus('online');
       setRetryCount(0);
-      // Only log if debugging
     } catch (err: any) {
       console.error('Error cargando órdenes:', err);
-      // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
       if ((err?.response?.status === 502 || err?.response?.status === 503 || err.code === 'ECONNABORTED') && retryCount < maxRetries) {
         if (!isRetry) {
           setServerStatus('waking');
           try {
-            const pingSuccess = await keepAliveService.manualPing();
+            await keepAliveService.manualPing();
           } catch (keepAliveError) {}
           setRetryCount(prev => prev + 1);
           const retryDelay = Math.min(30000 * Math.pow(2, retryCount), 120000);
@@ -542,7 +552,6 @@ const WorkOrdersTable: React.FC = () => {
           }, retryDelay);
         }
       } else if (searchIdClassic.trim() && (err?.response?.status === 404 || (Array.isArray(err?.response?.data) && err?.response?.data.length === 0))) {
-        // Si la búsqueda por ID Classic no encontró resultados, NO poner offline, solo mostrar vacío
         setWorkOrders([]);
         setTotalPages(1);
         setTotalRecords(0);
@@ -551,9 +560,6 @@ const WorkOrdersTable: React.FC = () => {
         setServerStatus('online');
       } else {
         setServerStatus('offline');
-        if (retryCount >= maxRetries) {
-          // Only log if debugging
-        }
       }
     } finally {
       setFetchingData(false);
