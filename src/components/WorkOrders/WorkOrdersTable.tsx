@@ -580,40 +580,51 @@ const WorkOrdersTable: React.FC = () => {
   }, [fetchWorkOrders, serverStatus]);
   
   // Función de búsqueda inteligente por ID Classic
+  const [searchError, setSearchError] = useState('');
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
-      // Si está vacío, recargar todas las órdenes
       fetchWorkOrders();
       setIsSearching(false);
+      setSearchError('');
       return;
     }
-    
     try {
       setIsSearching(true);
-      // Only log if debugging
-      
+      setSearchError('');
       const res = await axios.get(`${API_URL}/work-orders`, {
         params: { searchIdClassic: searchTerm.trim() },
         timeout: 15000
       });
-      
       const searchResults = Array.isArray(res.data) ? res.data : [];
       setWorkOrders(searchResults);
-      // Only log if debugging
-      
       if (searchResults.length === 0) {
-        // Only log if debugging
+        setSearchError('No se encontró ninguna Work Order con ese ID Classic.');
       }
-      
-    } catch (error) {
-      console.error('❌ Error en búsqueda:', error);
-      // En caso de error, volver a cargar todas las órdenes
-      fetchWorkOrders();
+    } catch (err: any) {
+      // Si es un error 502/503, mostrar mensaje amigable y NO recargar todas las órdenes
+      if (err && err.response && (err.response.status === 502 || err.response.status === 503)) {
+        setSearchError('El servidor está temporalmente inactivo o sobrecargado (502/503). Por favor, intente de nuevo en unos minutos.');
+        // No recargar todas las órdenes, solo mostrar el error
+      } else if (err && err.response && err.response.status === 404) {
+        setWorkOrders([]);
+        setSearchError('No se encontró ninguna Work Order con ese ID Classic.');
+      } else {
+        setSearchError('Ocurrió un error inesperado al buscar la Work Order.');
+      }
     } finally {
       setIsSearching(false);
     }
   }, [fetchWorkOrders]);
   
+  // Mostrar mensaje de error de búsqueda por ID Classic si existe
+  // (Puedes mejorar esto con un componente visual, aquí solo ejemplo con alert y render condicional)
+
+  useEffect(() => {
+    if (searchError) {
+      alert(searchError);
+    }
+  }, [searchError]);
+
   // Función para cargar inventario con reintentos inteligentes
   const fetchInventory = useCallback(async () => {
     try {
