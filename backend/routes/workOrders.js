@@ -601,6 +601,8 @@ async function generateProfessionalPDF(order, id) {
       doc.text(`Miscellaneous ${miscPercentLabel}%:`, summaryX + 10, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
       doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
 
+      console.log('DEBUG PDF: weldPercent recibido en orden:', order.weldPercent, typeof order.weldPercent);
+
       // Welding Supplies SIEMPRE debajo de Miscellaneous, mostrando el porcentaje exacto que viene en la orden
       let weldPercentLabel = weldPercent;
       if (
@@ -786,7 +788,11 @@ router.post('/', async (req, res) => {
     extra += shopMisc;
 
     // Welding Supplies (editable %)
-    const weldPercent = typeof fields.weldPercent !== 'undefined' ? Number(fields.weldPercent) : 15;
+    let weldPercent = 0;
+    if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
+      weldPercent = Number(fields.weldPercent);
+    }
+    if (isNaN(weldPercent)) weldPercent = 0;
     const weldSupplies = subtotal * (weldPercent / 100);
     extra += weldSupplies;
 
@@ -1082,12 +1088,13 @@ router.put('/:id', async (req, res) => {
     extra += shopMisc;
 
     // Welding Supplies (editable %)
-    let weldPercentFinal = 15;
+    let weldPercentFinal = 0;
     if (typeof weldPercent !== 'undefined' && weldPercent !== null && weldPercent !== '') {
       weldPercentFinal = Number(weldPercent);
     } else if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
       weldPercentFinal = Number(fields.weldPercent);
     }
+    if (isNaN(weldPercentFinal)) weldPercentFinal = 0;
     const weldSupplies = subtotal * (weldPercentFinal / 100);
     extra += weldSupplies;
 
@@ -1308,10 +1315,14 @@ router.get('/:id/pdf', async (req, res) => {
     try {
       // Generar PDF profesional SIEMPRE con los datos actuales (incluye weldPercent)
       const pdfBuffer = await generateProfessionalPDF(order, id);
-      // Enviar el PDF generado
+      // Enviar el PDF generado SIEMPRE con headers para evitar caché
       const fileName = `workorder_${order.idClassic || id}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
       res.send(pdfBuffer);
       console.log(`PDF generado y enviado para orden ${id}`);
       return;

@@ -105,8 +105,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Debug: verificar inventario
   // Remove excessive inventory debug logging
   React.useEffect(() => {}, [inventory]);
-  // Set default miscellaneous to 5% for new Work Orders
-  // Solo poner valor por defecto al crear una nueva orden
+  // Set default miscellaneous and weldPercent to 0 for new Work Orders and never allow empty
   React.useEffect(() => {
     if (!workOrder.id) {
       if (
@@ -127,6 +126,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
     }
   }, [workOrder.id]);
+
+  // Siempre forzar que weldPercent nunca quede vacío (si el usuario borra, poner 0)
+  React.useEffect(() => {
+    if (
+      workOrder.weldPercent === '' ||
+      workOrder.weldPercent === undefined ||
+      workOrder.weldPercent === null ||
+      isNaN(Number(workOrder.weldPercent))
+    ) {
+      onChange({ target: { name: 'weldPercent', value: '0' } } as any);
+    }
+  }, [workOrder.weldPercent]);
 
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // SOLO para nuevas órdenes (no para edición)
