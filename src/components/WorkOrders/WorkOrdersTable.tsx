@@ -583,7 +583,6 @@ const WorkOrdersTable: React.FC = () => {
   const [searchError, setSearchError] = useState('');
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
-      fetchWorkOrders();
       setIsSearching(false);
       setSearchError('');
       return;
@@ -614,7 +613,7 @@ const WorkOrdersTable: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  }, [fetchWorkOrders]);
+  }, []); // Eliminar fetchWorkOrders de dependencias para evitar recarga
   
   // Mostrar mensaje de error de búsqueda por ID Classic si existe
   // (Puedes mejorar esto con un componente visual, aquí solo ejemplo con alert y render condicional)
