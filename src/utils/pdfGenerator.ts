@@ -292,7 +292,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Obtener los porcentajes y montos exactos del objeto workOrderData
   // Permitir que vengan como string o número, y forzar a 0 si no existen
   const miscRaw = (workOrderData as any).miscellaneousPercent ?? (workOrderData as any).miscellaneous;
-  const weldRaw = (workOrderData as any).weldPercent;
+  const weldRaw = (workOrderData as any).weldPercent ?? (workOrderData as any).welding;
   const miscPercent = !isNaN(Number(miscRaw)) && miscRaw !== '' && miscRaw !== null && miscRaw !== undefined ? Number(miscRaw) : 0;
   const weldPercent = !isNaN(Number(weldRaw)) && weldRaw !== '' && weldRaw !== null && weldRaw !== undefined ? Number(weldRaw) : 0;
   const miscAmount = subtotal * (miscPercent / 100);

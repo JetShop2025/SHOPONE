@@ -322,7 +322,11 @@ const WorkOrdersTable: React.FC = () => {
               ? Number(dataToSend.miscellaneous)
               : 5, // fallback por defecto
           // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-          weldPercent: Number(workOrderData.weldPercent) || 0
+          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
+            ? Number(workOrderData.weldPercent)
+            : (typeof dataToSend.weldPercent !== 'undefined' && dataToSend.weldPercent !== null && dataToSend.weldPercent !== '')
+              ? Number(dataToSend.weldPercent)
+              : 0
         };
         const pdf = await generateWorkOrderPDF(pdfData);
         const pdfBlob = pdf.output('blob');
@@ -1081,7 +1085,11 @@ const WorkOrdersTable: React.FC = () => {
               ? Number(datosOrden.miscellaneous)
               : 5, // fallback por defecto
           // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-          weldPercent: Number(workOrderData.weldPercent) || 0
+          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
+            ? Number(workOrderData.weldPercent)
+            : (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
+              ? Number(datosOrden.weldPercent)
+              : 0
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
@@ -1154,7 +1162,9 @@ const WorkOrdersTable: React.FC = () => {
             totalCost: Number(datosOrden.totalLabAndParts) || 0,
             extraOptions: datosOrden.extraOptions || extraOptions || [],
             // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-            weldPercent: Number(datosOrden.weldPercent) || 0
+            weldPercent: (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
+              ? Number(datosOrden.weldPercent)
+              : 0
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
@@ -1646,7 +1656,9 @@ const WorkOrdersTable: React.FC = () => {
         totalCost: totalCost,
         extraOptions: finalWorkOrderData.extraOptions || [],
         // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-        weldPercent: Number(finalWorkOrderData.weldPercent) || 0
+        weldPercent: (typeof finalWorkOrderData.weldPercent !== 'undefined' && finalWorkOrderData.weldPercent !== null && finalWorkOrderData.weldPercent !== '')
+          ? Number(finalWorkOrderData.weldPercent)
+          : 0
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);
