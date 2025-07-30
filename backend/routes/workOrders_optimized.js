@@ -203,122 +203,121 @@ router.post('/', async (req, res) => {
               const pdfName = `${formattedDate}_${fields.idClassic || id}.pdf`;
               const pdfPath = path.join(__dirname, '../pdfs', pdfName);
 
-              const doc = new PDFDocument({ margin: 40, size: 'A4' });
-              const stream = fs.createWriteStream(pdfPath);
-              doc.pipe(stream);
+              // Synchronous PDF write for debugging
+              await new Promise((resolve, reject) => {
+                const doc = new PDFDocument({ margin: 40, size: 'A4' });
+                const stream = fs.createWriteStream(pdfPath);
+                doc.pipe(stream);
 
-              // Header rápido
-              doc.font('Courier-Bold').fontSize(24).fillColor('#1976d2').text('INVOICE', { align: 'center' });
-              doc.font('Courier').fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
-              doc.text('740 EL CAMINO REAL', { align: 'right' });
-              doc.text('GREENFIELD, CA 93927', { align: 'right' });
+                // Header rápido
+                doc.font('Courier-Bold').fontSize(24).fillColor('#1976d2').text('INVOICE', { align: 'center' });
+                doc.font('Courier').fontSize(10).fillColor('#333').text('JET SHOP, LLC.', 400, 40, { align: 'right' });
+                doc.text('740 EL CAMINO REAL', { align: 'right' });
+                doc.text('GREENFIELD, CA 93927', { align: 'right' });
 
-              // Info básica
-              doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-              doc.text('Bill To Co:', 40, 120);
-              doc.text('Trailer:', 40, 140);
-              doc.text('Date:', 40, 160);
-              doc.text('Mechanic:', 400, 140);
-              doc.text('ID CLASSIC:', 400, 160);
-
-              doc.font('Courier').fontSize(10).fillColor('#222');
-              doc.text(billToCo || '-', 120, 120);
-              doc.text(trailer || '-', 120, 140);
-              doc.text(formattedDate || '-', 120, 160);
-              
-              const mechanicToShow = Array.isArray(mechanicsArr) && mechanicsArr.length > 0
-                ? mechanicsArr.map(m => m.name).join(', ')
-                : mechanic;
-              doc.text(mechanicToShow || '-', 480, 140);
-              doc.text(idClassic || '-', 480, 160);
-
-              // Descripción
-              doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
-              doc.text('Description:', 50, 200);
-              doc.font('Courier').fontSize(11).fillColor('#222');
-              doc.text(description || '', 50, 216, { width: 500 });
-
-              let y = 260;
-              
-              // Tabla simplificada para velocidad
-              if (partsArr.length > 0) {
+                // Info básica
                 doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-                doc.text('SKU', 50, y);
-                doc.text('PART', 150, y);
-                doc.text('QTY', 300, y);
-                doc.text('COST', 350, y);
-                doc.text('TOTAL', 450, y);
-                y += 20;
+                doc.text('Bill To Co:', 40, 120);
+                doc.text('Trailer:', 40, 140);
+                doc.text('Date:', 40, 160);
+                doc.text('Mechanic:', 400, 140);
+                doc.text('ID CLASSIC:', 400, 160);
+
+                doc.font('Courier').fontSize(10).fillColor('#222');
+                doc.text(billToCo || '-', 120, 120);
+                doc.text(trailer || '-', 120, 140);
+                doc.text(formattedDate || '-', 120, 160);
                 
-                doc.font('Courier').fontSize(9).fillColor('#222');
-                partsArr.forEach((p, i) => {
-                  doc.text(p.sku || '-', 50, y);
-                  doc.text(p.part || '-', 150, y);
-                  doc.text(p.qty || '-', 300, y);
-                  doc.text(`$${(p.cost || 0).toFixed(2)}`, 350, y);
-                  doc.text(`$${((p.qty || 0) * (p.cost || 0)).toFixed(2)}`, 450, y);
-                  y += 18;
+                const mechanicToShow = Array.isArray(mechanicsArr) && mechanicsArr.length > 0
+                  ? mechanicsArr.map(m => m.name).join(', ')
+                  : mechanic;
+                doc.text(mechanicToShow || '-', 480, 140);
+                doc.text(idClassic || '-', 480, 160);
+
+                // Descripción
+                doc.font('Courier-Bold').fontSize(11).fillColor('#1976d2');
+                doc.text('Description:', 50, 200);
+                doc.font('Courier').fontSize(11).fillColor('#222');
+                doc.text(description || '', 50, 216, { width: 500 });
+
+                let y = 260;
+                // Tabla simplificada para velocidad
+                if (partsArr.length > 0) {
+                  doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
+                  doc.text('SKU', 50, y);
+                  doc.text('PART', 150, y);
+                  doc.text('QTY', 300, y);
+                  doc.text('COST', 350, y);
+                  doc.text('TOTAL', 450, y);
+                  y += 20;
+                  doc.font('Courier').fontSize(9).fillColor('#222');
+                  partsArr.forEach((p, i) => {
+                    doc.text(p.sku || '-', 50, y);
+                    doc.text(p.part || '-', 150, y);
+                    doc.text(p.qty || '-', 300, y);
+                    doc.text(`$${(p.cost || 0).toFixed(2)}`, 350, y);
+                    doc.text(`$${((p.qty || 0) * (p.cost || 0)).toFixed(2)}`, 450, y);
+                    y += 18;
+                  });
+                }
+
+                // === RESUMEN FINANCIERO: Miscellaneous y Welding Supplies SIEMPRE visibles ===
+                y += 20;
+
+                // === LOGS Y VALIDACIÓN DE CAMPOS ===
+                let miscPercent = 0;
+                if (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '') {
+                  miscPercent = Number(fields.miscellaneousPercent);
+                } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
+                  miscPercent = Number(fields.miscellaneous);
+                }
+                let weldPercent = 0;
+                if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
+                  weldPercent = Number(fields.weldPercent);
+                }
+
+                // Forzar a 0 si NaN
+                miscPercent = isNaN(miscPercent) ? 0 : miscPercent;
+                weldPercent = isNaN(weldPercent) ? 0 : weldPercent;
+
+                // Asegurar que subtotal es numérico
+                const subtotalNum = Number(subtotal) || 0;
+                const miscAmount = subtotalNum * (miscPercent / 100);
+                const weldAmount = subtotalNum * (weldPercent / 100);
+
+                // LOGS DETALLADOS
+                console.error(`[PDF-OPT] subtotal: ${subtotalNum} | miscPercent: ${miscPercent} | weldPercent: ${weldPercent} | miscAmount: ${miscAmount} | weldAmount: ${weldAmount}`);
+
+                // SIEMPRE mostrar ambas líneas, aunque sean 0
+                if (y > 750) {
+                  doc.addPage();
+                  y = 50;
+                }
+
+                doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
+                doc.text(`Miscellaneous ${miscPercent}%: $${miscAmount.toFixed(2)}`, 350, y, { continued: false });
+                y += 18;
+                doc.font('Courier-Bold').fontSize(10).fillColor('#d32f2f');
+                doc.text(`Welding Supplies ${weldPercent}%: $${weldAmount.toFixed(2)}`, 350, y, { continued: false });
+                y += 18;
+
+                // Add a visible debug line for PDF troubleshooting
+                doc.font('Courier-Bold').fontSize(10).fillColor('#00bcd4');
+                doc.text(`PDF DEBUG LINE - ${new Date().toISOString()}`, 50, y);
+                y += 18;
+
+                // TOTAL
+                doc.font('Courier-Bold').fontSize(12).fillColor('#d32f2f');
+                doc.text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 350, y);
+
+                doc.end();
+                stream.on('finish', () => {
+                  console.error(`[PDF-OPT] PDF generated at: ${pdfPath}`);
+                  resolve();
                 });
-              }
-
-
-
-              // === RESUMEN FINANCIERO: Miscellaneous y Welding Supplies SIEMPRE visibles ===
-              y += 20;
-
-              // === LOGS Y VALIDACIÓN DE CAMPOS ===
-              let miscPercent = 0;
-              if (typeof fields.miscellaneousPercent !== 'undefined' && fields.miscellaneousPercent !== null && fields.miscellaneousPercent !== '') {
-                miscPercent = Number(fields.miscellaneousPercent);
-              } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
-                miscPercent = Number(fields.miscellaneous);
-              }
-              let weldPercent = 0;
-              if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
-                weldPercent = Number(fields.weldPercent);
-              }
-
-              // Forzar a 0 si NaN
-              miscPercent = isNaN(miscPercent) ? 0 : miscPercent;
-              weldPercent = isNaN(weldPercent) ? 0 : weldPercent;
-
-              // Asegurar que subtotal es numérico
-              const subtotalNum = Number(subtotal) || 0;
-              const miscAmount = subtotalNum * (miscPercent / 100);
-              const weldAmount = subtotalNum * (weldPercent / 100);
-
-              // LOGS DETALLADOS
-              // LOGS DETALLADOS (move before doc.end for visibility)
-              console.error(`[PDF-OPT] subtotal: ${subtotalNum} | miscPercent: ${miscPercent} | weldPercent: ${weldPercent} | miscAmount: ${miscAmount} | weldAmount: ${weldAmount}`);
-
-              // SIEMPRE mostrar ambas líneas, aunque sean 0
-
-              // Ensure y does not go off the page
-              if (y > 750) {
-                doc.addPage();
-                y = 50;
-              }
-
-              doc.font('Courier-Bold').fontSize(10).fillColor('#1976d2');
-              doc.text(`Miscellaneous ${miscPercent}%: $${miscAmount.toFixed(2)}`, 350, y, { continued: false });
-              y += 18;
-              doc.font('Courier-Bold').fontSize(10).fillColor('#d32f2f');
-              doc.text(`Welding Supplies ${weldPercent}%: $${weldAmount.toFixed(2)}`, 350, y, { continued: false });
-              y += 18;
-
-              // Add a visible debug line for PDF troubleshooting
-              doc.font('Courier-Bold').fontSize(10).fillColor('#00bcd4');
-              doc.text(`PDF DEBUG LINE - ${new Date().toISOString()}`, 50, y);
-              y += 18;
-
-              // TOTAL
-              doc.font('Courier-Bold').fontSize(12).fillColor('#d32f2f');
-              doc.text(`TOTAL: $${totalLabAndPartsFinal.toFixed(2)}`, 350, y);
-
-              doc.end();
-              // Log after PDF is finalized
-              stream.on('finish', () => {
-                console.error(`[PDF-OPT] PDF generated at: ${pdfPath}`);
+                stream.on('error', (err) => {
+                  reject(err);
+                });
               });
             } catch (err) {
               console.error('ERROR PDF (async):', err);
