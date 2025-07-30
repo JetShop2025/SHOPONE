@@ -164,6 +164,7 @@ async function generateProfessionalPDF(order, id) {
     let doc;
     const chunks = [];
     try {
+      throw new Error('PRUEBA EJECUCIÓN PDF - SI VES ESTE ERROR, ESTA ES LA FUNCIÓN QUE SE EJECUTA');
       console.error(`[PDF] INICIO generateProfessionalPDF para orden ${id}`);
       doc = new PDFDocument({
         margin: 40,
