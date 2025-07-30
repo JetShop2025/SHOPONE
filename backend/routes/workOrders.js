@@ -164,6 +164,7 @@ async function generateProfessionalPDF(order, id) {
     let doc;
     const chunks = [];
     try {
+      console.error(`[PDF] INICIO generateProfessionalPDF para orden ${id}`);
       doc = new PDFDocument({
         margin: 40,
         size: 'LETTER',
@@ -175,12 +176,15 @@ async function generateProfessionalPDF(order, id) {
       doc.on('end', () => {
         try {
           const pdfBuffer = Buffer.concat(chunks);
+          console.error(`[PDF] FIN OK generateProfessionalPDF para orden ${id}`);
           resolve(pdfBuffer);
         } catch (error) {
+          console.error(`[PDF] ERROR al concatenar buffer para orden ${id}:`, error);
           reject(error);
         }
       });
       doc.on('error', (error) => {
+        console.error(`[PDF] ERROR evento doc.on('error') para orden ${id}:`, error);
         reject(error);
       });
 
@@ -530,13 +534,13 @@ async function generateProfessionalPDF(order, id) {
       const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
 
       // Debug log para verificar valores
-      console.error(`PDF Debug - Orden ${id}:`);
-      console.error(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
-      console.error(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
-      console.error(`  - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
-      console.error(`  - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
-      console.error(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
-      console.error(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
+      console.error(`[PDF] PDF Debug - Orden ${id}:`);
+      console.error(`[PDF]   - subtotalParts: $${subtotalParts.toFixed(2)}`);
+      console.error(`[PDF]   - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
+      console.error(`[PDF]   - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
+      console.error(`[PDF]   - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
+      console.error(`[PDF]   - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
+      console.error(`[PDF]   - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
 
       // Caja de totales en el lado derecho
       const summaryBoxWidth = 200;
@@ -631,8 +635,10 @@ async function generateProfessionalPDF(order, id) {
 
       // --- END REAL PDF GENERATION CODE ---
 
+      console.error(`[PDF] PREVIO a doc.end() para orden ${id}`);
       doc.end();
     } catch (error) {
+      console.error(`[PDF] ERROR en try principal de generateProfessionalPDF para orden ${id}:`, error);
       reject(error);
     }
   });
