@@ -515,16 +515,26 @@ async function generateProfessionalPDF(order, id) {
       // === NUEVO: Mostrar el porcentaje de Miscellaneous y Welding Supplies ===
       // Miscellaneous
       let miscPercent = 5;
-      if (typeof order.miscellaneousPercent !== 'undefined' && order.miscellaneousPercent !== null && order.miscellaneousPercent !== '') {
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
+        order.miscellaneousPercent !== null &&
+        order.miscellaneousPercent !== '' &&
+        !isNaN(Number(order.miscellaneousPercent))
+      ) {
         miscPercent = Number(order.miscellaneousPercent);
-      } else if (typeof order.miscellaneous !== 'undefined' && order.miscellaneous !== null && order.miscellaneous !== '') {
+      } else if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
+        order.miscellaneous !== null &&
+        order.miscellaneous !== '' &&
+        !isNaN(Number(order.miscellaneous))
+      ) {
         miscPercent = Number(order.miscellaneous);
       }
+      if (isNaN(miscPercent)) miscPercent = 0;
       const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
 
       // Welding Supplies
       let weldPercent = 0;
-      // Aceptar weldPercent de la orden, aunque sea 0 o string '0'
       if (
         Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
         order.weldPercent !== null &&
@@ -570,13 +580,39 @@ async function generateProfessionalPDF(order, id) {
       doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 45);
 
 
-      // Miscellaneous personalizado
-      doc.text(`Miscellaneous ${miscPercent}%:`, summaryX + 10, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
+      // Miscellaneous personalizado (mostrar el porcentaje exacto que viene en la orden)
+      let miscPercentLabel = miscPercent;
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
+        order.miscellaneousPercent !== null &&
+        order.miscellaneousPercent !== '' &&
+        !isNaN(Number(order.miscellaneousPercent))
+      ) {
+        miscPercentLabel = Number(order.miscellaneousPercent);
+      } else if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
+        order.miscellaneous !== null &&
+        order.miscellaneous !== '' &&
+        !isNaN(Number(order.miscellaneous))
+      ) {
+        miscPercentLabel = Number(order.miscellaneous);
+      }
+      if (isNaN(miscPercentLabel)) miscPercentLabel = 0;
+      doc.text(`Miscellaneous ${miscPercentLabel}%:`, summaryX + 10, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
       doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60, {fill: false, stroke: false, underline: false, link: undefined});
 
-      // Mostrar Welding Supplies SOLO si weldPercent > 0
-      // SIEMPRE mostrar Welding Supplies, aunque el valor sea 0
-      doc.text(`Welding Supplies ${weldPercent}%:`, summaryX + 10, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined});
+      // Welding Supplies SIEMPRE debajo de Miscellaneous, mostrando el porcentaje exacto que viene en la orden
+      let weldPercentLabel = weldPercent;
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
+        order.weldPercent !== null &&
+        order.weldPercent !== '' &&
+        !isNaN(Number(order.weldPercent))
+      ) {
+        weldPercentLabel = Number(order.weldPercent);
+      }
+      if (isNaN(weldPercentLabel)) weldPercentLabel = 0;
+      doc.text(`Welding Supplies ${weldPercentLabel}%:`, summaryX + 10, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined});
       doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75, {fill: false, stroke: false, underline: false, link: undefined});
 
       // Línea separadora
