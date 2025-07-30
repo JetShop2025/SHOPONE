@@ -583,6 +583,8 @@ const WorkOrdersTable: React.FC = () => {
   const [searchError, setSearchError] = useState('');
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
+      // Si el filtro está vacío, NO recargar ni llamar a fetchWorkOrders ni hacer request al backend
+      setWorkOrders([]); // Opcional: mostrar tabla vacía
       setIsSearching(false);
       setSearchError('');
       return;
