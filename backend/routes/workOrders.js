@@ -157,8 +157,10 @@ async function generateProfessionalPDF(order, id) {
   const fs = require('fs');
   const path = require('path');
   
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const PDFDocument = require('pdfkit');
+    const fs = require('fs');
+    const path = require('path');
     let doc;
     const chunks = [];
     try {
@@ -182,13 +184,453 @@ async function generateProfessionalPDF(order, id) {
         reject(error);
       });
 
-      // --- TEST: Write at the very top ---
-      doc.font('Courier-Bold').fontSize(20).fillColor('red').text('TEST 1 - START', 100, 100);
+      // --- BEGIN REAL PDF GENERATION CODE ---
 
-      // ...existing code for PDF content...
+      // VARIABLES DE DISEÑO
+      const pageWidth = 612;
+      const pageHeight = 792;
+      const margin = 40;
+      const contentWidth = pageWidth - (margin * 2);
+      const centerX = pageWidth / 2;
+      
+      // COLORES
+      const primaryBlue = '#1E3A8A';
+      const accentBlue = '#3B82F6';
+      const successGreen = '#059669';
+      const darkGray = '#374151';
+      const lightGray = '#F3F4F6';
+      const borderGray = '#D1D5DB';
+      const white = '#FFFFFF';
+      const black = '#000000';
+      
+      let yPos = margin;
+      
+      // ================================
+      // HEADER SECTION - SIN FONDO
+      // ================================
+      
+      // Logo lado izquierdo
+      try {
+        const logoPath = path.join(__dirname, '../assets/logo.png');
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, margin, yPos, { width: 80, height: 50 });
+        } else {
+          // Logo de texto
+          doc.font('Courier-Bold').fontSize(18).fillColor(primaryBlue);
+          doc.text('JET SHOP', margin, yPos + 10);
+          doc.font('Courier').fontSize(10).fillColor(darkGray);
+          doc.text('LLC', margin, yPos + 30);
+        }
+      } catch (e) {
+        doc.font('Courier-Bold').fontSize(18).fillColor(primaryBlue);
+        doc.text('JET SHOP', margin, yPos + 10);
+        doc.font('Courier').fontSize(10).fillColor(darkGray);
+        doc.text('LLC', margin, yPos + 30);
+      }
+      
+      // TÍTULO INVOICE - MÁS PEQUEÑO Y CENTRADO
+      doc.font('Courier-Bold').fontSize(24).fillColor(primaryBlue);
+      const titleText = 'INVOICE';
+      const titleWidth = doc.widthOfString(titleText);
+      const titleX = centerX - (titleWidth / 2);
+      doc.text(titleText, titleX, yPos + 15);
+      
+      // Información de contacto - lado derecho
+      doc.font('Courier').fontSize(8).fillColor(darkGray);
+      doc.text('740 EL CAMINO REAL', margin + contentWidth - 120, yPos + 5);
+      doc.text('GREENFIELD, CA 93927', margin + contentWidth - 120, yPos + 15);
+      doc.text('Phone: (831) 555-0123', margin + contentWidth - 120, yPos + 25);
+      doc.text('Email: info@jetshop.com', margin + contentWidth - 120, yPos + 35);
+      
+      yPos += 70;
+      
+      // ================================
+      // INFORMACIÓN PRINCIPAL - FONDO BLANCO
+      // ================================
+      
+      const colWidth = (contentWidth - 20) / 2;
+      
+      // COLUMNA IZQUIERDA - CUSTOMER INFO (FONDO BLANCO)
+      doc.rect(margin, yPos, colWidth, 80).strokeColor(primaryBlue).lineWidth(1).stroke();
+      
+      // Header de customer info
+      doc.rect(margin, yPos, colWidth, 20).fillColor(primaryBlue).fill();
+      doc.font('Courier-Bold').fontSize(9).fillColor(white);
+      const customerHeaderText = 'CUSTOMER INFORMATION';
+      const customerHeaderWidth = doc.widthOfString(customerHeaderText);
+      const customerHeaderX = margin + (colWidth / 2) - (customerHeaderWidth / 2);
+      doc.text(customerHeaderText, customerHeaderX, yPos + 6);
+      
+      // Datos del cliente
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Customer:', margin + 8, yPos + 30);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(order.billToCo || 'N/A', margin + 55, yPos + 30, { width: colWidth - 65 });
+      
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Trailer:', margin + 8, yPos + 45);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(order.trailer || 'N/A', margin + 55, yPos + 45, { width: colWidth - 65 });
+      
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Status:', margin + 8, yPos + 60);
+      doc.font('Courier-Bold').fontSize(8).fillColor(successGreen);
+      doc.text(order.status || 'PENDING', margin + 55, yPos + 60);
+      
+      // COLUMNA DERECHA - WORK ORDER INFO (FONDO BLANCO)
+      const rightColX = margin + colWidth + 20;
+      doc.rect(rightColX, yPos, colWidth, 80).strokeColor(primaryBlue).lineWidth(1).stroke();
+      
+      // Header de WO info
+      doc.rect(rightColX, yPos, colWidth, 20).fillColor(primaryBlue).fill();
+      doc.font('Courier-Bold').fontSize(9).fillColor(white);
+      const woHeaderText = 'WORK ORDER DETAILS';
+      const woHeaderWidth = doc.widthOfString(woHeaderText);
+      const woHeaderX = rightColX + (colWidth / 2) - (woHeaderWidth / 2);
+      doc.text(woHeaderText, woHeaderX, yPos + 6);
+      
+      // Datos de la orden
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('Date:', rightColX + 8, yPos + 30);
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(formatDateForPdf(order.date), rightColX + 55, yPos + 30);
+      
+      doc.font('Courier-Bold').fontSize(8).fillColor(black);
+      doc.text('W.O. #:', rightColX + 8, yPos + 45);
+      doc.font('Courier-Bold').fontSize(8).fillColor(accentBlue);
+      doc.text(String(order.idClassic || id), rightColX + 55, yPos + 45);
+      
+      // Mecánicos
+      const mechanics = Array.isArray(order.mechanics) ? order.mechanics : (order.mechanics ? JSON.parse(order.mechanics) : []);
+      if (mechanics.length > 0) {
+        doc.font('Courier-Bold').fontSize(8).fillColor(black);
+        doc.text('Mechanics:', rightColX + 8, yPos + 60);
+        
+        let mechText = mechanics.map(m => `${m.name || 'Unknown'} (${m.hrs || '0'}h)`).join(', ');
+        doc.font('Courier').fontSize(7).fillColor(black);
+        doc.text(mechText, rightColX + 8, yPos + 70, { width: colWidth - 16 });
+      }
+      
+      yPos += 100;
+      
+      // ================================
+      // DESCRIPCIÓN - FONDO BLANCO
+      // ================================
+      if (order.description) {
+        doc.rect(margin, yPos, contentWidth, 40).strokeColor(borderGray).stroke();
+        
+        doc.font('Courier-Bold').fontSize(9).fillColor(primaryBlue);
+        const descHeaderText = 'WORK DESCRIPTION';
+        const descHeaderWidth = doc.widthOfString(descHeaderText);
+        const descHeaderX = centerX - (descHeaderWidth / 2);
+        doc.text(descHeaderText, descHeaderX, yPos + 8);
+        
+        doc.font('Courier').fontSize(8).fillColor(black);
+        doc.text(order.description, margin + 15, yPos + 22, { 
+          width: contentWidth - 30, 
+          align: 'left',
+          lineGap: 1
+        });
+        yPos += 50;
+      }
+      
+      // ================================
+      // TABLA DE PARTES - CON CAMPO U/M
+      // ================================
+      
+      // Título de la tabla
+      doc.font('Courier-Bold').fontSize(10).fillColor(primaryBlue);
+      const partsHeaderText = 'PARTS & MATERIALS';
+      const partsHeaderWidth = doc.widthOfString(partsHeaderText);
+      const partsHeaderX = centerX - (partsHeaderWidth / 2);
+      doc.text(partsHeaderText, partsHeaderX, yPos);
+      yPos += 20;
+      
+      // Header de la tabla
+      const tableHeaderHeight = 25;
+      doc.rect(margin, yPos, contentWidth, tableHeaderHeight).fillColor(primaryBlue).fill();
+      
+      // Definir anchos de columnas con U/M
+      const colWidths = {
+        sku: 70,      // SKU
+        desc: 180,    // DESCRIPTION
+        um: 40,       // U/M
+        qty: 40,      // QTY
+        unit: 60,     // UNIT COST
+        total: 60,    // TOTAL
+        invoice: 72   // INVOICE
+      };
+      
+      let tableX = margin;
+      
+      // Headers de columnas
+      doc.font('Courier-Bold').fontSize(8).fillColor(white);
+      
+      // SKU
+      doc.text('SKU', tableX + (colWidths.sku / 2) - 10, yPos + 8);
+      tableX += colWidths.sku;
+      
+      // DESCRIPTION
+      doc.text('DESCRIPTION', tableX + (colWidths.desc / 2) - 30, yPos + 8);
+      tableX += colWidths.desc;
+      
+      // U/M
+      doc.text('U/M', tableX + (colWidths.um / 2) - 8, yPos + 8);
+      tableX += colWidths.um;
+      
+      // QTY
+      doc.text('QTY', tableX + (colWidths.qty / 2) - 8, yPos + 8);
+      tableX += colWidths.qty;
+      
+      // UNIT COST
+      doc.text('UNIT COST', tableX + (colWidths.unit / 2) - 20, yPos + 8);
+      tableX += colWidths.unit;
+      
+      // TOTAL
+      doc.text('TOTAL', tableX + (colWidths.total / 2) - 12, yPos + 8);
+      tableX += colWidths.total;
+      
+      // INVOICE
+      doc.text('INVOICE', tableX + (colWidths.invoice / 2) - 15, yPos + 8);
+      
+      yPos += tableHeaderHeight;
+      
+      // Obtener datos FIFO
+      let fifoPartsData = [];
+      try {
+        const [fifoResults] = await db.query(
+          'SELECT sku, part_name, qty_used, cost, invoice, invoiceLink FROM work_order_parts WHERE work_order_id = ?',
+          [id]
+        );
+        fifoPartsData = fifoResults || [];
+      } catch (e) {
+        console.log('Error getting FIFO data:', e.message);
+      }
+      
+      // Filas de partes
+      const parts = Array.isArray(order.parts) ? order.parts : (order.parts ? JSON.parse(order.parts) : []);
+      let subtotalParts = 0;
+      const rowHeight = 20;
+      
+      parts.forEach((part, index) => {
+        if (part.sku && part.qty) {
+          // Color alternado para filas
+          const fillColor = index % 2 === 0 ? white : '#F8FAFC';
+          doc.rect(margin, yPos, contentWidth, rowHeight).fillColor(fillColor).fill();
+          doc.rect(margin, yPos, contentWidth, rowHeight).strokeColor(borderGray).lineWidth(0.5).stroke();
+          
+          const unitCost = Number(part.cost) || 0;
+          const qty = Number(part.qty) || 0;
+          const total = unitCost * qty;
+          subtotalParts += total;
+          
+          // Líneas verticales para separar columnas
+          let lineX = margin + colWidths.sku;
+          const widthKeys = Object.keys(colWidths);
+          for (let i = 0; i < widthKeys.length - 1; i++) {
+            doc.strokeColor(borderGray).lineWidth(0.5);
+            doc.moveTo(lineX, yPos).lineTo(lineX, yPos + rowHeight).stroke();
+            if (i < widthKeys.length - 2) {
+              lineX += colWidths[widthKeys[i + 1]];
+            }
+          }
+          
+          // Contenido de las celdas
+          const textY = yPos + (rowHeight / 2) - 3;
+          tableX = margin;
+          
+          doc.font('Courier').fontSize(7).fillColor(black);
+          
+          // SKU
+          doc.text(part.sku || '', tableX + 3, textY);
+          tableX += colWidths.sku;
+          
+          // DESCRIPTION
+          doc.text(part.part || part.description || '', tableX + 3, textY, { width: colWidths.desc - 6 });
+          tableX += colWidths.desc;
+          
+          // U/M (Unidad de medida - por defecto "EA" para Each)
+          doc.text('EA', tableX + 12, textY);
+          tableX += colWidths.um;
+          
+          // QTY
+          doc.text(String(qty), tableX + 12, textY);
+          tableX += colWidths.qty;
+          
+          // UNIT COST
+          doc.text(`$${unitCost.toFixed(2)}`, tableX + 5, textY);
+          tableX += colWidths.unit;
+          
+          // TOTAL
+          doc.font('Courier-Bold').fontSize(7).fillColor(successGreen);
+          doc.text(`$${total.toFixed(2)}`, tableX + 5, textY);
+          tableX += colWidths.total;
+          
+          // INVOICE LINK
+          const fifoParts = fifoPartsData.filter(fp => fp.sku === part.sku);
+          if (fifoParts.length > 0 && fifoParts[0].invoiceLink) {
+            doc.fillColor(accentBlue).fontSize(6);
+            doc.text('View PDF', tableX + 8, textY, {
+              link: fifoParts[0].invoiceLink,
+              underline: true
+            });
+          } else {
+            doc.fillColor('#9CA3AF').fontSize(6);
+            doc.text('N/A', tableX + 15, textY);
+          }
+          
+          yPos += rowHeight;
+        }
+      });
+      
+      yPos += 15;
+        // ================================
+      // RESUMEN FINANCIERO - LADO DERECHO
+      // ================================
+      
+      // Calcular horas totales de los mecánicos
+      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
+      const laborTotal = totalHours * 60;
+      // SIEMPRE usar el valor exacto de totalLabAndParts de la base de datos
+      const grandTotal = Number(order.totalLabAndParts) || 0;
 
-      // --- TEST: Write at the very end, just before doc.end() ---
-      doc.font('Courier-Bold').fontSize(20).fillColor('blue').text('TEST 2 - END', 100, 700);
+
+      // === NUEVO: Mostrar el porcentaje de Miscellaneous y Welding Supplies ===
+      // Miscellaneous
+      let miscPercent = 5;
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
+        order.miscellaneousPercent !== null &&
+        order.miscellaneousPercent !== '' &&
+        !isNaN(Number(order.miscellaneousPercent))
+      ) {
+        miscPercent = Number(order.miscellaneousPercent);
+      } else if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
+        order.miscellaneous !== null &&
+        order.miscellaneous !== '' &&
+        !isNaN(Number(order.miscellaneous))
+      ) {
+        miscPercent = Number(order.miscellaneous);
+      }
+      if (isNaN(miscPercent)) miscPercent = 0;
+      const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
+
+      // Welding Supplies
+      let weldPercent = 0;
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
+        order.weldPercent !== null &&
+        order.weldPercent !== '' &&
+        !isNaN(Number(order.weldPercent))
+      ) {
+        weldPercent = Number(order.weldPercent);
+      }
+      if (isNaN(weldPercent)) weldPercent = 0;
+      const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
+
+      // Debug log para verificar valores
+      console.error(`PDF Debug - Orden ${id}:`);
+      console.error(`  - subtotalParts: $${subtotalParts.toFixed(2)}`);
+      console.error(`  - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
+      console.error(`  - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
+      console.error(`  - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
+      console.error(`  - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
+      console.error(`  - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
+
+      // Caja de totales en el lado derecho
+      const summaryBoxWidth = 200;
+      const summaryBoxHeight = 120;
+      const summaryX = margin + contentWidth - summaryBoxWidth;
+
+      doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).fillColor(lightGray).fill();
+      doc.rect(summaryX, yPos, summaryBoxWidth, summaryBoxHeight).strokeColor(primaryBlue).lineWidth(1).stroke();
+
+      // Header del resumen
+      doc.rect(summaryX, yPos, summaryBoxWidth, 20).fillColor(primaryBlue).fill();
+      doc.font('Courier-Bold').fontSize(9).fillColor(white);
+      const summaryHeaderText = 'FINANCIAL SUMMARY';
+      const summaryHeaderWidth = doc.widthOfString(summaryHeaderText);
+      const summaryHeaderX = summaryX + (summaryBoxWidth / 2) - (summaryHeaderWidth / 2);
+      doc.text(summaryHeaderText, summaryHeaderX, yPos + 6);
+
+      // Líneas de totales
+      doc.font('Courier').fontSize(8).fillColor(black);
+      doc.text(`Parts Subtotal:`, summaryX + 10, yPos + 30);
+      doc.text(`$${subtotalParts.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 30);
+
+      doc.text(`Labor (${totalHours} hrs):`, summaryX + 10, yPos + 45);
+      doc.text(`$${laborTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 45);
+
+
+      // SIEMPRE mostrar ambas líneas, aunque sean 0
+      // Miscellaneous
+      let miscPercentLabel = 0;
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
+        order.miscellaneousPercent !== null &&
+        order.miscellaneousPercent !== '' &&
+        !isNaN(Number(order.miscellaneousPercent))
+      ) {
+        miscPercentLabel = Number(order.miscellaneousPercent);
+      } else if (
+        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
+        order.miscellaneous !== null &&
+        order.miscellaneous !== '' &&
+        !isNaN(Number(order.miscellaneous))
+      ) {
+        miscPercentLabel = Number(order.miscellaneous);
+      }
+      if (isNaN(miscPercentLabel)) miscPercentLabel = 0;
+      doc.text(`Miscellaneous ${miscPercentLabel}%:`, summaryX + 10, yPos + 60);
+      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60);
+
+      // Welding Supplies
+      let weldPercentLabel = 0;
+      if (
+        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
+        order.weldPercent !== null &&
+        order.weldPercent !== '' &&
+        !isNaN(Number(order.weldPercent))
+      ) {
+        weldPercentLabel = Number(order.weldPercent);
+      }
+      if (isNaN(weldPercentLabel)) weldPercentLabel = 0;
+      doc.text(`Welding Supplies ${weldPercentLabel}%:`, summaryX + 10, yPos + 75);
+      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75);
+
+      // Línea separadora
+      doc.strokeColor(primaryBlue).lineWidth(1);
+      doc.moveTo(summaryX + 10, yPos + 90).lineTo(summaryX + summaryBoxWidth - 10, yPos + 90).stroke();
+
+      // Total final
+      doc.font('Courier-Bold').fontSize(9).fillColor(successGreen);
+      doc.text(`TOTAL:`, summaryX + 10, yPos + 98);
+      doc.text(`$${grandTotal.toFixed(2)}`, summaryX + summaryBoxWidth - 70, yPos + 98);
+
+      yPos += 130;
+      
+      // ================================
+      // TÉRMINOS Y CONDICIONES - SIN FONDO, SIN FIRMAS
+      // ================================
+      
+      doc.rect(margin, yPos, contentWidth, 50).strokeColor(borderGray).stroke();
+      
+      doc.font('Courier-Bold').fontSize(9).fillColor(primaryBlue);
+      const termsHeaderText = 'TERMS & CONDITIONS';
+      const termsHeaderWidth = doc.widthOfString(termsHeaderText);
+      const termsHeaderX = centerX - (termsHeaderWidth / 2);
+      doc.text(termsHeaderText, termsHeaderX, yPos + 8);
+      
+      doc.font('Courier').fontSize(7).fillColor(black);
+      doc.text('• This estimate is not a final bill, pricing could change if job specifications change.', margin + 15, yPos + 22);
+      doc.text('• I accept this estimate without any changes.', margin + 15, yPos + 32);
+      doc.text('• I accept this estimate with the handwritten changes.', margin + 15, yPos + 42);
+      
+      yPos += 60;
+
+      // --- END REAL PDF GENERATION CODE ---
+
       doc.end();
     } catch (error) {
       reject(error);
