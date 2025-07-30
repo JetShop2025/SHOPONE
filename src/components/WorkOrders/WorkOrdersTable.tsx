@@ -528,20 +528,27 @@ const WorkOrdersTable: React.FC = () => {
       // Only log if debugging
     } catch (err: any) {
       console.error('Error cargando órdenes:', err);
-        // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
+      // Si es un error 502/503 (servidor dormido) y no hemos excedido reintentos
       if ((err?.response?.status === 502 || err?.response?.status === 503 || err.code === 'ECONNABORTED') && retryCount < maxRetries) {
         if (!isRetry) {
           setServerStatus('waking');
-          // Only log if debugging
           try {
             const pingSuccess = await keepAliveService.manualPing();
           } catch (keepAliveError) {}
-            setRetryCount(prev => prev + 1);
+          setRetryCount(prev => prev + 1);
           const retryDelay = Math.min(30000 * Math.pow(2, retryCount), 120000);
           setTimeout(() => {
             fetchWorkOrders(true, pageToLoad || currentPageData);
           }, retryDelay);
         }
+      } else if (searchIdClassic.trim() && (err?.response?.status === 404 || (Array.isArray(err?.response?.data) && err?.response?.data.length === 0))) {
+        // Si la búsqueda por ID Classic no encontró resultados, NO poner offline, solo mostrar vacío
+        setWorkOrders([]);
+        setTotalPages(1);
+        setTotalRecords(0);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
+        setServerStatus('online');
       } else {
         setServerStatus('offline');
         if (retryCount >= maxRetries) {
