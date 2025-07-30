@@ -320,7 +320,9 @@ const WorkOrdersTable: React.FC = () => {
             ? Number(workOrderData.miscellaneous)
             : (typeof dataToSend.miscellaneous !== 'undefined' && dataToSend.miscellaneous !== null && dataToSend.miscellaneous !== '')
               ? Number(dataToSend.miscellaneous)
-              : 5 // fallback por defecto
+              : 5, // fallback por defecto
+          // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
+          weldPercent: Number(workOrderData.weldPercent) || 0
         };
         const pdf = await generateWorkOrderPDF(pdfData);
         const pdfBlob = pdf.output('blob');
@@ -1077,7 +1079,9 @@ const WorkOrdersTable: React.FC = () => {
             ? Number(workOrderData.miscellaneous)
             : (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
               ? Number(datosOrden.miscellaneous)
-              : 5 // fallback por defecto
+              : 5, // fallback por defecto
+          // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
+          weldPercent: Number(workOrderData.weldPercent) || 0
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
@@ -1148,7 +1152,9 @@ const WorkOrdersTable: React.FC = () => {
             subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
               sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
             totalCost: Number(datosOrden.totalLabAndParts) || 0,
-            extraOptions: datosOrden.extraOptions || extraOptions || []
+            extraOptions: datosOrden.extraOptions || extraOptions || [],
+            // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
+            weldPercent: Number(datosOrden.weldPercent) || 0
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
@@ -1638,7 +1644,9 @@ const WorkOrdersTable: React.FC = () => {
         })),        laborCost: laborCost,
         subtotalParts: subtotalParts,
         totalCost: totalCost,
-        extraOptions: finalWorkOrderData.extraOptions || []
+        extraOptions: finalWorkOrderData.extraOptions || [],
+        // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
+        weldPercent: Number(finalWorkOrderData.weldPercent) || 0
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);
@@ -2148,8 +2156,6 @@ const WorkOrdersTable: React.FC = () => {
               onChange={e => setSearchIdClassic(e.target.value)}
               className="wo-filter-input"
               style={{ 
-                minWidth: 160, 
-                backgroundColor: searchIdClassic ? '#e3f2fd' : 'white',
                 border: searchIdClassic ? '2px solid #1976d2' : '1px solid #ddd'
               }}
               placeholder="W.O. 19417"
