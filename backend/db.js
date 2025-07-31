@@ -336,16 +336,16 @@ async function getOrdersByTrailer(trailerId) {
   }
 }
 
-// Get rental history for a trailer
+// Get rental history for a trailer (use trailer_rental_history table)
 async function getRentalHistory(trailerName) {
   try {
-    console.log('[DB] Executing query: SELECT * FROM rental_history WHERE trailer_name = ?', trailerName);
-    const [rows] = await connection.execute('SELECT * FROM rental_history WHERE trailer_name = ? ORDER BY fecha_renta DESC', [trailerName]);
+    console.log('[DB] Executing query: SELECT * FROM trailer_rental_history WHERE trailer_numero = ?', trailerName);
+    const [rows] = await connection.execute('SELECT * FROM trailer_rental_history WHERE trailer_numero = ? ORDER BY created_at DESC', [trailerName]);
     console.log(`[DB] Found ${rows.length} rental records for trailer ${trailerName}`);
     return rows;
   } catch (error) {
     console.error('[DB] Error getting rental history:', error.message);
-    // If rental_history table doesn't exist, return empty array
+    // If trailer_rental_history table doesn't exist, return empty array
     return [];
   }
 }

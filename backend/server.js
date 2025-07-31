@@ -570,10 +570,16 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
     // Obtener datos actuales del trailer para auditoría
     const [current] = await connection.execute('SELECT * FROM trailers WHERE id = ?', [trailerId]);
     const oldData = current[0] || null;
-    
     if (!oldData) {
       return res.status(404).json({ error: 'Trailer not found' });
     }
+    // Asegurar que todos los valores sean válidos para el insert
+    const trailerNumero = oldData.numero || oldData.nombre || req.body.trailer_nombre || null;
+    const safeCliente = cliente || null;
+    const safeFechaRenta = fecha_renta || null;
+    const safeFechaDevolucion = fecha_devolucion || null;
+    const safeObservaciones = observaciones || '';
+    const safeUsuario = usuario || 'SYSTEM';
       // Verificar si existe la columna status o estatus
     const hasStatusColumn = columns.some(col => col.Field === 'status');
     const hasEstatusColumn = columns.some(col => col.Field === 'estatus');
@@ -635,7 +641,15 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
         INSERT INTO trailer_rental_history 
         (trailer_id, trailer_numero, cliente, fecha_renta, fecha_devolucion_estimada, observaciones, status, usuario)
         VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
-      `, [trailerId, oldData.numero, cliente, fecha_renta, fecha_devolucion, observaciones, usuario]);
+      `, [
+        trailerId,
+        trailerNumero,
+        safeCliente,
+        safeFechaRenta,
+        safeFechaDevolucion,
+        safeObservaciones,
+        safeUsuario
+      ]);
       
       console.log(`[PUT] /api/trailas/${trailerId}/rent - Rental history record created`);
     } catch (historyError) {
