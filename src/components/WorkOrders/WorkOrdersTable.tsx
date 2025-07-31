@@ -587,46 +587,53 @@ const WorkOrdersTable: React.FC = () => {
   }, [fetchWorkOrders, serverStatus]);
   
   // Nueva función robusta para buscar por ID Classic sin sobrecargar el servidor
-  // Nueva función robusta para buscar por ID Classic sin sobrecargar el servidor
-  // Usa los mismos estados searchError, isSearching ya definidos arriba
+  // NUEVA función especializada y ultra-segura para buscar por ID Classic
+  // - Nunca hace petición si el filtro está vacío o tiene menos de 4 caracteres numéricos
+  // - Solo permite búsqueda si el input es 100% numérico y de longitud >= 4 (ajustar si tu formato es diferente)
+  // - Nunca recarga todas las órdenes si el filtro es vacío o inválido
+  // - Siempre filtra en frontend para coincidencia exacta (case-insensitive)
+  // - Maneja todos los errores y timeouts de forma robusta
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
     const trimmed = (searchTerm || '').trim();
-    // Nueva lógica: solo permitir búsqueda si el filtro es suficientemente largo o parece un ID completo
-    // Por ejemplo, mínimo 3 caracteres o coincide con un patrón de ID Classic válido (ajustar según formato real)
-    const MIN_LENGTH = 3;
+    // Solo permitir búsqueda si es numérico y longitud >= 4 (ajusta si tu formato es diferente)
+    const isValid = /^\d{4,}$/.test(trimmed);
     if (!trimmed) {
       setWorkOrders([]);
       setSearchError('');
       setIsSearching(false);
       return;
     }
-    // Si el filtro es muy corto, no buscar y mostrar mensaje claro
-    if (trimmed.length < MIN_LENGTH) {
+    if (!isValid) {
       setWorkOrders([]);
-      setSearchError('Ingrese al menos 3 caracteres para buscar por ID Classic.');
+      setSearchError('Ingrese un ID Classic válido (mínimo 4 dígitos numéricos).');
       setIsSearching(false);
       return;
     }
     setIsSearching(true);
     setSearchError('');
     try {
-      // Siempre usar paginación y timeout corto
+      // Petición con timeout ultra-corto y paginación
       const res = await axios.get(`${API_URL}/work-orders`, {
         params: {
           searchIdClassic: trimmed,
           page: 1,
           pageSize: pageSize
         },
-        timeout: 8000
+        timeout: 5000
       });
       let results: any[] = [];
-      if (res.data && typeof res.data === 'object' && 'pagination' in res.data && Array.isArray((res.data as any).data)) {
+      if (
+        res.data &&
+        typeof res.data === 'object' &&
+        'pagination' in res.data &&
+        Array.isArray((res.data as any).data)
+      ) {
         results = (res.data as any).data;
       } else if (Array.isArray(res.data)) {
-        results = res.data.slice(0, pageSize);
+        results = (res.data as any[]).slice(0, pageSize);
       }
-      // Filtrar en frontend para mostrar SOLO coincidencias exactas de ID Classic
-      const exactMatches = results.filter(order =>
+      // Filtrar en frontend para coincidencia exacta (case-insensitive)
+      const exactMatches = results.filter((order: any) =>
         order.idClassic && order.idClassic.toString().toLowerCase() === trimmed.toLowerCase()
       );
       setWorkOrders(exactMatches);
@@ -639,6 +646,8 @@ const WorkOrdersTable: React.FC = () => {
       } else if (err && err.response && err.response.status === 404) {
         setWorkOrders([]);
         setSearchError('No se encontró ninguna Work Order con ese ID Classic.');
+      } else if (err && err.code === 'ECONNABORTED') {
+        setSearchError('La búsqueda tardó demasiado. Intente de nuevo con un ID más específico.');
       } else {
         setSearchError('Error inesperado al buscar la Work Order.');
       }
