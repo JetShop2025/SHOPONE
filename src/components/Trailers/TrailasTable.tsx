@@ -114,20 +114,27 @@ const TrailasTable: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [trailasRes, workOrdersRes] = await Promise.all([
-          axios.get<Traila[]>(`${API_URL}/trailas`),
-          axios.get<WorkOrder[]>(`${API_URL}/work-orders`)
-        ]);
-        
-        // Ensure data is always an array
-        const trailasData = Array.isArray(trailasRes.data) ? trailasRes.data : [];
-        const workOrdersData = Array.isArray(workOrdersRes.data) ? workOrdersRes.data : [];
-        
-        setTrailas(trailasData);
-        setWorkOrders(workOrdersData);
+        // Cargar solo trailers primero, y work orders después, para evitar caídas si uno falla
+        let trailasData = [];
+        let workOrdersData = [];
+        try {
+          const trailasRes = await axios.get(`${API_URL}/trailas`);
+          trailasData = Array.isArray(trailasRes.data) ? trailasRes.data : [];
+          setTrailas(trailasData);
+        } catch (err) {
+          console.error('Error cargando trailers:', err);
+          setTrailas([]);
+        }
+        try {
+          const workOrdersRes = await axios.get(`${API_URL}/work-orders`);
+          workOrdersData = Array.isArray(workOrdersRes.data) ? workOrdersRes.data : [];
+          setWorkOrders(workOrdersData);
+        } catch (err) {
+          console.error('Error cargando work orders:', err);
+          setWorkOrders([]);
+        }
         console.log(`✅ Loaded ${trailasData.length} trailers and ${workOrdersData.length} work orders`);
       } catch (error) {
-        console.error('Error fetching data:', error);
         setTrailas([]);
         setWorkOrders([]);
       } finally {
@@ -297,25 +304,41 @@ const TrailasTable: React.FC = () => {
   // Handle mark as available
   const handleMarkAsAvailable = async () => {
     if (!selectedTraila) return;
-    
     try {
       console.log('🔄 Marcando trailer como disponible:', selectedTraila.id, availableForm);
-      
       const availableData = {
         fecha_devolucion_real: availableForm.fecha_disponible,
         observaciones_devolucion: `${availableForm.motivo ? availableForm.motivo + ' - ' : ''}${availableForm.observaciones}`,
         usuario: getCurrentUser()
       };
-      
+      // 1. Marcar como disponible
       const response = await axios.put(`${API_URL}/trailas/${selectedTraila.id}/return`, availableData);
       console.log('✅ Trailer marcado como disponible exitosamente:', response.data);
-      
+
+      // 2. Registrar historial de "devolución/disponible"
+      try {
+        await axios.post(`${API_URL}/trailas/${selectedTraila.nombre}/rental-history`, {
+          trailer_id: selectedTraila.id,
+          trailer_nombre: selectedTraila.nombre,
+          cliente: selectedTraila.cliente || '',
+          usuario: getCurrentUser(),
+          fecha_renta: selectedTraila.fecha_renta || '',
+          fecha_devolucion: availableForm.fecha_disponible,
+          observaciones: availableForm.observaciones || '',
+          motivo: availableForm.motivo || '',
+          tipo: 'DISPONIBLE' // puedes usar este campo para distinguir en el historial
+        });
+        console.log('📝 Historial de disponibilidad registrado');
+      } catch (historyError) {
+        console.error('❌ Error registrando historial de disponibilidad:', historyError);
+      }
+
       // Refresh data
       console.log('🔄 Refrescando datos de trailers...');
-      const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
+      const trailersResponse = await axios.get(`${API_URL}/trailas`);
       console.log('📦 Datos refrescados:', trailersResponse.data);
       setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
-      
+
       // Close modal and reset form
       setShowAvailableModal(false);
       setAvailableForm({
@@ -323,7 +346,7 @@ const TrailasTable: React.FC = () => {
         observaciones: '',
         motivo: ''
       });
-      
+
       alert('Trailer marcado como disponible exitosamente');
     } catch (error: any) {
       console.error('❌ Error marking trailer as available:', error);

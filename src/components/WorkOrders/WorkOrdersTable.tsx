@@ -1118,16 +1118,24 @@ const WorkOrdersTable: React.FC = () => {
             workOrderData.mechanics || workOrderData.mechanic || '',
           description: workOrderData.description || '',
           status: workOrderData.status || datosOrden.status || 'PROCESSING', // Incluir status actual
-          parts: enrichedParts.map((part: any) => ({
-            sku: part.sku || '',
-            description: part.part_name || part.sku || 'N/A',
-            um: 'EA',
-            qty: Number(part.qty_used) || 0,
-            unitCost: Number(part.cost) || 0,
-            total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
-            invoice: part.invoice_number || 'N/A',
-            invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
-          })),
+          parts: enrichedParts.map((part: any) => {
+            // Buscar la parte original del formulario para obtener descripción y U/M personalizada
+            const formPart = (datosOrden.parts || []).find((p: any) => p.sku === part.sku);
+            // Buscar en inventario para obtener U/M por defecto si no hay personalizada
+            const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
+            return {
+              sku: part.sku || '',
+              // Descripción: si el usuario la modificó en el form, usar esa, si no, la de inventario o la de la BD
+              description: (formPart && formPart.part && formPart.part.trim() !== '' ? formPart.part : (inventoryItem?.part || inventoryItem?.description || part.part_name || part.sku || 'N/A')),
+              // U/M: si el usuario la modificó en el form, usar esa, si no, la de inventario, si no, la de la BD, si no, 'EA'
+              um: (formPart && formPart.um && formPart.um.trim() !== '' ? formPart.um : (inventoryItem?.um || inventoryItem?.unit || part.um || 'EA')),
+              qty: Number(part.qty_used) || 0,
+              unitCost: Number(part.cost) || 0,
+              total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+              invoice: part.invoice_number || 'N/A',
+              invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
+            };
+          }),
           laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
           subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
             sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
