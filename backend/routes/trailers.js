@@ -74,25 +74,21 @@ router.put('/:nombre/estatus', async (req, res) => {
     const fechaRentaFinal = (fechaRenta !== undefined && fechaRenta !== '') ? fechaRenta : antes.fechaRenta;
     const fechaEntregaFinal = (fechaEntrega !== undefined && fechaEntrega !== '') ? fechaEntrega : antes.fechaEntrega;
 
-    // 2. Realiza el update
+    // 2. Realiza el update principal de la traila
     await db.query(
       'UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?',
       [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
     );
-    
-    // 4. Obtén los datos después del cambio
+
+    // 3. Auditoría de cambios
     const [despuesArr] = await db.query('SELECT * FROM trailers WHERE nombre = ?', [nombre]);
     const despues = despuesArr[0];
-
-    // 5. Detecta solo los campos que cambiaron
     const cambios = {};
     ['estatus', 'cliente', 'fechaRenta', 'fechaEntrega'].forEach(key => {
       if ((antes[key] ?? null) !== (despues[key] ?? null)) {
         cambios[key] = { antes: antes[key], despues: despues[key] };
       }
     });
-
-    // 6. Inserta en la auditoría solo si hubo cambios
     if (Object.keys(cambios).length > 0) {
       await db.query(
         'INSERT INTO audit_log (usuario, accion, tabla, registro_id, detalles, fecha) VALUES (?, ?, ?, ?, ?, NOW())',
@@ -106,10 +102,26 @@ router.put('/:nombre/estatus', async (req, res) => {
       );
     }
 
-    // Al cambiar estatus a DISPONIBLE
+    // --- LÓGICA DE RENTAS ---
+    // Al cambiar estatus a RENTADA: crear un nuevo registro de renta SOLO si no hay uno abierto
+    if (estatus === 'RENTADA') {
+      // Verifica si ya hay una renta activa (sin fecha_entrega)
+      const [rentasActivas] = await db.query(
+        'SELECT id FROM trailer_rentals WHERE trailer_nombre = ? AND fecha_entrega IS NULL',
+        [nombre]
+      );
+      if (rentasActivas.length === 0) {
+        await db.query(
+          'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, observaciones) VALUES (?, ?, ?, ?)',
+          [nombre, clienteFinal, fechaRentaFinal, observaciones || '']
+        );
+      }
+      res.json({ ok: true });
+      return;
+    }
+
+    // Al cambiar estatus a DISPONIBLE: actualizar el último registro de renta activo (no crear uno nuevo)
     if (estatus === 'DISPONIBLE') {
-      // Actualiza la fecha de entrega y observaciones en el último registro de renta activo
-      // Actualiza todos los campos del formulario de entrega en el último registro de renta activo
       await db.query(
         `UPDATE trailer_rentals
          SET fecha_entrega = ?, cliente = ?, observaciones = ?
@@ -117,22 +129,6 @@ router.put('/:nombre/estatus', async (req, res) => {
          ORDER BY fecha_renta DESC
          LIMIT 1`,
         [fechaEntregaFinal, clienteFinal, observaciones || '', nombre]
-      );
-      // Actualiza el estatus y la fecha en la tabla principal
-      await db.query(
-        `UPDATE trailers SET estatus=?, cliente=?, fechaRenta=?, fechaEntrega=? WHERE nombre=?`,
-        [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
-      );
-      res.json({ ok: true });
-      return;
-    }
-
-    // Al cambiar estatus a RENTADA
-    if (estatus === 'RENTADA') {
-      // Solo actualiza el estatus de la traila, NO crear registro en historial de rentas aquí
-      await db.query(
-        `UPDATE trailers SET estatus = ?, cliente = ?, fechaRenta = ?, fechaEntrega = ? WHERE nombre = ?`,
-        [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
       );
       res.json({ ok: true });
       return;
