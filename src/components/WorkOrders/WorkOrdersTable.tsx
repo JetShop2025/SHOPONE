@@ -591,9 +591,19 @@ const WorkOrdersTable: React.FC = () => {
   // Usa los mismos estados searchError, isSearching ya definidos arriba
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
     const trimmed = (searchTerm || '').trim();
+    // Nueva lógica: solo permitir búsqueda si el filtro es suficientemente largo o parece un ID completo
+    // Por ejemplo, mínimo 3 caracteres o coincide con un patrón de ID Classic válido (ajustar según formato real)
+    const MIN_LENGTH = 3;
     if (!trimmed) {
       setWorkOrders([]);
       setSearchError('');
+      setIsSearching(false);
+      return;
+    }
+    // Si el filtro es muy corto, no buscar y mostrar mensaje claro
+    if (trimmed.length < MIN_LENGTH) {
+      setWorkOrders([]);
+      setSearchError('Ingrese al menos 3 caracteres para buscar por ID Classic.');
       setIsSearching(false);
       return;
     }
@@ -615,8 +625,12 @@ const WorkOrdersTable: React.FC = () => {
       } else if (Array.isArray(res.data)) {
         results = res.data.slice(0, pageSize);
       }
-      setWorkOrders(results);
-      if (results.length === 0) {
+      // Filtrar en frontend para mostrar SOLO coincidencias exactas de ID Classic
+      const exactMatches = results.filter(order =>
+        order.idClassic && order.idClassic.toString().toLowerCase() === trimmed.toLowerCase()
+      );
+      setWorkOrders(exactMatches);
+      if (exactMatches.length === 0) {
         setSearchError('No se encontró ninguna Work Order con ese ID Classic.');
       }
     } catch (err: any) {
