@@ -66,6 +66,7 @@ const TrailasTable: React.FC = () => {
   // Paginación para historial de W.O.
   const [woPage, setWoPage] = useState(1);
   const WO_PER_PAGE = 10;
+  const [woTotal, setWoTotal] = useState(0); // total W.O.s for selected trailer
   // Filtro por mes para Work Orders
   const [workOrderMonthFilter, setWorkOrderMonthFilter] = useState<string>('ALL');
 
@@ -73,6 +74,31 @@ const TrailasTable: React.FC = () => {
   useEffect(() => {
     setWoPage(1);
   }, [showWorkOrderModal, workOrderMonthFilter]);
+
+  // Fetch paginated work order history when modal opens or page/filter changes
+  useEffect(() => {
+    const fetchWorkOrderHistory = async () => {
+      if (!showWorkOrderModal || !selectedTraila) return;
+      try {
+        let url = `${API_URL}/work-orders/trailer/${selectedTraila.nombre}?limit=${WO_PER_PAGE}&offset=${(woPage-1)*WO_PER_PAGE}`;
+        // Optionally add month filter if supported by backend
+        // if (workOrderMonthFilter !== 'ALL') url += `&month=${workOrderMonthFilter}`;
+        const response = await axios.get(url);
+        if (response.data && typeof response.data === 'object' && 'data' in response.data && 'total' in response.data) {
+          setWorkOrderHistory(Array.isArray(response.data.data) ? response.data.data : []);
+          setWoTotal(Number(response.data.total) || 0);
+        } else {
+          setWorkOrderHistory(Array.isArray(response.data) ? response.data : []);
+          setWoTotal(Array.isArray(response.data) ? response.data.length : 0);
+        }
+      } catch (error) {
+        console.error('Error fetching work order history:', error);
+        setWorkOrderHistory([]);
+        setWoTotal(0);
+      }
+    };
+    fetchWorkOrderHistory();
+  }, [showWorkOrderModal, selectedTraila, woPage, WO_PER_PAGE]);
 
   // Client-based filtering
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
@@ -1087,17 +1113,9 @@ const TrailasTable: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     setSelectedTraila(traila);
-                    try {
-                      const response = await axios.get(`${API_URL}/work-orders/trailer/${traila.nombre}`);
-                      setWorkOrderHistory(Array.isArray(response.data) ? response.data : []);
-                      setShowWorkOrderModal(true);
-                    } catch (error) {
-                      console.error('Error fetching work order history:', error);
-                      setWorkOrderHistory([]);
-                      setShowWorkOrderModal(true);
-                    }
+                    setShowWorkOrderModal(true);
                   }}
                   style={{
                     padding: '8px 16px',
@@ -1422,19 +1440,19 @@ const TrailasTable: React.FC = () => {
 
               {/* Tabla paginada de historial de W.O. */}
               {(() => {
-                // Filtrar work orders por mes
-                const filteredWorkOrders = workOrderMonthFilter === 'ALL'
-                  ? workOrderHistory
-                  : workOrderHistory.filter(wo => {
-                      if (!wo.date) return false;
-                      const woMonth = wo.date.slice(0, 7); // YYYY-MM
-                      return woMonth === workOrderMonthFilter;
-                    });
-                const totalPages = Math.ceil(filteredWorkOrders.length / WO_PER_PAGE) || 1;
+                // Filtrar work orders por mes (client-side, optional)
+                let filteredWorkOrders = workOrderHistory;
+                if (workOrderMonthFilter !== 'ALL') {
+                  filteredWorkOrders = workOrderHistory.filter(wo => {
+                    if (!wo.date) return false;
+                    const woMonth = wo.date.slice(0, 7); // YYYY-MM
+                    return woMonth === workOrderMonthFilter;
+                  });
+                }
+                const totalPages = Math.ceil(woTotal / WO_PER_PAGE) || 1;
                 const page = Math.min(woPage, totalPages);
-                const paginatedWorkOrders = filteredWorkOrders.slice((page - 1) * WO_PER_PAGE, page * WO_PER_PAGE);
 
-                if (filteredWorkOrders.length === 0) {
+                if (woTotal === 0) {
                   return (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
                       <p>No hay work orders para este trailer</p>
@@ -1459,7 +1477,7 @@ const TrailasTable: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {paginatedWorkOrders.map((wo, index) => (
+                          {filteredWorkOrders.map((wo, index) => (
                             <tr key={index}>
                               <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
                               <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
@@ -1467,9 +1485,9 @@ const TrailasTable: React.FC = () => {
                               <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                                 {Array.isArray(wo.mechanics) && wo.mechanics.length > 0
                                   ? wo.mechanics.map((m: any) => m.name).join(', ')
-                                  : wo.mechanic || '-'}
+                                  : '-'}
                               </td>
-                              <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.description || '-'}</td>
                               <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                                 {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
                               </td>

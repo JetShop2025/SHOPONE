@@ -289,11 +289,24 @@ async function getOrders(limit = 100, offset = 0) {
 // Get work orders by trailer ID
 async function getOrdersByTrailer(trailerId) {
   try {
-    console.log('[DB] Executing query: SELECT * FROM work_orders WHERE trailer = ?', trailerId);
-    const [rows] = await connection.execute('SELECT * FROM work_orders WHERE trailer = ?', [trailerId]);
-    console.log(`[DB] Found ${rows.length} work orders for trailer ${trailerId}`);
-    
-    // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
+    // Accept limit/offset for pagination (default: 10, 0)
+    let limit = 10, offset = 0;
+    if (arguments.length > 1 && typeof arguments[1] === 'object') {
+      limit = Math.max(1, Math.min(100, parseInt(arguments[1].limit) || 10));
+      offset = Math.max(0, parseInt(arguments[1].offset) || 0);
+    }
+    console.log(`[DB] Executing paginated query: SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC LIMIT ${limit} OFFSET ${offset}`, trailerId);
+    const [rows] = await connection.execute(
+      `SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC LIMIT ? OFFSET ?`,
+      [trailerId, limit, offset]
+    );
+    // Get total count for pagination
+    const [countRows] = await connection.execute(
+      `SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?`,
+      [trailerId]
+    );
+    const total = countRows[0]?.total || 0;
+    // Parse JSON fields and force date as string
     const parsedRows = rows.map(row => {
       let dateStr = '';
       if (row.date instanceof Date) {
@@ -316,7 +329,7 @@ async function getOrdersByTrailer(trailerId) {
         extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
       };
     });
-    return parsedRows;
+    return { data: parsedRows, total };
   } catch (error) {
     console.error('[DB] Error getting work orders by trailer:', error.message);
     throw error;

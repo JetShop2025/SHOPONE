@@ -428,10 +428,17 @@ app.get('/api/work-orders', async (req, res) => {
 // Get work orders by trailer
 app.get('/api/work-orders/trailer/:trailerId', async (req, res) => {
   try {
-    console.log('[GET] /api/work-orders/trailer/:trailerId - Fetching from database:', req.params.trailerId);
-    const orders = await db.getOrdersByTrailer(req.params.trailerId);
-    console.log(`[GET] /api/work-orders/trailer/:trailerId - Found ${orders.length} work orders for trailer ${req.params.trailerId}`);
-    res.json(orders);  } catch (error) {
+    const { limit, offset } = req.query;
+    console.log('[GET] /api/work-orders/trailer/:trailerId - Fetching from database:', req.params.trailerId, 'limit:', limit, 'offset:', offset);
+    const result = await db.getOrdersByTrailer(req.params.trailerId, { limit, offset });
+    // result: { data, total }
+    res.json({
+      data: result.data,
+      total: result.total,
+      limit: parseInt(limit) || 10,
+      offset: parseInt(offset) || 0
+    });
+  } catch (error) {
     console.error('[ERROR] GET /api/work-orders/trailer/:trailerId:', error);
     res.status(500).json({ error: 'Failed to fetch work orders for trailer from database' });
   }

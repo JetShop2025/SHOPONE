@@ -1800,4 +1800,53 @@ router.post('/:id/generate-pdf', async (req, res) => {
   }
 });
 
+
+// PAGINATED: Obtener work orders por trailer (historial paginado)
+router.get('/trailer/:trailerId', async (req, res) => {
+  try {
+    const { trailerId } = req.params;
+    let { limit, offset, month } = req.query;
+    limit = Math.max(1, Math.min(parseInt(limit) || 10, 100)); // default 10, max 100
+    offset = Math.max(0, parseInt(offset) || 0);
+
+    let sql = 'SELECT * FROM work_orders WHERE trailer = ?';
+    const params = [trailerId];
+    if (month && typeof month === 'string' && month.match(/^\d{4}-\d{2}$/)) {
+      sql += ' AND date LIKE ?';
+      params.push(`${month}%`);
+    }
+    sql += ' ORDER BY date DESC, id DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    // Get total count for pagination
+    let countSql = 'SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?';
+    const countParams = [trailerId];
+    if (month && typeof month === 'string' && month.match(/^\d{4}-\d{2}$/)) {
+      countSql += ' AND date LIKE ?';
+      countParams.push(`${month}%`);
+    }
+    const [[{ total }]] = await db.query(countSql, countParams);
+
+    const [results] = await db.query(sql, params);
+    const parsedResults = results.map(order => {
+      let parts = [];
+      try { parts = JSON.parse(order.parts || '[]'); } catch (e) { parts = []; }
+      let mechanics = [];
+      try { mechanics = JSON.parse(order.mechanics || '[]'); } catch (e) { mechanics = []; }
+      let extraOptions = [];
+      try { extraOptions = JSON.parse(order.extraOptions || '[]'); } catch { extraOptions = []; }
+      return { ...order, parts, mechanics, extraOptions };
+    });
+    res.json({
+      workOrders: parsedResults,
+      total,
+      limit,
+      offset
+    });
+  } catch (err) {
+    console.error('Error fetching paginated work orders by trailer:', err);
+    res.status(500).send('ERROR FETCHING WORK ORDERS BY TRAILER');
+  }
+});
+
 module.exports = router;
