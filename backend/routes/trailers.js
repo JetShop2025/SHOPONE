@@ -57,7 +57,7 @@ router.put('/:nombre/estatus', async (req, res) => {
   const bodies = Array.isArray(req.body) ? req.body : [req.body];
 
   for (const body of bodies) {
-    const { estatus, password, cliente, fechaRenta, fechaEntrega, usuario } = body;
+    const { estatus, password, cliente, fechaRenta, fechaEntrega, usuario, observaciones } = body;
     const { nombre } = req.params;
 
     // Cambia '6214' por tu password real o valida contra usuarios
@@ -108,14 +108,15 @@ router.put('/:nombre/estatus', async (req, res) => {
 
     // Al cambiar estatus a DISPONIBLE
     if (estatus === 'DISPONIBLE') {
-      // Actualiza la fecha de entrega en el último registro de renta activo
+      // Actualiza la fecha de entrega y observaciones en el último registro de renta activo
+      // Actualiza todos los campos del formulario de entrega en el último registro de renta activo
       await db.query(
         `UPDATE trailer_rentals
-         SET fecha_entrega = ?
+         SET fecha_entrega = ?, cliente = ?, observaciones = ?
          WHERE trailer_nombre = ? AND fecha_entrega IS NULL
          ORDER BY fecha_renta DESC
          LIMIT 1`,
-        [fechaEntregaFinal, nombre]
+        [fechaEntregaFinal, clienteFinal, observaciones || '', nombre]
       );
       // Actualiza el estatus y la fecha en la tabla principal
       await db.query(
@@ -128,13 +129,7 @@ router.put('/:nombre/estatus', async (req, res) => {
 
     // Al cambiar estatus a RENTADA
     if (estatus === 'RENTADA') {
-      // Crea un nuevo registro en historial de rentas
-      await db.query(
-        `INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, fecha_entrega)
-         VALUES (?, ?, ?, ?)`,
-        [nombre, clienteFinal, fechaRentaFinal, fechaEntregaFinal]
-      );
-      // Actualiza el estatus de la traila
+      // Solo actualiza el estatus de la traila, NO crear registro en historial de rentas aquí
       await db.query(
         `UPDATE trailers SET estatus = ?, cliente = ?, fechaRenta = ?, fechaEntrega = ? WHERE nombre = ?`,
         [estatus, clienteFinal, fechaRentaFinal, fechaEntregaFinal, nombre]
