@@ -391,6 +391,7 @@ const WorkOrdersTable: React.FC = () => {
   const maxRetries = 3;
   const [idClassicError, setIdClassicError] = useState('');  // Nueva funcionalidad: búsqueda inteligente por ID Classic
   const [searchIdClassic, setSearchIdClassic] = useState('');
+  const [searchError, setSearchError] = useState('');
   const [isSearching, setIsSearching] = useState(false);
     // Variables para paginación OPTIMIZADA para plan gratuito
   const [currentPageData, setCurrentPageData] = useState(1);
@@ -585,46 +586,52 @@ const WorkOrdersTable: React.FC = () => {
     };
   }, [fetchWorkOrders, serverStatus]);
   
-  // Función de búsqueda inteligente por ID Classic
-  const [searchError, setSearchError] = useState('');
+  // Nueva función robusta para buscar por ID Classic sin sobrecargar el servidor
+  // Nueva función robusta para buscar por ID Classic sin sobrecargar el servidor
+  // Usa los mismos estados searchError, isSearching ya definidos arriba
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
-    if (!searchTerm.trim()) {
-      // Si el filtro está vacío, NO recargar ni llamar a fetchWorkOrders ni hacer request al backend
-      setWorkOrders([]); // Opcional: mostrar tabla vacía
-      setIsSearching(false);
+    const trimmed = (searchTerm || '').trim();
+    if (!trimmed) {
+      setWorkOrders([]);
       setSearchError('');
+      setIsSearching(false);
       return;
     }
+    setIsSearching(true);
+    setSearchError('');
     try {
-      setIsSearching(true);
-      setSearchError('');
+      // Siempre usar paginación y timeout corto
       const res = await axios.get(`${API_URL}/work-orders`, {
-        params: { searchIdClassic: searchTerm.trim() },
-        timeout: 15000
+        params: {
+          searchIdClassic: trimmed,
+          page: 1,
+          pageSize: pageSize
+        },
+        timeout: 8000
       });
-      const searchResults = Array.isArray(res.data) ? res.data : [];
-      setWorkOrders(searchResults);
-      if (searchResults.length === 0) {
+      let results: any[] = [];
+      if (res.data && typeof res.data === 'object' && 'pagination' in res.data && Array.isArray((res.data as any).data)) {
+        results = (res.data as any).data;
+      } else if (Array.isArray(res.data)) {
+        results = res.data.slice(0, pageSize);
+      }
+      setWorkOrders(results);
+      if (results.length === 0) {
         setSearchError('No se encontró ninguna Work Order con ese ID Classic.');
       }
     } catch (err: any) {
-      // Si es un error 502/503, mostrar mensaje amigable y NO recargar todas las órdenes
       if (err && err.response && (err.response.status === 502 || err.response.status === 503)) {
-        setSearchError('El servidor está temporalmente inactivo o sobrecargado (502/503). Por favor, intente de nuevo en unos minutos.');
-        // No recargar todas las órdenes, solo mostrar el error
+        setSearchError('El servidor está temporalmente inactivo o sobrecargado. Intente más tarde.');
       } else if (err && err.response && err.response.status === 404) {
         setWorkOrders([]);
         setSearchError('No se encontró ninguna Work Order con ese ID Classic.');
       } else {
-        setSearchError('Ocurrió un error inesperado al buscar la Work Order.');
+        setSearchError('Error inesperado al buscar la Work Order.');
       }
     } finally {
       setIsSearching(false);
     }
-  }, []); // Eliminar fetchWorkOrders de dependencias para evitar recarga
-  
-  // Mostrar mensaje de error de búsqueda por ID Classic si existe
-  // (Puedes mejorar esto con un componente visual, aquí solo ejemplo con alert y render condicional)
+  }, [pageSize]);
 
   useEffect(() => {
     if (searchError) {
