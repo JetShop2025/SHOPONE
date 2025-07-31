@@ -63,8 +63,16 @@ const TrailasTable: React.FC = () => {
   const [showWorkOrderModal, setShowWorkOrderModal] = useState<boolean>(false);
   const [rentalHistory, setRentalHistory] = useState<any[]>([]);
   const [workOrderHistory, setWorkOrderHistory] = useState<any[]>([]);
+  // Paginación para historial de W.O.
+  const [woPage, setWoPage] = useState(1);
+  const WO_PER_PAGE = 10;
   // Filtro por mes para Work Orders
   const [workOrderMonthFilter, setWorkOrderMonthFilter] = useState<string>('ALL');
+
+  // Reset paginación al abrir modal de W.O. o cambiar filtro
+  useEffect(() => {
+    setWoPage(1);
+  }, [showWorkOrderModal, workOrderMonthFilter]);
 
   // Client-based filtering
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
@@ -1411,87 +1419,107 @@ const TrailasTable: React.FC = () => {
               )}
             </div>
 
-              {workOrderHistory.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f5f5f5' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID Classic</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Mecánico</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Descripción</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Total</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Status</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>PDF</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      // Filtrar work orders por mes
-                      const filteredWorkOrders = workOrderMonthFilter === 'ALL' 
-                        ? workOrderHistory 
-                        : workOrderHistory.filter(wo => {
-                            if (!wo.date) return false;
-                            const woMonth = wo.date.slice(0, 7); // YYYY-MM
-                            return woMonth === workOrderMonthFilter;
-                          });
-                      
-                      return filteredWorkOrders.length > 0 ? (
-                        filteredWorkOrders.map((wo, index) => (
-                          <tr key={index}>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.date ? wo.date.slice(0, 10) : '-'}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                              {Array.isArray(wo.mechanics) && wo.mechanics.length > 0
-                                ? wo.mechanics.map((m: any) => m.name).join(', ')
-                                : wo.mechanic || '-'}
-                            </td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                              {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
-                            </td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.status}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>
-                              <button
-                                onClick={() => handleViewWorkOrderPDF(wo)}
-                                style={{
-                                  padding: '4px 8px',
-                                  background: '#f44336',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: '600'
-                                }}
-                                title="Ver PDF de la Work Order"
-                              >
-                                📄 PDF
-                              </button>
-                            </td>
+
+              {/* Tabla paginada de historial de W.O. */}
+              {(() => {
+                // Filtrar work orders por mes
+                const filteredWorkOrders = workOrderMonthFilter === 'ALL'
+                  ? workOrderHistory
+                  : workOrderHistory.filter(wo => {
+                      if (!wo.date) return false;
+                      const woMonth = wo.date.slice(0, 7); // YYYY-MM
+                      return woMonth === workOrderMonthFilter;
+                    });
+                const totalPages = Math.ceil(filteredWorkOrders.length / WO_PER_PAGE) || 1;
+                const page = Math.min(woPage, totalPages);
+                const paginatedWorkOrders = filteredWorkOrders.slice((page - 1) * WO_PER_PAGE, page * WO_PER_PAGE);
+
+                if (filteredWorkOrders.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                      <p>No hay work orders para este trailer</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f5f5f5' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID Classic</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Mecánico</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Descripción</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Total</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Status</th>
+                            <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>PDF</th>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={8} style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                            {workOrderMonthFilter === 'ALL' 
-                              ? 'No hay work orders para este trailer'
-                              : `No hay work orders para ${workOrderMonthFilter.split('-')[1]}/${workOrderMonthFilter.split('-')[0]}`
-                            }
-                          </td>
-                        </tr>
-                      );
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                <p>No hay work orders para este trailer</p>
-              </div>
-            )}
+                        </thead>
+                        <tbody>
+                          {paginatedWorkOrders.map((wo, index) => (
+                            <tr key={index}>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.date ? wo.date.slice(0, 10) : '-'}</td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                                {Array.isArray(wo.mechanics) && wo.mechanics.length > 0
+                                  ? wo.mechanics.map((m: any) => m.name).join(', ')
+                                  : wo.mechanic || '-'}
+                              </td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                                {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
+                              </td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.status}</td>
+                              <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => handleViewWorkOrderPDF(wo)}
+                                  style={{
+                                    padding: '4px 8px',
+                                    background: '#f44336',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: '600'
+                                  }}
+                                  title="Ver PDF de la Work Order"
+                                >
+                                  📄 PDF
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Controles de paginación */}
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '18px' }}>
+                      <button
+                        onClick={() => setWoPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        style={{ padding: '8px 16px', background: page === 1 ? '#eee' : '#1976d2', color: page === 1 ? '#aaa' : 'white', border: 'none', borderRadius: '6px', cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+                      >
+                        ◀ Anterior
+                      </button>
+                      <span style={{ fontSize: '15px', color: '#333' }}>
+                        Página {page} de {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setWoPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        style={{ padding: '8px 16px', background: page === totalPages ? '#eee' : '#1976d2', color: page === totalPages ? '#aaa' : 'white', border: 'none', borderRadius: '6px', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+                      >
+                        Siguiente ▶
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>              <button
                 onClick={() => {
