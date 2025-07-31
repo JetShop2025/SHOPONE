@@ -135,7 +135,8 @@ const TrailasTable: React.FC = () => {
   const [returnForm, setReturnForm] = useState({
     fecha_devolucion: '',
     observaciones: '',
-    condicion: ''
+    condicion: '',
+    cliente: ''
   });
 
   // Available form state  
@@ -260,22 +261,9 @@ const TrailasTable: React.FC = () => {
         trailer_nombre: selectedTraila.nombre
       };
 
-      // Rent trailer and save rental history
+      // Rent trailer only (do NOT save rental history here)
       const response = await axios.put(`${API_URL}/trailas/${selectedTraila.id}/rent`, rentalData);
       console.log('✅ Trailer rentado exitosamente:', response.data);
-
-      // Registrar historial de renta
-      try {
-        await axios.post(`${API_URL}/trailas/${selectedTraila.nombre}/rental-history`, {
-          ...rentalData,
-          fecha_renta: rentalForm.fecha_renta,
-          fecha_devolucion: rentalForm.fecha_devolucion,
-          observaciones: rentalForm.observaciones
-        });
-        console.log('📝 Historial de renta registrado');
-      } catch (historyError) {
-        console.error('❌ Error registrando historial de renta:', historyError);
-      }
 
       setShowRentalModal(false);
       setRentalForm({ cliente: '', fecha_renta: '', fecha_devolucion: '', observaciones: '' });
@@ -293,46 +281,58 @@ const TrailasTable: React.FC = () => {
     }
   };
   const handleReturn = async (traila: Traila) => {
-    if (window.confirm('¿Está seguro que desea devolver este trailer?')) {
+    setSelectedTraila(traila);
+    setReturnForm({
+      fecha_devolucion: new Date().toISOString().split('T')[0],
+      observaciones: '',
+      condicion: '',
+      cliente: traila.cliente || ''
+    });
+    setShowReturnModal(true);
+  };
+  // Handle confirm return from modal
+  const handleConfirmReturn = async () => {
+    if (!selectedTraila) return;
+    try {
+      const returnData = {
+        usuario: getCurrentUser(),
+        fecha_devolucion: returnForm.fecha_devolucion,
+        observaciones: returnForm.observaciones,
+        trailer_id: selectedTraila.id,
+        trailer_nombre: selectedTraila.nombre,
+        cliente: returnForm.cliente || selectedTraila.cliente || ''
+      };
+      const response = await axios.put(`${API_URL}/trailas/${selectedTraila.id}/return`, returnData);
+      // Registrar historial de devolución
       try {
-        console.log('🔄 Devolviendo trailer:', traila.id);
-        const returnData = {
-          usuario: getCurrentUser(),
-          fecha_devolucion: new Date().toISOString().split('T')[0],
-          observaciones: '',
-          trailer_id: traila.id,
-          trailer_nombre: traila.nombre,
-          cliente: traila.cliente
-        };
-
-        const response = await axios.put(`${API_URL}/trailas/${traila.id}/return`, returnData);
-        console.log('✅ Trailer devuelto exitosamente:', response.data);
-
-        // Registrar historial de devolución
-        try {
-          await axios.post(`${API_URL}/trailas/${traila.nombre}/rental-history`, {
-            ...returnData,
-            fecha_renta: traila.fecha_renta,
-            fecha_devolucion: returnData.fecha_devolucion,
-            observaciones: returnData.observaciones
-          });
-          console.log('📝 Historial de devolución registrado');
-        } catch (historyError) {
-          console.error('❌ Error registrando historial de devolución:', historyError);
-        }
-
-        // Refresh data
-        console.log('🔄 Refrescando datos de trailers...');
-        const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
-        console.log('📦 Datos refrescados:', trailersResponse.data);
-        setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
-
-        alert('Trailer devuelto exitosamente');
-      } catch (error: any) {
-        console.error('❌ Error returning trailer:', error);
-        alert(`Error al devolver el trailer: ${error.response?.data?.error || error.message}`);
+        await axios.post(`${API_URL}/trailas/${selectedTraila.nombre}/rental-history`, {
+          ...returnData,
+          fecha_renta: selectedTraila.fecha_renta,
+          fecha_devolucion: returnForm.fecha_devolucion,
+          observaciones: returnForm.observaciones
+        });
+      } catch (historyError) {
+        console.error('❌ Error registrando historial de devolución:', historyError);
       }
+      // Refresh data
+      const trailersResponse = await axios.get<Traila[]>(`${API_URL}/trailas`);
+      setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
+      setShowReturnModal(false);
+      alert('Trailer devuelto exitosamente');
+    } catch (error: any) {
+      console.error('❌ Error returning trailer:', error);
+      alert(`Error al devolver el trailer: ${error.response?.data?.error || error.message}`);
     }
+  };
+  // Helper to format date as MM/DD/YYYY
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
   };
 
   // Handle mark as available
@@ -1309,10 +1309,10 @@ const TrailasTable: React.FC = () => {
             maxWidth: '800px',
             maxHeight: '90vh',
             overflow: 'auto'
-          }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
+          }}>
+            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
               Historial de Rentas: {selectedTraila.nombre}
             </h2>
-            
             {rentalHistory.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1328,9 +1328,9 @@ const TrailasTable: React.FC = () => {
                     {rentalHistory.map((rental, index) => (
                       <tr key={index}>
                         <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.cliente}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_renta}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_devolucion || 'No devuelto'}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.observaciones || '-'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{formatDate(rental.fecha_renta)}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_devolucion ? formatDate(rental.fecha_devolucion) : 'No devuelto'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{(rental.observaciones || '').split(' - ').pop() || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1341,7 +1341,6 @@ const TrailasTable: React.FC = () => {
                 <p>No hay historial de rentas para este trailer</p>
               </div>
             )}
-
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowHistoryModal(false)}
@@ -1356,6 +1355,121 @@ const TrailasTable: React.FC = () => {
                 }}
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Return Modal */}
+      {showReturnModal && selectedTraila && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '32px',
+            borderRadius: '16px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
+              Devolver Trailer: {selectedTraila.nombre}
+            </h2>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Cliente
+              </label>
+              <input
+                type="text"
+                value={returnForm.cliente || ''}
+                onChange={e => setReturnForm({ ...returnForm, cliente: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+                placeholder="Ingrese el nombre del cliente..."
+                required
+              />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Fecha de Devolución
+              </label>
+              <input
+                type="date"
+                value={returnForm.fecha_devolucion}
+                onChange={e => setReturnForm({ ...returnForm, fecha_devolucion: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                Observaciones
+              </label>
+              <textarea
+                value={returnForm.observaciones}
+                onChange={e => setReturnForm({ ...returnForm, observaciones: e.target.value })}
+                placeholder="Observaciones adicionales..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowReturnModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  background: '#f5f5f5',
+                  color: '#666',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmReturn}
+                style={{
+                  padding: '12px 24px',
+                  background: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Confirmar Devolución
               </button>
             </div>
           </div>

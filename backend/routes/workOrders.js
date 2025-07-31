@@ -1105,7 +1105,15 @@ async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
 // Obtener todas las órdenes de trabajo
 router.get('/', async (req, res) => {
   try {
-    const [results] = await db.query('SELECT * FROM work_orders ORDER BY id DESC');
+    // Use pagination: ?page=1&pageSize=100
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = Math.min(parseInt(req.query.pageSize) || 100, 500); // max 500 per page
+    const offset = (page - 1) * pageSize;
+    // Get total count for pagination
+    const [countRows] = await db.query('SELECT COUNT(*) as total FROM work_orders');
+    const total = countRows[0]?.total || 0;
+    // Get paginated results
+    const [results] = await db.query('SELECT * FROM work_orders ORDER BY id DESC LIMIT ? OFFSET ?', [pageSize, offset]);
     const parsedResults = results.map(order => {
       let parts = [];
       try {
@@ -1130,7 +1138,7 @@ router.get('/', async (req, res) => {
         extraOptions
       };
     });
-    res.json(parsedResults);
+    res.json({ data: parsedResults, total });
   } catch (err) {
     console.error(err);
     res.status(500).send('ERROR FETCHING WORK ORDERS');
@@ -1797,55 +1805,6 @@ router.post('/:id/generate-pdf', async (req, res) => {
   } catch (err) {
     console.error('Error regenerating PDF:', err);
     res.status(500).json({ error: 'Error regenerating PDF' });
-  }
-});
-
-
-// PAGINATED: Obtener work orders por trailer (historial paginado)
-router.get('/trailer/:trailerId', async (req, res) => {
-  try {
-    const { trailerId } = req.params;
-    let { limit, offset, month } = req.query;
-    limit = Math.max(1, Math.min(parseInt(limit) || 10, 100)); // default 10, max 100
-    offset = Math.max(0, parseInt(offset) || 0);
-
-    let sql = 'SELECT * FROM work_orders WHERE trailer = ?';
-    const params = [trailerId];
-    if (month && typeof month === 'string' && month.match(/^\d{4}-\d{2}$/)) {
-      sql += ' AND date LIKE ?';
-      params.push(`${month}%`);
-    }
-    sql += ' ORDER BY date DESC, id DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
-
-    // Get total count for pagination
-    let countSql = 'SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?';
-    const countParams = [trailerId];
-    if (month && typeof month === 'string' && month.match(/^\d{4}-\d{2}$/)) {
-      countSql += ' AND date LIKE ?';
-      countParams.push(`${month}%`);
-    }
-    const [[{ total }]] = await db.query(countSql, countParams);
-
-    const [results] = await db.query(sql, params);
-    const parsedResults = results.map(order => {
-      let parts = [];
-      try { parts = JSON.parse(order.parts || '[]'); } catch (e) { parts = []; }
-      let mechanics = [];
-      try { mechanics = JSON.parse(order.mechanics || '[]'); } catch (e) { mechanics = []; }
-      let extraOptions = [];
-      try { extraOptions = JSON.parse(order.extraOptions || '[]'); } catch { extraOptions = []; }
-      return { ...order, parts, mechanics, extraOptions };
-    });
-    res.json({
-      workOrders: parsedResults,
-      total,
-      limit,
-      offset
-    });
-  } catch (err) {
-    console.error('Error fetching paginated work orders by trailer:', err);
-    res.status(500).send('ERROR FETCHING WORK ORDERS BY TRAILER');
   }
 });
 
