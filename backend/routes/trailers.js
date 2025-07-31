@@ -27,8 +27,9 @@ router.get('/:nombre/work-orders', async (req, res) => {
 router.get('/:nombre/historial-rentas', async (req, res) => {
   const { nombre } = req.params;
   try {
+    // Solo devolver los campos ligeros y necesarios
     const [results] = await db.query(
-      'SELECT * FROM trailer_rentals WHERE trailer_nombre = ? ORDER BY fecha_registro DESC',
+      'SELECT id, trailer_nombre, cliente, fecha_renta, fecha_entrega, observaciones FROM trailer_rentals WHERE trailer_nombre = ? ORDER BY fecha_renta DESC LIMIT 100',
       [nombre]
     );
     res.json(results);
