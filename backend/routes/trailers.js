@@ -43,10 +43,19 @@ router.get('/:nombre/work-orders-historial', async (req, res) => {
   const { nombre } = req.params;
   try {
     const [results] = await db.query(
-      'SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC',
+      `SELECT *,
+        COALESCE(miscellaneousPercent, miscellaneous, 5) AS miscellaneous,
+        COALESCE(weldPercent, 0) AS weldPercent
+      FROM work_orders WHERE trailer = ? ORDER BY date DESC`,
       [nombre]
     );
-    res.json(results);
+    // Asegura que los campos siempre estén presentes y sean numéricos
+    const safeResults = results.map(order => ({
+      ...order,
+      miscellaneous: !isNaN(Number(order.miscellaneous)) ? Number(order.miscellaneous) : 5,
+      weldPercent: !isNaN(Number(order.weldPercent)) ? Number(order.weldPercent) : 0
+    }));
+    res.json(safeResults);
   } catch (err) {
     res.status(500).send('ERROR FETCHING WORK ORDERS');
   }
