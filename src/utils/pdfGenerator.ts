@@ -286,40 +286,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
   
-  // EXTRAS - Integrados con los totales
-  // === SIEMPRE mostrar ambas líneas: Miscellaneous y Welding Supplies ===
-  // Permitir que vengan como string o número, y forzar a 0 si no existen
-  // Permitir acceso flexible a campos que pueden venir del backend o frontend
-  let miscPercent = 0;
-  let weldPercent = 0;
-  // Buscar el part con SKU 15-SHOPMISC y usar su unitCost si existe
-  const shopMiscPart = workOrderData.parts?.find(p => p.sku === '15-SHOPMISC');
-  // Acceso flexible a miscellaneous y weldPercent
-  const miscellaneous = (workOrderData as any).miscellaneous ?? 0;
-  const weldPercentRaw = (workOrderData as any).weldPercent ?? 0;
-  if (shopMiscPart && (shopMiscPart.unitCost !== undefined && !isNaN(Number(shopMiscPart.unitCost)))) {
-    miscPercent = Number(miscellaneous) || 0;
-  } else {
-    miscPercent = !isNaN(Number(miscellaneous)) ? Number(miscellaneous) : 0;
-  }
-  weldPercent = !isNaN(Number(weldPercentRaw)) ? Number(weldPercentRaw) : 0;
-  // Miscellaneous amount: use unitCost if present, else percent
-  const miscAmount = shopMiscPart && (shopMiscPart.unitCost !== undefined && !isNaN(Number(shopMiscPart.unitCost)))
-    ? Number(shopMiscPart.unitCost)
-    : subtotal * (miscPercent / 100);
-  const weldAmount = subtotal * (weldPercent / 100);
-
-  // Línea Miscellaneous
-  pdf.setTextColor(0, 100, 200); // Azul
-  pdf.text(`Miscellaneous ${miscPercent}%:`, totalsStartX, currentY);
-  pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
-  currentY += 6;
-
-  // Línea Welding Supplies
-  pdf.setTextColor(220, 20, 60); // Rojo
-  pdf.text(`Welding Supplies ${weldPercent}%:`, totalsStartX, currentY);
-  pdf.text(`$${weldAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
-  currentY += 6;
+  // ...existing code... (EXTRAS REMOVED)
 
   // Si quieres mostrar otros extras, agrégalos aquí
   
@@ -420,12 +387,16 @@ export const savePDFToDatabase = async (workOrderId: number, pdfBlob: Blob) => {
   }
 };
 
-export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: string }>) => {
+export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: string; sku?: string }>) => {
   // Obtener enlaces únicos
   const uniqueLinks = new Set<string>();
   
   parts.forEach(part => {
-    if (part.invoiceLink && part.invoiceLink.trim()) {
+    // Excluir partes 15-SHOPMISC y 15-WELDSPP solo si el objeto tiene SKU
+    if (
+      part.invoiceLink && part.invoiceLink.trim() &&
+      (!('sku' in part) || (part.sku !== '15-SHOPMISC' && part.sku !== '15-WELDSPP'))
+    ) {
       uniqueLinks.add(part.invoiceLink.trim());
     }
   });
