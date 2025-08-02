@@ -105,18 +105,27 @@ router.put('/:nombre/estatus', async (req, res) => {
     // --- LÓGICA DE RENTAS ---
     // Al cambiar estatus a RENTADA: crear un nuevo registro de renta SOLO si no hay uno abierto
     if (estatus === 'RENTADA') {
-      // Verifica si ya hay una renta activa (sin fecha_entrega)
-      const [rentasActivas] = await db.query(
-        'SELECT id FROM trailer_rentals WHERE trailer_nombre = ? AND fecha_entrega IS NULL',
-        [nombre]
-      );
-      if (rentasActivas.length === 0) {
-        await db.query(
-          'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, observaciones) VALUES (?, ?, ?, ?)',
-          [nombre, clienteFinal, fechaRentaFinal, observaciones || '']
+      try {
+        // Verifica si ya hay una renta activa (sin fecha_entrega)
+        const [rentasActivas] = await db.query(
+          'SELECT id FROM trailer_rentals WHERE trailer_nombre = ? AND fecha_entrega IS NULL',
+          [nombre]
         );
+        if (rentasActivas.length === 0) {
+          // Validar fechaRentaFinal
+          if (!fechaRentaFinal || isNaN(Date.parse(fechaRentaFinal))) {
+            return res.status(400).json({ ok: false, error: 'fechaRenta inválida o vacía' });
+          }
+          await db.query(
+            'INSERT INTO trailer_rentals (trailer_nombre, cliente, fecha_renta, observaciones) VALUES (?, ?, ?, ?)',
+            [nombre, clienteFinal, fechaRentaFinal, observaciones || '']
+          );
+        }
+        res.json({ ok: true });
+      } catch (err) {
+        console.error('ERROR AL RENTAR TRAILA:', err);
+        res.status(500).json({ ok: false, error: 'Error al rentar traila', details: err.message });
       }
-      res.json({ ok: true });
       return;
     }
 

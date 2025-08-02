@@ -287,15 +287,26 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   currentY += 6;
   
   // EXTRAS - Integrados con los totales
-
   // === SIEMPRE mostrar ambas líneas: Miscellaneous y Welding Supplies ===
-  // Obtener los porcentajes y montos exactos del objeto workOrderData
   // Permitir que vengan como string o número, y forzar a 0 si no existen
-  const miscRaw = (workOrderData as any).miscellaneousPercent ?? (workOrderData as any).miscellaneous;
-  const weldRaw = (workOrderData as any).weldPercent ?? (workOrderData as any).welding;
-  const miscPercent = !isNaN(Number(miscRaw)) && miscRaw !== '' && miscRaw !== null && miscRaw !== undefined ? Number(miscRaw) : 0;
-  const weldPercent = !isNaN(Number(weldRaw)) && weldRaw !== '' && weldRaw !== null && weldRaw !== undefined ? Number(weldRaw) : 0;
-  const miscAmount = subtotal * (miscPercent / 100);
+  // Permitir acceso flexible a campos que pueden venir del backend o frontend
+  let miscPercent = 0;
+  let weldPercent = 0;
+  // Buscar el part con SKU 15-SHOPMISC y usar su unitCost si existe
+  const shopMiscPart = workOrderData.parts?.find(p => p.sku === '15-SHOPMISC');
+  // Acceso flexible a miscellaneous y weldPercent
+  const miscellaneous = (workOrderData as any).miscellaneous ?? 0;
+  const weldPercentRaw = (workOrderData as any).weldPercent ?? 0;
+  if (shopMiscPart && (shopMiscPart.unitCost !== undefined && !isNaN(Number(shopMiscPart.unitCost)))) {
+    miscPercent = Number(miscellaneous) || 0;
+  } else {
+    miscPercent = !isNaN(Number(miscellaneous)) ? Number(miscellaneous) : 0;
+  }
+  weldPercent = !isNaN(Number(weldPercentRaw)) ? Number(weldPercentRaw) : 0;
+  // Miscellaneous amount: use unitCost if present, else percent
+  const miscAmount = shopMiscPart && (shopMiscPart.unitCost !== undefined && !isNaN(Number(shopMiscPart.unitCost)))
+    ? Number(shopMiscPart.unitCost)
+    : subtotal * (miscPercent / 100);
   const weldAmount = subtotal * (weldPercent / 100);
 
   // Línea Miscellaneous

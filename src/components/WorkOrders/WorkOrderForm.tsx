@@ -322,6 +322,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               if (typeof qtyValue === 'string') {
                 qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
               }
+              // Si es Shop Misc, usar unitCost si existe
+              if (String(p.sku).toUpperCase() === '15-SHOPMISC') {
+                if (p.unitCost !== undefined && !isNaN(Number(p.unitCost))) {
+                  costValue = Number(p.unitCost);
+                }
+              }
               return {
                 ...p,
                 cost: costValue,
@@ -342,17 +348,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           weldValue = '15';
         }
         let miscPercentNum = parseFloat(miscValue) || 0;
+        let weldPercentNum = parseFloat(weldValue) || 0;
         const laborTotal = totalHrs * 60;
         const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
+          let cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
+          // Si es Shop Misc, usar unitCost si existe
+          if (String(part.sku).toUpperCase() === '15-SHOPMISC' && part.unitCost !== undefined && !isNaN(Number(part.unitCost))) {
+            cost = Number(part.unitCost);
+          }
           const qty = Number(part && part.qty);
-          const cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
           const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
           const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
           return total + (validQty * validCost);
         }, 0) : 0;
         const subtotal = laborTotal + partsTotal;
         const miscAmount = subtotal * (miscPercentNum / 100);
-        const calculatedTotal = subtotal + miscAmount;
+        const weldAmount = subtotal * (weldPercentNum / 100);
+        const calculatedTotal = subtotal + miscAmount + weldAmount;
 
         // Si el usuario puso un valor manual válido, respétalo y ENVÍA SIEMPRE COMO NÚMERO
         let manualTotal = workOrder.totalLabAndParts;
