@@ -49,12 +49,32 @@ router.get('/:nombre/work-orders-historial', async (req, res) => {
       FROM work_orders WHERE trailer = ? ORDER BY date DESC`,
       [nombre]
     );
-    // Asegura que los campos siempre estén presentes y sean numéricos
-    const safeResults = results.map(order => ({
-      ...order,
-      miscellaneous: !isNaN(Number(order.miscellaneous)) ? Number(order.miscellaneous) : 5,
-      weldPercent: !isNaN(Number(order.weldPercent)) ? Number(order.weldPercent) : 0
-    }));
+    // Siempre priorizar el valor manual, si existe, y si no, calcular correctamente
+    const safeResults = results.map(order => {
+      // Prioridad: manual (totalLabAndParts), si existe y es válido
+      let misc = 5;
+      let weld = 0;
+      // Si el usuario editó el porcentaje, respétalo
+      if (order.miscellaneousPercent !== undefined && order.miscellaneousPercent !== null && order.miscellaneousPercent !== '' && !isNaN(Number(order.miscellaneousPercent))) {
+        misc = Number(order.miscellaneousPercent);
+      } else if (order.miscellaneous !== undefined && order.miscellaneous !== null && order.miscellaneous !== '' && !isNaN(Number(order.miscellaneous))) {
+        misc = Number(order.miscellaneous);
+      }
+      if (order.weldPercent !== undefined && order.weldPercent !== null && order.weldPercent !== '' && !isNaN(Number(order.weldPercent))) {
+        weld = Number(order.weldPercent);
+      }
+      // Si el usuario editó el total manual, respétalo en el PDF (el frontend debe mostrarlo)
+      let totalLabAndParts = order.totalLabAndParts;
+      if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '' && !isNaN(Number(totalLabAndParts))) {
+        totalLabAndParts = Number(totalLabAndParts);
+      }
+      return {
+        ...order,
+        miscellaneous: misc,
+        weldPercent: weld,
+        totalLabAndParts: totalLabAndParts
+      };
+    });
     res.json(safeResults);
   } catch (err) {
     res.status(500).send('ERROR FETCHING WORK ORDERS');
