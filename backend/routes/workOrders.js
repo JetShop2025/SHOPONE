@@ -1201,7 +1201,7 @@ router.post('/', async (req, res) => {
       totalHrsPut = parseFloat(fields.totalHrs) || 0;
     }
     const laborTotal = totalHrsPut * 60;
-    const partsTotal = partsArr.reduce((sum, part) => sum + (Number(part.cost) || 0), 0);
+    const partsTotal = partsArr.reduce((sum, part) => sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0);
     const subtotal = partsTotal + laborTotal;
 
     let extra = 0;
@@ -1234,8 +1234,10 @@ router.post('/', async (req, res) => {
       fields.totalLabAndParts !== '' &&
       !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
     ) {
-      // Respeta el valor manual del usuario
-      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+      // Respeta el valor manual del usuario SOLO si es mayor o igual al cálculo automático
+      const manualTotal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
+      const autoTotal = subtotal + shopMisc + weldSupplies;
+      totalLabAndPartsFinal = manualTotal >= autoTotal ? manualTotal : autoTotal;
     } else {
       // Usa el cálculo automático
       totalLabAndPartsFinal = subtotal + shopMisc + weldSupplies;

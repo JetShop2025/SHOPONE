@@ -531,8 +531,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       padding: '24px',
       background: '#f5faff',
       width: '100%',
-      minWidth: '1100px',
-      maxWidth: '100vw',
+      minWidth: '350px',
+      maxWidth: '700px',
       boxSizing: 'border-box',
       overflowX: 'auto',
       boxShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
