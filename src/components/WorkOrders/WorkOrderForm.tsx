@@ -872,7 +872,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <button type="button" onClick={onAddEmptyPart} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', fontWeight: 600, cursor: 'pointer' }}>Agregar Parte</button>
         </div>
 
-        {/* Lista editable de mecánicos. */}
+        {/* Lista editable de mecánicos.. */}
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ color: '#1976d2', marginBottom: 8 }}>Mecánicos</h3>
           {(workOrder.mechanics || []).map((mech: any, idx: number) => (
@@ -909,10 +909,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="number"
               min="0"
               step="0.01"
-              value={typeof workOrder.totalLabAndParts === 'number' && !isNaN(workOrder.totalLabAndParts) ? workOrder.totalLabAndParts : calculateTotalLabAndParts().toFixed(2)}
+              value={
+                // SIEMPRE mostrar el cálculo automático si el campo está vacío o no es válido
+                (workOrder.totalLabAndParts === '' || workOrder.totalLabAndParts === undefined || workOrder.totalLabAndParts === null || isNaN(Number(workOrder.totalLabAndParts)))
+                  ? calculateTotalLabAndParts().toFixed(2)
+                  : workOrder.totalLabAndParts
+              }
               onChange={e => {
                 const val = e.target.value;
-                onChange({ target: { name: 'totalLabAndParts', value: val === '' ? '' : Number(val) } } as any);
+                // Si el usuario borra el campo, vuelve a mostrar el cálculo automático
+                onChange({ target: { name: 'totalLabAndParts', value: val === '' ? calculateTotalLabAndParts().toFixed(2) : Number(val) } } as any);
               }}
               style={{ width: '140px', padding: 6, fontWeight: 700, fontSize: 16, background: '#fff', border: '1px solid #1976d2', borderRadius: 4 }}
               placeholder="Total manual"
