@@ -1131,11 +1131,29 @@ router.get('/', async (req, res) => {
       try {
         extraOptions = JSON.parse(order.extraOptions || '[]');
       } catch { extraOptions = []; }
+      // Labor calculation strictly using existing variables
+      let totalHrs = 0;
+      if (Array.isArray(mechanics) && mechanics.length > 0) {
+        totalHrs = mechanics.reduce((sum, m) => sum + (parseFloat(m.hrs) || 0), 0);
+      } else if (order.totalHrs) {
+        totalHrs = parseFloat(order.totalHrs) || 0;
+      }
+      // Labor is always totalHrs * 60
+      let laborTotal = totalHrs * 60;
+      // Use the value from DB for totalLabAndParts, but ensure labor is never omitted
+      let totalLabAndParts = Number(order.totalLabAndParts) || 0;
+      // If laborTotal is 0 but totalHrs > 0, recalculate laborTotal
+      if (laborTotal === 0 && totalHrs > 0) {
+        laborTotal = totalHrs * 60;
+      }
       return {
         ...order,
         parts,
         mechanics,
-        extraOptions
+        extraOptions,
+        totalHrs,
+        laborTotal,
+        totalLabAndParts,
       };
     });
     res.json({ data: parsedResults, total });
