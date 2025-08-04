@@ -727,30 +727,61 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         )}
 
         {/* Segunda fila - Status, ID Classic (solo en edición) */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-          <label style={{ flex: '1 1 120px' }}>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+          <label style={{ flex: '1 1 150px' }}>
             Status
             <select
               name="status"
-              value={workOrder.status || ''}
+              value={workOrder.status || 'PROCESSING'}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
             >
               <option value="PROCESSING">PROCESSING</option>
               <option value="APPROVED">APPROVED</option>
               <option value="FINISHED">FINISHED</option>
+              <option value="MISSING_PARTS">MISSING PARTS</option>
             </select>
           </label>
-          <label style={{ flex: '1 1 120px' }}>
-            ID Classic
+          <label style={{ flex: '1 1 150px' }}>
+            ID CLASSIC {workOrder.status === 'FINISHED' && <span style={{ color: 'red' }}>*</span>}
             <input
+              type="text"
               name="idClassic"
+              placeholder={workOrder.status === 'FINISHED' ? "ID Classic (requerido)" : "ID Classic (solo disponible cuando status es FINISHED)"}
               value={workOrder.idClassic || ''}
               onChange={onChange}
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-              placeholder="ID Classic..."
-              autoComplete="off"
+              disabled={workOrder.status !== 'FINISHED'}
+              required={workOrder.status === 'FINISHED'}
+              style={{ 
+                width: '100%', 
+                marginTop: 4, 
+                padding: 8,
+                borderColor: idClassicError ? '#f44336' : undefined,
+                backgroundColor: workOrder.status !== 'FINISHED' ? '#f5f5f5' : '#fff',
+                cursor: workOrder.status !== 'FINISHED' ? 'not-allowed' : 'text'
+              }}
             />
+            {workOrder.status !== 'FINISHED' && (
+              <div style={{
+                color: '#666',
+                fontSize: '11px',
+                marginTop: '2px',
+                fontStyle: 'italic'
+              }}>
+                Campo habilitado solo cuando status es FINISHED
+              </div>
+            )}
+            {idClassicError && workOrder.status === 'FINISHED' && (
+              <div style={{
+                color: '#f44336',
+                fontSize: '12px',
+                marginTop: '4px',
+                fontWeight: '500'
+              }}>
+                {idClassicError}
+              </div>
+            )}
           </label>
         </div>
 
