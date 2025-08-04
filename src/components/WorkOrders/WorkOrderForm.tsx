@@ -872,7 +872,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <button type="button" onClick={onAddEmptyPart} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', fontWeight: 600, cursor: 'pointer' }}>Agregar Parte</button>
         </div>
 
-        {/* Lista editable de mecánicos */}
+        {/* Lista editable de mecánicos. */}
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ color: '#1976d2', marginBottom: 8 }}>Mecánicos</h3>
           {(workOrder.mechanics || []).map((mech: any, idx: number) => (
