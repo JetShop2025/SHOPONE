@@ -803,73 +803,75 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         {/* Tabla editable de partes */}
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ color: '#1976d2', marginBottom: 8 }}>Partes</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
-            <thead>
-              <tr style={{ background: '#e3f2fd' }}>
-                <th style={{ minWidth: 260 }}>SKU</th>
-                <th style={{ minWidth: 180 }}>Descripción</th>
-                <th style={{ minWidth: 100 }}>Cantidad</th>
-                <th style={{ minWidth: 120 }}>Costo Unitario</th>
-                <th style={{ minWidth: 120 }}>Total</th>
-                <th style={{ minWidth: 60 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {(workOrder.parts || []).map((part: any, idx: number) => (
-                <tr key={idx}>
-                  <td>
-                    <input
-                      value={part.sku || ''}
-                      onChange={e => handlePartChange(idx, 'sku', e.target.value)}
-                      style={{ width: '260px', padding: 4, fontFamily: 'monospace', fontSize: 15 }}
-                      onFocus={ev => showTooltipForPart(ev, part.sku)}
-                      onBlur={hideTooltip}
-                      list={`sku-options-${idx}`}
-                      autoComplete="off"
-                    />
-                    <datalist id={`sku-options-${idx}`}>
-                      {Array.isArray(inventory) && inventory.map((item: any) => (
-                        <option key={item.sku} value={item.sku}>{item.sku} - {item.part}</option>
-                      ))}
-                    </datalist>
-                  </td>
-                  <td>
-                    <input
-                      value={part.part || ''}
-                      onChange={e => handlePartChange(idx, 'part', e.target.value)}
-                      style={{ width: '100%', padding: 4 }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="1"
-                      value={part.qty || ''}
-                      onChange={e => handlePartChange(idx, 'qty', e.target.value)}
-                      style={{ width: '80px', padding: 4 }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={part.cost || ''}
-                      onChange={e => handlePartChange(idx, 'cost', e.target.value)}
-                      style={{ width: '100px', padding: 4 }}
-                    />
-                  </td>
-                  <td>
-                    ${((part.qty || 0) * (parseFloat(part.cost) || 0)).toFixed(2)}
-                  </td>
-                  <td>
-                    <button type="button" onClick={() => onDeletePart && onDeletePart(idx)} style={{ color: '#d32f2f', background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
-                  </td>
+          <div style={{ width: '100%', borderRadius: 8, boxShadow: '0 1px 4px rgba(25,118,210,0.07)', background: '#fff', padding: '8px 0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
+              <thead>
+                <tr style={{ background: '#e3f2fd' }}>
+                  <th style={{ minWidth: 120, maxWidth: 180, textAlign: 'left', padding: '8px' }}>SKU</th>
+                  <th style={{ minWidth: 120, textAlign: 'left', padding: '8px' }}>Descripción</th>
+                  <th style={{ minWidth: 80, textAlign: 'center', padding: '8px' }}>Cantidad</th>
+                  <th style={{ minWidth: 100, textAlign: 'center', padding: '8px' }}>Costo Unitario</th>
+                  <th style={{ minWidth: 100, textAlign: 'center', padding: '8px' }}>Total</th>
+                  <th style={{ minWidth: 60, textAlign: 'center', padding: '8px' }}></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <button type="button" onClick={onAddEmptyPart} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', fontWeight: 600, cursor: 'pointer' }}>Agregar Parte</button>
+              </thead>
+              <tbody>
+                {(workOrder.parts || []).map((part: any, idx: number) => (
+                  <tr key={idx} style={{ background: idx % 2 === 0 ? '#f7fbff' : '#fff' }}>
+                    <td style={{ padding: '6px' }}>
+                      <input
+                        value={part.sku || ''}
+                        onChange={e => handlePartChange(idx, 'sku', e.target.value)}
+                        style={{ width: '100%', padding: 4, fontFamily: 'monospace', fontSize: 15, borderRadius: 4, border: '1px solid #bcdffb' }}
+                        onFocus={ev => showTooltipForPart(ev, part.sku)}
+                        onBlur={hideTooltip}
+                        list={`sku-options-${idx}`}
+                        autoComplete="off"
+                      />
+                      <datalist id={`sku-options-${idx}`}>
+                        {Array.isArray(inventory) && inventory.map((item: any) => (
+                          <option key={item.sku} value={item.sku}>{item.sku} - {item.part}</option>
+                        ))}
+                      </datalist>
+                    </td>
+                    <td style={{ padding: '6px' }}>
+                      <input
+                        value={part.part || ''}
+                        onChange={e => handlePartChange(idx, 'part', e.target.value)}
+                        style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #bcdffb' }}
+                      />
+                    </td>
+                    <td style={{ padding: '6px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        min="1"
+                        value={part.qty || ''}
+                        onChange={e => handlePartChange(idx, 'qty', e.target.value)}
+                        style={{ width: '70px', padding: 4, borderRadius: 4, border: '1px solid #bcdffb', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ padding: '6px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={part.cost || ''}
+                        onChange={e => handlePartChange(idx, 'cost', e.target.value)}
+                        style={{ width: '90px', padding: 4, borderRadius: 4, border: '1px solid #bcdffb', textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={{ padding: '6px', textAlign: 'center', fontWeight: 600, color: '#1976d2' }}>
+                      ${((part.qty || 0) * (parseFloat(part.cost) || 0)).toFixed(2)}
+                    </td>
+                    <td style={{ padding: '6px', textAlign: 'center' }}>
+                      <button type="button" onClick={() => onDeletePart && onDeletePart(idx)} style={{ color: '#d32f2f', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}>🗑️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button type="button" onClick={onAddEmptyPart} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', fontWeight: 600, cursor: 'pointer', marginTop: 8 }}>Agregar Parte</button>
         </div>
 
         {/* Lista editable de mecánicos.. */}
@@ -907,24 +909,40 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <b>Total LAB & PARTS:</b>
             <input
               type="number"
-              min="0"
+              min={calculateTotalLabAndParts().toFixed(2)}
               step="0.01"
-              value={
-                // SIEMPRE mostrar el cálculo automático si el campo está vacío o no es válido
-                (workOrder.totalLabAndParts === '' || workOrder.totalLabAndParts === undefined || workOrder.totalLabAndParts === null || isNaN(Number(workOrder.totalLabAndParts)))
-                  ? calculateTotalLabAndParts().toFixed(2)
-                  : workOrder.totalLabAndParts
-              }
+              value={(() => {
+                // Always show the calculated value if manual is empty/invalid or less than calculated
+                const manual = Number(workOrder.totalLabAndParts);
+                const calculated = Number(calculateTotalLabAndParts().toFixed(2));
+                if (
+                  workOrder.totalLabAndParts === '' ||
+                  workOrder.totalLabAndParts === undefined ||
+                  workOrder.totalLabAndParts === null ||
+                  isNaN(manual) ||
+                  manual < calculated
+                ) {
+                  return calculated;
+                }
+                return manual;
+              })()}
               onChange={e => {
                 const val = e.target.value;
-                // Si el usuario borra el campo, vuelve a mostrar el cálculo automático
-                onChange({ target: { name: 'totalLabAndParts', value: val === '' ? calculateTotalLabAndParts().toFixed(2) : Number(val) } } as any);
+                // Only allow manual input if it's >= calculated total
+                const calculated = Number(calculateTotalLabAndParts().toFixed(2));
+                const numVal = Number(val);
+                onChange({
+                  target: {
+                    name: 'totalLabAndParts',
+                    value: (!val || isNaN(numVal) || numVal < calculated) ? calculated : numVal
+                  }
+                } as any);
               }}
               style={{ width: '140px', padding: 6, fontWeight: 700, fontSize: 16, background: '#fff', border: '1px solid #1976d2', borderRadius: 4 }}
               placeholder="Total manual"
             />
             <span style={{ color: '#888', fontSize: 12 }}>
-              (editable)
+              (editable, nunca menor al cálculo)
             </span>
           </div>
         </div>
