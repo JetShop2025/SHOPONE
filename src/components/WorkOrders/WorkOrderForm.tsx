@@ -214,12 +214,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }, 0);
   };
 
-  // Calcular total LAB & PARTS + Miscellaneous
+  // Calcular total LAB & PARTS
   const calculateTotalLabAndParts = () => {
     const laborTotal = calculateTotalHours() * 60;
     const partsTotal = calculatePartsTotal();
     const total = laborTotal + partsTotal;
     return !isNaN(total) && total >= 0 ? total : 0;
+  };
+
+  // Nueva función para forzar el recálculo del total manualmente
+  const handleRecalculateTotal = () => {
+    const calculatedTotal = calculateTotalLabAndParts();
+    onChange({ target: { name: 'totalLabAndParts', value: calculatedTotal.toFixed(2) } } as any);
   };
 
 
@@ -852,6 +858,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <span style={{ color: '#888', fontSize: 12 }}>
               (editable, puede ser menor al cálculo)
             </span>
+            <button
+              type="button"
+              onClick={handleRecalculateTotal}
+              style={{
+                marginLeft: 8,
+                background: '#1976d2',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                padding: '6px 12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: 14
+              }}
+            >
+              Recalcular Total
+            </button>
           </div>
         </div>
 
