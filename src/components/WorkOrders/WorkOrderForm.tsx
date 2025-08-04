@@ -140,21 +140,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   }, [workOrder.weldPercent]);
 
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
-  // SOLO para nuevas órdenes (no para edición)
+  // Recalcular total automáticamente en creación y edición cada vez que cambie cualquier dato relevante
   React.useEffect(() => {
-    // Solo auto-calcular para nuevas órdenes, nunca sobrescribir en edición
-    if (!workOrder.id) {
-      const calculatedTotal = calculateTotalLabAndParts();
-      const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
-      // Si el campo está vacío, actualiza automáticamente
-      const currentValue = workOrder.totalLabAndParts;
-      if (!currentValue || currentValue === '$0.00') {
-        onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
-      }
-      // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
+    const calculatedTotal = calculateTotalLabAndParts();
+    const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
+    const currentValue = workOrder.totalLabAndParts;
+    // Si el campo está vacío o el usuario no lo ha editado manualmente, actualiza automáticamente
+    if (!currentValue || currentValue === '$0.00' || currentValue === formattedTotal) {
+      onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-    // Si es edición, nunca sobrescribas el total, solo muestra el cálculo sugerido en la UI
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
+    // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id, workOrder.totalLabAndParts]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -226,10 +222,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   };
 
   // Calcular horas totales automáticamente
+  // Labor depende de las horas ingresadas
   const calculateTotalHours = () => {
     if (!workOrder.mechanics || workOrder.mechanics.length === 0) return 0;
     return workOrder.mechanics.reduce((total: number, mechanic: any) => {
-      // Sumar solo si mechanic.hrs es un número válido y mayor o igual a 0
       const hrs = Number(mechanic.hrs);
       return total + (!isNaN(hrs) && hrs > 0 ? hrs : 0);
     }, 0);
@@ -253,19 +249,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Calcular total LAB & PARTS + Miscellaneous
   const calculateTotalLabAndParts = () => {
-    const totalHours = calculateTotalHours();
-    const laborTotal = totalHours * 60; // $60 por hora
+    const laborTotal = calculateTotalHours() * 60;
     const partsTotal = calculatePartsTotal();
-    const subtotal = laborTotal + partsTotal;
-    // Miscellaneous: porcentaje extra definido por el usuario
-    let miscPercent = Number(workOrder.miscellaneous);
-    miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
-    const miscAmount = subtotal * (miscPercent / 100);
-    // Welding Supplies: porcentaje extra definido por el usuario
-    let weldPercent = Number(workOrder.weldPercent);
-    weldPercent = !isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0;
-    const weldAmount = subtotal * (weldPercent / 100);
-    const total = subtotal + miscAmount + weldAmount;
+    const total = laborTotal + partsTotal;
     return !isNaN(total) && total >= 0 ? total : 0;
   };
 
@@ -912,18 +898,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="number"
               step="0.01"
               value={(() => {
-                // El cálculo automático siempre suma labor y partes
+                // El cálculo automático siempre suma labor (horas × $60) y partes
                 const labor = calculateTotalHours() * 60;
                 const parts = calculatePartsTotal();
-                const subtotal = labor + parts;
-                let miscPercent = Number(workOrder.miscellaneous);
-                miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
-                const miscAmount = subtotal * (miscPercent / 100);
-                let weldPercent = Number(workOrder.weldPercent);
-                weldPercent = !isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0;
-                const weldAmount = subtotal * (weldPercent / 100);
-                const total = subtotal + miscAmount + weldAmount;
-                // Si el usuario pone un valor manual, lo muestra, si no, muestra el cálculo
+                const total = labor + parts;
                 return workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== '' && !isNaN(Number(workOrder.totalLabAndParts))
                   ? Number(workOrder.totalLabAndParts)
                   : Number(total.toFixed(2));
