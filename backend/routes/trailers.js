@@ -46,7 +46,68 @@ router.get('/:nombre/work-orders-historial', async (req, res) => {
       'SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC',
       [nombre]
     );
-    res.json(results);
+    // Procesar cada orden para sumar labor y partes, y priorizar el total manual si existe
+    const safeResults = results.map(order => {
+      // Calcular total de partes
+      let partsTotal = 0;
+      try {
+        if (order.parts && Array.isArray(order.parts)) {
+          partsTotal = order.parts.reduce((total, part) => {
+            const qty = Number(part.qty);
+            const cost = Number(part.cost);
+            return total + ((isNaN(qty) ? 0 : qty) * (isNaN(cost) ? 0 : cost));
+          }, 0);
+        } else if (typeof order.parts === 'string') {
+          // Si viene como string (JSON), intentar parsear
+          const arr = JSON.parse(order.parts);
+          if (Array.isArray(arr)) {
+            partsTotal = arr.reduce((total, part) => {
+              const qty = Number(part.qty);
+              const cost = Number(part.cost);
+              return total + ((isNaN(qty) ? 0 : qty) * (isNaN(cost) ? 0 : cost));
+            }, 0);
+          }
+        }
+      } catch (e) { partsTotal = 0; }
+
+      // Calcular total de labor
+      let laborTotal = 0;
+      try {
+        if (order.mechanics && Array.isArray(order.mechanics)) {
+          laborTotal = order.mechanics.reduce((total, mech) => {
+            const hrs = Number(mech.hrs);
+            return total + (isNaN(hrs) ? 0 : hrs);
+          }, 0) * 60; // $60/hora
+        } else if (typeof order.mechanics === 'string') {
+          const arr = JSON.parse(order.mechanics);
+          if (Array.isArray(arr)) {
+            laborTotal = arr.reduce((total, mech) => {
+              const hrs = Number(mech.hrs);
+              return total + (isNaN(hrs) ? 0 : hrs);
+            }, 0) * 60;
+          }
+        }
+      } catch (e) { laborTotal = 0; }
+
+      // Calcular total automático
+      const autoTotal = partsTotal + laborTotal;
+
+      // Prioridad: si el usuario puso un total manual válido, respétalo
+      let totalLabAndParts = order.totalLabAndParts;
+      if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '' && !isNaN(Number(totalLabAndParts))) {
+        totalLabAndParts = Number(totalLabAndParts);
+      } else {
+        totalLabAndParts = autoTotal;
+      }
+
+      return {
+        ...order,
+        partsTotal,
+        laborTotal,
+        totalLabAndParts
+      };
+    });
+    res.json(safeResults);
   } catch (err) {
     res.status(500).send('ERROR FETCHING WORK ORDERS');
   }

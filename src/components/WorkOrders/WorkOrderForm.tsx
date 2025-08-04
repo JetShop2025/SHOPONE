@@ -819,10 +819,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     <input
                       value={part.sku || ''}
                       onChange={e => handlePartChange(idx, 'sku', e.target.value)}
-                      style={{ width: '100%', padding: 4 }}
+                      style={{ width: '220px', padding: 4, fontFamily: 'monospace' }}
                       onFocus={ev => showTooltipForPart(ev, part.sku)}
                       onBlur={hideTooltip}
+                      list={`sku-options-${idx}`}
+                      autoComplete="off"
                     />
+                    <datalist id={`sku-options-${idx}`}>
+                      {Array.isArray(inventory) && inventory.map((item: any) => (
+                        <option key={item.sku} value={item.sku}>{item.sku} - {item.part}</option>
+                      ))}
+                    </datalist>
                   </td>
                   <td>
                     <input
@@ -894,7 +901,24 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         <div style={{ marginBottom: 24, background: '#e3f2fd', padding: 12, borderRadius: 8 }}>
           <div><b>Subtotal Partes:</b> ${calculatePartsTotal().toFixed(2)}</div>
           <div><b>Labor:</b> ${calculateTotalHours() * 60}</div>
-          <div><b>Total LAB & PARTS:</b> ${calculateTotalLabAndParts().toFixed(2)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <b>Total LAB & PARTS:</b>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={typeof workOrder.manualTotalLabAndParts === 'number' && !isNaN(workOrder.manualTotalLabAndParts) ? workOrder.manualTotalLabAndParts : calculateTotalLabAndParts().toFixed(2)}
+              onChange={e => {
+                const val = e.target.value;
+                onChange({ target: { name: 'manualTotalLabAndParts', value: val === '' ? '' : Number(val) } } as any);
+              }}
+              style={{ width: '140px', padding: 6, fontWeight: 700, fontSize: 16, background: '#fff', border: '1px solid #1976d2', borderRadius: 4 }}
+              placeholder="Total manual"
+            />
+            <span style={{ color: '#888', fontSize: 12 }}>
+              (editable)
+            </span>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
