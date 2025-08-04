@@ -727,7 +727,144 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         )}
 
         {/* Segunda fila - Status, ID Classic (solo en edición) */}
-        ...existing code...
+        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+          <label style={{ flex: '1 1 120px' }}>
+            Status
+            <select
+              name="status"
+              value={workOrder.status || ''}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+            >
+              <option value="PROCESSING">PROCESSING</option>
+              <option value="APPROVED">APPROVED</option>
+              <option value="FINISHED">FINISHED</option>
+            </select>
+          </label>
+          <label style={{ flex: '1 1 120px' }}>
+            ID Classic
+            <input
+              name="idClassic"
+              value={workOrder.idClassic || ''}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+              placeholder="ID Classic..."
+              autoComplete="off"
+            />
+          </label>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ width: '100%' }}>
+            Description
+            <textarea
+              name="description"
+              value={workOrder.description || ''}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8, minHeight: 60 }}
+              placeholder="Describe el trabajo realizado..."
+            />
+          </label>
+        </div>
+
+        {/* Tabla editable de partes */}
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ color: '#1976d2', marginBottom: 8 }}>Partes</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
+            <thead>
+              <tr style={{ background: '#e3f2fd' }}>
+                <th>SKU</th>
+                <th>Descripción</th>
+                <th>Cantidad</th>
+                <th>Costo Unitario</th>
+                <th>Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(workOrder.parts || []).map((part: any, idx: number) => (
+                <tr key={idx}>
+                  <td>
+                    <input
+                      value={part.sku || ''}
+                      onChange={e => handlePartChange(idx, 'sku', e.target.value)}
+                      style={{ width: '100%', padding: 4 }}
+                      onFocus={ev => showTooltipForPart(ev, part.sku)}
+                      onBlur={hideTooltip}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      value={part.part || ''}
+                      onChange={e => handlePartChange(idx, 'part', e.target.value)}
+                      style={{ width: '100%', padding: 4 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="1"
+                      value={part.qty || ''}
+                      onChange={e => handlePartChange(idx, 'qty', e.target.value)}
+                      style={{ width: '80px', padding: 4 }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={part.cost || ''}
+                      onChange={e => handlePartChange(idx, 'cost', e.target.value)}
+                      style={{ width: '100px', padding: 4 }}
+                    />
+                  </td>
+                  <td>
+                    ${((part.qty || 0) * (parseFloat(part.cost) || 0)).toFixed(2)}
+                  </td>
+                  <td>
+                    <button type="button" onClick={() => onDeletePart && onDeletePart(idx)} style={{ color: '#d32f2f', background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button type="button" onClick={onAddEmptyPart} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', fontWeight: 600, cursor: 'pointer' }}>Agregar Parte</button>
+        </div>
+
+        {/* Lista editable de mecánicos */}
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ color: '#1976d2', marginBottom: 8 }}>Mecánicos</h3>
+          {(workOrder.mechanics || []).map((mech: any, idx: number) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <select
+                value={mech.name || ''}
+                onChange={e => handleMechanicChange(idx, 'name', e.target.value)}
+                style={{ padding: 4, minWidth: 120 }}
+              >
+                <option value="">Selecciona...</option>
+                {MECHANICS_LIST.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <input
+                type="number"
+                min="0"
+                value={mech.hrs || ''}
+                onChange={e => handleMechanicChange(idx, 'hrs', e.target.value)}
+                style={{ width: '80px', padding: 4 }}
+                placeholder="Horas"
+              />
+              <button type="button" onClick={() => removeMechanic(idx)} style={{ color: '#d32f2f', background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>
+            </div>
+          ))}
+          <button type="button" onClick={addMechanic} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', fontWeight: 600, cursor: 'pointer' }}>Agregar Mecánico</button>
+        </div>
+
+        {/* Totales */}
+        <div style={{ marginBottom: 24, background: '#e3f2fd', padding: 12, borderRadius: 8 }}>
+          <div><b>Subtotal Partes:</b> ${calculatePartsTotal().toFixed(2)}</div>
+          <div><b>Labor:</b> ${calculateTotalHours() * 60}</div>
+          <div><b>Total LAB & PARTS:</b> ${calculateTotalLabAndParts().toFixed(2)}</div>
+        </div>
 
         <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
           <button
