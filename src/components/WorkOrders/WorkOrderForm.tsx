@@ -105,39 +105,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Debug: verificar inventario
   // Remove excessive inventory debug logging
   React.useEffect(() => {}, [inventory]);
-  // Set default miscellaneous and weldPercent to 0 for new Work Orders and never allow empty
-  React.useEffect(() => {
-    if (!workOrder.id) {
-      if (
-        workOrder.miscellaneous === undefined ||
-        workOrder.miscellaneous === null ||
-        workOrder.miscellaneous === '' ||
-        isNaN(Number(workOrder.miscellaneous))
-      ) {
-        onChange({ target: { name: 'miscellaneous', value: '0' } } as any);
-      }
-      if (
-        workOrder.weldPercent === undefined ||
-        workOrder.weldPercent === null ||
-        workOrder.weldPercent === '' ||
-        isNaN(Number(workOrder.weldPercent))
-      ) {
-        onChange({ target: { name: 'weldPercent', value: '0' } } as any);
-      }
-    }
-  }, [workOrder.id]);
-
-  // Siempre forzar que weldPercent nunca quede vacío (si el usuario borra, poner 0)
-  React.useEffect(() => {
-    if (
-      workOrder.weldPercent === '' ||
-      workOrder.weldPercent === undefined ||
-      workOrder.weldPercent === null ||
-      isNaN(Number(workOrder.weldPercent))
-    ) {
-      onChange({ target: { name: 'weldPercent', value: '0' } } as any);
-    }
-  }, [workOrder.weldPercent]);
 
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
   // Recalcular total automáticamente en creación y edición cada vez que cambie cualquier dato relevante
@@ -150,7 +117,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
     // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id, workOrder.totalLabAndParts]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.id, workOrder.totalLabAndParts]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -308,12 +275,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               if (typeof qtyValue === 'string') {
                 qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
               }
-              // Si es Shop Misc, usar unitCost si existe
-              if (String(p.sku).toUpperCase() === '15-SHOPMISC') {
-                if (p.unitCost !== undefined && !isNaN(Number(p.unitCost))) {
-                  costValue = Number(p.unitCost);
-                }
-              }
               return {
                 ...p,
                 cost: costValue,
@@ -323,44 +284,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         }
         // Recalcular totalHrs
         totalHrs = calculateTotalHours();
-        // Miscellaneous por defecto '5' si está vacío o no es número válido
-        let miscValue = workOrder.miscellaneous;
-        if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
-          miscValue = '5';
-        }
-        // Welding Supplies por defecto '15' si está vacío o no es número válido
-        let weldValue = workOrder.weldPercent;
-        if (weldValue === undefined || weldValue === null || weldValue === '' || isNaN(Number(weldValue))) {
-          weldValue = '15';
-        }
-        let miscPercentNum = parseFloat(miscValue) || 0;
-        let weldPercentNum = parseFloat(weldValue) || 0;
         const laborTotal = totalHrs * 60;
         const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
           let cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
-          // Si es Shop Misc, usar unitCost si existe
-          if (String(part.sku).toUpperCase() === '15-SHOPMISC' && part.unitCost !== undefined && !isNaN(Number(part.unitCost))) {
-            cost = Number(part.unitCost);
-          }
           const qty = Number(part && part.qty);
           const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
           const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
           return total + (validQty * validCost);
         }, 0) : 0;
-        const subtotal = laborTotal + partsTotal;
-        const miscAmount = subtotal * (miscPercentNum / 100);
-        const weldAmount = subtotal * (weldPercentNum / 100);
-        const calculatedTotal = subtotal + miscAmount + weldAmount;
-
-        // Si el usuario puso un valor manual válido, SIEMPRE suma el labor al total manual
-        let manualTotal = workOrder.totalLabAndParts;
-        if (manualTotal !== undefined && manualTotal !== null && manualTotal !== '' && !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))) {
-          const num = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
-          // Labor siempre se suma
-          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? num + laborTotal : calculatedTotal;
-        } else {
-          totalLabAndPartsValue = calculatedTotal;
-        }
+        totalLabAndPartsValue = laborTotal + partsTotal;
       }
 
       // Validar cantidades solo si se editan
@@ -433,8 +365,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         mechanics: cleanMechanics,
         totalHrs: totalHrs,
         totalLabAndParts: totalLabAndPartsValue, // SIEMPRE número, nunca string con $
-        miscellaneous: miscValue,
-        weldPercent: weldValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
         date: dateToSend
