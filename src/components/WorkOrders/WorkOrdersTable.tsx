@@ -316,17 +316,7 @@ const WorkOrdersTable: React.FC = () => {
           totalCost: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
           extraOptions: editWorkOrder.extraOptions || extraOptions || [],
           // NUEVO: Agregar el porcentaje de Miscellaneous EXACTO que el usuario colocó
-          miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
-            ? Number(workOrderData.miscellaneous)
-            : (typeof dataToSend.miscellaneous !== 'undefined' && dataToSend.miscellaneous !== null && dataToSend.miscellaneous !== '')
-              ? Number(dataToSend.miscellaneous)
-              : 5, // fallback por defecto
-          // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
-            ? Number(workOrderData.weldPercent)
-            : (typeof dataToSend.weldPercent !== 'undefined' && dataToSend.weldPercent !== null && dataToSend.weldPercent !== '')
-              ? Number(dataToSend.weldPercent)
-              : 0
+          // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
         };
         const pdf = await generateWorkOrderPDF(pdfData);
         const pdfBlob = pdf.output('blob');
@@ -1149,17 +1139,7 @@ const WorkOrdersTable: React.FC = () => {
           totalCost: Number(workOrderData.totalLabAndParts) || 0,
           extraOptions: datosOrden.extraOptions || extraOptions || [],
           // NUEVO: Agregar el porcentaje de Miscellaneous EXACTO que el usuario colocó
-          miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
-            ? Number(workOrderData.miscellaneous)
-            : (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
-              ? Number(datosOrden.miscellaneous)
-              : 5, // fallback por defecto
-          // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
-            ? Number(workOrderData.weldPercent)
-            : (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
-              ? Number(datosOrden.weldPercent)
-              : 0
+          // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
@@ -1232,9 +1212,7 @@ const WorkOrdersTable: React.FC = () => {
             totalCost: Number(datosOrden.totalLabAndParts) || 0,
             extraOptions: datosOrden.extraOptions || extraOptions || [],
             // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-            weldPercent: (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
-              ? Number(datosOrden.weldPercent)
-              : 0
+            // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
@@ -1726,9 +1704,7 @@ const WorkOrdersTable: React.FC = () => {
         totalCost: totalCost,
         extraOptions: finalWorkOrderData.extraOptions || [],
         // NUEVO: Agregar el porcentaje de Welding Supplies EXACTO que el usuario colocó
-        weldPercent: (typeof finalWorkOrderData.weldPercent !== 'undefined' && finalWorkOrderData.weldPercent !== null && finalWorkOrderData.weldPercent !== '')
-          ? Number(finalWorkOrderData.weldPercent)
-          : 0
+        // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);

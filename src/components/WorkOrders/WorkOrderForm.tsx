@@ -366,11 +366,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         const weldAmount = subtotal * (weldPercentNum / 100);
         const calculatedTotal = subtotal + miscAmount + weldAmount;
 
-        // Si el usuario puso un valor manual válido, respétalo y ENVÍA SIEMPRE COMO NÚMERO
+        // Si el usuario puso un valor manual válido, SIEMPRE suma el labor al total manual
         let manualTotal = workOrder.totalLabAndParts;
         if (manualTotal !== undefined && manualTotal !== null && manualTotal !== '' && !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))) {
           const num = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
-          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? num : calculatedTotal;
+          // Labor siempre se suma
+          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? num + laborTotal : calculatedTotal;
         } else {
           totalLabAndPartsValue = calculatedTotal;
         }
@@ -909,32 +910,31 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <b>Total LAB & PARTS:</b>
             <input
               type="number"
-              min={calculateTotalLabAndParts().toFixed(2)}
               step="0.01"
               value={(() => {
-                // Always show the calculated value if manual is empty/invalid or less than calculated
-                const manual = Number(workOrder.totalLabAndParts);
-                const calculated = Number(calculateTotalLabAndParts().toFixed(2));
-                if (
-                  workOrder.totalLabAndParts === '' ||
-                  workOrder.totalLabAndParts === undefined ||
-                  workOrder.totalLabAndParts === null ||
-                  isNaN(manual) ||
-                  manual < calculated
-                ) {
-                  return calculated;
-                }
-                return manual;
+                // El cálculo automático siempre suma labor y partes
+                const labor = calculateTotalHours() * 60;
+                const parts = calculatePartsTotal();
+                const subtotal = labor + parts;
+                let miscPercent = Number(workOrder.miscellaneous);
+                miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
+                const miscAmount = subtotal * (miscPercent / 100);
+                let weldPercent = Number(workOrder.weldPercent);
+                weldPercent = !isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0;
+                const weldAmount = subtotal * (weldPercent / 100);
+                const total = subtotal + miscAmount + weldAmount;
+                // Si el usuario pone un valor manual, lo muestra, si no, muestra el cálculo
+                return workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== '' && !isNaN(Number(workOrder.totalLabAndParts))
+                  ? Number(workOrder.totalLabAndParts)
+                  : Number(total.toFixed(2));
               })()}
               onChange={e => {
                 const val = e.target.value;
-                // Only allow manual input if it's >= calculated total
-                const calculated = Number(calculateTotalLabAndParts().toFixed(2));
                 const numVal = Number(val);
                 onChange({
                   target: {
                     name: 'totalLabAndParts',
-                    value: (!val || isNaN(numVal) || numVal < calculated) ? calculated : numVal
+                    value: (!val || isNaN(numVal)) ? calculateTotalLabAndParts().toFixed(2) : numVal
                   }
                 } as any);
               }}
@@ -942,7 +942,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               placeholder="Total manual"
             />
             <span style={{ color: '#888', fontSize: 12 }}>
-              (editable, nunca menor al cálculo)
+              (editable, puede ser menor al cálculo)
             </span>
           </div>
         </div>

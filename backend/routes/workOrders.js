@@ -500,47 +500,11 @@ async function generateProfessionalPDF(order, id) {
       const grandTotal = Number(order.totalLabAndParts) || 0;
 
 
-      // === NUEVO: Mostrar el porcentaje de Miscellaneous y Welding Supplies ===
-      // Miscellaneous
-      let miscPercent = 5;
-      if (
-        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
-        order.miscellaneousPercent !== null &&
-        order.miscellaneousPercent !== '' &&
-        !isNaN(Number(order.miscellaneousPercent))
-      ) {
-        miscPercent = Number(order.miscellaneousPercent);
-      } else if (
-        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
-        order.miscellaneous !== null &&
-        order.miscellaneous !== '' &&
-        !isNaN(Number(order.miscellaneous))
-      ) {
-        miscPercent = Number(order.miscellaneous);
-      }
+      // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
       if (isNaN(miscPercent)) miscPercent = 0;
-      const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
-
-      // Welding Supplies
-      let weldPercent = 0;
-      if (
-        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
-        order.weldPercent !== null &&
-        order.weldPercent !== '' &&
-        !isNaN(Number(order.weldPercent))
-      ) {
-        weldPercent = Number(order.weldPercent);
-      }
+      // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
       if (isNaN(weldPercent)) weldPercent = 0;
-      const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
-
-      // Debug log para verificar valores
-      console.error(`[PDF] PDF Debug - Orden ${id}:`);
-      console.error(`[PDF]   - subtotalParts: $${subtotalParts.toFixed(2)}`);
-      console.error(`[PDF]   - laborTotal calculado: $${laborTotal.toFixed(2)} (${totalHours} hrs x $60)`);
-      console.error(`[PDF]   - Miscellaneous %: ${miscPercent}% ($${miscAmount.toFixed(2)})`);
-      console.error(`[PDF]   - Welding Supplies %: ${weldPercent}% ($${weldAmount.toFixed(2)})`);
-      console.error(`[PDF]   - totalLabAndParts de BD: $${Number(order.totalLabAndParts).toFixed(2)}`);
+      // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
       console.error(`[PDF]   - grandTotal usado en PDF: $${grandTotal.toFixed(2)}`);
 
       // Caja de totales en el lado derecho
@@ -570,39 +534,7 @@ async function generateProfessionalPDF(order, id) {
 
       // SIEMPRE mostrar ambas líneas, aunque sean 0
       // Miscellaneous
-      let miscPercentLabel = 0;
-      if (
-        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
-        order.miscellaneousPercent !== null &&
-        order.miscellaneousPercent !== '' &&
-        !isNaN(Number(order.miscellaneousPercent))
-      ) {
-        miscPercentLabel = Number(order.miscellaneousPercent);
-      } else if (
-        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
-        order.miscellaneous !== null &&
-        order.miscellaneous !== '' &&
-        !isNaN(Number(order.miscellaneous))
-      ) {
-        miscPercentLabel = Number(order.miscellaneous);
-      }
-      if (isNaN(miscPercentLabel)) miscPercentLabel = 0;
-      doc.text(`Miscellaneous ${miscPercentLabel}%:`, summaryX + 10, yPos + 60);
-      doc.text(`$${miscAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 60);
-
-      // Welding Supplies
-      let weldPercentLabel = 0;
-      if (
-        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
-        order.weldPercent !== null &&
-        order.weldPercent !== '' &&
-        !isNaN(Number(order.weldPercent))
-      ) {
-        weldPercentLabel = Number(order.weldPercent);
-      }
-      if (isNaN(weldPercentLabel)) weldPercentLabel = 0;
-      doc.text(`Welding Supplies ${weldPercentLabel}%:`, summaryX + 10, yPos + 75);
-      doc.text(`$${weldAmount.toFixed(2)}`, summaryX + summaryBoxWidth - 60, yPos + 75);
+      // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
 
       // Línea separadora
       doc.strokeColor(primaryBlue).lineWidth(1);
@@ -953,37 +885,7 @@ async function generateProfessionalPDF(order, id) {
       const grandTotal = Number(order.totalLabAndParts) || 0;
 
 
-      // === NUEVO: Mostrar el porcentaje de Miscellaneous y Welding Supplies ===
-      // Miscellaneous
-      let miscPercent = 5;
-      if (
-        Object.prototype.hasOwnProperty.call(order, 'miscellaneousPercent') &&
-        order.miscellaneousPercent !== null &&
-        order.miscellaneousPercent !== '' &&
-        !isNaN(Number(order.miscellaneousPercent))
-      ) {
-        miscPercent = Number(order.miscellaneousPercent);
-      } else if (
-        Object.prototype.hasOwnProperty.call(order, 'miscellaneous') &&
-        order.miscellaneous !== null &&
-        order.miscellaneous !== '' &&
-        !isNaN(Number(order.miscellaneous))
-      ) {
-        miscPercent = Number(order.miscellaneous);
-      }
-      if (isNaN(miscPercent)) miscPercent = 0;
-      const miscAmount = (subtotalParts + laborTotal) * (miscPercent / 100);
-
-      // Welding Supplies
-      let weldPercent = 0;
-      if (
-        Object.prototype.hasOwnProperty.call(order, 'weldPercent') &&
-        order.weldPercent !== null &&
-        order.weldPercent !== '' &&
-        !isNaN(Number(order.weldPercent))
-      ) {
-        weldPercent = Number(order.weldPercent);
-      }
+      // Miscellaneous and Welding Supplies logic removed. Only sum parts and labor for total.
       if (isNaN(weldPercent)) weldPercent = 0;
       const weldAmount = (subtotalParts + laborTotal) * (weldPercent / 100);
 
