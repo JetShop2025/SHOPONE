@@ -1136,7 +1136,7 @@ const WorkOrdersTable: React.FC = () => {
               invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
             };
           }),
-          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
+          laborCost: Number(workOrderData.totalLabAndParts) - (enrichedParts.reduce((sum: number, part: any) => sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0)),
           subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
             sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
           totalCost: Number(workOrderData.totalLabAndParts) || 0,
