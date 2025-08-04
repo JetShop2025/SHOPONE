@@ -494,8 +494,9 @@ async function generateProfessionalPDF(order, id) {
       // ================================
       
       // Calcular horas totales de los mecánicos
-      const totalHours = mechanics.reduce((sum, m) => sum + (Number(m.hrs) || 0), 0);
-      const laborTotal = totalHours * 60;
+      // Labor SIEMPRE debe ser $60
+      const totalHours = 1;
+      const laborTotal = 60;
       // SIEMPRE usar el valor exacto de totalLabAndParts de la base de datos
       const grandTotal = Number(order.totalLabAndParts) || 0;
 
