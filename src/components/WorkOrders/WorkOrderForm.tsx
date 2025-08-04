@@ -530,9 +530,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       borderRadius: 8,
       padding: '24px',
       background: '#f5faff',
-      maxWidth: 900,
-      maxHeight: '80vh',
-      overflowY: 'auto',
+      width: '100%',
+      minWidth: '1100px',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      overflowX: 'auto',
       boxShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
     }}>
       <h2 style={{ color: '#1976d2', marginBottom: 16 }}>{title}</h2>
@@ -804,12 +806,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
             <thead>
               <tr style={{ background: '#e3f2fd' }}>
-                <th>SKU</th>
-                <th>Descripción</th>
-                <th>Cantidad</th>
-                <th>Costo Unitario</th>
-                <th>Total</th>
-                <th></th>
+                <th style={{ minWidth: 260 }}>SKU</th>
+                <th style={{ minWidth: 180 }}>Descripción</th>
+                <th style={{ minWidth: 100 }}>Cantidad</th>
+                <th style={{ minWidth: 120 }}>Costo Unitario</th>
+                <th style={{ minWidth: 120 }}>Total</th>
+                <th style={{ minWidth: 60 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -819,7 +821,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     <input
                       value={part.sku || ''}
                       onChange={e => handlePartChange(idx, 'sku', e.target.value)}
-                      style={{ width: '220px', padding: 4, fontFamily: 'monospace' }}
+                      style={{ width: '260px', padding: 4, fontFamily: 'monospace', fontSize: 15 }}
                       onFocus={ev => showTooltipForPart(ev, part.sku)}
                       onBlur={hideTooltip}
                       list={`sku-options-${idx}`}
@@ -907,10 +909,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               type="number"
               min="0"
               step="0.01"
-              value={typeof workOrder.manualTotalLabAndParts === 'number' && !isNaN(workOrder.manualTotalLabAndParts) ? workOrder.manualTotalLabAndParts : calculateTotalLabAndParts().toFixed(2)}
+              value={typeof workOrder.totalLabAndParts === 'number' && !isNaN(workOrder.totalLabAndParts) ? workOrder.totalLabAndParts : calculateTotalLabAndParts().toFixed(2)}
               onChange={e => {
                 const val = e.target.value;
-                onChange({ target: { name: 'manualTotalLabAndParts', value: val === '' ? '' : Number(val) } } as any);
+                onChange({ target: { name: 'totalLabAndParts', value: val === '' ? '' : Number(val) } } as any);
               }}
               style={{ width: '140px', padding: 6, fontWeight: 700, fontSize: 16, background: '#fff', border: '1px solid #1976d2', borderRadius: 4 }}
               placeholder="Total manual"

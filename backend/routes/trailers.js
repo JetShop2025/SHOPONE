@@ -92,12 +92,16 @@ router.get('/:nombre/work-orders-historial', async (req, res) => {
       // Calcular total automático
       const autoTotal = partsTotal + laborTotal;
 
-      // Prioridad: si el usuario puso un total manual válido, respétalo
+      // Prioridad: si el usuario puso un total manual válido, respétalo SOLO si es mayor o igual que la suma de partes + labor
       let totalLabAndParts = order.totalLabAndParts;
       if (totalLabAndParts !== undefined && totalLabAndParts !== null && totalLabAndParts !== '' && !isNaN(Number(totalLabAndParts))) {
         totalLabAndParts = Number(totalLabAndParts);
+        // Si el valor manual es menor que la suma de partes + labor, usa la suma real
+        if (totalLabAndParts < (partsTotal + laborTotal)) {
+          totalLabAndParts = partsTotal + laborTotal;
+        }
       } else {
-        totalLabAndParts = autoTotal;
+        totalLabAndParts = partsTotal + laborTotal;
       }
 
       return {
