@@ -2702,6 +2702,7 @@ const WorkOrdersTable: React.FC = () => {
                 <th>Mechanic</th>
                 <th>Date</th>
                 <th>Description</th>
+                <th>EMPLOYEE WRITTEN HOURS</th>
                 {[1,2,3,4,5].map(i => (
                   <React.Fragment key={i}>
                     <th>{`PRT${i}`}</th>
@@ -2808,6 +2809,15 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
             {displayDate}
           </td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
+          <td style={{ minWidth: 120, maxWidth: 220, wordBreak: 'break-all' }}>
+            {order.employeeWrittenHours ? (
+              <a href={order.employeeWrittenHours} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
+                Ver documento
+              </a>
+            ) : (
+              <span style={{ color: '#888', fontSize: 12 }}>-</span>
+            )}
+          </td>
           {[0,1,2,3,4].map(i => (
             <React.Fragment key={i}>
               <td

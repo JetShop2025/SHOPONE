@@ -310,12 +310,24 @@ async function generateProfessionalPDF(order, id) {
       if (mechanics.length > 0) {
         doc.font('Courier-Bold').fontSize(8).fillColor(black);
         doc.text('Mechanics:', rightColX + 8, yPos + 60);
-        
         let mechText = mechanics.map(m => `${m.name || 'Unknown'} (${m.hrs || '0'}h)`).join(', ');
         doc.font('Courier').fontSize(7).fillColor(black);
         doc.text(mechText, rightColX + 8, yPos + 70, { width: colWidth - 16 });
       }
-      
+
+      // EMPLOYEE WRITTEN HOURS (Drive link)
+      if (order.employeeWrittenHours) {
+        yPos += 20;
+        doc.font('Courier-Bold').fontSize(8).fillColor(black);
+        doc.text('EMPLOYEE WRITTEN HOURS:', rightColX + 8, yPos);
+        doc.font('Courier').fontSize(7).fillColor(accentBlue);
+        doc.text(order.employeeWrittenHours, rightColX + 8, yPos + 12, {
+          width: colWidth - 16,
+          link: order.employeeWrittenHours,
+          underline: true
+        });
+      }
+
       yPos += 100;
       
       // ================================
@@ -1057,6 +1069,7 @@ router.get('/', async (req, res) => {
         totalHrs,
         laborTotal,
         totalLabAndParts,
+        employeeWrittenHours: order.employeeWrittenHours || null
       };
     });
     res.json({ data: parsedResults, total });
@@ -1166,13 +1179,13 @@ router.post('/', async (req, res) => {
     
     // INSERTAR EN DB SIMPLE
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent, employeeWrittenHours)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, idClassic,
-      JSON.stringify(extraOptions || []), miscPercent, weldPercent
+      JSON.stringify(extraOptions || []), miscPercent, weldPercent, fields.employeeWrittenHours || null
     ];
     
     console.log(`🗄️ [${requestId}] Ejecutando query de inserción...`);
@@ -1339,7 +1352,8 @@ router.put('/:id', async (req, res) => {
     idClassic,
     totalLabAndParts,
     miscellaneousPercent,
-    weldPercent
+    weldPercent,
+    employeeWrittenHours
   } = fields;
 
   // Obtener datos actuales de la orden
@@ -1459,12 +1473,12 @@ router.put('/:id', async (req, res) => {
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
     let updateQuery = `
       UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?, employeeWrittenHours = ?
     `;
     const updateFields = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status,
-      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal
+      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal, employeeWrittenHours || null
     ];
     if (status === 'FINISHED') {
       updateQuery += `, idClassic = ?`;

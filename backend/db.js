@@ -46,7 +46,23 @@ async function testConnection() {
 }
 
 // Función para crear tabla de auditoría si no existe.
+// Y asegurar columna employeeWrittenHours en work_orders
 async function ensureAuditTableExists() {
+// Asegura que la tabla work_orders tenga el campo employeeWrittenHours
+async function ensureWorkOrdersTableHasEmployeeWrittenHours() {
+  try {
+    const [columns] = await connection.execute("SHOW COLUMNS FROM work_orders LIKE 'employeeWrittenHours'");
+    if (!columns || columns.length === 0) {
+      console.log('[DB] Adding employeeWrittenHours column to work_orders table...');
+      await connection.execute('ALTER TABLE work_orders ADD COLUMN employeeWrittenHours VARCHAR(500) NULL');
+      console.log('[DB] Column employeeWrittenHours added to work_orders table.');
+    } else {
+      console.log('[DB] work_orders table already has employeeWrittenHours column.');
+    }
+  } catch (err) {
+    console.error('[DB] Error ensuring employeeWrittenHours column:', err.message);
+  }
+}
   try {
     // Primero verificar si la tabla existe
     const [tables] = await connection.execute(
@@ -115,6 +131,7 @@ async function ensureAuditTableExists() {
 testConnection().then(() => {
   ensureAuditTableExists();
   ensureReceivesTableStructure();
+  ensureWorkOrdersTableHasEmployeeWrittenHours();
 });
 
 // Trailers functions
@@ -356,6 +373,7 @@ async function createOrder(order) {
     const usuario = order.usuario || 'system';
     
     // Convert undefined values to null for MySQL compatibility
+
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
@@ -368,11 +386,12 @@ async function createOrder(order) {
       order.idClassic || null,
       JSON.stringify(order.mechanics || []),
       JSON.stringify(order.extraOptions || []),
-      JSON.stringify(order.parts || [])
+      JSON.stringify(order.parts || []),
+      order.employeeWrittenHours || null
     ];
 
     const [result] = await connection.execute(
-      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts, employeeWrittenHours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     
@@ -473,12 +492,13 @@ async function updateOrder(id, order) {
       JSON.stringify(order.mechanics || []),
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(Object.values(groupedNew)), // partes agrupadas y sumadas
+      order.employeeWrittenHours || null,
       id
     ];
     // LOG: Valor de la fecha que se usará en el UPDATE
     console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE:', originalDate, 'Tipo:', typeof originalDate);
     const [result] = await connection.execute(
-      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ? WHERE id = ?',
+      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ?, employeeWrittenHours = ? WHERE id = ?',
       safeValues
     );
     console.log('[DB] Successfully updated work order with ID:', id);

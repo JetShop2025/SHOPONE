@@ -667,8 +667,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         )}
 
-        {/* Segunda fila - Status, ID Classic (solo en edición) */}
 
+        {/* Segunda fila - Status, ID Classic y EMPLOYEE WRITTEN HOURS */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
           <label style={{ flex: '1 1 150px' }}>
             Status
@@ -723,6 +723,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 {idClassicError}
               </div>
             )}
+          </label>
+          <label style={{ flex: '1 1 220px' }}>
+            EMPLOYEE WRITTEN HOURS (Drive link)
+            <input
+              type="url"
+              name="employeeWrittenHours"
+              placeholder="Pega aquí el link de Drive..."
+              value={workOrder.employeeWrittenHours || ''}
+              onChange={onChange}
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+              autoComplete="off"
+            />
+            <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
+              (Opcional, solo link de Google Drive u otro documento)
+            </div>
           </label>
         </div>
 
