@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
-import bwipjs from 'bwip-js';
+// No import de bwipjs: se usará window.BWIPJS (cargar el script en public/index.html)
 // Función para generar sticker PDF usando bwip-js para el código de barras
 function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: string; part: string }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [60, 30] }); // Sticker 60x30mm
@@ -16,14 +16,17 @@ function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: st
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(part, 4, 16, { maxWidth: 52 });
-  // Generar código de barras con bwip-js (en canvas)
+  // Generar código de barras con window.BWIPJS (cargado desde CDN en public/index.html)
   const canvas = document.createElement('canvas');
   try {
+    // @ts-ignore
+    const bwipjs = window.BWIPJS;
+    if (!bwipjs) throw new Error('BWIPJS no está cargado.');
     bwipjs.toCanvas(canvas, {
-      bcid: 'code128', // tipo de código de barras
+      bcid: 'code128',
       text: barCodes || sku,
-      scale: 2.2, // tamaño
-      height: 18, // altura en px
+      scale: 2.2,
+      height: 18,
       includetext: false,
       backgroundcolor: 'FFFFFF',
       paddingwidth: 0,
@@ -33,7 +36,7 @@ function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: st
     doc.addImage(image64, 'PNG', 4, 18, 52, 8);
     doc.save(`sticker_${sku}.pdf`);
   } catch (err) {
-    alert('Error generando el código de barras.');
+    alert('Error generando el código de barras (BWIPJS no disponible o error en datos).');
   }
 }
 
