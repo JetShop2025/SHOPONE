@@ -1155,10 +1155,8 @@ router.post('/', async (req, res) => {
       fields.totalLabAndParts !== '' &&
       !isNaN(Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, '')))
     ) {
-      // Respeta el valor manual del usuario SOLO si es mayor o igual al cálculo automático
-      const manualTotal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
-      const autoTotal = subtotal + shopMisc + weldSupplies;
-      totalLabAndPartsFinal = manualTotal >= autoTotal ? manualTotal : autoTotal;
+      // SIEMPRE respeta el valor manual del usuario, aunque sea menor al cálculo automático
+      totalLabAndPartsFinal = Number(String(fields.totalLabAndParts).replace(/[^0-9.]/g, ''));
     } else {
       // Usa el cálculo automático
       totalLabAndPartsFinal = subtotal + shopMisc + weldSupplies;

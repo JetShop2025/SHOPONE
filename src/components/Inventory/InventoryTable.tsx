@@ -1,6 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import Barcode from 'react-barcode';
+import jsPDF from 'jspdf';
+// Función para generar sticker PDF
+function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: string; part: string }) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [60, 30] }); // Sticker 60x30mm
+  // Fondo blanco
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, 60, 30, 'F');
+  // SKU grande
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(sku, 4, 10);
+  // Nombre de la parte
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(part, 4, 16, { maxWidth: 52 });
+  // Código de barras (como texto, luego lo renderizamos con react-barcode y lo insertamos como imagen)
+  // Aquí generamos un SVG con react-barcode y lo insertamos
+  const barcodeDiv = document.createElement('div');
+  barcodeDiv.style.position = 'absolute';
+  barcodeDiv.style.left = '-9999px';
+  document.body.appendChild(barcodeDiv);
+  const barcode = (
+    <Barcode value={barCodes || sku} height={20} width={1.2} fontSize={10} margin={0} displayValue={false} background="#fff" />
+  );
+  // Renderizar el componente en el DOM temporalmente
+  // @ts-ignore
+  window.ReactDOM.render(barcode, barcodeDiv);
+  setTimeout(() => {
+    try {
+      const svg = barcodeDiv.querySelector('svg');
+      if (svg) {
+        const xml = new XMLSerializer().serializeToString(svg);
+        const svg64 = btoa(unescape(encodeURIComponent(xml)));
+        const image64 = 'data:image/svg+xml;base64,' + svg64;
+        doc.addImage(image64, 'PNG', 4, 18, 52, 8);
+        doc.save(`sticker_${sku}.pdf`);
+      } else {
+        alert('Error generando el código de barras.');
+      }
+    } finally {
+      document.body.removeChild(barcodeDiv);
+    }
+  }, 300);
+}
 
 // Barcode component using react-barcode
 const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
@@ -120,6 +164,8 @@ const InventoryTable: React.FC = () => {
   const [editPart, setEditPart] = useState<PartType>({ ...emptyPart });
   const [editImagenFile, setEditImagenFile] = useState<File | null>(null);
   const [skuSearch, setSkuSearch] = useState('');
+  // Referencia para evitar doble render de sticker
+  const stickerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Fetch inventory
   useEffect(() => {
     let isMounted = true;
@@ -340,6 +386,40 @@ const InventoryTable: React.FC = () => {
           }}
           style={secondaryBtn}
         >Edit</button>
+        <button
+          onClick={() => {
+            if (!selectedSku) {
+              alert('Selecciona una parte para generar la sticker');
+              return;
+            }
+            const part = inventory.find(p => p.sku === selectedSku);
+            if (!part) {
+              alert('Parte no encontrada');
+              return;
+            }
+            // Evita doble render
+            if (stickerTimeoutRef.current) clearTimeout(stickerTimeoutRef.current);
+            stickerTimeoutRef.current = setTimeout(() => {
+              generateStickerPDF({
+                sku: part.sku,
+                barCodes: part.barCodes || part.sku,
+                part: part.part
+              });
+            }, 100);
+          }}
+          style={{
+            background: '#43a047',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            padding: '10px 28px',
+            fontWeight: 600,
+            fontSize: 16,
+            marginLeft: 8,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(67,160,71,0.10)'
+          }}
+        >Generate Sticker</button>
       </div>
 
       {/* Buscador por SKU */}
