@@ -109,16 +109,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Estado local para saber si el usuario editó manualmente el total
   const [manualTotalLabAndParts, setManualTotalLabAndParts] = React.useState<string | null>(null);
+  const [isManualTotalLabAndParts, setIsManualTotalLabAndParts] = React.useState(false);
 
   // Solo auto-calcula si el usuario NO ha editado manualmente
   React.useEffect(() => {
-    if (manualTotalLabAndParts !== null) return; // Si el usuario editó, no sobrescribir
+    if (isManualTotalLabAndParts) return; // Si el usuario editó, no sobrescribir
     const calculatedTotal = calculateTotalLabAndParts();
     const formattedTotal = calculatedTotal.toFixed(2);
     const currentValue = workOrder.totalLabAndParts;
     // Si el campo está vacío o igual al cálculo anterior, actualiza automáticamente
     if (!currentValue || currentValue === '0' || currentValue === 0 || currentValue === '' || Number(currentValue) === 0 || Number(currentValue) === Number(formattedTotal)) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
+      setManualTotalLabAndParts(null);
+      setIsManualTotalLabAndParts(false);
     }
     // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
   }, [workOrder.parts, workOrder.mechanics, workOrder.id]);
@@ -230,6 +233,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Nueva función para forzar el recálculo del total manualmente
   const handleRecalculateTotal = () => {
     setManualTotalLabAndParts(null); // Permite que el cálculo automático vuelva a tomar control
+    setIsManualTotalLabAndParts(false);
     const calculatedTotal = calculateTotalLabAndParts();
     onChange({ target: { name: 'totalLabAndParts', value: calculatedTotal.toFixed(2) } } as any);
   };
@@ -849,6 +853,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               onChange={e => {
                 const val = e.target.value;
                 setManualTotalLabAndParts(val); // Marca como editado manualmente
+                setIsManualTotalLabAndParts(true);
                 onChange({
                   target: {
                     name: 'totalLabAndParts',
