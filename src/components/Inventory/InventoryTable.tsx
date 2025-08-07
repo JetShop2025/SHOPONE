@@ -40,8 +40,8 @@ function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: st
   }
 }
 
-// Barcode component for table preview (mantener react-barcode solo para la tabla, no para PDF)
 import Barcode from 'react-barcode';
+// Barcode component for table preview (mantener react-barcode solo para la tabla, no para PDF)
 const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
     <Barcode value={value} height={40} width={1.5} fontSize={12} margin={0} displayValue={true} background="#fff" />
