@@ -113,17 +113,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
   // Solo auto-calcula si el usuario NO ha editado manualmente
   React.useEffect(() => {
-    if (isManualTotalLabAndParts) return; // Si el usuario editó, no sobrescribir
+    if (isManualTotalLabAndParts) return; // Si el usuario editó, no sobrescribir JAMÁS
     const calculatedTotal = calculateTotalLabAndParts();
     const formattedTotal = calculatedTotal.toFixed(2);
     const currentValue = workOrder.totalLabAndParts;
-    // Si el campo está vacío o igual al cálculo anterior, actualiza automáticamente
-    if (!currentValue || currentValue === '0' || currentValue === 0 || currentValue === '' || Number(currentValue) === 0 || Number(currentValue) === Number(formattedTotal)) {
+    // Solo actualiza si el campo está vacío (no si coincide con el cálculo)
+    if (
+      currentValue === undefined ||
+      currentValue === null ||
+      currentValue === ''
+    ) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
-      setManualTotalLabAndParts(null);
-      setIsManualTotalLabAndParts(false);
     }
-    // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
+    // Nunca resetees el flag ni el valor manual aquí
   }, [workOrder.parts, workOrder.mechanics, workOrder.id]);
   
   // Buscar parte en inventario por SKU
