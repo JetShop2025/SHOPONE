@@ -106,18 +106,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Remove excessive inventory debug logging
   React.useEffect(() => {}, [inventory]);
 
-  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
-  // Recalcular total automáticamente en creación y edición cada vez que cambie cualquier dato relevante
+
+  // Estado local para saber si el usuario editó manualmente el total
+  const [manualTotalLabAndParts, setManualTotalLabAndParts] = React.useState<string | null>(null);
+
+  // Solo auto-calcula si el usuario NO ha editado manualmente
   React.useEffect(() => {
+    if (manualTotalLabAndParts !== null) return; // Si el usuario editó, no sobrescribir
     const calculatedTotal = calculateTotalLabAndParts();
-    const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
+    const formattedTotal = calculatedTotal.toFixed(2);
     const currentValue = workOrder.totalLabAndParts;
-    // Si el campo está vacío o el usuario no lo ha editado manualmente, actualiza automáticamente
-    if (!currentValue || currentValue === '$0.00' || currentValue === formattedTotal) {
+    // Si el campo está vacío o igual al cálculo anterior, actualiza automáticamente
+    if (!currentValue || currentValue === '0' || currentValue === 0 || currentValue === '' || Number(currentValue) === 0 || Number(currentValue) === Number(formattedTotal)) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
     // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
-  }, [workOrder.parts, workOrder.mechanics, workOrder.id, workOrder.totalLabAndParts]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.id]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -222,8 +226,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return !isNaN(total) && total >= 0 ? total : 0;
   };
 
+
   // Nueva función para forzar el recálculo del total manualmente
   const handleRecalculateTotal = () => {
+    setManualTotalLabAndParts(null); // Permite que el cálculo automático vuelva a tomar control
     const calculatedTotal = calculateTotalLabAndParts();
     onChange({ target: { name: 'totalLabAndParts', value: calculatedTotal.toFixed(2) } } as any);
   };
@@ -833,22 +839,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <input
               type="number"
               step="0.01"
-              value={(() => {
-                // El cálculo automático siempre suma labor (horas × $60) y partes
-                const labor = calculateTotalHours() * 60;
-                const parts = calculatePartsTotal();
-                const total = labor + parts;
-                return workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== '' && !isNaN(Number(workOrder.totalLabAndParts))
-                  ? Number(workOrder.totalLabAndParts)
-                  : Number(total.toFixed(2));
-              })()}
+              value={
+                manualTotalLabAndParts !== null
+                  ? manualTotalLabAndParts
+                  : (workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== '' && !isNaN(Number(workOrder.totalLabAndParts))
+                    ? Number(workOrder.totalLabAndParts)
+                    : calculateTotalLabAndParts().toFixed(2))
+              }
               onChange={e => {
                 const val = e.target.value;
-                const numVal = Number(val);
+                setManualTotalLabAndParts(val); // Marca como editado manualmente
                 onChange({
                   target: {
                     name: 'totalLabAndParts',
-                    value: (!val || isNaN(numVal)) ? calculateTotalLabAndParts().toFixed(2) : numVal
+                    value: val
                   }
                 } as any);
               }}

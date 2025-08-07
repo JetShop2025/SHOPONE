@@ -1,15 +1,43 @@
+// Extiende el tipo Window para TypeScript (BWIPJS)
+declare global {
+  interface Window {
+    BWIPJS?: any;
+  }
+}
+
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 // No import de bwipjs: se usará window.BWIPJS (cargar el script en public/index.html)
 import Barcode from 'react-barcode';
-// Función para generar sticker PDF usando bwip-js para el código de barras
-// Espera activa a que window.BWIPJS esté disponible antes de generar el sticker
+
+// Carga dinámica de bwip-js desde CDN si no está presente
+function loadBWIPJS(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.BWIPJS) return resolve();
+    if (document.getElementById('bwipjs-cdn-script')) {
+      // Ya se está cargando, espera a que esté disponible
+      const onLoad = () => resolve();
+      const script = document.getElementById('bwipjs-cdn-script') as HTMLScriptElement;
+      script.addEventListener('load', onLoad, { once: true });
+      script.addEventListener('error', () => reject(new Error('No se pudo cargar BWIPJS')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'bwipjs-cdn-script';
+    script.src = 'https://unpkg.com/bwip-js/dist/bwip-js-min.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Error cargando el script de BWIPJS'));
+    document.body.appendChild(script);
+  });
+}
+
+// Espera activa a que window.BWIPJS esté disponible (sin cargar el script)
 function waitForBWIPJS(timeout = 3000): Promise<any> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     function check() {
-      // @ts-ignore
       if (window.BWIPJS) return resolve(window.BWIPJS);
       if (Date.now() - start > timeout) return reject(new Error('BWIPJS no está cargado.'));
       setTimeout(check, 50);
@@ -34,6 +62,7 @@ async function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCod
   // Generar código de barras con window.BWIPJS (cargado desde CDN en public/index.html)
   const canvas = document.createElement('canvas');
   try {
+    await loadBWIPJS();
     const bwipjs = await waitForBWIPJS();
     bwipjs.toCanvas(canvas, {
       bcid: 'code128',
