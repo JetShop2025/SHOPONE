@@ -273,44 +273,48 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       let cleanParts = currentParts;
       let cleanMechanics = currentMechanics;
       let totalHrs = currentTotalHrs;
-      let totalLabAndPartsValue = workOrder.totalLabAndParts;
-      if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged) {
-        cleanParts = originalParts;
-        cleanMechanics = originalMechanics;
-        totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
-        totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
+      let totalLabAndPartsValue;
+      if (isManualTotalLabAndParts && manualTotalLabAndParts !== null && manualTotalLabAndParts !== '') {
+        totalLabAndPartsValue = Number(manualTotalLabAndParts);
       } else {
-        // Si cambió algo, limpiar partes y recalcular subtotales
-        if (Array.isArray(cleanParts)) {
-          cleanParts = cleanParts
-            .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
-            .map((p: Part) => {
-              let costValue = p.cost;
-              if (typeof costValue === 'string') {
-                costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
-              }
-              let qtyValue = p.qty;
-              if (typeof qtyValue === 'string') {
-                qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
-              }
-              return {
-                ...p,
-                cost: costValue,
-                qty: qtyValue
-              };
-            });
+        if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged) {
+          cleanParts = originalParts;
+          cleanMechanics = originalMechanics;
+          totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
+          totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
+        } else {
+          // Si cambió algo, limpiar partes y recalcular subtotales
+          if (Array.isArray(cleanParts)) {
+            cleanParts = cleanParts
+              .filter((p: Part) => p.sku && String(p.sku).trim() !== '')
+              .map((p: Part) => {
+                let costValue = p.cost;
+                if (typeof costValue === 'string') {
+                  costValue = costValue !== '' ? Number(String(costValue).replace(/[^0-9.]/g, '')) : costValue;
+                }
+                let qtyValue = p.qty;
+                if (typeof qtyValue === 'string') {
+                  qtyValue = qtyValue !== '' ? Number(qtyValue) : qtyValue;
+                }
+                return {
+                  ...p,
+                  cost: costValue,
+                  qty: qtyValue
+                };
+              });
+          }
+          // Recalcular totalHrs
+          totalHrs = calculateTotalHours();
+          const laborTotal = totalHrs * 60;
+          const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
+            let cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
+            const qty = Number(part && part.qty);
+            const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+            const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+            return total + (validQty * validCost);
+          }, 0) : 0;
+          totalLabAndPartsValue = laborTotal + partsTotal;
         }
-        // Recalcular totalHrs
-        totalHrs = calculateTotalHours();
-        const laborTotal = totalHrs * 60;
-        const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
-          let cost = Number(part && String(part.cost).replace(/[^0-9.]/g, ''));
-          const qty = Number(part && part.qty);
-          const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
-          const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
-          return total + (validQty * validCost);
-        }, 0) : 0;
-        totalLabAndPartsValue = laborTotal + partsTotal;
       }
 
       // Validar cantidades solo si se editan
