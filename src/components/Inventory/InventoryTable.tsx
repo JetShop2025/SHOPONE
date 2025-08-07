@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 // No import de bwipjs: se usará window.BWIPJS (cargar el script en public/index.html)
+import Barcode from 'react-barcode';
 // Función para generar sticker PDF usando bwip-js para el código de barras
 function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: string; part: string }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [60, 30] }); // Sticker 60x30mm
@@ -40,7 +41,6 @@ function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: st
   }
 }
 
-import Barcode from 'react-barcode';
 // Barcode component for table preview (mantener react-barcode solo para la tabla, no para PDF)
 const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
