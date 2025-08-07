@@ -1,15 +1,16 @@
-// Extiende el tipo Window para TypeScript (BWIPJS)
-declare global {
-  interface Window {
-    BWIPJS?: any;
-  }
-}
 
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 // No import de bwipjs: se usará window.BWIPJS (cargar el script en public/index.html)
 import Barcode from 'react-barcode';
+
+// Extiende el tipo Window para TypeScript (BWIPJS)
+declare global {
+  interface Window {
+    BWIPJS?: any;
+  }
+}
 
 // Carga dinámica de bwip-js desde CDN si no está presente
 function loadBWIPJS(): Promise<void> {
