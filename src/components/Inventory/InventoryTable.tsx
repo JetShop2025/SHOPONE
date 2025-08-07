@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import Barcode from 'react-barcode';
 import jsPDF from 'jspdf';
-// Función para generar sticker PDF
+import bwipjs from 'bwip-js';
+// Función para generar sticker PDF usando bwip-js para el código de barras
 function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: string; part: string }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [60, 30] }); // Sticker 60x30mm
   // Fondo blanco
@@ -16,37 +16,29 @@ function generateStickerPDF({ sku, barCodes, part }: { sku: string; barCodes: st
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(part, 4, 16, { maxWidth: 52 });
-  // Código de barras (como texto, luego lo renderizamos con react-barcode y lo insertamos como imagen)
-  // Aquí generamos un SVG con react-barcode y lo insertamos
-  const barcodeDiv = document.createElement('div');
-  barcodeDiv.style.position = 'absolute';
-  barcodeDiv.style.left = '-9999px';
-  document.body.appendChild(barcodeDiv);
-  const barcode = (
-    <Barcode value={barCodes || sku} height={20} width={1.2} fontSize={10} margin={0} displayValue={false} background="#fff" />
-  );
-  // Renderizar el componente en el DOM temporalmente
-  // @ts-ignore
-  window.ReactDOM.render(barcode, barcodeDiv);
-  setTimeout(() => {
-    try {
-      const svg = barcodeDiv.querySelector('svg');
-      if (svg) {
-        const xml = new XMLSerializer().serializeToString(svg);
-        const svg64 = btoa(unescape(encodeURIComponent(xml)));
-        const image64 = 'data:image/svg+xml;base64,' + svg64;
-        doc.addImage(image64, 'PNG', 4, 18, 52, 8);
-        doc.save(`sticker_${sku}.pdf`);
-      } else {
-        alert('Error generando el código de barras.');
-      }
-    } finally {
-      document.body.removeChild(barcodeDiv);
-    }
-  }, 300);
+  // Generar código de barras con bwip-js (en canvas)
+  const canvas = document.createElement('canvas');
+  try {
+    bwipjs.toCanvas(canvas, {
+      bcid: 'code128', // tipo de código de barras
+      text: barCodes || sku,
+      scale: 2.2, // tamaño
+      height: 18, // altura en px
+      includetext: false,
+      backgroundcolor: 'FFFFFF',
+      paddingwidth: 0,
+      paddingheight: 0
+    });
+    const image64 = canvas.toDataURL('image/png');
+    doc.addImage(image64, 'PNG', 4, 18, 52, 8);
+    doc.save(`sticker_${sku}.pdf`);
+  } catch (err) {
+    alert('Error generando el código de barras.');
+  }
 }
 
-// Barcode component using react-barcode
+// Barcode component for table preview (mantener react-barcode solo para la tabla, no para PDF)
+import Barcode from 'react-barcode';
 const BarcodeComponent: React.FC<{ value: string }> = ({ value }) => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
     <Barcode value={value} height={40} width={1.5} fontSize={12} margin={0} displayValue={true} background="#fff" />
