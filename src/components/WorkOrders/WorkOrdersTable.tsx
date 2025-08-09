@@ -1810,7 +1810,7 @@ const WorkOrdersTable: React.FC = () => {
             border-collapse: collapse;
             width: max-content;
             min-width: 100%;
-            font-size: 12px;
+            font-size: 10px;
             text-align: center;
             margin-top: 16px;
             background: white;
