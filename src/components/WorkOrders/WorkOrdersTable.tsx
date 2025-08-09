@@ -1808,7 +1808,8 @@ const WorkOrdersTable: React.FC = () => {
           
           .wo-table {
             border-collapse: collapse;
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
             font-size: 12px;
             text-align: center;
             margin-top: 16px;
@@ -2690,7 +2691,7 @@ const WorkOrdersTable: React.FC = () => {
           </div>
         )}
         
-        <div style={{ overflowX: 'auto' }}>
+  <div style={{ overflowX: 'auto', maxWidth: '100vw' }}>
           <table className="wo-table">
             <thead>
               <tr>
@@ -2702,7 +2703,7 @@ const WorkOrdersTable: React.FC = () => {
                 <th>Mechanic</th>
                 <th>Date</th>
                 <th>Description</th>
-                <th>EMPLOYEE WRITTEN HOURS</th>
+                <th style={{ minWidth: 60, maxWidth: 80, fontSize: 13 }}>EMP WRITTEN HRS</th>
                 {[1,2,3,4,5].map(i => (
                   <React.Fragment key={i}>
                     <th>{`PRT${i}`}</th>
@@ -2809,10 +2810,10 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
             {displayDate}
           </td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
-          <td style={{ minWidth: 120, maxWidth: 220, wordBreak: 'break-all' }}>
+          <td style={{ minWidth: 60, maxWidth: 80, wordBreak: 'break-all', fontSize: 13 }}>
             {order.employeeWrittenHours ? (
               <a href={order.employeeWrittenHours} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
-                Ver documento
+                LINK
               </a>
             ) : (
               <span style={{ color: '#888', fontSize: 12 }}>-</span>

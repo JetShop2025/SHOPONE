@@ -1311,26 +1311,26 @@ const TrailasTable: React.FC = () => {
             overflow: 'auto'
           }}>
             <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Historial de Rentas: {selectedTraila.nombre}
+              Rental History: {selectedTraila.nombre}
             </h2>
             {rentalHistory.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f5f5f5' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Cliente</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha Renta</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha Devolución</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Observaciones</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Customer</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Rental Date</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Return Date</th>
+                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Notes</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rentalHistory.map((rental, index) => (
                       <tr key={index}>
                         <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.cliente}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{formatDate(rental.fecha_renta)}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_devolucion ? formatDate(rental.fecha_devolucion) : 'No devuelto'}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{(rental.observaciones || '').split(' - ').pop() || '-'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{formatDateSafely(rental.fecha_renta)}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_devolucion_real ? formatDateSafely(rental.fecha_devolucion_real) : 'Not returned'}</td>
+                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.observaciones || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1338,7 +1338,7 @@ const TrailasTable: React.FC = () => {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                <p>No hay historial de rentas para este trailer</p>
+                <p>No rental history for this trailer</p>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1354,7 +1354,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Cerrar
+                Close
               </button>
             </div>
           </div>

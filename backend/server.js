@@ -733,10 +733,10 @@ app.put('/api/trailas/:id/return', async (req, res) => {
       await connection.execute(`
         UPDATE trailer_rental_history 
         SET fecha_devolucion_real = ?, status = 'RETURNED', 
-            observaciones = CONCAT(COALESCE(observaciones, ''), ' | Devuelto: ', ?)
+            observaciones = ?
         WHERE trailer_id = ? AND status = 'ACTIVE'
         ORDER BY created_at DESC LIMIT 1
-      `, [fechaDevolucionReal, observaciones_devolucion || 'Sin observaciones', trailerId]);
+      `, [fechaDevolucionReal, observaciones_devolucion || '', trailerId]);
       
       console.log(`[PUT] /api/trailas/${trailerId}/return - Rental history updated`);
     } catch (historyError) {
