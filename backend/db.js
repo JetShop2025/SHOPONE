@@ -47,7 +47,6 @@ async function testConnection() {
 
 // Función para crear tabla de auditoría si no existe.
 // Y asegurar columna employeeWrittenHours en work_orders
-async function ensureAuditTableExists() {
 // Asegura que la tabla work_orders tenga el campo employeeWrittenHours
 async function ensureWorkOrdersTableHasEmployeeWrittenHours() {
   try {
@@ -63,6 +62,8 @@ async function ensureWorkOrdersTableHasEmployeeWrittenHours() {
     console.error('[DB] Error ensuring employeeWrittenHours column:', err.message);
   }
 }
+
+async function ensureAuditTableExists() {
   try {
     // Primero verificar si la tabla existe
     const [tables] = await connection.execute(
