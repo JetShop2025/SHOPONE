@@ -22,7 +22,8 @@ const EMPTY_WORK_ORDER: WorkOrder = {
   date: '',
   description: '',
   parts: [
-    { part: '', sku: '', qty: '', cost: '' },
+    // Default miscellaneous line (auto-cost calculated in form)
+    { part: 'MISCELLANEOUS', sku: '15-SHOPMISC', qty: '1', cost: '' },
     { part: '', sku: '', qty: '', cost: '' },
     { part: '', sku: '', qty: '', cost: '' },
     { part: '', sku: '', qty: '', cost: '' },
@@ -49,7 +50,7 @@ export function useNewWorkOrder(): [
       date: '',
       description: '',
       parts: [
-        { part: '', sku: '', qty: '', cost: '' },
+        { part: 'MISCELLANEOUS', sku: '15-SHOPMISC', qty: '1', cost: '' },
         { part: '', sku: '', qty: '', cost: '' },
         { part: '', sku: '', qty: '', cost: '' },
         { part: '', sku: '', qty: '', cost: '' },
