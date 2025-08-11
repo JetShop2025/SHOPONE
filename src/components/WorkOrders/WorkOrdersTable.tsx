@@ -246,14 +246,24 @@ const WorkOrdersTable: React.FC = () => {
       }
       // Update the work order
       // 1. Fecha: enviar SIEMPRE en formato YYYY-MM-DD
+      // Keep original date unless user provided a valid value; avoid accidental shifts
       let dateToSend = data.date;
-      if (dateToSend && dateToSend.length >= 10) {
-        if (dateToSend.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-          const [month, day, year] = dateToSend.split('/');
-          dateToSend = `${year}-${month}-${day}`;
-        } else if (dateToSend.match(/^\d{4}-\d{2}-\d{2}/)) {
-          dateToSend = dateToSend.slice(0, 10);
+      const originalDate = editWorkOrder.date || '';
+      const normalize = (d?: string) => {
+        if (!d) return '';
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+          const [mm, dd, yyyy] = d.split('/');
+          return `${yyyy}-${mm}-${dd}`;
         }
+        if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10);
+        return '';
+      };
+      const normalized = normalize(dateToSend);
+      if (normalized) {
+        dateToSend = normalized;
+      } else {
+        // If user cleared or malformed date, preserve original
+        dateToSend = normalize(originalDate) || originalDate || '';
       }
       // 2. Total: enviar SIEMPRE como número (sin $)
       let totalToSend = data.totalLabAndParts;
@@ -264,7 +274,7 @@ const WorkOrdersTable: React.FC = () => {
         totalToSend = 0;
       }
       // 3. Guardar el valor EXACTO que el usuario editó/calculó, sin recalcular ni modificar
-      const dataToSend = { ...safeData, date: dateToSend, totalLabAndParts: totalToSend };
+  const dataToSend = { ...safeData, date: dateToSend, totalLabAndParts: totalToSend };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
@@ -378,6 +388,7 @@ const WorkOrdersTable: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);  const [reconnecting, setReconnecting] = useState(false);
   const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');  const [retryCount, setRetryCount] = useState(0);
+  const [compactColumns, setCompactColumns] = useState(false);
   const maxRetries = 3;
   const [idClassicError, setIdClassicError] = useState('');  // Nueva funcionalidad: búsqueda inteligente por ID Classic
   const [searchIdClassic, setSearchIdClassic] = useState('');
@@ -1818,7 +1829,7 @@ const WorkOrdersTable: React.FC = () => {
           
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
-            padding: 6px 4px;
+            padding: 4px 2px;
             vertical-align: middle;
             white-space: nowrap;
             overflow: hidden;
@@ -1963,7 +1974,10 @@ const WorkOrdersTable: React.FC = () => {
           }
           
           .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
-          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
+          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 50px; } /* ID CLASSIC */
+          /* EMP WRITTEN HRS (should be 8th or 9th depending on columns) */
+          .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 45px; } /* EMP WRITTEN HRS */
+          .wo-table th:nth-last-child(6), .wo-table td:nth-last-child(6) { width: 45px; } /* Total HRS */
           .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
           .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
           .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
@@ -2691,8 +2705,106 @@ const WorkOrdersTable: React.FC = () => {
           </div>
         )}
         
+  {/* Compact/full columns toggle */}
+  <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0' }}>
+    <label style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input
+        type="checkbox"
+        checked={compactColumns}
+        onChange={(e) => setCompactColumns(e.target.checked)}
+      />
+      Compact columns
+    </label>
+  </div>
+
   <div style={{ overflowX: 'auto', maxWidth: '100vw' }}>
-          <table className="wo-table">
+          {compactColumns ? (
+            <table className="wo-table compact">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>ID CLASSIC</th>
+                  <th>Bill To Co</th>
+                  <th>Trailer</th>
+                  <th>Mechanic</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th style={{ minWidth: 60, maxWidth: 80, fontSize: 13 }}>EMP WRITTEN HRS</th>
+                  <th>Parts</th>
+                  <th>Total HRS</th>
+                  <th>Total LAB & PRTS</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+              {filteredOrders
+                .filter(order => {
+                  if (!searchIdClassic) return true;
+                  return (
+                    (order.idClassic && order.idClassic.toString().toLowerCase().includes(searchIdClassic.toLowerCase()))
+                  );
+                })
+                .slice()
+                .sort((a, b) => {
+                  const getTime = (d: string) => {
+                    if (!d) return 0;
+                    const parsed = dayjs(d, ["MM/DD/YYYY", "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY/MM/DD"], true);
+                    return parsed.isValid() ? parsed.valueOf() : 0;
+                  };
+                  return getTime(b.date) - getTime(a.date);
+                })
+                .map(order => {
+                  const hasMoreParts = order.parts && order.parts.length > 5;
+                  const dateStr = (order.date || '').slice(0, 10);
+                  const [yyyy, mm, dd] = dateStr.split('-');
+                  const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
+                  const partsSummary = Array.isArray(order.parts)
+                    ? order.parts.slice(0, 5).map((p: any) => {
+                        if (!p || !p.sku) return '';
+                        const qty = p.qty ? ` x${p.qty}` : '';
+                        const cost = (p.cost !== undefined && p.cost !== null && p.cost !== '')
+                          ? ` ${Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`
+                          : '';
+                        return `${p.sku}${qty}${cost}`;
+                      }).filter(Boolean).join(' | ')
+                    : '';
+                  return (
+                    <tr key={order.id}>
+                      <td>{order.id}</td>
+                      <td>{order.idClassic || ''}</td>
+                      <td>{order.billToCo}</td>
+                      <td>{order.trailer}</td>
+                      <td>
+                        {Array.isArray(order.mechanics) && order.mechanics.length > 0
+                          ? order.mechanics.map((m: any) => m.name).join(', ')
+                          : order.mechanic}
+                      </td>
+                      <td>{displayDate}</td>
+                      <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
+                      <td style={{ minWidth: 60, maxWidth: 80, wordBreak: 'break-all', fontSize: 13 }}>
+                        {order.employeeWrittenHours ? (
+                          <a href={order.employeeWrittenHours} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
+                            LINK
+                          </a>
+                        ) : (
+                          <span style={{ color: '#888', fontSize: 12 }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ minWidth: 240, textAlign: 'left' }}>{partsSummary}</td>
+                      <td>{order.totalHrs}</td>
+                      <td>
+                        {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
+                          ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                          : '$0.00'}
+                      </td>
+                      <td>{order.status}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <table className="wo-table">
             <thead>
               <tr>
 
@@ -2883,7 +2995,8 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
     );
   })}
 </tbody>
-          </table>
+            </table>
+          )}
         </div>       
       </div>
       {/* Context Menu for Editar/Eliminar */}

@@ -1378,14 +1378,24 @@ router.put('/:id', async (req, res) => {
   }
 
   // 1. Fecha: asegurar formato YYYY-MM-DD
-  if (date && typeof date === 'string') {
+  if (typeof date === 'string') {
     if (date.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
       // MM/DD/YYYY → YYYY-MM-DD
       const [month, day, year] = date.split('/');
       date = `${year}-${month}-${day}`;
     } else if (date.match(/^\d{4}-\d{2}-\d{2}/)) {
       date = date.slice(0, 10);
+    } else if (date.trim() === '') {
+      // Empty string should not overwrite
+      date = undefined;
     }
+  }
+  // If no valid date provided, preserve existing DB value
+  const oldDateStr = oldData && oldData.date
+    ? (oldData.date instanceof Date ? oldData.date.toISOString().slice(0,10) : String(oldData.date).slice(0,10))
+    : null;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    date = oldDateStr; // keep original
   }
 
   // 2. Total: asegurar que sea número
