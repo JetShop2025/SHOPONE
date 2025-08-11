@@ -1029,7 +1029,7 @@ router.get('/', async (req, res) => {
     const total = countRows[0]?.total || 0;
     // Get paginated results
     const [results] = await db.query('SELECT * FROM work_orders ORDER BY id DESC LIMIT ? OFFSET ?', [pageSize, offset]);
-    const parsedResults = results.map(order => {
+  const parsedResults = results.map(order => {
       let parts = [];
       try {
         parts = JSON.parse(order.parts || '[]');
@@ -1061,8 +1061,18 @@ router.get('/', async (req, res) => {
       if (laborTotal === 0 && totalHrs > 0) {
         laborTotal = totalHrs * 60;
       }
+      // Normalizar fecha a YYYY-MM-DD sin tiempo ni zona
+      let normalizedDate = '';
+      if (typeof order.date === 'string') {
+        const m = order.date.match(/^\d{4}-\d{2}-\d{2}/);
+        normalizedDate = m ? m[0] : order.date;
+      } else if (order.date) {
+        // Evitar conversiones a UTC; confiar en cadena o dejar vacío
+        try { normalizedDate = String(order.date).slice(0, 10); } catch { normalizedDate = ''; }
+      }
       return {
         ...order,
+        date: normalizedDate,
         parts,
         mechanics,
         extraOptions,
@@ -1096,7 +1106,23 @@ router.post('/', async (req, res) => {
     const trailer = fields.trailer || '';
     const mechanic = fields.mechanic || '';
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
-    const date = fields.date || new Date();
+    // Fecha: aceptar solo YYYY-MM-DD; si no viene, usar la fecha local de hoy como string
+    let date = fields.date;
+    if (typeof date === 'string') {
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+        const [mm, dd, yyyy] = date.split('/');
+        date = `${yyyy}-${mm}-${dd}`;
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        date = undefined; // formato inválido → usar hoy
+      }
+    }
+    if (!date) {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      date = `${yyyy}-${mm}-${dd}`;
+    }
     const description = fields.description || '';
     const status = fields.status || 'PENDING';
     const idClassic = fields.idClassic || null;
@@ -1377,24 +1403,21 @@ router.put('/:id', async (req, res) => {
     } catch { fields.mechanics = []; }
   }
 
-  // 1. Fecha: asegurar formato YYYY-MM-DD
+  // 1. Fecha: aceptar solo YYYY-MM-DD; si viene vacía/invalid → preservar la de la DB
   if (typeof date === 'string') {
-    if (date.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-      // MM/DD/YYYY → YYYY-MM-DD
-      const [month, day, year] = date.split('/');
+    const t = date.trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(t)) {
+      const [month, day, year] = t.split('/');
       date = `${year}-${month}-${day}`;
-    } else if (date.match(/^\d{4}-\d{2}-\d{2}/)) {
-      date = date.slice(0, 10);
-    } else if (date.trim() === '') {
-      // Empty string should not overwrite
-      date = undefined;
+    } else if (/^\d{4}-\d{2}-\d{2}/.test(t)) {
+      date = t.slice(0, 10);
+    } else if (t === '') {
+      date = undefined; // no overwriting
     }
   }
-  // If no valid date provided, preserve existing DB value
-  const oldDateStr = oldData && oldData.date
-    ? (oldData.date instanceof Date ? oldData.date.toISOString().slice(0,10) : String(oldData.date).slice(0,10))
-    : null;
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  // If no valid date provided, preserve existing DB value (already a string due to dateStrings)
+  const oldDateStr = oldData && oldData.date ? String(oldData.date).slice(0,10) : null;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
     date = oldDateStr; // keep original
   }
 
@@ -1481,7 +1504,7 @@ router.put('/:id', async (req, res) => {
 
     // 4. Actualiza la orden en la base de datos
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
-    let updateQuery = `
+  let updateQuery = `
       UPDATE work_orders SET 
         billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?, employeeWrittenHours = ?
     `;

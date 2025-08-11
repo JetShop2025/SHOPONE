@@ -389,6 +389,43 @@ const WorkOrdersTable: React.FC = () => {
   const [fetchingData, setFetchingData] = useState(false);  const [reconnecting, setReconnecting] = useState(false);
   const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');  const [retryCount, setRetryCount] = useState(0);
   const [compactColumns, setCompactColumns] = useState(false);
+  const [fitToWidth, setFitToWidth] = useState(true);
+  const [tableScale, setTableScale] = useState(1);
+  // Manual zoom when Fit-to-width is OFF (persisted)
+  const [zoomScale, setZoomScale] = useState<number>(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('woZoomScale') : null;
+    const parsed = stored ? Number(stored) : 1;
+    if (!parsed || isNaN(parsed)) return 1;
+    return Math.min(1.5, Math.max(0.5, parsed));
+  });
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const tableRef = React.useRef<HTMLTableElement | null>(null);
+
+  React.useEffect(() => {
+    if (!fitToWidth) { setTableScale(1); return; }
+    const recalc = () => {
+      const container = containerRef.current;
+      const table = tableRef.current;
+      if (!container || !table) return;
+      const containerWidth = container.clientWidth - 8;
+      const tableWidth = table.scrollWidth;
+      if (tableWidth > 0) {
+        const s = Math.min(1, Math.max(0.5, containerWidth / tableWidth));
+        setTableScale(s);
+      }
+    };
+    recalc();
+    window.addEventListener('resize', recalc);
+    return () => window.removeEventListener('resize', recalc);
+  }, [fitToWidth, compactColumns, workOrders.length]);
+
+  // Persist manual zoom
+  useEffect(() => {
+    try { window.localStorage.setItem('woZoomScale', String(zoomScale)); } catch {}
+  }, [zoomScale]);
+
+  // Effective scale to apply to the table (auto when fit-to-width; manual when not)
+  const effectiveScale = fitToWidth ? tableScale : zoomScale;
   const maxRetries = 3;
   const [idClassicError, setIdClassicError] = useState('');  // Nueva funcionalidad: búsqueda inteligente por ID Classic
   const [searchIdClassic, setSearchIdClassic] = useState('');
@@ -1964,6 +2001,10 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 2px 12px rgba(25,118,210,0.07);
             font-size: 11px;
           }
+
+          .wo-table.compact {
+            min-width: 1100px;
+          }
           
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
@@ -2001,6 +2042,21 @@ const WorkOrdersTable: React.FC = () => {
           .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 75px; } /* Total HRS */
           .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
           .wo-table th:nth-child(25), .wo-table td:nth-child(25) { width: 95px; } /* Status */
+
+          /* Compact table tweaks */
+          .wo-table.compact th, .wo-table.compact td { padding: 2px 3px; }
+          .wo-table.compact th:nth-child(1), .wo-table.compact td:nth-child(1) { width: 40px; }
+          .wo-table.compact th:nth-child(2), .wo-table.compact td:nth-child(2) { width: 48px; }
+          .wo-table.compact th:nth-child(3), .wo-table.compact td:nth-child(3) { width: 70px; }
+          .wo-table.compact th:nth-child(4), .wo-table.compact td:nth-child(4) { width: 75px; }
+          .wo-table.compact th:nth-child(5), .wo-table.compact td:nth-child(5) { width: 75px; }
+          .wo-table.compact th:nth-child(6), .wo-table.compact td:nth-child(6) { width: 85px; }
+          .wo-table.compact th:nth-child(7), .wo-table.compact td:nth-child(7) { width: 180px; }
+          .wo-table.compact th:nth-child(8), .wo-table.compact td:nth-child(8) { width: 55px; }
+          .wo-table.compact th:nth-child(9), .wo-table.compact td:nth-child(9) { width: 260px; white-space: normal; }
+          .wo-table.compact th:nth-child(10), .wo-table.compact td:nth-child(10) { width: 60px; }
+          .wo-table.compact th:nth-child(11), .wo-table.compact td:nth-child(11) { width: 105px; }
+          .wo-table.compact th:nth-child(12), .wo-table.compact td:nth-child(12) { width: 85px; }
           
           .wo-table th {
             background: #1976d2;
@@ -2706,7 +2762,39 @@ const WorkOrdersTable: React.FC = () => {
         )}
         
   {/* Compact/full columns toggle */}
-  <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0' }}>
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0', gap: 16 }}>
+    {/* Left: Zoom slider */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 600 }}>Zoom</span>
+      <input
+        type="range"
+        min={50}
+        max={150}
+        step={5}
+        value={Math.round(zoomScale * 100)}
+        onChange={(e) => setZoomScale(Math.min(150, Math.max(50, Number(e.target.value))) / 100)}
+        disabled={fitToWidth}
+        style={{ width: 160 }}
+        aria-label="Zoom Work Orders table"
+      />
+      <span style={{ fontSize: 12, width: 44, textAlign: 'right', color: fitToWidth ? '#888' : '#111' }}>
+        {Math.round(zoomScale * 100)}%
+      </span>
+      <button
+        onClick={() => setZoomScale(1)}
+        disabled={fitToWidth || Math.abs(zoomScale - 1) < 0.001}
+        style={{
+          fontSize: 12,
+          padding: '4px 8px',
+          borderRadius: 6,
+          border: '1px solid #1976d2',
+          background: '#fff',
+          color: '#1976d2',
+          cursor: fitToWidth || Math.abs(zoomScale - 1) < 0.001 ? 'not-allowed' : 'pointer'
+        }}
+      >Reset</button>
+    </div>
+    {/* Right: toggles */}
     <label style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
       <input
         type="checkbox"
@@ -2715,11 +2803,19 @@ const WorkOrdersTable: React.FC = () => {
       />
       Compact columns
     </label>
+    <label style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input
+        type="checkbox"
+        checked={fitToWidth}
+        onChange={(e) => setFitToWidth(e.target.checked)}
+      />
+      Fit to width
+    </label>
   </div>
 
-  <div style={{ overflowX: 'auto', maxWidth: '100vw' }}>
+  <div ref={containerRef} style={{ overflowX: fitToWidth ? 'hidden' : 'auto', maxWidth: '100vw' }}>
           {compactColumns ? (
-            <table className="wo-table compact">
+            <table ref={tableRef} className="wo-table compact" style={effectiveScale !== 1 ? { transform: `scale(${effectiveScale})`, transformOrigin: 'left top', width: `${100 / effectiveScale}%` } : undefined}>
               <thead>
                 <tr>
                   <th>ID</th>
@@ -2804,7 +2900,7 @@ const WorkOrdersTable: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <table className="wo-table">
+            <table ref={tableRef} className="wo-table" style={effectiveScale !== 1 ? { transform: `scale(${effectiveScale})`, transformOrigin: 'left top', width: `${100 / effectiveScale}%` } : undefined}>
             <thead>
               <tr>
 

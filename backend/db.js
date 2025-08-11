@@ -28,6 +28,10 @@ const connection = mysql.createPool({
   database: process.env.MYSQL_DATABASE,
   password: process.env.MYSQL_PASSWORD,
   port: process.env.MYSQL_PORT,
+  // Always return DATE/DATETIME as strings to avoid timezone shifts in JS
+  dateStrings: true,
+  // Keep server/client in local timezone for consistency (no implicit UTC conversions)
+  timezone: 'local',
   connectionLimit: 10,
   waitForConnections: true,
   queueLimit: 0
@@ -265,15 +269,11 @@ async function getOrders(limit = 100, offset = 0) {
     // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
     const parsedRows = rows.map(row => {
       let dateStr = '';
-      if (row.date instanceof Date) {
-        dateStr = row.date.toISOString().slice(0, 10);
-      } else if (typeof row.date === 'string') {
+      if (typeof row.date === 'string') {
         const match = row.date.match(/^\d{4}-\d{2}-\d{2}/);
         dateStr = match ? match[0] : row.date;
-      } else if (row.date && typeof row.date === 'object' && typeof row.date.toString === 'function') {
-        const str = row.date.toString();
-        const match = str.match(/^\d{4}-\d{2}-\d{2}/);
-        dateStr = match ? match[0] : str;
+      } else if (row.date) {
+        try { dateStr = String(row.date).slice(0, 10); } catch { dateStr = ''; }
       } else {
         dateStr = '';
       }
@@ -327,15 +327,11 @@ async function getOrdersByTrailer(trailerId) {
     // Parse JSON fields and force date as string
     const parsedRows = rows.map(row => {
       let dateStr = '';
-      if (row.date instanceof Date) {
-        dateStr = row.date.toISOString().slice(0, 10);
-      } else if (typeof row.date === 'string') {
+      if (typeof row.date === 'string') {
         const match = row.date.match(/^\d{4}-\d{2}-\d{2}/);
         dateStr = match ? match[0] : row.date;
-      } else if (row.date && typeof row.date === 'object' && typeof row.date.toString === 'function') {
-        const str = row.date.toString();
-        const match = str.match(/^\d{4}-\d{2}-\d{2}/);
-        dateStr = match ? match[0] : str;
+      } else if (row.date) {
+        try { dateStr = String(row.date).slice(0, 10); } catch { dateStr = ''; }
       } else {
         dateStr = '';
       }
@@ -473,12 +469,18 @@ async function updateOrder(id, order) {
     }
 
     // Actualizar la work order (sin tocar work_order_parts aún)
-    // SIEMPRE guardar la fecha como string YYYY-MM-DD (sin hora, sin zona horaria)
+    // Fecha: preservar tal cual si no se envía una válida; si se envía string válido YYYY-MM-DD usarlo sin convertir zona horaria
     let originalDate = currentData.date;
-    if (originalDate instanceof Date) {
-      originalDate = originalDate.toISOString().slice(0, 10);
-    } else if (typeof originalDate === 'string') {
+    if (typeof originalDate === 'string') {
       originalDate = originalDate.slice(0, 10);
+    }
+    // Si order.date viene como string 'YYYY-MM-DD', usarlo; si viene vacío/undefined, mantener originalDate
+    if (order && typeof order.date === 'string') {
+      const trimmed = order.date.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        originalDate = trimmed; // usar exactamente lo que envió el cliente
+      }
+      // cualquier otro formato se ignora para evitar sobrescribir con valores inválidos
     }
     const safeValues = [
       order.billToCo || null,
@@ -497,7 +499,7 @@ async function updateOrder(id, order) {
       id
     ];
     // LOG: Valor de la fecha que se usará en el UPDATE
-    console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE:', originalDate, 'Tipo:', typeof originalDate);
+  console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE (sin TZ conv):', originalDate, 'Tipo:', typeof originalDate);
     const [result] = await connection.execute(
       'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ?, employeeWrittenHours = ? WHERE id = ?',
       safeValues
@@ -614,18 +616,11 @@ async function getOrderById(id) {
     
     // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
     let dateStr = '';
-    if (rows[0].date instanceof Date) {
-      dateStr = rows[0].date.toISOString().slice(0, 10);
-    } else if (typeof rows[0].date === 'string') {
-      // Puede venir como '2025-07-15T00:00:00.000Z', '2025-07-15', etc
-      // Si es string y tiene formato ISO, tomar solo la parte de fecha
+    if (typeof rows[0].date === 'string') {
       const match = rows[0].date.match(/^\d{4}-\d{2}-\d{2}/);
       dateStr = match ? match[0] : rows[0].date;
-    } else if (rows[0].date && typeof rows[0].date === 'object' && typeof rows[0].date.toString === 'function') {
-      // Si es un objeto raro (por ejemplo, un objeto fecha de MySQL), intentar convertirlo a string y extraer la fecha
-      const str = rows[0].date.toString();
-      const match = str.match(/^\d{4}-\d{2}-\d{2}/);
-      dateStr = match ? match[0] : str;
+    } else if (rows[0].date) {
+      try { dateStr = String(rows[0].date).slice(0, 10); } catch { dateStr = ''; }
     } else {
       dateStr = '';
     }
