@@ -724,20 +724,45 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </div>
             )}
           </label>
-          <label style={{ flex: '1 1 220px' }}>
-            EMPLOYEE WRITTEN HOURS (Drive link)
+          <label style={{ flex: '1 1 320px' }}>
+            EMPLOYEE WRITTEN HOURS (Drive links)
             <input
-              type="url"
+              type="text"
               name="employeeWrittenHours"
-              placeholder="Pega aquí el link de Drive..."
+              placeholder="Paste one or more links (separated by space, comma, ; or |)"
               value={workOrder.employeeWrittenHours || ''}
               onChange={onChange}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               autoComplete="off"
             />
             <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
-              (Opcional, solo link de Google Drive u otro documento)
+              You can paste multiple links. E.g.: https://drive.google.com/... | https://drive.google.com/...
             </div>
+            {(() => {
+              const raw: string = workOrder.employeeWrittenHours || '';
+              const matches: string[] = (raw.match(/(https?:\/\/[^\s,;|]+)/gi) || []) as string[];
+              const urls: string[] = Array.from(new Set(matches.map((s: string) => s.trim())));
+              if (urls.length === 0) return null;
+              return (
+                <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {urls.map((u: string, idx: number) => (
+                    <a key={idx} href={u} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 12 }}>
+                      {`LINK ${idx + 1}`}
+                    </a>
+                  ))}
+                  {urls.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => urls.forEach((u: string) => { try { window.open(u, '_blank', 'noopener,noreferrer'); } catch {} })}
+                      style={{ border: '1px solid #1976d2', color: '#1976d2', background: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, cursor: 'pointer' }}
+                      title="Open all links"
+                    >
+                      Open all
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </label>
         </div>
 

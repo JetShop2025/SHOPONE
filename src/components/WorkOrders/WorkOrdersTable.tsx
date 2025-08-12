@@ -1586,6 +1586,26 @@ const WorkOrdersTable: React.FC = () => {
   // Función para ocultar el tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
 
+  // Helper: extract multiple URLs from EMPLOYEE WRITTEN HOURS field
+  const extractUrls = (text?: string): string[] => {
+    if (!text || typeof text !== 'string') return [];
+    try {
+      const regex = /(https?:\/\/[^\s,;|]+)/gi;
+      const matches = text.match(regex) || [];
+      // Deduplicate and trim
+      const unique = Array.from(new Set(matches.map(s => s.trim())));
+      return unique;
+    } catch {
+      return [];
+    }
+  };
+
+  const openAllLinks = (urls: string[]) => {
+    urls.forEach((u) => {
+      try { window.open(u, '_blank', 'noopener,noreferrer'); } catch {}
+    });
+  };
+
   const handlePartHover = (e: React.MouseEvent, sku: string) => {
     const partInfo = inventory.find(i => i.sku === sku);
     if (partInfo) {
@@ -2894,14 +2914,35 @@ const WorkOrdersTable: React.FC = () => {
                       </td>
                       <td>{displayDate}</td>
                       <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
-                      <td style={{ minWidth: 60, maxWidth: 80, wordBreak: 'break-all', fontSize: 13 }}>
-                        {order.employeeWrittenHours ? (
-                          <a href={order.employeeWrittenHours} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
-                            LINK
-                          </a>
-                        ) : (
-                          <span style={{ color: '#888', fontSize: 12 }}>-</span>
-                        )}
+                      <td style={{ minWidth: 100, maxWidth: 160, fontSize: 13 }}>
+                        {(() => {
+                          const urls = extractUrls(order.employeeWrittenHours);
+                          if (urls.length === 0) return <span style={{ color: '#888', fontSize: 12 }}>-</span>;
+                          if (urls.length === 1) {
+                            return (
+                              <a href={urls[0]} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
+                                LINK
+                              </a>
+                            );
+                          }
+                          return (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {urls.map((u, idx) => (
+                                <a key={idx} href={u} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
+                                  {`LINK ${idx + 1}`}
+                                </a>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => openAllLinks(urls)}
+                                title="Open all links"
+                                style={{ border: '1px solid #1976d2', color: '#1976d2', background: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, cursor: 'pointer' }}
+                              >
+                                All
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ minWidth: 240, textAlign: 'left' }}>{partsSummary}</td>
                       <td>{order.totalHrs}</td>
@@ -3036,13 +3077,34 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           </td>
           <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
           <td style={{ minWidth: 60, maxWidth: 80, wordBreak: 'break-all', fontSize: 13 }}>
-            {order.employeeWrittenHours ? (
-              <a href={order.employeeWrittenHours} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
-                LINK
-              </a>
-            ) : (
-              <span style={{ color: '#888', fontSize: 12 }}>-</span>
-            )}
+            {(() => {
+              const urls = extractUrls(order.employeeWrittenHours);
+              if (urls.length === 0) return <span style={{ color: '#888', fontSize: 12 }}>-</span>;
+              if (urls.length === 1) {
+                return (
+                  <a href={urls[0]} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
+                    LINK
+                  </a>
+                );
+              }
+              return (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {urls.map((u, idx) => (
+                    <a key={idx} href={u} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 13 }}>
+                      {`LINK ${idx + 1}`}
+                    </a>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => openAllLinks(urls)}
+                    title="Open all links"
+                    style={{ border: '1px solid #1976d2', color: '#1976d2', background: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    All
+                  </button>
+                </div>
+              );
+            })()}
           </td>
           {[0,1,2,3,4].map(i => (
             <React.Fragment key={i}>
