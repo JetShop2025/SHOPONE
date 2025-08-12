@@ -307,18 +307,23 @@ const WorkOrdersTable: React.FC = () => {
             : workOrderData.mechanics || workOrderData.mechanic || '',
           description: workOrderData.description || '',
           status: workOrderData.status || editWorkOrder.status || 'PROCESSING',
-          parts: partsWithInvoices.map((part: any) => ({
-            sku: part.sku,
-            description: part.part_name || part.sku,
-            um: 'EA',
-            qty: part.qty_used,
-            unitCost: part.cost || 0,
-            total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
-              ? Number(part.qty_used) * Number(part.cost)
-              : 0,
-            invoice: part.invoice_number || 'N/A',
-            invoiceLink: part.invoice_link
-          })),
+          parts: partsWithInvoices.map((part: any) => {
+            const invItem = inventory.find(item => String(item.sku).toLowerCase() === String(part.sku).toLowerCase());
+            let um = String((invItem?.um ?? invItem?.unit ?? 'EA') as any).toUpperCase();
+            if (um === 'GAL') um = 'GALM';
+            return {
+              sku: part.sku,
+              description: part.part_name || part.sku,
+              um,
+              qty: part.qty_used,
+              unitCost: part.cost || 0,
+              total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
+                ? Number(part.qty_used) * Number(part.cost)
+                : 0,
+              invoice: part.invoice_number || 'N/A',
+              invoiceLink: part.invoice_link
+            };
+          }),
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
           // Usar SIEMPRE el valor exacto que el usuario editó/calculó, sin recalcular ni modificar
@@ -1245,16 +1250,22 @@ const WorkOrdersTable: React.FC = () => {
               datosOrden.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : '',
             description: datosOrden.description || '',
             status: datosOrden.status || 'PROCESSING', // Incluir status actual
-            parts: datosOrden.parts.map((part: any) => ({
-              sku: part.sku || '',
-              description: part.part || 'N/A',
-              um: 'EA',
-              qty: Number(part.qty) || 0,
-              unitCost: Number(part.cost) || 0,
-              total: (Number(part.qty) || 0) * (Number(part.cost) || 0),
-              invoice: 'N/A',
-              invoiceLink: undefined
-            })),            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
+            parts: datosOrden.parts.map((part: any) => {
+              const invItem = inventory.find((item: any) => String(item.sku).toLowerCase() === String(part.sku || '').toLowerCase());
+              let um = String((invItem?.um ?? invItem?.unit ?? 'EA') as any).toUpperCase();
+              if (um === 'GAL') um = 'GALM';
+              return {
+                sku: part.sku || '',
+                description: part.part || 'N/A',
+                um,
+                qty: Number(part.qty) || 0,
+                unitCost: Number(part.cost) || 0,
+                total: (Number(part.qty) || 0) * (Number(part.cost) || 0),
+                invoice: 'N/A',
+                invoiceLink: undefined
+              };
+            }),
+            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
             subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
               sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
             totalCost: Number(datosOrden.totalLabAndParts) || 0,
@@ -1738,16 +1749,22 @@ const WorkOrdersTable: React.FC = () => {
         mechanics: mechanicsString || '',
         description: finalWorkOrderData.description || '',
         status: finalWorkOrderData.status || 'PROCESSING', // Incluir status actual
-        parts: enrichedParts.map((part: any) => ({
-          sku: part.sku || '',
-          description: part.part_name || part.sku || 'N/A',
-          um: 'EA',
-          qty: Number(part.qty_used) || 0,
-          unitCost: Number(part.cost) || 0,
-          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
-          invoice: part.invoice_number || 'N/A',
-          invoiceLink: part.invoiceLink
-        })),        laborCost: laborCost,
+        parts: enrichedParts.map((part: any) => {
+          const invItem = inventory.find((item: any) => String(item.sku).toLowerCase() === String(part.sku || '').toLowerCase());
+          let um = String((invItem?.um ?? invItem?.unit ?? 'EA') as any).toUpperCase();
+          if (um === 'GAL') um = 'GALM';
+          return {
+            sku: part.sku || '',
+            description: part.part_name || part.sku || 'N/A',
+            um,
+            qty: Number(part.qty_used) || 0,
+            unitCost: Number(part.cost) || 0,
+            total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+            invoice: part.invoice_number || 'N/A',
+            invoiceLink: part.invoiceLink
+    };
+  }),
+  laborCost: laborCost,
         subtotalParts: subtotalParts,
         totalCost: totalCost,
         extraOptions: finalWorkOrderData.extraOptions || [],
