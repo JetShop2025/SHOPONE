@@ -36,9 +36,21 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   // Márgenes de página (A4: 210mm ancho)
   const pageWidth = 210;
+  const pageHeight = (pdf as any).internal.pageSize.getHeight();
   const leftMargin = 15;
   const rightMargin = 15;
+  const topMargin = 15;
+  const bottomMargin = 15;
   const contentWidth = pageWidth - leftMargin - rightMargin; // 180mm
+
+  // Helper to ensure there is space, otherwise add a new page and reset Y
+  const ensureSpace = (currentY: number, requiredHeight: number): number => {
+    if (currentY + requiredHeight > pageHeight - bottomMargin) {
+      pdf.addPage();
+      return topMargin; // reset Y to top margin on new page
+    }
+    return currentY;
+  };
   
   // HEADER CENTRADO Y SIN DESBORDAMIENTO
   try {
@@ -188,21 +200,23 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(0, 150, 255);
   pdf.text('Description:', leftMargin, descY);
   
-  // Descripción del trabajo - con control de ancho y altura dinámica
+  // Descripción del trabajo - con control de ancho y saltos de página
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   const description = workOrderData.description || '';
   const splitDescription = pdf.splitTextToSize(description, contentWidth - 10);
-  
-  // Calcular la altura necesaria para la descripción
   const lineHeight = 4; // Altura de línea en mm
-  const descriptionHeight = splitDescription.length * lineHeight;
-  
-  // Renderizar la descripción completa
-  pdf.text(splitDescription, leftMargin, descY + 6);
-    // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
-  // Ajustar posición de tabla según altura de la descripción
-  const tableStartY = descY + 20 + descriptionHeight;
+
+  let currentY = descY + 6;
+  for (const line of splitDescription) {
+    currentY = ensureSpace(currentY, lineHeight);
+    pdf.text(line, leftMargin, currentY);
+    currentY += lineHeight;
+  }
+
+  // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
+  // Comienza la tabla después de la descripción (con espacio)
+  const tableStartY = Math.max(descY + 20, currentY + 10);
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
     String(part.sku || '').substring(0, 12), // Limitar SKU
@@ -218,6 +232,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     head: [['No.', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT COST', 'TOTAL', 'INVOICE']],
     body: tableData,
     theme: 'grid',
+    pageBreak: 'auto',
+    showHead: 'everyPage',
     headStyles: {
       fillColor: [66, 139, 202],
       textColor: [255, 255, 255],
@@ -230,7 +246,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       fontSize: 8,
       textColor: [0, 0, 0],
       cellPadding: 1.5,
-      overflow: 'ellipsize'
+      overflow: 'linebreak'
     },
     columnStyles: {
       0: { halign: 'center', cellWidth: 12 },    // No.
@@ -268,7 +284,10 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // TOTALES Y EXTRAS - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
   const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;
   const totalsStartX = pageWidth - rightMargin - 70; // 70mm para los totales y extras
-  let currentY = finalY + 8;
+  currentY = finalY + 8;
+
+  // Asegurar espacio antes de totales (reservar ~30mm)
+  currentY = ensureSpace(currentY, 30);
   
   const extraOptions = workOrderData.extraOptions || [];
   const subtotal = (workOrderData.subtotalParts || 0) + (workOrderData.laborCost || 0);
@@ -280,11 +299,13 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('Subtotal Parts:', totalsStartX, currentY);
   pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
+  currentY = ensureSpace(currentY, 6);
   
   // Labor
   pdf.text('Labor:', totalsStartX, currentY);
   pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
+  currentY = ensureSpace(currentY, 8);
   
   // ...existing code... (EXTRAS REMOVED)
 
@@ -295,6 +316,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setLineWidth(0.3);
   pdf.line(totalsStartX, currentY + 2, pageWidth - rightMargin, currentY + 2);
   currentY += 8;
+  currentY = ensureSpace(currentY, 10);
   
   // TOTAL (en rojo)
   pdf.setFontSize(11);
@@ -306,7 +328,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setFont('helvetica', 'normal');
   
   // TERMS & CONDITIONS
-  const termsY = currentY + 15;
+  let termsY = currentY + 15;
+  termsY = ensureSpace(termsY, 18);
   
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
@@ -321,13 +344,18 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     'Customer is responsible for any additional costs due to unforeseen complications.'
   ];
   
-  terms.forEach((term, index) => {
+  terms.forEach((term) => {
     const splitTerm = pdf.splitTextToSize(term, contentWidth);
-    pdf.text(splitTerm, leftMargin, termsY + 6 + (index * 6));
+    for (const line of splitTerm) {
+      termsY = ensureSpace(termsY, 6);
+      pdf.text(line, leftMargin, termsY + 6);
+      termsY += 6;
+    }
   });
   
   // CUSTOMER AUTHORIZATION
-  const authY = termsY + 25;
+  let authY = termsY + 25;
+  authY = ensureSpace(authY, 18);
   
   pdf.setFontSize(8);
   pdf.setTextColor(0, 0, 0);
@@ -335,7 +363,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('☐ I accept this estimate with the handwritten changes noted below', leftMargin, authY + 6);
   
   // LÍNEAS PARA FIRMAS - CENTRADAS
-  const sigY = authY + 18;
+  let sigY = authY + 18;
+  sigY = ensureSpace(sigY, 12);
   const lineWidth = 70;
   const gapBetweenLines = 20;
   const linesStartX = (pageWidth - (lineWidth * 2 + gapBetweenLines)) / 2;
@@ -388,26 +417,44 @@ export const savePDFToDatabase = async (workOrderId: number, pdfBlob: Blob) => {
 };
 
 export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: string; sku?: string }>) => {
-  // Obtener enlaces únicos
   const uniqueLinks = new Set<string>();
-  
+
+  const isValidUrl = (url: string): boolean => {
+    if (!url) return false;
+    const trimmed = url.trim();
+    // Must start with http/https and have at least one dot after protocol
+    if (!/^https?:\/\//i.test(trimmed)) return false;
+    try {
+      const u = new URL(trimmed);
+      return !!u.host;
+    } catch {
+      return false;
+    }
+  };
+
   parts.forEach(part => {
-    // Excluir partes 15-SHOPMISC y 15-WELDSPP solo si el objeto tiene SKU
+    const link = (part.invoiceLink || '').trim();
     if (
-      part.invoiceLink && part.invoiceLink.trim() &&
-      (!('sku' in part) || (part.sku !== '15-SHOPMISC' && part.sku !== '15-WELDSPP'))
+      link &&
+      isValidUrl(link) &&
+      (!part.sku || (part.sku !== '15-SHOPMISC' && part.sku !== '15-WELDSPP'))
     ) {
-      uniqueLinks.add(part.invoiceLink.trim());
+      uniqueLinks.add(link);
     }
   });
-  
-  console.log(`📄 Abriendo ${uniqueLinks.size} enlaces únicos de facturas`);
-  
-  // Abrir cada enlace en una pestaña nueva
+
+  if (uniqueLinks.size === 0) {
+    console.log('ℹ️ No valid invoice links to open');
+    return;
+  }
+
+  console.log(`📄 Opening ${uniqueLinks.size} invoice link(s)`);
+
   Array.from(uniqueLinks).forEach((link, index) => {
     setTimeout(() => {
+      // Some browsers return null if blocked; no further action needed
       window.open(link, '_blank', 'noopener,noreferrer');
-    }, index * 100); // Pequeño delay para evitar problemas de popup blocker
+    }, index * 120); // Slightly larger delay to reduce popup blocking
   });
 };
 

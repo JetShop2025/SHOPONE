@@ -1212,26 +1212,11 @@ const WorkOrdersTable: React.FC = () => {
           // Abrir PDF en nueva pestaña
         openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}.pdf`);
 
-        // Abrir enlaces de facturas automáticamente (Drive o PDF)
-        openInvoiceLinks(pdfData.parts);
+  // Open invoice links once (includes any Google Drive links)
+  openInvoiceLinks(pdfData.parts);
 
-        // NUEVO: Abrir PDF generado en el backend (si existe) en una nueva pestaña, sin forzar descarga
-        if (data.pdfUrl) {
-          // Forzar apertura en nueva pestaña, sin descargar
-          window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
-        }
-
-        // NUEVO: Abrir links de Drive de las partes usadas (si existen)
-        pdfData.parts.forEach((part: any) => {
-          if (part.invoiceLink && typeof part.invoiceLink === 'string') {
-            // Si es un link de Google Drive, abrir en nueva pestaña
-            if (part.invoiceLink.includes('drive.google.com')) {
-              window.open(part.invoiceLink, '_blank', 'noopener,noreferrer');
-            }
-          }
-        });
-
-        console.log('✅ PDF generado y enlaces de facturas/Drive abiertos');
+  // Removed duplicate openings (backend PDF + per-link Drive) to avoid blank tabs
+  console.log('✅ PDF generated and invoice links opened (deduplicated)');
       } catch (pdfError: any) {
         console.error('❌ Error generando PDF:', pdfError);
         console.error('❌ Detalles del error:', {
