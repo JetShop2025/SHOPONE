@@ -34,8 +34,52 @@ const connection = mysql.createPool({
   timezone: 'local',
   connectionLimit: 10,
   waitForConnections: true,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  connectTimeout: 15000
 });
+
+// Basic pool diagnostics
+connection.on?.('error', (err) => {
+  console.error('[DB] Pool error event:', err.code || err.message);
+});
+
+connection.on?.('connection', (conn) => {
+  try {
+    conn.on('error', (err) => {
+      console.error('[DB] Connection-level error:', err.code || err.message);
+    });
+  } catch {}
+});
+
+// --- KEEP ALIVE & AUTO-RECOVERY -------------------------------------------------
+let consecutiveKeepAliveFailures = 0;
+const MAX_KEEPALIVE_FAILS = 5;
+const KEEPALIVE_MS = parseInt(process.env.DB_KEEPALIVE_MS || '30000', 10);
+
+async function runKeepAlive() {
+  try {
+    const start = Date.now();
+    await connection.query('SELECT 1');
+    const duration = Date.now() - start;
+    if (consecutiveKeepAliveFailures > 0) {
+      console.log(`[DB] Keep-alive OK after ${consecutiveKeepAliveFailures} failure(s). (${duration}ms)`);
+    }
+    consecutiveKeepAliveFailures = 0;
+  } catch (err) {
+    consecutiveKeepAliveFailures++;
+    console.warn(`[DB] Keep-alive failed (#${consecutiveKeepAliveFailures}):`, err.code || err.message);
+    if (consecutiveKeepAliveFailures >= MAX_KEEPALIVE_FAILS) {
+      console.error('[DB] Too many keep-alive failures. Consider investigating network / DB availability.');
+    }
+  }
+}
+
+setInterval(runKeepAlive, KEEPALIVE_MS).unref();
+
+// Expose for optional manual trigger
+async function forcePing() { return runKeepAlive(); }
 
 // Test database connection
 async function testConnection() {
@@ -1294,12 +1338,26 @@ async function deletePendingPart(id) {
 
 // Users functions (para login)
 async function getUsers() {
-  try {
-    const [rows] = await connection.execute('SELECT * FROM users');
-    return rows;
-  } catch (error) {
-    console.error('[DB] Error getting users:', error.message);
-    throw error;
+  const query = 'SELECT * FROM users';
+  let attempt = 0;
+  const maxAttempts = 2; // one retry on transient failure
+  while (attempt < maxAttempts) {
+    try {
+      attempt++;
+      if (attempt > 1) {
+        console.log(`[DB] getUsers retry attempt ${attempt}`);
+      }
+      const [rows] = await connection.execute(query);
+      return rows;
+    } catch (error) {
+      console.error('[DB] Error getting users (attempt ' + attempt + '):', error.code || error.message);
+      // Retry only for transient network errors
+      if (attempt < maxAttempts && ['ECONNRESET','PROTOCOL_CONNECTION_LOST','ETIMEDOUT','EPIPE'].includes(error.code)) {
+        await new Promise(r => setTimeout(r, 300));
+        continue;
+      }
+      throw error;
+    }
   }
 }
 
