@@ -431,12 +431,13 @@ app.get('/api/work-orders/trailer/:trailerId', async (req, res) => {
     const { limit, offset } = req.query;
     console.log('[GET] /api/work-orders/trailer/:trailerId - Fetching from database:', req.params.trailerId, 'limit:', limit, 'offset:', offset);
     const result = await db.getOrdersByTrailer(req.params.trailerId, { limit, offset });
-    // result: { data, total }
     res.json({
       data: result.data,
       total: result.total,
       limit: parseInt(limit) || 10,
-      offset: parseInt(offset) || 0
+      offset: parseInt(offset) || 0,
+      usedCandidate: result.usedCandidate,
+      candidatesTried: result.candidates
     });
   } catch (error) {
     console.error('[ERROR] GET /api/work-orders/trailer/:trailerId:', error);

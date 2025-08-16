@@ -348,36 +348,74 @@ async function getOrders(limit = 100, offset = 0) {
   }
 }
 
-// Get work orders by trailer ID
-async function getOrdersByTrailer(trailerId) {
+// Get work orders by trailer ID (with normalization + pagination)
+async function getOrdersByTrailer(trailerId, opts = {}) {
+  const rawLimit = parseInt(opts.limit);
+  const rawOffset = parseInt(opts.offset);
+  const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(100, rawLimit)) : 10;
+  const offset = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
+
+  // Normalize trailer id: remove bell emoji and trim
+  const original = String(trailerId || '').trim();
+  let cleaned = original.replace(/🔔/g, '').trim();
+  // Remove duplicated internal spaces
+  cleaned = cleaned.replace(/\s+/g, ' ');
+
+  const withoutTrk = cleaned.replace(/\s*TRK$/i, '').trim();
+  const candidatesSet = new Set();
+  if (cleaned) candidatesSet.add(cleaned);
+  if (withoutTrk) candidatesSet.add(withoutTrk);
+  if (!/\bTRK\b/i.test(cleaned) && withoutTrk) candidatesSet.add(withoutTrk + ' TRK');
+  const candidates = Array.from(candidatesSet).filter(Boolean);
+
+  console.log('[DB] getOrdersByTrailer candidates prepared:', { original, cleaned, candidates, limit, offset });
+
   try {
-    // Accept limit/offset for pagination (default: 10, 0)
-    let limit = 10, offset = 0;
-    if (arguments.length > 1 && typeof arguments[1] === 'object') {
-      limit = Math.max(1, Math.min(100, parseInt(arguments[1].limit) || 10));
-      offset = Math.max(0, parseInt(arguments[1].offset) || 0);
+    let rows = [];
+    let usedCandidate = null;
+    for (const cand of candidates) {
+      // NOTE: No placeholders for LIMIT/OFFSET to avoid ER_WRONG_ARGUMENTS on some MySQL versions
+      const sql = `SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC LIMIT ${limit} OFFSET ${offset}`;
+      console.log('[DB] getOrdersByTrailer attempting candidate:', cand, 'SQL:', sql);
+      const [attemptRows] = await connection.execute(sql, [cand]);
+      if (attemptRows.length > 0) {
+        rows = attemptRows;
+        usedCandidate = cand;
+        console.log('[DB] getOrdersByTrailer match with candidate:', cand, 'rows:', rows.length);
+        break;
+      }
     }
-    console.log(`[DB] Executing paginated query: SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC LIMIT ${limit} OFFSET ${offset}`, trailerId);
-    const [rows] = await connection.execute(
-      `SELECT * FROM work_orders WHERE trailer = ? ORDER BY date DESC LIMIT ? OFFSET ?`,
-      [trailerId, limit, offset]
-    );
-    // Get total count for pagination
-    const [countRows] = await connection.execute(
-      `SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?`,
-      [trailerId]
-    );
-    const total = countRows[0]?.total || 0;
-    // Parse JSON fields and force date as string
+
+    // If still empty and we have at least one candidate, use first to compute total anyway
+    if (!usedCandidate && candidates.length > 0) {
+      usedCandidate = candidates[0];
+    }
+
+    let total = 0;
+    if (usedCandidate) {
+      const [countRows] = await connection.execute(
+        'SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?',
+        [usedCandidate]
+      );
+      total = countRows[0]?.total || 0;
+    } else if (candidates.length > 0) {
+      // Even if no records, return total 0 after checking first candidate for count (fast path)
+      const [countRows] = await connection.execute(
+        'SELECT COUNT(*) as total FROM work_orders WHERE trailer = ?',
+        [candidates[0]]
+      );
+      total = countRows[0]?.total || 0;
+    }
+
     const parsedRows = rows.map(row => {
       let dateStr = '';
-      if (typeof row.date === 'string') {
-        const match = row.date.match(/^\d{4}-\d{2}-\d{2}/);
-        dateStr = match ? match[0] : row.date;
+      if (row.date instanceof Date) {
+        dateStr = row.date.toISOString().slice(0, 10);
+      } else if (typeof row.date === 'string') {
+        const m = row.date.match(/^\d{4}-\d{2}-\d{2}/);
+        dateStr = m ? m[0] : row.date;
       } else if (row.date) {
         try { dateStr = String(row.date).slice(0, 10); } catch { dateStr = ''; }
-      } else {
-        dateStr = '';
       }
       return {
         ...row,
@@ -387,24 +425,11 @@ async function getOrdersByTrailer(trailerId) {
         extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
       };
     });
-    return { data: parsedRows, total };
-  } catch (error) {
-    console.error('[DB] Error getting work orders by trailer:', error.message);
-    throw error;
-  }
-}
 
-// Get rental history for a trailer (use trailer_rental_history table)
-async function getRentalHistory(trailerName) {
-  try {
-    console.log('[DB] Executing query: SELECT * FROM trailer_rental_history WHERE trailer_numero = ?', trailerName);
-    const [rows] = await connection.execute('SELECT * FROM trailer_rental_history WHERE trailer_numero = ? ORDER BY created_at DESC', [trailerName]);
-    console.log(`[DB] Found ${rows.length} rental records for trailer ${trailerName}`);
-    return rows;
+    return { data: parsedRows, total, usedCandidate, candidates };
   } catch (error) {
-    console.error('[DB] Error getting rental history:', error.message);
-    // If trailer_rental_history table doesn't exist, return empty array
-    return [];
+    console.error('[DB] Error in getOrdersByTrailer:', error.message, { original, cleaned, candidates });
+    throw error;
   }
 }
 

@@ -3,7 +3,8 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab } from '../../utils/pdfGenerator';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://shipone-onrender.com/api';
+// NOTE: corregido dominio fallback (antes 'shipone', ahora 'shopone') para que el historial W.O. funcione
+const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
 // Different clients for trailer rental vs regular clients
 const rentalClients = ['AMAZON', 'WALMART', 'HOME DEPOT', 'FEDEX', 'UPS', 'TARGET'];
