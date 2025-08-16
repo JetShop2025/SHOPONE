@@ -109,7 +109,7 @@ const TrailasTable: React.FC = () => {
 
   // Rental form state
   const [rentalForm, setRentalForm] = useState({
-    cliente: '', // No preselected client
+    cliente: '',
     fecha_renta: '',
     fecha_devolucion: '',
     observaciones: ''
@@ -247,9 +247,20 @@ const TrailasTable: React.FC = () => {
     return localStorage.getItem('username') || 'USER';
   };
   // Handle rental
+  const openRentalModal = (traila: Traila) => {
+    setSelectedTraila(traila);
+    setRentalForm({
+      cliente: traila.cliente || '',
+      fecha_renta: new Date().toISOString().split('T')[0],
+      fecha_devolucion: '',
+      observaciones: ''
+    });
+    setShowRentalModal(true);
+  };
+
   const handleRental = async () => {
     if (!selectedTraila || !rentalForm.cliente || !rentalForm.fecha_renta) {
-      alert('Por favor complete todos los campos requeridos');
+  alert('Please complete all required fields');
       return;
     }
 
@@ -275,20 +286,32 @@ const TrailasTable: React.FC = () => {
       console.log('📦 Datos refrescados:', trailersResponse.data);
       setTrailas(Array.isArray(trailersResponse.data) ? trailersResponse.data : []);
 
-      alert('Trailer rentado exitosamente');
+  alert('Trailer rented successfully');
     } catch (error: any) {
       console.error('❌ Error renting trailer:', error);
-      alert(`Error al rentar el trailer: ${error.response?.data?.error || error.message}`);
+  alert(`Error renting trailer: ${error.response?.data?.error || error.message}`);
     }
   };
   const handleReturn = async (traila: Traila) => {
     setSelectedTraila(traila);
-    setReturnForm({
-      fecha_devolucion: new Date().toISOString().split('T')[0],
-      observaciones: '',
-      condicion: '',
-      cliente: traila.cliente || ''
-    });
+    // Try to fetch last rental history to prefill
+    try {
+      const histRes = await axios.get(`${API_URL}/trailas/${traila.nombre}/rental-history`);
+      const last = Array.isArray(histRes.data) && histRes.data.length > 0 ? histRes.data[0] : null;
+      setReturnForm({
+        fecha_devolucion: last?.fecha_devolucion_estimada || last?.fecha_devolucion || new Date().toISOString().split('T')[0],
+        observaciones: last?.observaciones || '',
+        condicion: '',
+        cliente: last?.cliente || traila.cliente || ''
+      });
+    } catch {
+      setReturnForm({
+        fecha_devolucion: new Date().toISOString().split('T')[0],
+        observaciones: '',
+        condicion: '',
+        cliente: traila.cliente || ''
+      });
+    }
     setShowReturnModal(true);
   };
   // Handle confirm return from modal

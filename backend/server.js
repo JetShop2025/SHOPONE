@@ -559,8 +559,12 @@ app.get('/api/trailas/:trailerName/rental-history', async (req, res) => {
 app.put('/api/trailas/:id/rent', async (req, res) => {
   try {
     const trailerId = req.params.id;
-    const { cliente, fecha_renta, fecha_devolucion, observaciones } = req.body;
-    const usuario = req.body.usuario || 'SYSTEM';
+    // Accept both Spanish and English field names
+    const cliente = req.body.cliente || req.body.client || null;
+    const fecha_renta = req.body.fecha_renta || req.body.rent_date || null;
+    const fecha_devolucion = req.body.fecha_devolucion || req.body.return_estimated || null;
+    const observaciones = req.body.observaciones || req.body.notes || '';
+    const usuario = req.body.usuario || req.body.user || 'SYSTEM';
     
     console.log(`[PUT] /api/trailas/${trailerId}/rent - Renting trailer:`, req.body);
     
@@ -666,7 +670,12 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
     res.json({ 
       success: true, 
       trailer: newData, 
-      rental_info: { cliente, fecha_renta, fecha_devolucion, observaciones },
+      rental_info: { 
+        client: cliente, 
+        rent_date: fecha_renta, 
+        return_estimated: fecha_devolucion, 
+        notes: observaciones 
+      },
       message: 'Trailer rented successfully and history recorded'
     });
   } catch (error) {
@@ -679,8 +688,11 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
 app.put('/api/trailas/:id/return', async (req, res) => {
   try {
     const trailerId = req.params.id;
-    const { fecha_devolucion_real, observaciones_devolucion } = req.body;
-    const usuario = req.body.usuario || 'SYSTEM';
+    // Accept both naming styles
+    const fecha_devolucion_real = req.body.fecha_devolucion_real || req.body.return_date || null;
+    const observaciones_devolucion = req.body.observaciones_devolucion || req.body.return_notes || '';
+    const cliente = req.body.cliente || req.body.client || null;
+    const usuario = req.body.usuario || req.body.user || 'SYSTEM';
     
     console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer`, req.body);
       // Verificar columnas disponibles
@@ -752,7 +764,11 @@ app.put('/api/trailas/:id/return', async (req, res) => {
     res.json({ 
       success: true, 
       trailer: newData, 
-      return_info: { fecha_devolucion_real: fechaDevolucionReal, observaciones_devolucion },
+      return_info: { 
+        return_date: fechaDevolucionReal, 
+        return_notes: observaciones_devolucion,
+        client: cliente
+      },
       message: 'Trailer returned successfully and history updated'
     });
   } catch (error) {
