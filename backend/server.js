@@ -688,13 +688,26 @@ app.put('/api/trailas/:id/rent', async (req, res) => {
 app.put('/api/trailas/:id/return', async (req, res) => {
   try {
     const trailerId = req.params.id;
-    // Accept both naming styles
-    const fecha_devolucion_real = req.body.fecha_devolucion_real || req.body.return_date || null;
-    const observaciones_devolucion = req.body.observaciones_devolucion || req.body.return_notes || '';
+    // Accept legacy + English field names
+    const fecha_devolucion_real = req.body.fecha_devolucion_real 
+      || req.body.return_date 
+      || req.body.fecha_devolucion 
+      || null;
+    const observaciones_devolucion = req.body.observaciones_devolucion 
+      || req.body.return_notes 
+      || req.body.notes 
+      || req.body.observaciones 
+      || '';
     const cliente = req.body.cliente || req.body.client || null;
     const usuario = req.body.usuario || req.body.user || 'SYSTEM';
     
-    console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer`, req.body);
+    console.log(`[PUT] /api/trailas/${trailerId}/return - Returning trailer (normalized)`, {
+      raw: req.body,
+      fecha_devolucion_real,
+      observaciones_devolucion,
+      cliente,
+      usuario
+    });
       // Verificar columnas disponibles
     const [columns] = await connection.execute('DESCRIBE trailers');
     const hasStatusColumn = columns.some(col => col.Field === 'status');
@@ -709,7 +722,7 @@ app.put('/api/trailas/:id/return', async (req, res) => {
       return res.status(404).json({ error: 'Trailer not found' });
     }
     
-    const fechaDevolucionReal = fecha_devolucion_real || new Date().toISOString().split('T')[0];
+  const fechaDevolucionReal = fecha_devolucion_real || new Date().toISOString().split('T')[0];
     
     // Actualizar trailer como disponible
     let updateQuery = 'UPDATE trailers SET ';
@@ -746,10 +759,11 @@ app.put('/api/trailas/:id/return', async (req, res) => {
       await connection.execute(`
         UPDATE trailer_rental_history 
         SET fecha_devolucion_real = ?, status = 'RETURNED', 
-            observaciones = ?
+            observaciones = IF(CHAR_LENGTH(?)>0, ?, observaciones),
+            updated_at = NOW()
         WHERE trailer_id = ? AND status = 'ACTIVE'
         ORDER BY created_at DESC LIMIT 1
-      `, [fechaDevolucionReal, observaciones_devolucion || '', trailerId]);
+      `, [fechaDevolucionReal, observaciones_devolucion || '', observaciones_devolucion || '', trailerId]);
       
       console.log(`[PUT] /api/trailas/${trailerId}/return - Rental history updated`);
     } catch (historyError) {
