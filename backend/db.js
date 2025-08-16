@@ -627,6 +627,21 @@ async function updateOrder(id, order) {
   }
 }
 
+// Get rental history for a trailer (safe fallback if table missing)
+async function getRentalHistory(trailerName) {
+  try {
+    console.log('[DB] getRentalHistory querying trailer_rental_history for', trailerName);
+    const [rows] = await connection.execute(
+      'SELECT * FROM trailer_rental_history WHERE trailer_numero = ? ORDER BY created_at DESC',
+      [trailerName]
+    );
+    return rows;
+  } catch (error) {
+    console.error('[DB] Error getting rental history:', error.message);
+    return [];
+  }
+}
+
 async function deleteOrder(id, usuario = 'system') {
   try {
     console.log('[DB] Deleting work order with ID:', id);
@@ -1822,8 +1837,8 @@ module.exports = {
   getWorkOrderParts,
   createWorkOrderPart,
   updateWorkOrderPart,
-  updateWorkOrderPart,
-  deductInventory,  deductInventoryFIFO,
+  deductInventory,
+  deductInventoryFIFO,
   getPartes,
   createParte,
   updateParte,
@@ -1841,6 +1856,5 @@ module.exports = {
   getChangesForAudit,
   auditWorkOrderOperation,
   auditInventoryOperation,
-  auditTrailerOperation,
-  getAllWorkOrderParts
+  auditTrailerOperation
 };
