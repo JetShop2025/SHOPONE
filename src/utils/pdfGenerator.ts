@@ -161,7 +161,14 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(0, 150, 255);
   pdf.text('ID Classic:', rightBoxX + 3, firstRowY + 18);
   pdf.setTextColor(0, 0, 0);
-  pdf.text(String(workOrderData.idClassic || ''), rightBoxX + 25, firstRowY + 18);
+  // Mostrar en blanco si idClassic viene vacío o si accidentalmente se llenó con el mismo id numérico de la W.O.
+  const idClassicDisplay = (() => {
+    const raw = (workOrderData.idClassic || '').toString().trim();
+    if (!raw) return '';
+    if (String(workOrderData.id) === raw) return ''; // no sustituir automáticamente con id interno
+    return raw;
+  })();
+  pdf.text(idClassicDisplay, rightBoxX + 25, firstRowY + 18);
   
   pdf.setTextColor(0, 150, 255);
   pdf.text('Mechanics:', rightBoxX + 3, firstRowY + 24);

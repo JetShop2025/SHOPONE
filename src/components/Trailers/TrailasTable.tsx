@@ -1290,7 +1290,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={handleRental}
@@ -1304,7 +1304,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Confirmar Renta
+                Confirm Rental
               </button>
             </div>
           </div>
@@ -1408,11 +1408,11 @@ const TrailasTable: React.FC = () => {
             overflow: 'auto'
           }}>
             <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Devolver Trailer: {selectedTraila.nombre}
+              Return Trailer: {selectedTraila.nombre}
             </h2>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Cliente
+                Customer
               </label>
               <input
                 type="text"
@@ -1425,13 +1425,13 @@ const TrailasTable: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '14px'
                 }}
-                placeholder="Ingrese el nombre del cliente..."
+                placeholder="Enter customer name..."
                 required
               />
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Fecha de Devolución
+                Return Date
               </label>
               <input
                 type="date"
@@ -1449,12 +1449,12 @@ const TrailasTable: React.FC = () => {
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Observaciones
+                Notes
               </label>
               <textarea
                 value={returnForm.observaciones}
                 onChange={e => setReturnForm({ ...returnForm, observaciones: e.target.value })}
-                placeholder="Observaciones adicionales..."
+                placeholder="Additional notes..."
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1479,7 +1479,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={handleConfirmReturn}
@@ -1493,7 +1493,7 @@ const TrailasTable: React.FC = () => {
                   fontWeight: '600'
                 }}
               >
-                Confirmar Devolución
+                Confirm Return
               </button>
             </div>
           </div>
@@ -1523,13 +1523,13 @@ const TrailasTable: React.FC = () => {
             maxHeight: '90vh',
             overflow: 'auto'
           }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Historial de Work Orders: {selectedTraila.nombre}
+              Work Orders History: {selectedTraila.nombre}
             </h2>
 
             {/* Filtro por mes */}
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <label htmlFor="monthFilter" style={{ fontWeight: '600', color: '#333' }}>
-                Filtrar por mes:
+                Filter by month:
               </label>
               <select
                 id="monthFilter"
@@ -1544,22 +1544,22 @@ const TrailasTable: React.FC = () => {
                   backgroundColor: '#fff'
                 }}
               >
-                <option value="ALL">Todos los meses</option>
-                <option value="2025-01">Enero 2025</option>
-                <option value="2025-02">Febrero 2025</option>
-                <option value="2025-03">Marzo 2025</option>
-                <option value="2025-04">Abril 2025</option>
-                <option value="2025-05">Mayo 2025</option>
-                <option value="2025-06">Junio 2025</option>
-                <option value="2025-07">Julio 2025</option>
-                <option value="2025-08">Agosto 2025</option>
-                <option value="2025-09">Septiembre 2025</option>
-                <option value="2025-10">Octubre 2025</option>
-                <option value="2025-11">Noviembre 2025</option>
-                <option value="2025-12">Diciembre 2025</option>
-                <option value="2024-12">Diciembre 2024</option>
-                <option value="2024-11">Noviembre 2024</option>
-                <option value="2024-10">Octubre 2024</option>
+                <option value="ALL">All months</option>
+                <option value="2025-01">January 2025</option>
+                <option value="2025-02">February 2025</option>
+                <option value="2025-03">March 2025</option>
+                <option value="2025-04">April 2025</option>
+                <option value="2025-05">May 2025</option>
+                <option value="2025-06">June 2025</option>
+                <option value="2025-07">July 2025</option>
+                <option value="2025-08">August 2025</option>
+                <option value="2025-09">September 2025</option>
+                <option value="2025-10">October 2025</option>
+                <option value="2025-11">November 2025</option>
+                <option value="2025-12">December 2025</option>
+                <option value="2024-12">December 2024</option>
+                <option value="2024-11">November 2024</option>
+                <option value="2024-10">October 2024</option>
               </select>
               {workOrderMonthFilter !== 'ALL' && (
                 <span style={{ color: '#666', fontSize: '14px' }}>
@@ -1570,7 +1570,7 @@ const TrailasTable: React.FC = () => {
                       return woMonth === workOrderMonthFilter;
                     });
                     return filtered.length;
-                  })()} de {workOrderHistory.length} work orders)
+                  })()} of {workOrderHistory.length} work orders)
                 </span>
               )}
             </div>

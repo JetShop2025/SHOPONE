@@ -1592,14 +1592,28 @@ const WorkOrdersTable: React.FC = () => {
   };
 
   const handlePartHover = (e: React.MouseEvent, sku: string) => {
-    const partInfo = inventory.find(i => i.sku === sku);
+    const partInfo = inventory.find(i => String(i.sku).toLowerCase() === String(sku).toLowerCase());
     if (partInfo) {
+      // Derivar posible URL de imagen
+      const possibleFields = ['imageUrl','image','img','photo','picture','thumbnail','thumb'];
+      let imageUrl = '';
+      for (const f of possibleFields) {
+        if (partInfo[f]) { imageUrl = partInfo[f]; break; }
+      }
+      // Si no hay campo directo y hay campo 'sku', construir ruta tentativa
+      if (!imageUrl && partInfo.sku) {
+        const baseApi = (process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api');
+        // Remover /api final para archivos estáticos
+        const base = baseApi.replace(/\/api$/,'');
+        imageUrl = `${base}/inventory-images/${encodeURIComponent(partInfo.sku)}.jpg`;
+      }
       setTooltip({
         visible: true,
         x: e.clientX,
         y: e.clientY,
-        info: partInfo
-      });    }
+        info: { ...partInfo, _previewImage: imageUrl }
+      });
+    }
   };
 
   // Función para cargar trailers con partes pendientes
@@ -2123,18 +2137,38 @@ const WorkOrdersTable: React.FC = () => {
             boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
             padding: 16,
             zIndex: 9999,
-            minWidth: 220
+            minWidth: 240,
+            maxWidth: 360
           }}
           onClick={hideTooltip}        >
           <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
-          <div><b>Part Name:</b> {tooltip.info.part || 'N/A'}</div>
-          <div><b>On Hand:</b> {tooltip.info.onHand || 'N/A'}</div>
-          <div><b>U/M:</b> {tooltip.info.um || 'N/A'}</div>
+          {tooltip.info._previewImage && (
+            <div style={{ marginBottom: 8, textAlign: 'center' }}>
+              <img
+                src={tooltip.info._previewImage}
+                alt={tooltip.info.part || tooltip.info.sku || 'part image'}
+                style={{
+                  maxWidth: 180,
+                  maxHeight: 140,
+                  objectFit: 'contain',
+                  border: '1px solid #eee',
+                  borderRadius: 6,
+                  background: '#fafafa',
+                  padding: 4
+                }}
+                onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+          <div><b>SKU:</b> {tooltip.info.sku || 'N/A'}</div>
+          <div><b>Part Name:</b> {tooltip.info.part || tooltip.info.description || 'N/A'}</div>
+          <div><b>On Hand:</b> {tooltip.info.onHand ?? tooltip.info.qty_on_hand ?? 'N/A'}</div>
+          <div><b>U/M:</b> {tooltip.info.um || tooltip.info.unit || 'N/A'}</div>
           <div>
-            <b>Precio actual:</b>{" "}
+            <b>Precio actual:</b>{' '}
             {tooltip.info.precio
               ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-              : '$0.00'}
+              : (tooltip.info.cost ? Number(tooltip.info.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00')}
           </div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
         </div>
@@ -2879,10 +2913,13 @@ const WorkOrdersTable: React.FC = () => {
                   const partsSummary = Array.isArray(order.parts)
                     ? order.parts.slice(0, 5).map((p: any) => {
                         if (!p || !p.sku) return '';
-                        const qty = p.qty ? ` x${p.qty}` : '';
-                        const cost = (p.cost !== undefined && p.cost !== null && p.cost !== '')
-                          ? ` ${Number(p.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`
-                          : '';
+                        const qtyNum = Number(p.qty || p.qty_used || 0);
+                        const unitCostNum = Number(String(p.cost ?? '').replace(/[^0-9.]/g, '')) || 0;
+                        const totalCost = qtyNum * unitCostNum;
+                        const qty = qtyNum ? ` x${qtyNum}` : '';
+                        const cost = totalCost
+                          ? ` ${totalCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`
+                          : ' $0.00';
                         return `${p.sku}${qty}${cost}`;
                       }).filter(Boolean).join(' | ')
                     : '';
@@ -3106,13 +3143,16 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               <td>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
               <td>
                 {order.parts && order.parts[i] && order.parts[i].sku
-                  ? (
-                      order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
-                        ? Number(order.parts[i].cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                        : '$0.00'
-                    )
-                  : ''
-                }
+                  ? (() => {
+                      const part = order.parts[i];
+                      const qtyNum = Number(part.qty || part.qty_used || 0);
+                      const unitCostNum = Number(String(part.cost ?? '').replace(/[^0-9.]/g, '')) || 0;
+                      const total = qtyNum * unitCostNum;
+                      return total
+                        ? total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                        : '$0.00';
+                    })()
+                  : ''}
               </td>
             </React.Fragment>
           ))}
@@ -3138,14 +3178,19 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
                   </tr>
                 </thead>
                 <tbody>
-                  {order.parts.slice(5).map((p: any, idx: number) => (
-                    <tr key={idx}>
-                      <td>{idx + 6}</td>
-                      <td>{p.sku}</td>
-                      <td>{p.qty}</td>
-                      <td>{p.cost}</td>
-                    </tr>
-                  ))}
+                  {order.parts.slice(5).map((p: any, idx: number) => {
+                    const qtyNum = Number(p.qty || p.qty_used || 0);
+                    const unitCostNum = Number(String(p.cost ?? '').replace(/[^0-9.]/g, '')) || 0;
+                    const total = qtyNum * unitCostNum;
+                    return (
+                      <tr key={idx}>
+                        <td>{idx + 6}</td>
+                        <td>{p.sku}</td>
+                        <td>{qtyNum}</td>
+                        <td>{total ? total.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </td>
@@ -3254,34 +3299,54 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
         />
       )}
       {tooltip.visible && tooltip.info && (
-  <div
-    style={{
-      position: 'fixed',
-      top: tooltip.y + 10,
-      left: tooltip.x + 10,
-      background: '#fff',
-      border: '1px solid #1976d2',
-      borderRadius: 8,
-      boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
-      padding: 16,
-      zIndex: 9999,
-      minWidth: 220
-    }}
-    onClick={hideTooltip}
-  >
-    <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
-    <div><b>Part Name:</b> {tooltip.info.part}</div>
-    <div><b>On Hand:</b> {tooltip.info.onHand}</div>
-    <div><b>U/M:</b> {tooltip.info.um}</div>
-    <div>
-      <b>Precio actual:</b>{" "}
-      {tooltip.info.precio
-        ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-        : '$0.00'}
-    </div>
-    <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
-  </div>
-)}
+        <div
+          style={{
+            position: 'fixed',
+            top: tooltip.y + 10,
+            left: tooltip.x + 10,
+            background: '#fff',
+            border: '1px solid #1976d2',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            padding: 16,
+            zIndex: 9999,
+            minWidth: 240,
+            maxWidth: 360
+          }}
+          onClick={hideTooltip}
+        >
+          <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
+          {tooltip.info._previewImage && (
+            <div style={{ marginBottom: 8, textAlign: 'center' }}>
+              <img
+                src={tooltip.info._previewImage}
+                alt={tooltip.info.part || tooltip.info.sku || 'part image'}
+                style={{
+                  maxWidth: 180,
+                  maxHeight: 140,
+                  objectFit: 'contain',
+                  border: '1px solid #eee',
+                  borderRadius: 6,
+                  background: '#fafafa',
+                  padding: 4
+                }}
+                onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+          <div><b>SKU:</b> {tooltip.info.sku || 'N/A'}</div>
+          <div><b>Part Name:</b> {tooltip.info.part || tooltip.info.description || 'N/A'}</div>
+            <div><b>On Hand:</b> {tooltip.info.onHand ?? tooltip.info.qty_on_hand ?? 'N/A'}</div>
+          <div><b>U/M:</b> {tooltip.info.um || tooltip.info.unit || 'N/A'}</div>
+          <div>
+            <b>Precio actual:</b>{' '}
+            {tooltip.info.precio
+              ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              : (tooltip.info.cost ? Number(tooltip.info.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00')}
+          </div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
+        </div>
+      )}
       <HourmeterModal
   show={showHourmeter}
   onClose={() => setShowHourmeter(false)}
