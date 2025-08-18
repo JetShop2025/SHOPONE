@@ -59,163 +59,169 @@ app.use((req, res, next) => {
 // AUDIT ROUTES
 app.use('/api/audit', auditRoutes);
 
-// Ensure subscription table
-async function ensureLocationSubscriptionTable() {
-  try {
-    await connection.execute(`CREATE TABLE IF NOT EXISTS trailer_location_subscriptions (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(255) NOT NULL,
-      trailers TEXT NULL,
-      frequency ENUM('HOURLY','DAILY','WEEKLY') DEFAULT 'DAILY',
-      active TINYINT(1) DEFAULT 1,
-      last_sent_at DATETIME NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )`);
-    await connection.execute(`CREATE TABLE IF NOT EXISTS trailer_location_digest_log (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      subscription_id INT NULL,
-      recipient VARCHAR(255) NOT NULL,
-      trailer_count INT DEFAULT 0,
-      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      error TEXT NULL,
-      INDEX(subscription_id)
-    )`);
-    console.log('[INIT] trailer_location_subscriptions table OK');
-  } catch (e) { console.error('[INIT] Error ensuring subscription table', e); }
-}
-ensureLocationSubscriptionTable();
+// ---- Trailer Location Digest Feature (optional, gated) ----
+const ENABLE_DIGEST = process.env.ENABLE_TRAILER_LOCATION_DIGEST === 'true';
+if (ENABLE_DIGEST) {
+  console.log('[DIGEST] Feature ENABLED');
+  // Ensure subscription table
+  (async function ensureLocationSubscriptionTable() {
+    try {
+      await connection.execute(`CREATE TABLE IF NOT EXISTS trailer_location_subscriptions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        trailers TEXT NULL,
+        frequency ENUM('HOURLY','DAILY','WEEKLY') DEFAULT 'DAILY',
+        active TINYINT(1) DEFAULT 1,
+        last_sent_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`);
+      await connection.execute(`CREATE TABLE IF NOT EXISTS trailer_location_digest_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        subscription_id INT NULL,
+        recipient VARCHAR(255) NOT NULL,
+        trailer_count INT DEFAULT 0,
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        error TEXT NULL,
+        INDEX(subscription_id)
+      )`);
+      console.log('[INIT] trailer_location_subscriptions table OK');
+    } catch (e) { console.error('[INIT] Error ensuring subscription table', e); }
+  })();
 
-// Subscriptions CRUD (minimal)
-app.get('/api/trailer-location/subscriptions', async (req,res)=>{
-  const [rows] = await connection.execute('SELECT * FROM trailer_location_subscriptions ORDER BY id DESC');
-  res.json(rows);
-});
-app.post('/api/trailer-location/subscriptions', async (req,res)=>{
-  const { email, trailers, frequency } = req.body;
-  await connection.execute('INSERT INTO trailer_location_subscriptions (email, trailers, frequency) VALUES (?,?,?)',[email, JSON.stringify(trailers||[]), frequency||'DAILY']);
-  res.json({ success:true });
-});
-app.put('/api/trailer-location/subscriptions/:id', async (req,res)=>{
-  const { email, trailers, frequency, active } = req.body;
-  await connection.execute('UPDATE trailer_location_subscriptions SET email=?, trailers=?, frequency=?, active=? WHERE id=?',[email, JSON.stringify(trailers||[]), frequency, active?1:0, req.params.id]);
-  res.json({ success:true });
-});
-app.delete('/api/trailer-location/subscriptions/:id', async (req,res)=>{
-  await connection.execute('DELETE FROM trailer_location_subscriptions WHERE id=?',[req.params.id]);
-  res.json({ success:true });
-});
-
-// Preview digest without sending
-app.get('/api/trailer-location/preview-digest', async (req,res)=>{
-  try {
-    const subId = req.query.subscriptionId;
-    const { data } = await fetchAssets(true);
-    let filtered = data; let list=[];
-    if (subId) {
-      const [rows] = await connection.execute('SELECT * FROM trailer_location_subscriptions WHERE id=?',[subId]);
-      if (!rows.length) return res.status(404).json({ error:'Subscription not found'});
-      try { list = JSON.parse(rows[0].trailers||'[]'); } catch {}
-      filtered = filterAssetsByTrailerList(data, list);
-    }
-    return res.json({ html: buildDigestHTML(filtered), count: filtered.length, trailersRequested: list });
-  } catch(e){ console.error('[PREVIEW]', e); res.status(500).json({ error: e.message }); }
-});
-
-// Manual send endpoint
-app.post('/api/trailer-location/send-digest', async (req,res)=>{
-  try {
-    const force = !!req.body.force;
-    const { data } = await fetchAssets(force);
-    const [subs] = await connection.execute('SELECT * FROM trailer_location_subscriptions WHERE active=1');
-    for (const s of subs) {
-      let trailers = [];
-      try { trailers = JSON.parse(s.trailers||'[]'); } catch {}
-      const filtered = filterAssetsByTrailerList(data, trailers);
-      const html = buildDigestHTML(filtered);
-      const attachments = buildOptionalCSVAttachment(filtered);
-      try {
-        await sendHTMLMail({ to: s.email, subject: 'Trailer Location Digest', html, attachments });
-        await connection.execute('UPDATE trailer_location_subscriptions SET last_sent_at=NOW() WHERE id=?',[s.id]);
-        await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count) VALUES (?,?,?)',[s.id, s.email, filtered.length]);
-      } catch(mailErr){
-        console.error('[DIGEST] send error', mailErr.message);
-        await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count, error) VALUES (?,?,?,?)',[s.id, s.email, filtered.length, mailErr.message]);
-      }
-    }
-    res.json({ success:true, sent: subs.length });
-  } catch (e) {
-    console.error('[DIGEST] Error sending digest', e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-function buildDigestHTML(data) {
-  if (!Array.isArray(data)) return '<p>No data</p>';
-  if (!data.length) return '<p>No trailers matched.</p>';
-  const rows = data.map(d=>`<tr><td>${escapeHtml(d.name||d.trailer||'-')}</td><td>${escapeHtml(d.location||formatLatLng(d))}</td><td>${escapeHtml(d.lastUpdate||d.last_update||'-')}</td></tr>`).join('');
-  return `<h2>Trailer Locations</h2><table border="1" cellspacing="0" cellpadding="6"><thead><tr><th>Trailer</th><th>Location</th><th>Last Update</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-function normalizeKey(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
-function filterAssetsByTrailerList(all, trailers){
-  if (!Array.isArray(trailers) || trailers.length===0) return all;
-  const wanted = new Set(trailers.map(normalizeKey));
-  return all.filter(a=>{
-    const keys = [a.name, a.id, a.raw && (a.raw.assetId||a.raw.deviceId||a.raw.serial)].filter(Boolean).map(normalizeKey);
-    return keys.some(k=> wanted.has(k));
+  // Subscriptions CRUD (minimal)
+  app.get('/api/trailer-location/subscriptions', async (req,res)=>{
+    const [rows] = await connection.execute('SELECT * FROM trailer_location_subscriptions ORDER BY id DESC');
+    res.json(rows);
   });
-}
-function buildOptionalCSVAttachment(data){
-  if (!process.env.DIGEST_ATTACH_CSV || process.env.DIGEST_ATTACH_CSV.toLowerCase()!=='true') return undefined;
-  const headers = ['Trailer','Location','Latitude','Longitude','LastUpdate'];
-  const lines = data.map(d=>[
-    d.name||d.trailer||'',
-    d.location||formatLatLng(d)||'',
-    d.lat||'',
-    d.lng||'',
-    d.lastUpdate||d.last_update||''
-  ].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(','));
-  const csv = [headers.join(','), ...lines].join('\n');
-  return [{ filename: `trailer_locations_${Date.now()}.csv`, content: csv, contentType: 'text/csv' }];
-}
-function formatLatLng(d){ if(d.lat&&d.lng) return `${d.lat},${d.lng}`; return '-'; }
-function escapeHtml(str){ return String(str).replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+  app.post('/api/trailer-location/subscriptions', async (req,res)=>{
+    const { email, trailers, frequency } = req.body;
+    await connection.execute('INSERT INTO trailer_location_subscriptions (email, trailers, frequency) VALUES (?,?,?)',[email, JSON.stringify(trailers||[]), frequency||'DAILY']);
+    res.json({ success:true });
+  });
+  app.put('/api/trailer-location/subscriptions/:id', async (req,res)=>{
+    const { email, trailers, frequency, active } = req.body;
+    await connection.execute('UPDATE trailer_location_subscriptions SET email=?, trailers=?, frequency=?, active=? WHERE id=?',[email, JSON.stringify(trailers||[]), frequency, active?1:0, req.params.id]);
+    res.json({ success:true });
+  });
+  app.delete('/api/trailer-location/subscriptions/:id', async (req,res)=>{
+    await connection.execute('DELETE FROM trailer_location_subscriptions WHERE id=?',[req.params.id]);
+    res.json({ success:true });
+  });
 
-// Scheduler: run every 15 min, decide which subs to send
-setInterval(async ()=>{
-  try {
-    const now = new Date();
-    const [subs] = await connection.execute('SELECT * FROM trailer_location_subscriptions WHERE active=1');
-    if (subs.length===0) return;
-    const { data } = await fetchAssets(false);
-    for (const s of subs) {
-      if (shouldSend(now, s)) {
-        let trailers=[]; try { trailers = JSON.parse(s.trailers||'[]'); } catch {}
+  // Preview digest without sending
+  app.get('/api/trailer-location/preview-digest', async (req,res)=>{
+    try {
+      const subId = req.query.subscriptionId;
+      const { data } = await fetchAssets(true);
+      let filtered = data; let list=[];
+      if (subId) {
+        const [rows] = await connection.execute('SELECT * FROM trailer_location_subscriptions WHERE id=?',[subId]);
+        if (!rows.length) return res.status(404).json({ error:'Subscription not found'});
+        try { list = JSON.parse(rows[0].trailers||'[]'); } catch {}
+        filtered = filterAssetsByTrailerList(data, list);
+      }
+      return res.json({ html: buildDigestHTML(filtered), count: filtered.length, trailersRequested: list });
+    } catch(e){ console.error('[PREVIEW]', e); res.status(500).json({ error: e.message }); }
+  });
+
+  // Manual send endpoint
+  app.post('/api/trailer-location/send-digest', async (req,res)=>{
+    try {
+      const force = !!req.body.force;
+      const { data } = await fetchAssets(force);
+      const [subs] = await connection.execute('SELECT * FROM trailer_location_subscriptions WHERE active=1');
+      for (const s of subs) {
+        let trailers = [];
+        try { trailers = JSON.parse(s.trailers||'[]'); } catch {}
         const filtered = filterAssetsByTrailerList(data, trailers);
         const html = buildDigestHTML(filtered);
         const attachments = buildOptionalCSVAttachment(filtered);
         try {
-          await sendHTMLMail({ to: s.email, subject: 'Scheduled Trailer Location Digest', html, attachments });
+          await sendHTMLMail({ to: s.email, subject: 'Trailer Location Digest', html, attachments });
           await connection.execute('UPDATE trailer_location_subscriptions SET last_sent_at=NOW() WHERE id=?',[s.id]);
           await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count) VALUES (?,?,?)',[s.id, s.email, filtered.length]);
-          console.log('[SCHED] Sent digest to', s.email);
-        } catch(sendErr){
-          console.error('[SCHED] send error', sendErr.message);
-          await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count, error) VALUES (?,?,?,?)',[s.id, s.email, filtered.length, sendErr.message]);
+        } catch(mailErr){
+          console.error('[DIGEST] send error', mailErr.message);
+          await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count, error) VALUES (?,?,?,?)',[s.id, s.email, filtered.length, mailErr.message]);
         }
       }
+      res.json({ success:true, sent: subs.length });
+    } catch (e) {
+      console.error('[DIGEST] Error sending digest', e);
+      res.status(500).json({ error: e.message });
     }
-  } catch (e) { console.error('[SCHED] digest error', e.message); }
-}, 15*60*1000);
+  });
 
-function shouldSend(now, sub) {
-  const last = sub.last_sent_at ? new Date(sub.last_sent_at) : null;
-  if (!last) return true;
-  const diffHrs = (now - last)/(1000*60*60);
-  if (sub.frequency==='HOURLY') return diffHrs>=1;
-  if (sub.frequency==='DAILY') return diffHrs>=24;
-  if (sub.frequency==='WEEKLY') return diffHrs>=24*7;
-  return false;
+  function buildDigestHTML(data) {
+    if (!Array.isArray(data)) return '<p>No data</p>';
+    if (!data.length) return '<p>No trailers matched.</p>';
+    const rows = data.map(d=>`<tr><td>${escapeHtml(d.name||d.trailer||'-')}</td><td>${escapeHtml(d.location||formatLatLng(d))}</td><td>${escapeHtml(d.lastUpdate||d.last_update||'-')}</td></tr>`).join('');
+    return `<h2>Trailer Locations</h2><table border="1" cellspacing="0" cellpadding="6"><thead><tr><th>Trailer</th><th>Location</th><th>Last Update</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function normalizeKey(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+  function filterAssetsByTrailerList(all, trailers){
+    if (!Array.isArray(trailers) || trailers.length===0) return all;
+    const wanted = new Set(trailers.map(normalizeKey));
+    return all.filter(a=>{
+      const keys = [a.name, a.id, a.raw && (a.raw.assetId||a.raw.deviceId||a.raw.serial)].filter(Boolean).map(normalizeKey);
+      return keys.some(k=> wanted.has(k));
+    });
+  }
+  function buildOptionalCSVAttachment(data){
+    if (!process.env.DIGEST_ATTACH_CSV || process.env.DIGEST_ATTACH_CSV.toLowerCase()!=='true') return undefined;
+    const headers = ['Trailer','Location','Latitude','Longitude','LastUpdate'];
+    const lines = data.map(d=>[
+      d.name||d.trailer||'',
+      d.location||formatLatLng(d)||'',
+      d.lat||'',
+      d.lng||'',
+      d.lastUpdate||d.last_update||''
+    ].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...lines].join('\n');
+    return [{ filename: `trailer_locations_${Date.now()}.csv`, content: csv, contentType: 'text/csv' }];
+  }
+  function formatLatLng(d){ if(d.lat&&d.lng) return `${d.lat},${d.lng}`; return '-'; }
+  function escapeHtml(str){ return String(str).replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+
+  // Scheduler: run every 15 min, decide which subs to send
+  setInterval(async ()=>{
+    try {
+      const now = new Date();
+      const [subs] = await connection.execute('SELECT * FROM trailer_location_subscriptions WHERE active=1');
+      if (subs.length===0) return;
+      const { data } = await fetchAssets(false);
+      for (const s of subs) {
+        if (shouldSend(now, s)) {
+          let trailers=[]; try { trailers = JSON.parse(s.trailers||'[]'); } catch {}
+          const filtered = filterAssetsByTrailerList(data, trailers);
+          const html = buildDigestHTML(filtered);
+          const attachments = buildOptionalCSVAttachment(filtered);
+          try {
+            await sendHTMLMail({ to: s.email, subject: 'Scheduled Trailer Location Digest', html, attachments });
+            await connection.execute('UPDATE trailer_location_subscriptions SET last_sent_at=NOW() WHERE id=?',[s.id]);
+            await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count) VALUES (?,?,?)',[s.id, s.email, filtered.length]);
+            console.log('[SCHED] Sent digest to', s.email);
+          } catch(sendErr){
+            console.error('[SCHED] send error', sendErr.message);
+            await connection.execute('INSERT INTO trailer_location_digest_log (subscription_id, recipient, trailer_count, error) VALUES (?,?,?,?)',[s.id, s.email, filtered.length, sendErr.message]);
+          }
+        }
+      }
+    } catch (e) { console.error('[SCHED] digest error', e.message); }
+  }, 15*60*1000);
+
+  function shouldSend(now, sub) {
+    const last = sub.last_sent_at ? new Date(sub.last_sent_at) : null;
+    if (!last) return true;
+    const diffHrs = (now - last)/(1000*60*60);
+    if (sub.frequency==='HOURLY') return diffHrs>=1;
+    if (sub.frequency==='DAILY') return diffHrs>=24;
+    if (sub.frequency==='WEEKLY') return diffHrs>=24*7;
+    return false;
+  }
+} else {
+  console.log('[DIGEST] Feature DISABLED (set ENABLE_TRAILER_LOCATION_DIGEST=true to enable)');
 }
 
 // DIAGNOSTIC ENDPOINTS

@@ -827,8 +827,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     </td>
                     <td style={{ padding: 4, textAlign: 'center', borderBottom: '1px solid #e1ecf5' }}>
                       <input
-                        type='number'
-                        min='1'
+                        type="number"
+                        min="0"
+                        step="0.01"
                         value={part.qty || ''}
                         onChange={e => handlePartChange(idx, 'qty', e.target.value)}
                         style={{ width: '70px', padding: 4, borderRadius: 4, border: '1px solid #bcdffb', textAlign: 'center', background: '#fff' }}

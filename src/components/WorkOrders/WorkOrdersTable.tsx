@@ -12,6 +12,7 @@ import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
 import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
+import { logger } from '../../utils/logger';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -1260,7 +1261,7 @@ const WorkOrdersTable: React.FC = () => {
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
-          console.log('✅ PDF básico generado como fallback');
+      logger.debug('PDF básico fallback generado');
         } catch (fallbackError) {
           console.error('❌ Error generando PDF básico:', fallbackError);
         }
@@ -1272,7 +1273,7 @@ const WorkOrdersTable: React.FC = () => {
       setShowForm(false);
       
       // Reseteo completo del formulario
-      console.log('✅ Work Order guardada exitosamente - Limpiando formulario completamente');
+  logger.debug('Work Order guardada - limpiando formulario');
       resetNewWorkOrder();
       setExtraOptions([]);
       setPendingPartsQty({});
@@ -1281,9 +1282,9 @@ const WorkOrdersTable: React.FC = () => {
       await fetchWorkOrders();
       
       // 🔔 ACTUALIZAR TRAILERS CON PARTES PENDIENTES para quitar campanitas
-      console.log('🔔 Actualizando trailers con partes pendientes después de crear nueva WO...');
+  logger.debug('Actualizando trailers con partes pendientes tras crear WO');
       await fetchTrailersWithPendingParts();
-      console.log('✅ Trailers con partes pendientes actualizados después de crear WO');
+  logger.debug('Trailers con partes pendientes actualizados');
       
     } catch (err: any) {
       console.error('Error al guardar la orden:', err);
@@ -1299,12 +1300,12 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
     try {
-      console.log(`🔍 Obteniendo partes pendientes para trailer: ${trailer}`);
+  logger.debug('Obteniendo partes pendientes', { trailer });
       const res = await axios.get(`${API_URL}/receive/pending/${encodeURIComponent(trailer)}`);
-      console.log(`✅ Partes pendientes obtenidas para ${trailer}:`, res.data);
+  logger.debug('Partes pendientes obtenidas', { trailer, count: Array.isArray(res.data) ? res.data.length : 0 });
       setPendingParts(res.data as any[]);
     } catch (error) {
-      console.error(`❌ Error obteniendo partes pendientes para ${trailer}:`, error);
+  logger.warn('Error obteniendo partes pendientes', { trailer });
       setPendingParts([]);    }
   };
 
@@ -1358,7 +1359,7 @@ const WorkOrdersTable: React.FC = () => {
         
         // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado.
         if (found.trailer) {
-          console.log(`🔄 Cargando partes pendientes para trailer preseleccionado: ${found.trailer}`);
+          logger.debug('Cargar partes pendientes para trailer preseleccionado', { trailer: found.trailer });
           fetchPendingParts(found.trailer);
         } else {
           // Si no hay trailer, limpiar partes pendientes
@@ -3330,55 +3331,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           onClick={() => setContextMenu({ ...contextMenu, visible: false })}
         />
       )}
-      {tooltip.visible && tooltip.info && (
-        <div
-          style={{
-            position: 'fixed',
-            top: tooltip.y + 10,
-            left: tooltip.x + 10,
-            background: '#fff',
-            border: '1px solid #1976d2',
-            borderRadius: 8,
-            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
-            padding: 16,
-            zIndex: 9999,
-            minWidth: 240,
-            maxWidth: 360
-          }}
-          onClick={hideTooltip}
-        >
-          <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
-          {tooltip.info._previewImage && (
-            <div style={{ marginBottom: 8, textAlign: 'center' }}>
-              <img
-                src={tooltip.info._previewImage}
-                alt={tooltip.info.part || tooltip.info.sku || 'part image'}
-                style={{
-                  maxWidth: 180,
-                  maxHeight: 140,
-                  objectFit: 'contain',
-                  border: '1px solid #eee',
-                  borderRadius: 6,
-                  background: '#fafafa',
-                  padding: 4
-                }}
-                onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = 'none'; }}
-              />
-            </div>
-          )}
-          <div><b>SKU:</b> {tooltip.info.sku || 'N/A'}</div>
-          <div><b>Part Name:</b> {tooltip.info.part || tooltip.info.description || 'N/A'}</div>
-            <div><b>On Hand:</b> {tooltip.info.onHand ?? tooltip.info.qty_on_hand ?? 'N/A'}</div>
-          <div><b>U/M:</b> {tooltip.info.um || tooltip.info.unit || 'N/A'}</div>
-          <div>
-            <b>Precio actual:</b>{' '}
-            {tooltip.info.precio
-              ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-              : (tooltip.info.cost ? Number(tooltip.info.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00')}
-          </div>
-          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
-        </div>
-      )}
+  {/* Removed duplicate tooltip rendering block (cleanup) */}
       <HourmeterModal
   show={showHourmeter}
   onClose={() => setShowHourmeter(false)}
