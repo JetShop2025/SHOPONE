@@ -2967,7 +2967,23 @@ const WorkOrdersTable: React.FC = () => {
                         })()}
                       </td>
                       <td style={{ minWidth: 240, textAlign: 'left' }}>{partsSummary}</td>
-                      <td>{order.totalHrs}</td>
+                      <td>
+                        <div style={{ lineHeight: 1.15 }}>
+                          <div style={{ fontWeight: 700 }}>{order.totalHrs}</div>
+                          {(() => {
+                            const hrsNum = Number(order.totalHrs);
+                            if (!isNaN(hrsNum) && hrsNum > 0) {
+                              const laborVal = hrsNum * 60; // $60 por hora
+                              return (
+                                <div style={{ fontSize: 10, color: '#1976d2', fontWeight: 600 }}>
+                                  {laborVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                </div>
+                              );
+                            }
+                            return <div style={{ fontSize: 10, color: '#888' }}>$0.00</div>;
+                          })()}
+                        </div>
+                      </td>
                       <td>
                         {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
                           ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -3156,7 +3172,23 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               </td>
             </React.Fragment>
           ))}
-          <td>{order.totalHrs}</td>
+          <td>
+            <div style={{ lineHeight: 1.15 }}>
+              <div style={{ fontWeight: 700 }}>{order.totalHrs}</div>
+              {(() => {
+                const hrsNum = Number(order.totalHrs);
+                if (!isNaN(hrsNum) && hrsNum > 0) {
+                  const laborVal = hrsNum * 60; // $60 por hora
+                  return (
+                    <div style={{ fontSize: 10, color: '#1976d2', fontWeight: 600 }}>
+                      {laborVal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </div>
+                  );
+                }
+                return <div style={{ fontSize: 10, color: '#888' }}>$0.00</div>;
+              })()}
+            </div>
+          </td>
           <td>
             {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
               ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
