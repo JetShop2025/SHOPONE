@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './env-test';
+// Removed env-test import (only logged API URL; not needed for runtime)
 
 
 const root = ReactDOM.createRoot(

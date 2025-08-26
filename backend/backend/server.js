@@ -57,7 +57,7 @@ app.use((req, res, next) => {
 // AUDIT ROUTES
 app.use('/api/audit', auditRoutes);
 
-// DIAGNOSTIC ENDPOINTS
+  const db = require('./db');
 app.get('/api/status', (req, res) => {
   console.log('[STATUS] Request received');
   res.json({ 

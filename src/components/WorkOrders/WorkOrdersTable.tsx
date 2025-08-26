@@ -12,7 +12,7 @@ import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
 import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
-import { logger } from '../../utils/logger';
+// Removed logger utility to reduce extra code weight
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -1261,7 +1261,7 @@ const WorkOrdersTable: React.FC = () => {
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
-      logger.debug('PDF básico fallback generado');
+  // PDF básico fallback generado (log removed)
         } catch (fallbackError) {
           console.error('❌ Error generando PDF básico:', fallbackError);
         }
@@ -1273,7 +1273,7 @@ const WorkOrdersTable: React.FC = () => {
       setShowForm(false);
       
       // Reseteo completo del formulario
-  logger.debug('Work Order guardada - limpiando formulario');
+  // Work Order guardada - limpiando formulario (log removed)
       resetNewWorkOrder();
       setExtraOptions([]);
       setPendingPartsQty({});
@@ -1282,9 +1282,9 @@ const WorkOrdersTable: React.FC = () => {
       await fetchWorkOrders();
       
       // 🔔 ACTUALIZAR TRAILERS CON PARTES PENDIENTES para quitar campanitas
-  logger.debug('Actualizando trailers con partes pendientes tras crear WO');
+  // Actualizando trailers con partes pendientes tras crear WO (log removed)
       await fetchTrailersWithPendingParts();
-  logger.debug('Trailers con partes pendientes actualizados');
+  // Trailers con partes pendientes actualizados (log removed)
       
     } catch (err: any) {
       console.error('Error al guardar la orden:', err);
@@ -1300,12 +1300,12 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
     try {
-  logger.debug('Obteniendo partes pendientes', { trailer });
+  // Obteniendo partes pendientes (log removed)
       const res = await axios.get(`${API_URL}/receive/pending/${encodeURIComponent(trailer)}`);
-  logger.debug('Partes pendientes obtenidas', { trailer, count: Array.isArray(res.data) ? res.data.length : 0 });
+  // Partes pendientes obtenidas (log removed)
       setPendingParts(res.data as any[]);
     } catch (error) {
-  logger.warn('Error obteniendo partes pendientes', { trailer });
+  // Error obteniendo partes pendientes (log removed)
       setPendingParts([]);    }
   };
 
@@ -1359,7 +1359,7 @@ const WorkOrdersTable: React.FC = () => {
         
         // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado.
         if (found.trailer) {
-          logger.debug('Cargar partes pendientes para trailer preseleccionado', { trailer: found.trailer });
+          // Cargar partes pendientes para trailer preseleccionado (log removed)
           fetchPendingParts(found.trailer);
         } else {
           // Si no hay trailer, limpiar partes pendientes

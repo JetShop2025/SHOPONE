@@ -68,7 +68,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       if (logoDataUrl && logoDataUrl.startsWith('data:image')) {
         // Logo centrado en el lado izquierdo
         pdf.addImage(logoDataUrl, 'PNG', leftMargin, 15, 35, 20);
-        console.log('✅ Logo cargado exitosamente');
+  // Logo loaded
       } else {
         throw new Error('Invalid logo data URL');
       }
@@ -415,7 +415,7 @@ export const savePDFToDatabase = async (workOrderId: number, pdfBlob: Blob) => {
     }
     
     const result = await response.json();
-    console.log('📄 PDF guardado en BD:', result);
+  // PDF saved response
     return result;
   } catch (error) {
     console.error('❌ Error guardando PDF en BD:', error);
@@ -451,11 +451,11 @@ export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: 
   });
 
   if (uniqueLinks.size === 0) {
-    console.log('ℹ️ No valid invoice links to open');
+  // No valid invoice links
     return;
   }
 
-  console.log(`📄 Opening ${uniqueLinks.size} invoice link(s)`);
+  // Opening invoice links
 
   Array.from(uniqueLinks).forEach((link, index) => {
     setTimeout(() => {
@@ -479,7 +479,7 @@ export const openPDFInNewTab = (pdf: jsPDF, filename: string = 'work_order.pdf')
     const newWindow = window.open(pdfUrl, '_blank');
     
     if (newWindow) {
-      console.log('✅ PDF abierto en nueva pestaña:', filename);
+  // PDF opened in new tab
       
       // Limpiar la URL del objeto después de un tiempo para liberar memoria
       setTimeout(() => {

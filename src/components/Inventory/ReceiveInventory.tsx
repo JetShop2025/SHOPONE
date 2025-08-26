@@ -214,7 +214,7 @@ const ReceiveInventory: React.FC = () => {
     setReceives(res.data as any[]);
   };
 
-  const trailerOptions = getTrailerOptions(form.billToCo);
+  // Sugerencias de destino_trailer se obtienen con getTrailerOptions(form.billToCo)
 
   const handleEditIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -418,37 +418,39 @@ const ReceiveInventory: React.FC = () => {
                 <input name="provider" value={form.provider} onChange={handleChange} placeholder="Provider" style={inputStyle} />
                 <input name="brand" value={form.brand} onChange={handleChange} placeholder="Brand" style={inputStyle} />
                 <input name="um" value={form.um} onChange={handleChange} placeholder="U/M" style={inputStyle} />
-                <select name="billToCo" value={form.billToCo} onChange={handleChange} required style={inputStyle}>
-                  <option value="">Bill To Co</option>
+                {/* Bill To Co: texto libre con sugerencias (opcional) */}
+                <input
+                  name="billToCo"
+                  value={form.billToCo}
+                  onChange={handleChange}
+                  placeholder="Bill To Co (opcional)"
+                  style={inputStyle}
+                  list="billToCo-options"
+                  title="Selecciona de la lista o escribe un valor personalizado"
+                />
+                <datalist id="billToCo-options">
                   {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-                {/* Si es INVENTARIO, no pedir destino_trailer */}
-                {form.billToCo === "INVENTARIO" ? null :
-                  (["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(form.billToCo) ? (
-                    <select
-                      name="destino_trailer"
-                      value={form.destino_trailer}
-                      onChange={handleChange}
-                      style={inputStyle}
-                      required
-                    >
-                      <option value="">Destination Trailer</option>
-                      {getTrailerOptions(form.billToCo).map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  ) : (
+                </datalist>
+                {/* Si es INVENTARIO, no pedir destino_trailer; en otros casos, texto libre con sugerencias (opcional) */}
+                {form.billToCo === "INVENTARIO" ? null : (
+                  <>
                     <input
                       type="text"
                       name="destino_trailer"
                       value={form.destino_trailer}
                       onChange={handleChange}
-                      placeholder="Destination Trailer"
+                      placeholder="Destination Trailer (opcional)"
                       style={inputStyle}
-                      required
+                      list="destino_trailer-options"
+                      title="Selecciona de la lista o escribe un valor personalizado"
                     />
-                  ))
-                }                {/* Campo para número de invoice */}
+                    <datalist id="destino_trailer-options">
+                      {getTrailerOptions(form.billToCo).map(opt => (
+                        <option key={opt} value={opt} />
+                      ))}
+                    </datalist>
+                  </>
+                )}                {/* Campo para número de invoice */}
                 <input
                   type="text"
                   name="invoice"                  value={form.invoice}
@@ -531,7 +533,7 @@ const ReceiveInventory: React.FC = () => {
                       const updateData = {
                         ...part,
                         usuario: localStorage.getItem('username') || ''
-                      };
+                      } as any;
                       // Actualizar precio solo si es diferente
                       if (shouldUpdatePrice) {
                         updateData.precio = newPrice;
@@ -561,44 +563,36 @@ const ReceiveInventory: React.FC = () => {
                   <input name="provider" value={editForm.provider || ''} onChange={e => setEditForm({ ...editForm, provider: e.target.value })} placeholder="Provider" style={inputStyle} />
                   <input name="brand" value={editForm.brand || ''} onChange={e => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Brand" style={inputStyle} />
                   <input name="um" value={editForm.um || ''} onChange={e => setEditForm({ ...editForm, um: e.target.value })} placeholder="U/M" style={inputStyle} />
-                  {/* Bill To Co - lista editable que permite texto personalizado */}
+                  {/* Bill To Co - lista editable que permite texto personalizado (opcional) */}
                   <input
                     name="billToCo"
                     value={editForm.billToCo || ''}
                     onChange={e => setEditForm({ ...editForm, billToCo: e.target.value })}
-                    placeholder="Bill To Co"
+                    placeholder="Bill To Co (opcional)"
                     style={inputStyle}
-                    required
                     list="billToCo-options"
                     title="Selecciona de la lista o escribe un valor personalizado"
                   />
                   <datalist id="billToCo-options">
                     {billToCoOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </datalist>
-                  {["GALGRE", "JETGRE", "PRIGRE", "RAN100", "GABGRE"].includes(editForm.billToCo) ? (
-                    <select
-                      name="destino_trailer"
-                      value={editForm.destino_trailer || ''}
-                      onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
-                      style={inputStyle}
-                      required
-                    >
-                      <option value="">Destination Trailer</option>
-                      {getTrailerOptions(editForm.billToCo).map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      name="destino_trailer"
-                      value={editForm.destino_trailer || ''}
-                      onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
-                      placeholder="Destination Trailer"
-                      style={inputStyle}
-                      required
-                    />
-                  )}                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
+                  {/* Destination Trailer - texto libre con sugerencias según Bill To Co (opcional) */}
+                  <input
+                    type="text"
+                    name="destino_trailer"
+                    value={editForm.destino_trailer || ''}
+                    onChange={e => setEditForm({ ...editForm, destino_trailer: e.target.value })}
+                    placeholder="Destination Trailer (opcional)"
+                    style={inputStyle}
+                    list="edit-destino_trailer-options"
+                    title="Selecciona de la lista o escribe un valor personalizado"
+                  />
+                  <datalist id="edit-destino_trailer-options">
+                    {getTrailerOptions(editForm.billToCo).map(opt => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
+                  <input name="invoice" value={editForm.invoice || ''} onChange={e => setEditForm({ ...editForm, invoice: e.target.value })} placeholder="Invoice" style={inputStyle} />
                   <input name="invoiceLink" value={editForm.invoiceLink || ''} onChange={e => setEditForm({ ...editForm, invoiceLink: e.target.value })} placeholder="Invoice Link" style={inputStyle} />
                   <input name="qty" value={editForm.qty || ''} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} placeholder="Quantity" required style={inputStyle} />
                   <input name="costTax" value={editForm.costTax || ''} onChange={e => setEditForm({ ...editForm, costTax: e.target.value })} placeholder="Cost + Tax" required style={inputStyle} />
