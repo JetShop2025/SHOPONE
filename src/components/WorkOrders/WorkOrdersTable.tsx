@@ -218,22 +218,40 @@ const WorkOrdersTable: React.FC = () => {
               (op.sku && op.sku === part.sku) ||
               (op.part_name && op.part_name === part.sku)
             );
-            if (originalPartInDB && originalPartInDB.id) {
+              if (originalPartInDB && originalPartInDB.id) {
               const newTotalQty = Number(currentPartInForm?.qty || 0);
-              await axios.put(`${API_URL}/work-order-parts/${originalPartInDB.id}`, {
+                // Si la línea actual proviene de un pending específico, acotar fifo_info e incluir pending_part_id
+                let narrowedFifoInfo = fifoInfoForPart;
+                if (currentPartInForm && currentPartInForm._pendingPartId && fifoInfoForPart && Array.isArray(fifoInfoForPart.invoicesUsed)) {
+                  const match = fifoInfoForPart.invoicesUsed.find((inv: any) => String(inv.invoiceId) === String(currentPartInForm._pendingPartId));
+                  if (match) {
+                    narrowedFifoInfo = { ...fifoInfoForPart, invoicesUsed: [match] };
+                  }
+                }
+                await axios.put(`${API_URL}/work-order-parts/${originalPartInDB.id}`, {
                 qty_used: newTotalQty,
                 cost: Number(String(currentPartInForm?.cost || 0).replace(/[^0-9.]/g, '')),
-                fifo_info: fifoInfoForPart,
+                  fifo_info: narrowedFifoInfo,
+                  pending_part_id: currentPartInForm?._pendingPartId || null,
                 usuario: localStorage.getItem('username') || ''
               });
             } else {
+              // Post de línea nueva en modo edición
+              let narrowedFifoInfo = fifoInfoForPart;
+              if (currentPartInForm && currentPartInForm._pendingPartId && fifoInfoForPart && Array.isArray(fifoInfoForPart.invoicesUsed)) {
+                const match = fifoInfoForPart.invoicesUsed.find((inv: any) => String(inv.invoiceId) === String(currentPartInForm._pendingPartId));
+                if (match) {
+                  narrowedFifoInfo = { ...fifoInfoForPart, invoicesUsed: [match] };
+                }
+              }
               await axios.post(`${API_URL}/work-order-parts`, {
                 work_order_id: editWorkOrder.id,
                 sku: part.sku,
                 part_name: inventory.find(i => i.sku === part.sku)?.part || '',
                 qty_used: part.qty,
                 cost: Number(String(currentPartInForm?.cost || 0).replace(/[^0-9.]/g, '')),
-                fifo_info: fifoInfoForPart,
+                fifo_info: narrowedFifoInfo,
+                pending_part_id: currentPartInForm?._pendingPartId || null,
                 usuario: localStorage.getItem('username') || ''
               });
             }
@@ -973,8 +991,9 @@ const WorkOrdersTable: React.FC = () => {
             cost = parseFloat(String(foundPart.unit_cost)) || 0;
           }
           
-          // Formatear el costo correctamente
-          updatedParts[index].cost = cost > 0 ? cost.toFixed(2) : '0.00';
+          // Formatear el costo correctamente con 10% extra automático
+          const costWithMarkup = cost > 0 ? cost * 1.10 : 0;
+          updatedParts[index].cost = costWithMarkup > 0 ? costWithMarkup.toFixed(2) : '0.00';
           
           console.log('✅ Auto-completando parte en edición:', {
             sku: value,
@@ -1079,19 +1098,28 @@ const WorkOrdersTable: React.FC = () => {
       const newWorkOrderId = data.id;      // REGISTRA PARTES USADAS EN work_order_parts con información FIFO
       for (const part of partesParaGuardar) {
         // Buscar información FIFO para esta parte
-        let fifoInfoForPart = null;
+        let fifoInfoForPart: any = null;
         if (fifoResult && fifoResult.details) {
           fifoInfoForPart = fifoResult.details.find((f: any) => f.sku === part.sku);
         }
-        
+        // Si la parte proviene de un pendiente específico, filtrar el invoice exacto
+        let narrowedFifoInfo: any = fifoInfoForPart;
+        if (part._pendingPartId && fifoInfoForPart && Array.isArray(fifoInfoForPart.invoicesUsed)) {
+          const match = fifoInfoForPart.invoicesUsed.find((inv: any) => String(inv.invoiceId) === String(part._pendingPartId));
+          if (match) {
+            narrowedFifoInfo = { ...fifoInfoForPart, invoicesUsed: [match] };
+          }
+        }
         await axios.post(`${API_URL}/work-order-parts`, {
           work_order_id: newWorkOrderId,
           sku: part.sku,
           part_name: inventory.find(i => i.sku === part.sku)?.part || '',
           qty_used: part.qty,
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
-          fifo_info: fifoInfoForPart, // Pasar información FIFO
-          usuario: localStorage.getItem('username') || ''        });
+          fifo_info: narrowedFifoInfo, // Pasar información FIFO (acotada por receive cuando aplique)
+          pending_part_id: part._pendingPartId || null,
+          usuario: localStorage.getItem('username') || ''
+        });
       }
 
       // MARCAR PARTES PENDIENTES COMO USED (crítico para campanitas)
@@ -1128,24 +1156,24 @@ const WorkOrdersTable: React.FC = () => {
           return;
         }
           // Obtener partes usadas con sus enlaces de facturas
-        const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`, { timeout: 10000 });
-        const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data : [];
+  const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`, { timeout: 10000 });
+  const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data : [];
         
         console.log('✅ Partes de work order obtenidas:', partsWithInvoices.length, 'partes');
         
         // Enriquecer partes con invoice links del inventario si no los tienen
         const enrichedParts = partsWithInvoices.map((part: any) => {
-          // Si la parte ya tiene invoiceLink, usarlo
-          if (part.invoiceLink) {
-            return { ...part, invoice_number: 'FIFO Invoice' };
+          // Preferir el link específico de la fila (backend devuelve invoice_link)
+          const rowLink = part.invoice_link || part.invoiceLink || null;
+          if (rowLink) {
+            return { ...part, invoiceLink: rowLink, invoice_number: part.invoice_number || 'FIFO Invoice' };
           }
-          
-          // Si no, buscar en el inventario
+          // Fallback por SKU solo si no hay link en la fila
           const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
           return {
             ...part,
-            invoiceLink: inventoryItem?.invoiceLink || null,
-            invoice_number: inventoryItem?.invoiceLink ? 'Inventory Invoice' : 'N/A'
+            invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null,
+            invoice_number: inventoryItem?.invoiceLink || inventoryItem?.invoice_link ? 'Inventory Invoice' : 'N/A'
           };
         });
           console.log('✅ Partes enriquecidas con invoice data:', enrichedParts);
@@ -1177,7 +1205,7 @@ const WorkOrdersTable: React.FC = () => {
               unitCost: Number(part.cost) || 0,
               total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
               invoice: part.invoice_number || 'N/A',
-              invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
+              invoiceLink: part.invoiceLink // ya normalizado arriba
             };
           }),
           laborCost: (() => {
@@ -1477,7 +1505,7 @@ const WorkOrdersTable: React.FC = () => {
     console.log('📋 Parte encontrada en inventario:', inventoryPart);
     
     // Determinar costo: si viene de receive pendiente, PRIORIDAD al costTax de ese receive
-    let cost = 0;
+  let cost = 0;
     if (pendingPart && pendingPart.costTax != null && pendingPart.costTax !== '') {
       cost = parseFloat(String(pendingPart.costTax)) || 0;
       console.log('💰 Usando costo por-recepción (costTax) del pendiente:', pendingPart.costTax, '→', cost);
@@ -1497,11 +1525,13 @@ const WorkOrdersTable: React.FC = () => {
     }
     
   // Crear nueva parte para agregar
+    // Aplicar 10% extra automático al costo unitario
+    const costWithMarkup = cost > 0 ? cost * 1.10 : 0;
     const newPart = {
       sku: pendingPart.sku,
       part: pendingPart.item || pendingPart.part || inventoryPart?.part || inventoryPart?.description || '',
       qty: qtyToUse.toString(),
-      cost: cost > 0 ? cost.toFixed(2) : '0.00',
+      cost: costWithMarkup > 0 ? costWithMarkup.toFixed(2) : '0.00',
       _pendingPartId: pendingPart.id // Guardar referencia para el procesamiento posterior
     };
       console.log('✅ Nueva parte creada:', newPart);

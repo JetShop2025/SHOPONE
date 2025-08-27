@@ -173,9 +173,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         } else if (foundPart.unit_cost) {
           cost = foundPart.unit_cost;
         }
-        // Formatear el costo correctamente
-        if (cost > 0) {
-          newParts[index].cost = cost.toFixed(2);
+        // Formatear el costo correctamente con 10% extra automático
+        const costWithMarkup = cost > 0 ? cost * 1.10 : 0;
+        if (costWithMarkup > 0) {
+          newParts[index].cost = costWithMarkup.toFixed(2);
         } else {
           newParts[index].cost = '0.00';
         }
@@ -461,6 +462,52 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       onChange({ target: { name: 'date', value } } as any);
     }
     // Ignore any other format (do not update state)
+  };
+
+  // Apply 5% extra of the base total (labor + parts excluding 15-SHOPMISC) into the 15-SHOPMISC line
+  const handleApplyFivePercentExtra = () => {
+    try {
+      const partsArray: any[] = Array.isArray(workOrder.parts) ? [...workOrder.parts] : [];
+      // Calculate parts total EXCLUDING the misc line
+      const partsTotalExcludingMisc = partsArray.reduce((total: number, p: any) => {
+        if (!p) return total;
+        const sku = (p.sku || '').toString().toUpperCase();
+        if (sku === '15-SHOPMISC') return total; // exclude misc
+        const qty = Number(p.qty);
+        const cost = Number(String(p.cost).replace(/[^0-9.]/g, ''));
+        const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+        const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+        return total + (validQty * validCost);
+      }, 0);
+      const laborTotal = calculateTotalHours() * 60;
+      const baseTotal = partsTotalExcludingMisc + laborTotal;
+      const extra = Math.round(baseTotal * 0.05 * 100) / 100; // 5% rounded to 2 decimals
+
+      // Find or create the 15-SHOPMISC line and set the cost to the computed extra
+      const miscIndex = partsArray.findIndex((p: any) => String(p?.sku || '').toUpperCase() === '15-SHOPMISC');
+      const newMiscLine = {
+        part: 'MISCELLANEOUS',
+        sku: '15-SHOPMISC',
+        qty: '1',
+        cost: extra.toFixed(2)
+      };
+      if (miscIndex >= 0) {
+        partsArray[miscIndex] = { ...partsArray[miscIndex], ...newMiscLine };
+      } else {
+        // Insert in the first empty slot if any, otherwise push
+        const emptyIdx = partsArray.findIndex(p => !p || (!p.sku && !p.part));
+        if (emptyIdx >= 0) partsArray[emptyIdx] = newMiscLine; else partsArray.push(newMiscLine);
+      }
+      onChange({ target: { name: 'parts', value: partsArray } } as any);
+
+      // If total is not manually overridden, update it as base + extra
+      if (!isManualTotalLabAndParts) {
+        const newTotal = (baseTotal + extra);
+        onChange({ target: { name: 'totalLabAndParts', value: newTotal.toFixed(2) } } as any);
+      }
+    } catch (e) {
+      // No-op on error
+    }
   };
   return (
     <div style={{
@@ -958,7 +1005,26 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
+        <div style={{ display: 'flex', gap: 16, marginTop: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+          {title && (title.toLowerCase().includes('new') || title.toLowerCase().includes('edit')) && (
+            <button
+              type="button"
+              onClick={handleApplyFivePercentExtra}
+              style={{
+                padding: '10px 16px',
+                background: '#2e7d32',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: 'pointer'
+              }}
+              title="Apply 5% of the current total (excluding this line) to 15-SHOPMISC"
+            >
+              5% EXTRA → 15-SHOPMISC
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}

@@ -742,17 +742,22 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
     console.log('[DB] Creating work order part:', workOrderPart);
     
     // Si tenemos información FIFO, usar el invoice link específico del lote usado
-    let invoiceLink = workOrderPart.invoice_link || null;
-    let invoiceNumber = workOrderPart.invoice || null;
+    let invoiceLink = workOrderPart.invoice_link || workOrderPart.invoiceLink || null;
+    let invoiceNumber = workOrderPart.invoice || workOrderPart.invoice_number || null;
+    const pendingPartId = workOrderPart.pending_part_id || workOrderPart.pendingPartId || null;
     
     // Si tenemos información FIFO, usar los datos del lote específico
     if (fifoInfo && fifoInfo.invoicesUsed && fifoInfo.invoicesUsed.length > 0) {
-      // Tomar el primer invoice usado (puede haber múltiples si se tomó de varios lotes)
-      const primaryInvoice = fifoInfo.invoicesUsed[0];
-      invoiceLink = primaryInvoice.invoiceLink;
-      invoiceNumber = primaryInvoice.invoice;
-      
-      console.log(`[DB] Using FIFO invoice info: ${invoiceNumber} (${invoiceLink})`);
+      let selected = fifoInfo.invoicesUsed[0];
+      // Preferir el invoice que coincida con pending_part_id si se envió
+      if (pendingPartId) {
+        const match = fifoInfo.invoicesUsed.find(inv => String(inv.invoiceId) === String(pendingPartId));
+        if (match) selected = match;
+      }
+      // No sobrescribir si ya vino explícito desde el cliente
+      if (!invoiceLink) invoiceLink = selected.invoiceLink || null;
+      if (!invoiceNumber) invoiceNumber = selected.invoice || null;
+      console.log(`[DB] Using FIFO invoice info: ${invoiceNumber || 'N/A'} (${invoiceLink || 'no-link'})`);
     } else if (!invoiceLink && workOrderPart.sku) {
       // Fallback: obtener invoice_link desde el inventario
       try {
@@ -770,7 +775,7 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
     }
       // Usar los campos que existen en la tabla work_order_parts (incluyendo invoiceLink)
     const [result] = await connection.execute(
-      'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoiceLink) VALUES (?, ?, ?, ?, ?, ?)',
+  'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoiceLink) VALUES (?, ?, ?, ?, ?, ?)',
       [
         workOrderPart.work_order_id,
         workOrderPart.sku || null,
@@ -785,8 +790,8 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
     return { 
       id: result.insertId, 
       ...workOrderPart, 
-      invoice_link: invoiceLink,
-      invoice_number: invoiceNumber,
+  invoice_link: invoiceLink,
+  invoice_number: invoiceNumber,
       fifo_info: fifoInfo
     };
   } catch (error) {
@@ -800,17 +805,20 @@ async function updateWorkOrderPart(id, updates, fifoInfo = null) {
     console.log('[DB] Updating work order part:', id, updates);
     
     // Si tenemos información FIFO, usar el invoice link específico del lote usado
-    let invoiceLink = updates.invoice_link || null;
-    let invoiceNumber = updates.invoice || null;
+  let invoiceLink = updates.invoice_link || updates.invoiceLink || null;
+  let invoiceNumber = updates.invoice || updates.invoice_number || null;
+  const pendingPartId = updates.pending_part_id || updates.pendingPartId || null;
     
     // Si tenemos información FIFO, usar los datos del lote específico
     if (fifoInfo && fifoInfo.invoicesUsed && fifoInfo.invoicesUsed.length > 0) {
-      // Tomar el primer invoice usado (puede haber múltiples si se tomó de varios lotes)
-      const primaryInvoice = fifoInfo.invoicesUsed[0];
-      invoiceLink = primaryInvoice.invoiceLink;
-      invoiceNumber = primaryInvoice.invoice;
-      
-      console.log(`[DB] Using FIFO invoice info for update: ${invoiceNumber} (${invoiceLink})`);
+      let selected = fifoInfo.invoicesUsed[0];
+      if (pendingPartId) {
+        const match = fifoInfo.invoicesUsed.find(inv => String(inv.invoiceId) === String(pendingPartId));
+        if (match) selected = match;
+      }
+      if (!invoiceLink) invoiceLink = selected.invoiceLink || null;
+      if (!invoiceNumber) invoiceNumber = selected.invoice || null;
+      console.log(`[DB] Using FIFO invoice info for update: ${invoiceNumber || 'N/A'} (${invoiceLink || 'no-link'})`);
     } else if (!invoiceLink && updates.sku) {
       // Fallback: obtener invoice_link desde el inventario
       try {
