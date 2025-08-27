@@ -1476,40 +1476,23 @@ const WorkOrdersTable: React.FC = () => {
     
     console.log('📋 Parte encontrada en inventario:', inventoryPart);
     
-    // Determinar el costo usando EXACTAMENTE la misma lógica que WorkOrderForm
+    // Determinar costo: si viene de receive pendiente, PRIORIDAD al costTax de ese receive
     let cost = 0;
-    if (inventoryPart) {
-      console.log('🔍 Campos de precio disponibles:', {
-        precio: inventoryPart.precio,
-        cost: inventoryPart.cost,
-        price: inventoryPart.price,
-        allKeys: Object.keys(inventoryPart)
-      });
-      
-      // PRIORIDAD AL CAMPO 'precio' de la tabla inventory (igual que en WorkOrderForm)
-      if (inventoryPart.precio !== undefined && inventoryPart.precio !== null && inventoryPart.precio !== '') {
+    if (pendingPart && pendingPart.costTax != null && pendingPart.costTax !== '') {
+      cost = parseFloat(String(pendingPart.costTax)) || 0;
+      console.log('💰 Usando costo por-recepción (costTax) del pendiente:', pendingPart.costTax, '→', cost);
+    } else if (inventoryPart) {
+      // Fallback: lógica de inventario
+      if (inventoryPart.precio != null && inventoryPart.precio !== '') {
         cost = parseFloat(String(inventoryPart.precio)) || 0;
-        console.log('💰 Usando campo "precio":', inventoryPart.precio, '→', cost);
-      } else if (inventoryPart.cost !== undefined && inventoryPart.cost !== null && inventoryPart.cost !== '') {
+      } else if (inventoryPart.cost != null && inventoryPart.cost !== '') {
         cost = parseFloat(String(inventoryPart.cost)) || 0;
-        console.log('💰 Usando campo "cost":', inventoryPart.cost, '→', cost);
-      } else if (inventoryPart.price !== undefined && inventoryPart.price !== null && inventoryPart.price !== '') {
+      } else if (inventoryPart.price != null && inventoryPart.price !== '') {
         cost = parseFloat(String(inventoryPart.price)) || 0;
-        console.log('💰 Usando campo "price":', inventoryPart.price, '→', cost);
-      } else if (inventoryPart.unitCost !== undefined && inventoryPart.unitCost !== null && inventoryPart.unitCost !== '') {
+      } else if (inventoryPart.unitCost != null && inventoryPart.unitCost !== '') {
         cost = parseFloat(String(inventoryPart.unitCost)) || 0;
-        console.log('💰 Usando campo "unitCost":', inventoryPart.unitCost, '→', cost);
-      } else if (inventoryPart.unit_cost !== undefined && inventoryPart.unit_cost !== null && inventoryPart.unit_cost !== '') {
+      } else if (inventoryPart.unit_cost != null && inventoryPart.unit_cost !== '') {
         cost = parseFloat(String(inventoryPart.unit_cost)) || 0;
-        console.log('💰 Usando campo "unit_cost":', inventoryPart.unit_cost, '→', cost);
-      } else {
-        console.log('❌ No se encontró ningún campo de precio válido');
-      }
-    } else {
-      // Si no se encuentra en inventario, usar el costo de la parte pendiente
-      if (pendingPart.costTax) {
-        cost = parseFloat(String(pendingPart.costTax)) || 0;
-        console.log('💰 Usando costTax de parte pendiente:', pendingPart.costTax, '→', cost);
       }
     }
     
@@ -1557,13 +1540,15 @@ const WorkOrdersTable: React.FC = () => {
       });
     }
       // Actualizar la cantidad de partes pendientes localmente
-    setPendingParts(prevPending => 
-      prevPending.map(pp => 
-        pp.id === pendingPart.id 
+    setPendingParts(prevPending => {
+      const updated = prevPending.map(pp =>
+        pp.id === pendingPart.id
           ? { ...pp, qty_remaining: Math.max(0, (pp.qty_remaining || pp.qty || 0) - qtyToUse) }
           : pp
-      ) // ✅ NO filtrar - mantener todas las partes pendientes visibles
-    );
+      );
+      // Remover del listado si se agotó
+      return updated.filter(pp => (pp.qty_remaining || pp.qty || 0) > 0);
+    });
     
     console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO con costo $${cost.toFixed(2)}`);
   };

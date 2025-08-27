@@ -570,14 +570,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 padding: '2px 8px', 
                 borderRadius: 12 
               }}>
-                {pendingParts.length} disponible{pendingParts.length !== 1 ? 's' : ''}
+                {pendingParts.filter((p:any) => (p.qty !== undefined ? Number(p.qty) : (p.qty_remaining !== undefined ? Number(p.qty_remaining) : 0)) > 0).length} disponible{pendingParts.filter((p:any) => (p.qty !== undefined ? Number(p.qty) : (p.qty_remaining !== undefined ? Number(p.qty_remaining) : 0)) > 0).length !== 1 ? 's' : ''}
               </span>
-            </h3>            <div style={{ 
+            </h3>
+            <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
               gap: 12 
             }}>
-              {pendingParts.map((part: any) => {
+              {pendingParts.filter((p:any) => (p.qty !== undefined ? Number(p.qty) : (p.qty_remaining !== undefined ? Number(p.qty_remaining) : 0)) > 0).map((part: any) => {
                 // Calcular cantidad disponible real SOLO con qty de receives (no mezclar con master)
                 const availableQty = part.qty !== undefined ? Number(part.qty) : (part.qty_remaining !== undefined ? Number(part.qty_remaining) : 0);
                 const hasQtyAvailable = availableQty > 0;
@@ -592,11 +593,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     gap: 8,
                     opacity: hasQtyAvailable ? 1 : 0.7
                   }}>
-                    <div style={{ 
-                      fontWeight: 'bold', 
-                      color: hasQtyAvailable ? '#2e7d32' : '#666' 
-                    }}>
-                      {part.sku} - {part.item}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <div style={{ fontWeight: 'bold', color: hasQtyAvailable ? '#2e7d32' : '#666' }}>
+                        {part.sku} - {part.item}
+                      </div>
+                      {part.costTax != null && (
+                        <div style={{ fontSize: 12, color: '#1b5e20' }}>
+                          ${Number(part.costTax).toFixed(2)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontSize: 14, color: '#666' }}>
                       Cantidad disponible: <strong style={{ 
@@ -604,6 +609,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                       }}>
                         {availableQty} {hasQtyAvailable ? '' : '(Agotado)'}
                       </strong>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12, color: '#2e7d32' }}>
+                      <div>ID Rec: {part.id}</div>
+                      {part.invoice && <div>Factura: {part.invoice}</div>}
+                      {part.provider && <div>Proveedor: {part.provider}</div>}
+                      {part.brand && <div>Marca: {part.brand}</div>}
+                      {part.fecha && <div>Fecha: {String(part.fecha).slice(0,10)}</div>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
@@ -648,6 +660,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                         }}                    >
                         {hasQtyAvailable ? '➕ Agregar a WO' : '❌ Agotado'}
                       </button>
+                      {part.invoiceLink && (
+                        <a href={part.invoiceLink} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', fontSize: 12 }}>
+                          Ver factura
+                        </a>
+                      )}
                     </div>
                   </div>
                 );

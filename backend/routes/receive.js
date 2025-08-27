@@ -90,7 +90,19 @@ router.get('/pending/:trailer', async (req, res) => {
   
   try {
     const [results] = await db.query(
-      `SELECT id, sku, item, destino_trailer, qty_remaining, estatus, costTax
+      `SELECT 
+         id,
+         sku,
+         item,
+         provider,
+         brand,
+         invoice,
+         invoiceLink,
+         fecha,
+         destino_trailer,
+         qty_remaining,
+         estatus,
+         costTax
        FROM receives 
        WHERE destino_trailer = ? AND estatus = 'PENDING' AND qty_remaining > 0
        ORDER BY id DESC`,
@@ -102,7 +114,7 @@ router.get('/pending/:trailer', async (req, res) => {
       results: results.map(r => ({ id: r.id, sku: r.sku, qty_remaining: r.qty_remaining }))
     });
     
-    res.json(results);
+  res.json(results);
   } catch (err) {
     console.error('Error fetching pending parts:', err);
     res.status(500).json({ error: 'Error fetching pending parts' });
