@@ -1496,7 +1496,7 @@ const WorkOrdersTable: React.FC = () => {
       }
     }
     
-    // Crear nueva parte para agregar
+  // Crear nueva parte para agregar
     const newPart = {
       sku: pendingPart.sku,
       part: pendingPart.item || pendingPart.part || inventoryPart?.part || inventoryPart?.description || '',
@@ -1539,15 +1539,13 @@ const WorkOrdersTable: React.FC = () => {
         return { ...prev, parts: updatedParts };
       });
     }
-      // Actualizar la cantidad de partes pendientes localmente
-    setPendingParts(prevPending => {
-      const updated = prevPending.map(pp =>
-        pp.id === pendingPart.id
-          ? { ...pp, qty_remaining: Math.max(0, (pp.qty_remaining || pp.qty || 0) - qtyToUse) }
-          : pp
-      );
-      // Remover del listado si se agotó
-      return updated.filter(pp => (pp.qty_remaining || pp.qty || 0) > 0);
+    // Quitar inmediatamente esta parte pendiente del panel verde (UX: ocultar al primer uso)
+    setPendingParts(prevPending => prevPending.filter(pp => pp.id !== pendingPart.id));
+    // Limpiar la cantidad seleccionada para esta parte
+    setPendingPartsQty(prev => {
+      const next = { ...prev } as any;
+      try { delete next[pendingPart.id]; } catch {}
+      return next;
     });
     
     console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO con costo $${cost.toFixed(2)}`);

@@ -545,7 +545,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </label>
         </div>
 
-        {/* Previsualizador de Partes Pendientes */}
+        {/* Pending Parts Preview */}
         {pendingParts && pendingParts.length > 0 && (
           <div style={{
             marginBottom: 16,
@@ -562,7 +562,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               alignItems: 'center',
               gap: 8
             }}>
-              🚛 Partes Pendientes para {workOrder.trailer}
+              🚛 Pending Parts for {workOrder.trailer}
               <span style={{ 
                 fontSize: 12, 
                 background: '#4caf50', 
@@ -570,7 +570,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 padding: '2px 8px', 
                 borderRadius: 12 
               }}>
-                {pendingParts.filter((p:any) => (p.qty !== undefined ? Number(p.qty) : (p.qty_remaining !== undefined ? Number(p.qty_remaining) : 0)) > 0).length} disponible{pendingParts.filter((p:any) => (p.qty !== undefined ? Number(p.qty) : (p.qty_remaining !== undefined ? Number(p.qty_remaining) : 0)) > 0).length !== 1 ? 's' : ''}
+                {pendingParts.filter((p:any) => (p.qty !== undefined ? Number(p.qty) : (p.qty_remaining !== undefined ? Number(p.qty_remaining) : 0)) > 0).length} available
               </span>
             </h3>
             <div style={{ 
@@ -604,18 +604,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                       )}
                     </div>
                     <div style={{ fontSize: 14, color: '#666' }}>
-                      Cantidad disponible: <strong style={{ 
+                      Available: <strong style={{ 
                         color: hasQtyAvailable ? '#2e7d32' : '#f44336' 
                       }}>
-                        {availableQty} {hasQtyAvailable ? '' : '(Agotado)'}
+                        {availableQty} {hasQtyAvailable ? '' : '(Depleted)'}
                       </strong>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12, color: '#2e7d32' }}>
-                      <div>ID Rec: {part.id}</div>
-                      {part.invoice && <div>Factura: {part.invoice}</div>}
-                      {part.provider && <div>Proveedor: {part.provider}</div>}
-                      {part.brand && <div>Marca: {part.brand}</div>}
-                      {part.fecha && <div>Fecha: {String(part.fecha).slice(0,10)}</div>}
+                      <div>Receive ID: {part.id}</div>
+                      {part.invoice && <div>Invoice: {part.invoice}</div>}
+                      {part.provider && <div>Provider: {part.provider}</div>}
+                      {part.brand && <div>Brand: {part.brand}</div>}
+                      {part.fecha && <div>Date: {String(part.fecha).slice(0,10)}</div>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
@@ -658,11 +658,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                           fontSize: 12,
                           fontWeight: 'bold'
                         }}                    >
-                        {hasQtyAvailable ? '➕ Agregar a WO' : '❌ Agotado'}
+                        {hasQtyAvailable ? '➕ Add to WO' : '❌ Depleted'}
                       </button>
                       {part.invoiceLink && (
                         <a href={part.invoiceLink} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', fontSize: 12 }}>
-                          Ver factura
+                          View invoice
                         </a>
                       )}
                     </div>
@@ -678,8 +678,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               fontSize: 12, 
               color: '#2e7d32' 
             }}>
-              💡 <strong>Tip:</strong> Estas partes ya están asignadas para este trailer. 
-              Al agregarlas, se descontarán automáticamente del inventario.
+              💡 <strong>Tip:</strong> These parts are already assigned to this trailer. 
+              When you add them, they will be automatically deducted from inventory.
             </div>
           </div>
         )}
