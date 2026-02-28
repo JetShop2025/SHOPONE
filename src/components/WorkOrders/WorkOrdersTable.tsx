@@ -248,6 +248,8 @@ const WorkOrdersTable: React.FC = () => {
             invoice: part.invoice_number || 'N/A',
             invoiceLink: part.invoice_link
           })),
+          totalHrs: Number(workOrderData.totalHrs) || 0,
+          laborRate: 60,
           laborCost: Number(workOrderData.laborCost) || 0,
           subtotalParts: Number(workOrderData.subtotalParts) || 0,
           // Usar SIEMPRE el valor exacto que el usuario editó/calculó, sin recalcular ni modificar
@@ -993,6 +995,8 @@ const WorkOrdersTable: React.FC = () => {
             invoice: part.invoice_number || 'N/A',
             invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
           })),
+          totalHrs: Number(workOrderData.totalHrs) || Number(datosOrden.totalHrs) || 0,
+          laborRate: 60,
           laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
           subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
             sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
@@ -1070,7 +1074,9 @@ const WorkOrdersTable: React.FC = () => {
               total: (Number(part.qty) || 0) * (Number(part.cost) || 0),
               invoice: 'N/A',
               invoiceLink: undefined
-            })),            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
+            })),            totalHrs: Number(datosOrden.totalHrs) || 0,
+            laborRate: 60,
+            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
             subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
               sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
             totalCost: Number(datosOrden.totalLabAndParts) || 0,
@@ -1168,21 +1174,60 @@ const WorkOrdersTable: React.FC = () => {
     // El formulario debe mostrar exactamente los valores que están en la base de datos
     // sin ningún tipo de recálculo automático
   }, [editWorkOrder?.mechanics, showEditForm]);
+
+  const parseExtraOptions = (extraOptionsValue: any): string[] => {
+    if (Array.isArray(extraOptionsValue)) return extraOptionsValue;
+    if (typeof extraOptionsValue === 'string') {
+      try {
+        const parsed = JSON.parse(extraOptionsValue);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const normalizeWorkOrderForEdit = (workOrder: any) => {
+    const normalizedExtraOptions = parseExtraOptions(workOrder?.extraOptions);
+
+    let normalizedMisc = workOrder?.miscellaneous;
+    let normalizedWeld = workOrder?.weldPercent;
+
+    if (normalizedMisc === undefined || normalizedMisc === null || normalizedMisc === '') {
+      if (normalizedExtraOptions.includes('15shop')) {
+        normalizedMisc = '15';
+      } else if (normalizedExtraOptions.includes('5')) {
+        normalizedMisc = '5';
+      }
+    }
+
+    if (normalizedWeld === undefined || normalizedWeld === null || normalizedWeld === '') {
+      if (normalizedExtraOptions.includes('15weld')) {
+        normalizedWeld = '15';
+      }
+    }
+
+    return {
+      ...workOrder,
+      date: workOrder?.date ? workOrder.date.slice(0, 10) : '',
+      parts: Array.isArray(workOrder?.parts) ? workOrder.parts : [],
+      mechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics : [],
+      extraOptions: normalizedExtraOptions,
+      miscellaneous: (normalizedMisc !== undefined && normalizedMisc !== null) ? String(normalizedMisc) : '',
+      weldPercent: (normalizedWeld !== undefined && normalizedWeld !== null) ? String(normalizedWeld) : ''
+    };
+  };
+
   const handleEdit = () => {
     if (selectedRow === null) return;
     const pwd = window.prompt('Enter password to edit:');
     if (pwd === '6214') {
       const found = workOrders.find(wo => wo.id === selectedRow);
       if (found) {
-        setEditWorkOrder({
-          ...found,
-          date: found.date ? found.date.slice(0, 10) : '',
-          parts: Array.isArray(found.parts) ? found.parts : [],
-          mechanics: Array.isArray(found.mechanics) ? found.mechanics : [],
-          // Si tu backend guarda extraOptions como array, úsalo directo
-          extraOptions: Array.isArray(found.extraOptions) ? found.extraOptions : [],
-        });
-        setExtraOptions(Array.isArray(found.extraOptions) ? found.extraOptions : []);
+        const normalizedOrder = normalizeWorkOrderForEdit(found);
+        setEditWorkOrder(normalizedOrder);
+        setExtraOptions(normalizedOrder.extraOptions || []);
         
         // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado.
         if (found.trailer) {
@@ -1384,13 +1429,7 @@ const WorkOrdersTable: React.FC = () => {
       });
     }
       // Actualizar la cantidad de partes pendientes localmente
-    setPendingParts(prevPending => 
-      prevPending.map(pp => 
-        pp.id === pendingPart.id 
-          ? { ...pp, qty_remaining: Math.max(0, (pp.qty_remaining || pp.qty || 0) - qtyToUse) }
-          : pp
-      ) // ✅ NO filtrar - mantener todas las partes pendientes visibles
-    );
+    setPendingParts(prevPending => prevPending.filter(pp => pp.id !== pendingPart.id));
     
     console.log(`🎉 Parte ${pendingPart.sku} agregada exitosamente a la WO con costo $${cost.toFixed(2)}`);
   };
@@ -1571,7 +1610,9 @@ const WorkOrdersTable: React.FC = () => {
           total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
           invoice: part.invoice_number || 'N/A',
           invoiceLink: part.invoiceLink
-        })),        laborCost: laborCost,
+        })),        totalHrs: totalHrs,
+        laborRate: 60,
+        laborCost: laborCost,
         subtotalParts: subtotalParts,
         totalCost: totalCost,
         extraOptions: finalWorkOrderData.extraOptions || []
@@ -2484,11 +2525,9 @@ const WorkOrdersTable: React.FC = () => {
                         }
                         const found = workOrders.find(wo => wo.id === Number(editId));
                         if (found) {
-                          setEditWorkOrder({
-                            ...found,
-                            date: found.date ? found.date.slice(0, 10) : '',
-                            parts: Array.isArray(found.parts) ? found.parts : []
-                          });
+                          const normalizedOrder = normalizeWorkOrderForEdit(found);
+                          setEditWorkOrder(normalizedOrder);
+                          setExtraOptions(normalizedOrder.extraOptions || []);
                           setEditError('');
                         } else {
                           setEditError('No order found with that ID.');
@@ -2779,12 +2818,18 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
                   const res = await fetch(`${API_URL}/workOrders/${contextMenu.order.id}`);
                   if (res.ok) {
                     const data = await res.json();
-                    setEditWorkOrder({ ...data, date: data.date ? data.date.slice(0, 10) : '', parts: Array.isArray(data.parts) ? data.parts : [] });
+                    const normalizedOrder = normalizeWorkOrderForEdit(data);
+                    setEditWorkOrder(normalizedOrder);
+                    setExtraOptions(normalizedOrder.extraOptions || []);
                   } else {
-                    setEditWorkOrder({ ...contextMenu.order, date: contextMenu.order.date ? contextMenu.order.date.slice(0, 10) : '', parts: Array.isArray(contextMenu.order.parts) ? contextMenu.order.parts : [] });
+                    const normalizedOrder = normalizeWorkOrderForEdit(contextMenu.order);
+                    setEditWorkOrder(normalizedOrder);
+                    setExtraOptions(normalizedOrder.extraOptions || []);
                   }
                 } catch {
-                  setEditWorkOrder({ ...contextMenu.order, date: contextMenu.order.date ? contextMenu.order.date.slice(0, 10) : '', parts: Array.isArray(contextMenu.order.parts) ? contextMenu.order.parts : [] });
+                  const normalizedOrder = normalizeWorkOrderForEdit(contextMenu.order);
+                  setEditWorkOrder(normalizedOrder);
+                  setExtraOptions(normalizedOrder.extraOptions || []);
                 }
                 setShowEditForm(true);
                 setEditId(contextMenu.order.id);

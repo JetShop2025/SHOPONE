@@ -10,6 +10,8 @@ interface WorkOrderData {
   mechanics: string;
   description: string;
   status?: string;
+  totalHrs?: number;
+  laborRate?: number;
   parts: Array<{
     sku: string;
     description: string;
@@ -275,14 +277,16 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   pdf.setFontSize(10);
   pdf.setTextColor(0, 0, 0);
+  const laborRate = Number(workOrderData.laborRate ?? 60);
+  const laborHours = Number(workOrderData.totalHrs ?? (laborRate > 0 ? ((workOrderData.laborCost || 0) / laborRate) : 0));
   
   // Subtotal Parts
   pdf.text('Subtotal Parts:', totalsStartX, currentY);
   pdf.text(`$${(workOrderData.subtotalParts || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
   
-  // Labor
-  pdf.text('Labor:', totalsStartX, currentY);
+  // Labor (desglose de horas x tarifa)
+  pdf.text(`Labor (${laborHours.toFixed(2)}h x $${laborRate.toFixed(2)}/h):`, totalsStartX, currentY);
   pdf.text(`$${(workOrderData.laborCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
   currentY += 6;
   
@@ -341,29 +345,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     // Resetear fuente
   pdf.setFont('helvetica', 'normal');
   
-  // TERMS & CONDITIONS
-  const termsY = currentY + 15;
-  
-  pdf.setFontSize(9);
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('TERMS & CONDITIONS:', leftMargin, termsY);
-  
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'normal');
-  const terms = [
-    'This estimate is not a final bill, pricing could change if job specifications change.',
-    'Payment is due upon completion of work.',
-    'Customer is responsible for any additional costs due to unforeseen complications.'
-  ];
-  
-  terms.forEach((term, index) => {
-    const splitTerm = pdf.splitTextToSize(term, contentWidth);
-    pdf.text(splitTerm, leftMargin, termsY + 6 + (index * 6));
-  });
-  
-  // CUSTOMER AUTHORIZATION
-  const authY = termsY + 25;
+  // CUSTOMER AUTHORIZATION (Terms and Conditions section removed per user request)
+  const authY = currentY + 15;
   
   pdf.setFontSize(8);
   pdf.setTextColor(0, 0, 0);
