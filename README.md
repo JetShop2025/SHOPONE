@@ -6,8 +6,7 @@ This project is a graphical system that includes a user management feature with 
 ## Features
 - **User Management**: Users can log in to access the system.
 - **Menu Navigation**: A menu that allows users to switch between Work Orders and Inventory.
-- **Work Orders Screen**: A detailed view of work orders presented in a table format with action buttons for managing work orders.
-
+- **Work Orders Screen**: A detailed view of work orders presented in a table format with action buttons for managing work orders.- **Theming**: A centralized color/theme configuration using styled-components; update `src/theme.ts` to customize the look.
 ## Project Structure
 ```
 graphical-system
