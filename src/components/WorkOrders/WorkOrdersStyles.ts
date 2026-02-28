@@ -1,8 +1,12 @@
-import styled, { DefaultTheme } from 'styled-components';
+import styled from 'styled-components';
 
-export const WorkOrdersContainer = styled.div<{ theme: DefaultTheme }>`
-  padding: ${(props) => props.theme.spacing.large};
-  background-color: ${(props) => props.theme.colors.background};
+interface ThemeProps {
+  theme: any;
+}
+
+export const WorkOrdersContainer = styled.div<ThemeProps>`
+  padding: ${(props: any) => props.theme.spacing.large};
+  background-color: ${(props: any) => props.theme.colors.background};
 `;
 
 export const WorkOrdersTableWrapper = styled.div`
@@ -22,8 +26,8 @@ export const TableHeader = styled.th`
   text-align: left;
 `;
 
-export const TableCell = styled.td<{ theme: DefaultTheme }>`
-  border: 1px solid ${(props) => props.theme.colors.secondary};
+export const TableCell = styled.td<ThemeProps>`
+  border: 1px solid ${(props: any) => props.theme.colors.secondary};
   padding: 8px;
 `;
 
@@ -31,7 +35,7 @@ export const ButtonContainer = styled.div`
   margin-top: 20px;
 `;
 
-export const Button = styled.button<{ theme: DefaultTheme }>`
+export const Button = styled.button<ThemeProps>`
   background-color: #4CAF50;
   color: white;
   padding: 10px 15px;
@@ -40,6 +44,6 @@ export const Button = styled.button<{ theme: DefaultTheme }>`
   cursor: pointer;
 
   &:hover {
-    background-color: ${(props) => props.theme.colors.success};
+    background-color: ${(props: any) => props.theme.colors.success};
   }
 `;

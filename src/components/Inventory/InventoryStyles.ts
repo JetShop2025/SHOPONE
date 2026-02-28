@@ -1,4 +1,3 @@
-import styled from 'styled-components';
 import styled, { DefaultTheme } from 'styled-components';
 
 export const InventoryContainer = styled.div<{ theme: DefaultTheme }>`
