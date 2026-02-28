@@ -45,11 +45,26 @@ graphical-system
 1. Clone the repository.
 2. Navigate to the project directory.
 3. Run `npm install` to install the dependencies.
+4. (Optional) run `npm run update-browserslist` periodically to keep the browserslist database fresh.
+
+You can also run `npm audit fix` to resolve automatically fixable vulnerabilities.
 
 ## Usage
 - Start the application by running `npm start`.
 - Access the login page to authenticate users.
 - Use the menu to navigate between Work Orders and Inventory sections.
+
+Build for production with `npm run build`. The resulting `build/` directory can be deployed to any static hosting provider (Render, Netlify, Vercel, etc.).
+
+### Deploying to Render
+1. Push your code to a Git repository (GitHub/GitLab/Bitbucket).
+2. Create a Static Site on Render, point it to this repo and branch, set:
+   - **Build Command**: `npm run build`
+   - **Publish Directory**: `build/`
+3. Add any `REACT_APP_…` environment variables in the Render dashboard.
+4. Every `git push` to the configured branch triggers a new deployment.
+
+Use `render deploy latest --service <name>` with the Render CLI to force a redeploy if necessary.
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
