@@ -570,11 +570,10 @@ const InventoryTable: React.FC = () => {
             {sortedInventory.map((item, idx) => {
               // ...otros cálculos...
 
-              // Formatea la fecha de recibido
+              // Muestra la cantidad total recibida (acumulado)
               let displayReceive = '';
-              if (item.receive && typeof item.receive === 'string' && item.receive.includes('-')) {
-                const [yyyy, mm, dd] = item.receive.split('-');
-                displayReceive = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : item.receive;
+              if (item.receive) {
+                displayReceive = Number(item.receive) > 0 ? item.receive.toString() : '';
               }
 
               return (

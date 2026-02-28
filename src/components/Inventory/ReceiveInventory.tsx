@@ -141,7 +141,7 @@ const ReceiveInventory: React.FC = () => {
     const data = { ...form, usuario: localStorage.getItem('username') || '' };
     await axios.post(`${API_URL}/receive`, data);
     
-    // ACTUALIZA onHand, precio e invoice SIEMPRE
+    // ACTUALIZA onHand, received (acumulado), precio e invoice SIEMPRE
     if (form.sku && form.qty) {
       const invRes = await axios.get(`${API_URL}/inventory`);
       const inventoryList = invRes.data as any[];
@@ -150,6 +150,10 @@ const ReceiveInventory: React.FC = () => {
       if (part && part.id) {
         const currentOnHand = part.onHand ? Number(part.onHand) : 0;
         const newOnHand = currentOnHand + Number(form.qty);
+        
+        // Sumar cantidad al acumulado RECEIVED
+        const currentReceived = part.receive ? Number(part.receive) : 0;
+        const newReceived = currentReceived + Number(form.qty);
         
         // Verificar si hay cambios en precio
         const currentPrice = part.precio ? Number(part.precio).toFixed(2) : '0.00';
@@ -164,12 +168,15 @@ const ReceiveInventory: React.FC = () => {
           shouldUpdatePrice: shouldUpdatePrice,
           newInvoiceLink: newInvoiceLink || 'N/A',
           shouldUpdateInvoiceLink: shouldUpdateInvoiceLink,
-          newOnHand: newOnHand
+          newOnHand: newOnHand,
+          currentReceived: currentReceived,
+          newReceived: newReceived
         });
         
         const updateData = {
           ...part,
           onHand: newOnHand,
+          receive: newReceived,
           usuario: localStorage.getItem('username') || ''
         };
         
@@ -186,7 +193,7 @@ const ReceiveInventory: React.FC = () => {
         }
         
         await axios.put(`${API_URL}/inventory/${part.id}`, updateData);
-          console.log(`✅ Actualizado SKU ${form.sku}: onHand=${newOnHand}${shouldUpdatePrice ? ', precio actualizado' : ''}${shouldUpdateInvoiceLink ? ', invoiceLink actualizado' : ''}`);
+          console.log(`✅ Actualizado SKU ${form.sku}: onHand=${newOnHand}, received=${newReceived}${shouldUpdatePrice ? ', precio actualizado' : ''}${shouldUpdateInvoiceLink ? ', invoiceLink actualizado' : ''}`);
       }
     }    setShowForm(false);
     
