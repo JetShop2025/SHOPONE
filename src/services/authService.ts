@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://your-api-url.com/api'; // Replace with your actual API URL
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 // authenticateUser is the public API used by the UI.  "login" was previously exported
 // but components were importing a non‑existent symbol, which caused a compile error.
