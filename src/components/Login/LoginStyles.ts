@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import styled, { DefaultTheme } from 'styled-components';
 
 export const LoginContainer = styled.div`
   display: flex;
@@ -16,7 +17,7 @@ export const LoginFormWrapper = styled.form`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 `;
 
-export const InputField = styled.input`
+export const InputField = styled.input<{ theme: DefaultTheme }>`
   width: 100%;
   padding: 0.5rem;
   margin: 0.5rem 0;
@@ -24,7 +25,7 @@ export const InputField = styled.input`
   border-radius: 4px;
 `;
 
-export const SubmitButton = styled.button`
+export const SubmitButton = styled.button<{ theme: DefaultTheme }>`
   width: 100%;
   padding: 0.5rem;
   background-color: ${(props) => props.theme.colors.primary};

@@ -1,13 +1,13 @@
-import styled from 'styled-components';
+import styled, { DefaultTheme } from 'styled-components';
 
-export const MenuContainer = styled.div`
+export const MenuContainer = styled.div<{ theme: DefaultTheme }>`
   display: flex;
   justify-content: space-around;
   padding: 20px;
   background-color: ${(props) => props.theme.colors.background};
 `;
 
-export const MenuItem = styled.button`
+export const MenuItem = styled.button<{ theme: DefaultTheme }>`
   background-color: ${(props) => props.theme.colors.primary};
   color: ${(props) => props.theme.colors.surface};
   border: none;

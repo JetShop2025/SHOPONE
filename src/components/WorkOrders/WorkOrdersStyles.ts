@@ -1,6 +1,6 @@
-import styled from 'styled-components';
+import styled, { DefaultTheme } from 'styled-components';
 
-export const WorkOrdersContainer = styled.div`
+export const WorkOrdersContainer = styled.div<{ theme: DefaultTheme }>`
   padding: ${(props) => props.theme.spacing.large};
   background-color: ${(props) => props.theme.colors.background};
 `;
@@ -22,7 +22,7 @@ export const TableHeader = styled.th`
   text-align: left;
 `;
 
-export const TableCell = styled.td`
+export const TableCell = styled.td<{ theme: DefaultTheme }>`
   border: 1px solid ${(props) => props.theme.colors.secondary};
   padding: 8px;
 `;
@@ -31,7 +31,7 @@ export const ButtonContainer = styled.div`
   margin-top: 20px;
 `;
 
-export const Button = styled.button`
+export const Button = styled.button<{ theme: DefaultTheme }>`
   background-color: #4CAF50;
   color: white;
   padding: 10px 15px;
