@@ -47,6 +47,7 @@ const InventoryList = () => {
                         <InventoryTableHeader>Quantity</InventoryTableHeader>
                         <InventoryTableHeader>Location</InventoryTableHeader>
                         <InventoryTableHeader>Price</InventoryTableHeader>
+                        <InventoryTableHeader>Received</InventoryTableHeader>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,6 +58,9 @@ const InventoryList = () => {
                             <InventoryTableCell>{item.quantity}</InventoryTableCell>
                             <InventoryTableCell>{item.location}</InventoryTableCell>
                             <InventoryTableCell>{item.price}</InventoryTableCell>
+                            <InventoryTableCell>
+                                {item.received ?? item.receivedQuantity ?? item.qtyReceived ?? 0}
+                            </InventoryTableCell>
                         </tr>
                     ))}
                 </tbody>
