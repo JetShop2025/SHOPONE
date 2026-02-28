@@ -180,70 +180,9 @@ const WorkOrdersTable: React.FC = () => {
     try {
       const originalParts = Array.isArray(editWorkOrder.parts) ? editWorkOrder.parts : [];
       const currentParts = data.parts || [];
-      const newPartsToDeduct = [];
-      for (const currentPart of currentParts) {
-        if (currentPart.sku && currentPart.qty && Number(currentPart.qty) > 0) {
-          const originalPart = originalParts.find((op: any) =>
-            (op.sku && op.sku === currentPart.sku) ||
-            (op.part_name && op.part_name === currentPart.sku)
-          );
-          if (!originalPart) {
-            newPartsToDeduct.push({ sku: currentPart.sku, qty: Number(currentPart.qty) });
-          } else {
-            const originalQty = Number(originalPart.qty_used || originalPart.qty || 0);
-            const currentQty = Number(currentPart.qty);
-            if (currentQty > originalQty) {
-              const qtyDifference = currentQty - originalQty;
-              newPartsToDeduct.push({ sku: currentPart.sku, qty: qtyDifference });
-            }
-          }
-        }
-      }
-      // Deduct inventory using FIFO if needed
-      if (newPartsToDeduct.length > 0) {
-        try {
-          const fifoResponse = await axios.post(`${API_URL}/inventory/deduct-fifo`, {
-            parts: newPartsToDeduct,
-            usuario: localStorage.getItem('username') || 'unknown'
-          });
-          const fifoResult = fifoResponse.data;
-          for (const part of newPartsToDeduct) {
-            let fifoInfoForPart = null;
-          if (fifoResult && (fifoResult as any).details && Array.isArray((fifoResult as any).details)) {
-            fifoInfoForPart = (fifoResult as any).details.find((f: any) => f.sku === part.sku);
-          }
-            const currentPartInForm = currentParts.find((p: any) => p.sku === part.sku);
-            const originalPartInDB = originalParts.find((op: any) =>
-              (op.sku && op.sku === part.sku) ||
-              (op.part_name && op.part_name === part.sku)
-            );
-            if (originalPartInDB && originalPartInDB.id) {
-              const newTotalQty = Number(currentPartInForm?.qty || 0);
-              await axios.put(`${API_URL}/work-order-parts/${originalPartInDB.id}`, {
-                qty_used: newTotalQty,
-                cost: Number(String(currentPartInForm?.cost || 0).replace(/[^0-9.]/g, '')),
-                fifo_info: fifoInfoForPart,
-                usuario: localStorage.getItem('username') || ''
-              });
-            } else {
-              await axios.post(`${API_URL}/work-order-parts`, {
-                work_order_id: editWorkOrder.id,
-                sku: part.sku,
-                part_name: inventory.find(i => i.sku === part.sku)?.part || '',
-                qty_used: part.qty,
-                cost: Number(String(currentPartInForm?.cost || 0).replace(/[^0-9.]/g, '')),
-                fifo_info: fifoInfoForPart,
-                usuario: localStorage.getItem('username') || ''
-              });
-            }
-          }
-        } catch (fifoError) {
-          await axios.post(`${API_URL}/inventory/deduct`, {
-            parts: newPartsToDeduct,
-            usuario: localStorage.getItem('username') || 'unknown'
-          });
-        }
-      }
+      // NOTE: Deducción CENTRALIZADA en backend ahora (no en frontend)
+      // Backend maneja FIFO y Destinadas automáticamente
+      
       // Update the work order
       // 1. Fecha: enviar SIEMPRE en formato YYYY-MM-DD
       let dateToSend = data.date;
@@ -333,6 +272,17 @@ const WorkOrdersTable: React.FC = () => {
       } catch (pdfError) {}
       await fetchWorkOrders();
       await fetchTrailersWithPendingParts();
+      
+      // 🔄 REFRESCAR INVENTARIO para reflejar cambios
+      try {
+        const invRes = await axios.get(`${API_URL}/inventory`);
+        const updatedInventory = Array.isArray(invRes.data) ? invRes.data : [];
+        setInventory(updatedInventory);
+        console.log('✅ Inventario refrescado después de editar W.O');
+      } catch (invError) {
+        console.warn('⚠️ No se pudo refrescar inventario:', invError);
+      }
+      
       setWorkOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === editWorkOrder.id
@@ -922,33 +872,9 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
 
-      // 1. Prepara las partes a descontar
-      const partesUsadas = datosOrden.parts
-        .filter((p: any) => p.sku && p.qty && Number(p.qty) > 0)
-        .map((p: any) => ({
-          sku: p.sku,
-          qty: Number(p.qty)
-        }));      // 2. Descuenta del inventario usando FIFO
+      // 1. Prepara partes para guardar en la orden
+      // NOTE: Deducción CENTRALIZADA en backend ahora (no en frontend)
       let fifoResult: any = null;
-      if (partesUsadas.length > 0) {
-        try {
-          const fifoResponse = await axios.post(`${API_URL}/inventory/deduct-fifo`, {
-            parts: partesUsadas,
-            usuario: localStorage.getItem('username') || 'unknown'
-          });
-          fifoResult = fifoResponse.data;
-          console.log('✅ FIFO deduction successful:', fifoResult);
-        } catch (fifoError) {
-          console.error('❌ FIFO deduction failed, falling back to regular deduction:', fifoError);
-          // Fallback al método anterior si FIFO falla
-          await axios.post(`${API_URL}/inventory/deduct`, {
-            parts: partesUsadas,
-            usuario: localStorage.getItem('username') || 'unknown'
-          });
-        }
-      }
-
-      // 3. Prepara partes para guardar en la orden
       const partesParaGuardar = datosOrden.parts
         .filter((p: any) => p.sku && String(p.sku).trim() !== '') // Solo partes con SKU
         .map((p: any) => ({
@@ -1171,6 +1097,16 @@ const WorkOrdersTable: React.FC = () => {
       setSelectedPendingParts([]);
       setIdClassicError('');      // Actualiza la tabla inmediatamente
       await fetchWorkOrders();
+      
+      // 🔄 REFRESCAR INVENTARIO para reflejar deducción
+      try {
+        const invRes = await axios.get(`${API_URL}/inventory`);
+        const updatedInventory = Array.isArray(invRes.data) ? invRes.data : [];
+        setInventory(updatedInventory);
+        console.log('✅ Inventario refrescado después de crear W.O');
+      } catch (invError) {
+        console.warn('⚠️ No se pudo refrescar inventario:', invError);
+      }
       
       // 🔔 ACTUALIZAR TRAILERS CON PARTES PENDIENTES para quitar campanitas
       console.log('🔔 Actualizando trailers con partes pendientes después de crear nueva WO...');
