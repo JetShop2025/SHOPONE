@@ -4,12 +4,12 @@ export const MenuContainer = styled.div`
   display: flex;
   justify-content: space-around;
   padding: 20px;
-  background-color: #f8f9fa;
+  background-color: ${(props) => props.theme.colors.background};
 `;
 
 export const MenuItem = styled.button`
-  background-color: #007bff;
-  color: white;
+  background-color: ${(props) => props.theme.colors.primary};
+  color: ${(props) => props.theme.colors.surface};
   border: none;
   border-radius: 5px;
   padding: 10px 20px;
@@ -17,6 +17,6 @@ export const MenuItem = styled.button`
   transition: background-color 0.3s;
 
   &:hover {
-    background-color: #0056b3;
+    background-color: ${(props) => props.theme.colors.accent};
   }
 `;

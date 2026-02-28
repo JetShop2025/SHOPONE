@@ -1,8 +1,8 @@
 import styled from 'styled-components';
 
 export const WorkOrdersContainer = styled.div`
-  padding: 20px;
-  background-color: #f9f9f9;
+  padding: ${(props) => props.theme.spacing.large};
+  background-color: ${(props) => props.theme.colors.background};
 `;
 
 export const WorkOrdersTableWrapper = styled.div`
@@ -23,7 +23,7 @@ export const TableHeader = styled.th`
 `;
 
 export const TableCell = styled.td`
-  border: 1px solid #ddd;
+  border: 1px solid ${(props) => props.theme.colors.secondary};
   padding: 8px;
 `;
 
@@ -40,6 +40,6 @@ export const Button = styled.button`
   cursor: pointer;
 
   &:hover {
-    background-color: #45a049;
+    background-color: ${(props) => props.theme.colors.success};
   }
 `;

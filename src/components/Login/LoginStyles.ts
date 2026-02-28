@@ -6,7 +6,7 @@ export const LoginContainer = styled.div`
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background-color: #f0f0f0;
+  background-color: ${(props) => props.theme.colors.background};
 `;
 
 export const LoginFormWrapper = styled.form`
@@ -20,20 +20,20 @@ export const InputField = styled.input`
   width: 100%;
   padding: 0.5rem;
   margin: 0.5rem 0;
-  border: 1px solid #ccc;
+  border: 1px solid ${(props) => props.theme.colors.secondary};
   border-radius: 4px;
 `;
 
 export const SubmitButton = styled.button`
   width: 100%;
   padding: 0.5rem;
-  background-color: #007bff;
-  color: white;
+  background-color: ${(props) => props.theme.colors.primary};
+  color: ${(props) => props.theme.colors.surface};
   border: none;
   border-radius: 4px;
   cursor: pointer;
 
   &:hover {
-    background-color: #0056b3;
+    background-color: ${(props) => props.theme.colors.accent};
   }
 `;
