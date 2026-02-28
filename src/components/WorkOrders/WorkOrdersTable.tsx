@@ -17,7 +17,7 @@ dayjs.extend(weekOfYear);
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
-// TypeScript interfaces for API responses
+// TypeScript interfaces for API responsesS
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
