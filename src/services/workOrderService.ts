@@ -4,8 +4,9 @@ const API_URL = '/api/work-orders';
 
 export const fetchWorkOrders = async (): Promise<any[]> => {
     try {
-        const response = await axios.get<any[]>(API_URL);
-        return response.data;
+        const response = await axios.get<any>(API_URL);
+        // Backend devuelve { data: [...], pagination: {...} }
+        return response.data.data || response.data;
     } catch (error) {
         const msg = String(error);
         throw new Error('Error fetching work orders: ' + msg);
