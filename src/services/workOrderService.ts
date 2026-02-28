@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api/workorders';
+const API_URL = '/api/work-orders';
 
 export const fetchWorkOrders = async (): Promise<any[]> => {
     try {
