@@ -4,9 +4,10 @@
   "description": "A graphical system with user management, work orders, and inventory features.",
   "main": "src/index.tsx",
   "scripts": {
-    "start": "serve -s build -l $PORT",
+    "start": "cd backend && node server.js",
     "start:dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build && cd backend && npm install",
+    "postinstall": "cd backend && npm install",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "update-browserslist": "npx update-browserslist-db@latest"
