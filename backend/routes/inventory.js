@@ -171,4 +171,15 @@ router.put('/:sku', upload.single('imagen'), async (req, res) => {
   }
 });
 
+// Recalculate ONHAND for all inventory based on RECEIVE - SALIDAS_WO
+router.post('/recalculate/onhand', async (req, res) => {
+  try {
+    const result = await db.recalculateInventoryOnHand();
+    res.json(result);
+  } catch (err) {
+    console.error('[API] Error recalculating inventory ONHAND:', err);
+    res.status(500).json({ error: 'Error recalculating inventory ONHAND', details: err.message });
+  }
+});
+
 module.exports = router;

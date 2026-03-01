@@ -1821,6 +1821,41 @@ async function ensureReceivesTableStructure() {
   }
 }
 
+// Recalculate ONHAND for all SKUs based on RECEIVE - SALIDAS_WO
+async function recalculateInventoryOnHand() {
+  try {
+    console.log('[DB] Starting inventory ONHAND recalculation...');
+    
+    // Get all parts from inventory
+    const [allParts] = await connection.execute('SELECT id, sku, receive, salidasWo FROM inventory');
+    
+    let updates = 0;
+    for (const part of allParts) {
+      const sku = part.sku;
+      const received = Number(part.receive) || 0;
+      const salidasWo = Number(part.salidasWo) || 0;
+      const correctOnHand = Math.max(0, received - salidasWo); // RECEIVE - SALIDAS = ONHAND (never go below 0)
+      
+      // Update ONHAND with corrected value
+      const [result] = await connection.execute(
+        'UPDATE inventory SET onHand = ? WHERE sku = ?',
+        [correctOnHand, sku]
+      );
+      
+      if (result.affectedRows > 0) {
+        updates++;
+        console.log(`[DB] Updated SKU ${sku}: onHand = ${correctOnHand} (received=${received}, salidasWo=${salidasWo})`);
+      }
+    }
+    
+    console.log(`[DB] Inventory ONHAND recalculation completed. ${updates} SKUs updated.`);
+    return { success: true, updated: updates };
+  } catch (error) {
+    console.error('[DB] Error recalculating inventory ONHAND:', error.message);
+    throw error;
+  }
+}
+
 // Llamar a la función para asegurar la estructura de la tabla receives al iniciar
 ensureReceivesTableStructure();
 
@@ -1864,5 +1899,6 @@ module.exports = {
   getChangesForAudit,
   auditWorkOrderOperation,
   auditInventoryOperation,
-  auditTrailerOperation
+  auditTrailerOperation,
+  recalculateInventoryOnHand
 };
