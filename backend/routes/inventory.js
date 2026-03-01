@@ -182,4 +182,30 @@ router.post('/recalculate/onhand', async (req, res) => {
   }
 });
 
+// Maintenance endpoint - Fix inventory discrepancies (with secret key)
+router.post('/maintenance/fix-onhand', async (req, res) => {
+  try {
+    // Optional: Add a simple secret key check for security
+    const secret = req.body.secret || req.query.secret;
+    if (secret !== 'shopone-fix-inventory-2024') {
+      return res.status(401).json({ error: 'Unauthorized - invalid secret key' });
+    }
+    
+    console.log('[MAINTENANCE] Executing inventory ONHAND fix...');
+    const result = await db.recalculateInventoryOnHand();
+    
+    res.json({
+      success: true,
+      message: 'Inventory ONHAND recalculation completed successfully',
+      ...result
+    });
+  } catch (err) {
+    console.error('[MAINTENANCE] Error fixing inventory:', err);
+    res.status(500).json({ 
+      error: 'Error fixing inventory ONHAND', 
+      details: err.message 
+    });
+  }
+});
+
 module.exports = router;
