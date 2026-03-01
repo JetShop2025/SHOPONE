@@ -291,44 +291,53 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   currentY += 6;
   
   // EXTRAS - Integrados con los totales
-  // MISCELLANEOUS - Usar porcentaje y leyenda personalizada
+  // SHOPMISC - Usar porcentaje y leyenda personalizada
   let miscPercent = 0;
   let miscLabel = '';
   let miscAmount = 0;
-  // Si hay extraOptions, buscar el porcentaje y mostrarlo como Miscellaneous
+  let weldPercent = 0;
+  let weldLabel = '';
+  let weldAmount = 0;
+  
+  // Si hay extraOptions, buscar el porcentaje y mostrarlo como SHOPMISC y WELD
   if (extraOptions && extraOptions.length > 0) {
     if (extraOptions.includes('15shop')) {
       miscPercent = 15;
-      miscLabel = 'Miscellaneous 15%:';
-      miscAmount = subtotal * 0.15;
-    } else if (extraOptions.includes('15weld')) {
-      miscPercent = 15;
-      miscLabel = 'Miscellaneous 15%:';
+      miscLabel = 'SHOPMISC 15%:';
       miscAmount = subtotal * 0.15;
     } else if (extraOptions.includes('5')) {
       miscPercent = 5;
-      miscLabel = 'Miscellaneous 5%:';
+      miscLabel = 'SHOPMISC 5%:';
       miscAmount = subtotal * 0.05;
     }
+    
+    if (extraOptions.includes('15weld')) {
+      weldPercent = 15;
+      weldLabel = 'WELD SUPP 15%:';
+      weldAmount = subtotal * 0.15;
+    }
   } else {
-    // Si no hay extraOptions, usar el 5% automático como Miscellaneous
+    // Si no hay extraOptions, usar el 5% automático como SHOPMISC
     miscPercent = 5;
-    miscLabel = 'Miscellaneous 5%:';
+    miscLabel = 'SHOPMISC 5%:';
     miscAmount = subtotal * 0.05;
   }
-  pdf.setTextColor(0, 100, 200); // Color azul para Miscellaneous
-  pdf.text(miscLabel, totalsStartX, currentY);
-  pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
-  currentY += 6;
   
-  // Extras seleccionados
-  extraOptions.forEach(option => {
-    let extraName = '';
-    let extraCost = 0;
-    
-    // Ya se muestra como Miscellaneous arriba, no repetir aquí
-    // Si tienes otros extras diferentes, agrégalos aquí si es necesario
-  });
+  // Mostrar SHOPMISC
+  if (miscAmount > 0) {
+    pdf.setTextColor(0, 100, 200); // Color azul para SHOPMISC
+    pdf.text(miscLabel, totalsStartX, currentY);
+    pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+    currentY += 6;
+  }
+  
+  // Mostrar WELD SUPP si existe
+  if (weldAmount > 0) {
+    pdf.setTextColor(0, 100, 200); // Color azul para WELD SUPP
+    pdf.text(weldLabel, totalsStartX, currentY);
+    pdf.text(`$${weldAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+    currentY += 6;
+  }
   
   // Línea separadora
   pdf.setDrawColor(0, 0, 0);
@@ -345,7 +354,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     // Resetear fuente
   pdf.setFont('helvetica', 'normal');
   
-  // CUSTOMER AUTHORIZATION (Terms and Conditions section removed per user request)
+  // CUSTOMER AUTHORIZATION
   const authY = currentY + 15;
   
   pdf.setFontSize(8);
@@ -353,8 +362,15 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('☐ I accept this estimate without any changes', leftMargin, authY);
   pdf.text('☐ I accept this estimate with the handwritten changes noted below', leftMargin, authY + 6);
   
+  // TÉRMINOS Y CONDICIONES (Terms and Conditions)
+  const termsY = authY + 14;
+  pdf.setFontSize(7);
+  pdf.setTextColor(100, 100, 100);
+  pdf.text('Terms and Conditions: Payment due upon receipt. All parts and labor are subject to inspection.', leftMargin, termsY);
+  pdf.text('Work warranty: 30 days on all workmanship. Any warranty claims must be made within 30 days of completion.', leftMargin, termsY + 4);
+  
   // LÍNEAS PARA FIRMAS - CENTRADAS
-  const sigY = authY + 18;
+  const sigY = termsY + 12;
   const lineWidth = 70;
   const gapBetweenLines = 20;
   const linesStartX = (pageWidth - (lineWidth * 2 + gapBetweenLines)) / 2;
