@@ -7,54 +7,45 @@ router.use(express.json());
 // Registrar partes usadas
 router.post('/', async (req, res) => {
   const { work_order_id, sku, part_name, qty_used, cost, usuario } = req.body;
-  let qtyToDeduct = Number(qty_used);
-
   const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
 
   console.log('Body recibido en /work-order-parts:', req.body);
 
   try {
-    // Busca recibos FIFO con partes disponibles
-    const [receives] = await db.query(
-      'SELECT id, invoice, invoiceLink, qty_remaining FROM receives WHERE sku = ? AND qty_remaining > 0 ORDER BY fecha ASC',
-      [sku]
-    );
-
-    let totalDeducted = 0;
-    for (const receive of receives) {
-      if (qtyToDeduct <= 0) break;
-      const deductQty = Math.min(receive.qty_remaining, qtyToDeduct);
-
-      // Descuenta del recibo
-      await db.query(
-        'UPDATE receives SET qty_remaining = qty_remaining - ?' +
-        (deductQty === receive.qty_remaining ? ', estatus = "USED"' : '') +
-        ' WHERE id = ?',
-        [deductQty, receive.id]
-      );
-
-      // Inserta en work_order_parts con el invoice correcto
-      await db.query(
-        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoice, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, deductQty, cleanCost, usuario, receive.invoice, receive.invoiceLink]
-      );
-
-      qtyToDeduct -= deductQty;
-      totalDeducted += deductQty;
+    // Usar deductInventoryFIFO que maneja correctamente receives, inventory master y work_order_parts
+    const partsToDeduct = [{
+      sku: sku,
+      part: part_name || '',
+      qty: Number(qty_used) || 0,
+      cost: cleanCost
+    }];
+    
+    console.log('[work-order-parts] Calling deductInventoryFIFO for:', partsToDeduct);
+    const fifoResult = await db.deductInventoryFIFO(partsToDeduct, usuario || 'system');
+    console.log('[work-order-parts] FIFO deduction result:', fifoResult);
+    
+    // Crear entrada en work_order_parts con información FIFO
+    let fifoInfo = null;
+    if (fifoResult && fifoResult.details && Array.isArray(fifoResult.details)) {
+      fifoInfo = fifoResult.details.find((r) => r.sku === sku);
     }
+    
+    await db.createWorkOrderPart({
+      work_order_id: work_order_id,
+      sku: sku,
+      part_name: part_name || '',
+      qty_used: Number(qty_used) || 0,
+      cost: cleanCost,
+      usuario: usuario || 'system'
+    }, fifoInfo);
 
-    // Si faltó descontar y no hay receives, registra como inventario general
-    if (qtyToDeduct > 0) {
-      await db.query(
-        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, usuario, invoice, invoiceLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, qtyToDeduct, cleanCost, usuario, null, null]
-      );
-    }
-
-    res.status(200).json({ message: 'Partes registradas exitosamente', totalDeducted });
+    res.status(200).json({ 
+      message: 'Partes registradas exitosamente con FIFO', 
+      fifoResult: fifoResult 
+    });
   } catch (error) {
     console.error('Error al registrar partes usadas:', error);
-    res.status(500).json({ error: 'Error al registrar partes usadas' });
+    res.status(500).json({ error: 'Error al registrar partes usadas', details: error.message });
   }
 });
 
