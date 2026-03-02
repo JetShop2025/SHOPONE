@@ -399,7 +399,7 @@ const ReceiveInventory: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
               <h2 style={{
-                color: '#1976d2',
+                color: '#0d47a1',
                 fontWeight: 800,
                 fontSize: 26,
                 marginBottom: 20,
@@ -460,7 +460,7 @@ const ReceiveInventory: React.FC = () => {
                   type="text"
                   name="invoice"                  value={form.invoice}
                   onChange={handleChange}
-                  placeholder="Número de Invoice"
+                  placeholder="Invoice Number"
                   style={inputStyle}
                 />                {/* Campo para link de OneDrive */}
                 <input

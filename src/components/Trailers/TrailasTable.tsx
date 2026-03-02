@@ -600,20 +600,20 @@ const TrailasTable: React.FC = () => {
                 minWidth: '150px'
               }}
             >
-              <option value="ALL">Todos</option>
-              <option value="DISPONIBLE">Disponible</option>
-              <option value="RENTADO">Rentado</option>
-              <option value="MANTENIMIENTO">Mantenimiento</option>
+              <option value="ALL">All</option>
+              <option value="DISPONIBLE">Available</option>
+              <option value="RENTADO">Rental</option>
+              <option value="MANTENIMIENTO">Maintenance</option>
             </select>
           </div>
           
           <div style={{ flex: 1, minWidth: '200px' }}>
             <label style={{ fontSize: '14px', fontWeight: '600', color: '#555', marginBottom: '4px', display: 'block' }}>
-              Buscar:
+              Search:
             </label>
             <input
               type="text"
-              placeholder="Buscar por nombre o cliente..."
+              placeholder="Search by name or client..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
