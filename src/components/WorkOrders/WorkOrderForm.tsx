@@ -67,6 +67,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   onDeletePart
 }) => {const [successMsg, setSuccessMsg] = React.useState('');
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
+  const [manualTotalOverride, setManualTotalOverride] = React.useState(false);
   
   // Function to hide tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
@@ -139,9 +140,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   }, [workOrder.weldPercent]);
 
+  React.useEffect(() => {
+    setManualTotalOverride(false);
+  }, [workOrder.id, title]);
+
   // Auto-calcular total automáticamente cuando cambian partes, mecánicos o extras
   // Aplica tanto para nuevas órdenes como para edición
   React.useEffect(() => {
+    if (manualTotalOverride) return;
     const totalHours = Array.isArray(workOrder.mechanics)
       ? workOrder.mechanics.reduce((total: number, mechanic: any) => {
           const hrs = Number(mechanic?.hrs);
@@ -170,7 +176,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (currentValue !== formattedTotal) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.totalLabAndParts, onChange]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.totalLabAndParts, onChange, manualTotalOverride]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -371,7 +377,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         const miscAmount = subtotal * (miscPercentNum / 100);
         const weldAmount = subtotal * (weldPercentNum / 100);
         const calculatedTotal = subtotal + miscAmount + weldAmount;
-        totalLabAndPartsValue = calculatedTotal;
+
+        const manualTotalRaw = workOrder.totalLabAndParts;
+        if (manualTotalRaw !== undefined && manualTotalRaw !== null && String(manualTotalRaw).trim() !== '') {
+          const manualParsed = Number(String(manualTotalRaw).replace(/[^0-9.]/g, ''));
+          totalLabAndPartsValue = !isNaN(manualParsed) && manualParsed >= 0 ? manualParsed : calculatedTotal;
+        } else {
+          totalLabAndPartsValue = calculatedTotal;
+        }
       }
 
       // Validar cantidades solo si se editan
@@ -436,6 +449,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
 
 
+      const normalizedTotal = Number(String(totalLabAndPartsValue ?? '').replace(/[^0-9.]/g, ''));
+      const finalTotalLabAndParts = !isNaN(normalizedTotal) && normalizedTotal >= 0 ? normalizedTotal : 0;
+
       // Mantener los valores originales de totales/cantidades si no se editan
       const dataToSend = {
         ...workOrder,
@@ -443,7 +459,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         parts: cleanParts,
         mechanics: cleanMechanics,
         totalHrs: totalHrs,
-        totalLabAndParts: totalLabAndPartsValue, // SIEMPRE número, nunca string con $
+        totalLabAndParts: finalTotalLabAndParts,
         miscellaneous: miscValue,
         weldPercent: weldValue,
         usuario: localStorage.getItem('username') || '',
@@ -1076,7 +1092,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     ? workOrder.totalLabAndParts
                     : `$${calculateTotalLabAndParts().toFixed(2)}`
                 }
-                readOnly
+                onChange={(e) => {
+                  setManualTotalOverride(true);
+                  onChange(e as any);
+                }}
                 style={{ 
                   width: '100%', 
                   marginTop: 4, 
@@ -1090,19 +1109,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 placeholder="$0.00"
               />
             </label>
-            <span
+            <button
+              type="button"
+              onClick={() => {
+                setManualTotalOverride(false);
+                const calculatedTotal = calculateTotalLabAndParts();
+                onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
+              }}
               style={{
                 padding: '8px 12px',
                 background: '#4caf50',
                 color: 'white',
+                border: 'none',
                 borderRadius: 4,
                 fontSize: '12px',
                 marginTop: 20,
-                fontWeight: 700
+                fontWeight: 700,
+                cursor: 'pointer'
               }}
             >
-              Auto
-            </span>
+              Calcular Auto
+            </button>
           </div>
           <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
             Cálculo sugerido: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + Miscellaneous (${(() => {

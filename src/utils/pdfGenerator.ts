@@ -26,6 +26,8 @@ interface WorkOrderData {
   subtotalParts: number;
   totalCost: number;
   extraOptions?: string[]; // Agregar extras seleccionados
+  miscellaneousPercent?: number;
+  weldPercent?: number;
 }
 
 // First implementation removed - keeping the improved second implementation
@@ -291,42 +293,31 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   currentY += 6;
   
   // EXTRAS - Integrados con los totales
-  // SHOPMISC - Usar porcentaje y leyenda personalizada
-  let miscPercent = 0;
-  let miscLabel = '';
-  let miscAmount = 0;
-  let weldPercent = 0;
-  let weldLabel = '';
-  let weldAmount = 0;
-  
-  // Si hay extraOptions, buscar el porcentaje y mostrarlo como SHOPMISC y WELD
-  if (extraOptions && extraOptions.length > 0) {
+  // Prioridad: percentages explícitos enviados desde formulario -> fallback a extraOptions
+  let miscPercent = Number(workOrderData.miscellaneousPercent ?? 0);
+  let weldPercent = Number(workOrderData.weldPercent ?? 0);
+
+  if ((!miscPercent || miscPercent < 0) && extraOptions && extraOptions.length > 0) {
     if (extraOptions.includes('15shop')) {
       miscPercent = 15;
-      miscLabel = 'SHOPMISC 15%:';
-      miscAmount = subtotal * 0.15;
     } else if (extraOptions.includes('5')) {
       miscPercent = 5;
-      miscLabel = 'SHOPMISC 5%:';
-      miscAmount = subtotal * 0.05;
     }
-    
+  }
+
+  if ((!weldPercent || weldPercent < 0) && extraOptions && extraOptions.length > 0) {
     if (extraOptions.includes('15weld')) {
       weldPercent = 15;
-      weldLabel = 'WELD SUPP 15%:';
-      weldAmount = subtotal * 0.15;
     }
-  } else {
-    // Si no hay extraOptions, usar el 5% automático como SHOPMISC
-    miscPercent = 5;
-    miscLabel = 'SHOPMISC 5%:';
-    miscAmount = subtotal * 0.05;
   }
+
+  const miscAmount = subtotal * ((miscPercent > 0 ? miscPercent : 0) / 100);
+  const weldAmount = subtotal * ((weldPercent > 0 ? weldPercent : 0) / 100);
   
   // Mostrar SHOPMISC
   if (miscAmount > 0) {
     pdf.setTextColor(0, 100, 200); // Color azul para SHOPMISC
-    pdf.text(miscLabel, totalsStartX, currentY);
+    pdf.text(`SHOPMISC ${miscPercent}%:`, totalsStartX, currentY);
     pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 6;
   }
@@ -334,7 +325,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Mostrar WELD SUPP si existe
   if (weldAmount > 0) {
     pdf.setTextColor(0, 100, 200); // Color azul para WELD SUPP
-    pdf.text(weldLabel, totalsStartX, currentY);
+    pdf.text(`WELD SUPP ${weldPercent}%:`, totalsStartX, currentY);
     pdf.text(`$${weldAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 6;
   }
@@ -359,8 +350,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   pdf.setFontSize(8);
   pdf.setTextColor(0, 0, 0);
-  pdf.text('☐ I accept this estimate without any changes', leftMargin, authY);
-  pdf.text('☐ I accept this estimate with the handwritten changes noted below', leftMargin, authY + 6);
+  pdf.text('[ ] I accept this estimate without any changes', leftMargin, authY);
+  pdf.text('[ ] I accept this estimate with the handwritten changes noted below', leftMargin, authY + 6);
   
   // TÉRMINOS Y CONDICIONES (Terms and Conditions)
   const termsY = authY + 14;

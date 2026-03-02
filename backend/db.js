@@ -111,6 +111,33 @@ async function ensureWorkOrdersTableHasEmployeeWrittenHours() {
   }
 }
 
+// Asegura que la tabla work_orders tenga los campos miscellaneous y weldPercent
+async function ensureWorkOrdersTableHasMiscellaneousFields() {
+  try {
+    // Check for miscellaneous column
+    const [miscColumns] = await connection.execute("SHOW COLUMNS FROM work_orders LIKE 'miscellaneous'");
+    if (!miscColumns || miscColumns.length === 0) {
+      console.log('[DB] Adding miscellaneous column to work_orders table...');
+      await connection.execute('ALTER TABLE work_orders ADD COLUMN miscellaneous VARCHAR(50) NULL');
+      console.log('[DB] Column miscellaneous added to work_orders table.');
+    } else {
+      console.log('[DB] work_orders table already has miscellaneous column.');
+    }
+    
+    // Check for weldPercent column
+    const [weldColumns] = await connection.execute("SHOW COLUMNS FROM work_orders LIKE 'weldPercent'");
+    if (!weldColumns || weldColumns.length === 0) {
+      console.log('[DB] Adding weldPercent column to work_orders table...');
+      await connection.execute('ALTER TABLE work_orders ADD COLUMN weldPercent VARCHAR(50) NULL');
+      console.log('[DB] Column weldPercent added to work_orders table.');
+    } else {
+      console.log('[DB] work_orders table already has weldPercent column.');
+    }
+  } catch (err) {
+    console.error('[DB] Error ensuring miscellaneous/weldPercent columns:', err.message);
+  }
+}
+
 async function ensureAuditTableExists() {
   try {
     // Primero verificar si la tabla existe
@@ -181,6 +208,7 @@ testConnection().then(() => {
   ensureAuditTableExists();
   ensureReceivesTableStructure();
   ensureWorkOrdersTableHasEmployeeWrittenHours();
+  ensureWorkOrdersTableHasMiscellaneousFields();
 });
 
 // Trailers functions
@@ -453,11 +481,13 @@ async function createOrder(order) {
       JSON.stringify(order.mechanics || []),
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(order.parts || []),
-      order.employeeWrittenHours || null
+      order.employeeWrittenHours || null,
+      order.miscellaneous || null,
+      order.weldPercent || null
     ];
 
     const [result] = await connection.execute(
-      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts, employeeWrittenHours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts, employeeWrittenHours, miscellaneous, weldPercent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     
@@ -565,12 +595,14 @@ async function updateOrder(id, order) {
       JSON.stringify(order.extraOptions || []),
       JSON.stringify(Object.values(groupedNew)), // partes agrupadas y sumadas
       order.employeeWrittenHours || null,
+      order.miscellaneous || null,
+      order.weldPercent || null,
       id
     ];
     // LOG: Valor de la fecha que se usará en el UPDATE
   console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE (sin TZ conv):', originalDate, 'Tipo:', typeof originalDate);
     const [result] = await connection.execute(
-      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ?, employeeWrittenHours = ? WHERE id = ?',
+      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ?, employeeWrittenHours = ?, miscellaneous = ?, weldPercent = ? WHERE id = ?',
       safeValues
     );
     console.log('[DB] Successfully updated work order with ID:', id);

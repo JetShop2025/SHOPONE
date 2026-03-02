@@ -961,9 +961,36 @@ app.put('/api/trailas/:id/return', async (req, res) => {
 app.post('/api/work-order-parts', async (req, res) => {
   try {
     console.log('[POST] /api/work-order-parts - Creating in database:', req.body);
-    const newWorkOrderPart = await db.createWorkOrderPart(req.body, req.body.fifo_info);
-    console.log('[POST] /api/work-order-parts - Created in database:', newWorkOrderPart);
-    res.json(newWorkOrderPart);
+    const { work_order_id, sku, part_name, qty_used, cost, usuario } = req.body;
+
+    const partsToDeduct = [{
+      sku,
+      part: part_name || '',
+      qty: Number(qty_used) || 0,
+      cost: Number(cost) || 0
+    }];
+
+    const fifoResult = await db.deductInventoryFIFO(partsToDeduct, usuario || 'system');
+
+    let fifoInfo = null;
+    if (fifoResult && fifoResult.details && Array.isArray(fifoResult.details)) {
+      fifoInfo = fifoResult.details.find((r) => r.sku === sku) || null;
+    }
+
+    const newWorkOrderPart = await db.createWorkOrderPart({
+      work_order_id,
+      sku,
+      part_name,
+      qty_used: Number(qty_used) || 0,
+      cost: Number(cost) || 0,
+      usuario: usuario || 'system'
+    }, fifoInfo);
+
+    console.log('[POST] /api/work-order-parts - Created in database with FIFO deduction:', {
+      newWorkOrderPart,
+      fifoResult
+    });
+    res.json({ ...newWorkOrderPart, fifoResult });
   } catch (error) {
     console.error('[ERROR] POST /api/work-order-parts:', error);
     res.status(500).json({ error: 'Failed to create work order part in database' });

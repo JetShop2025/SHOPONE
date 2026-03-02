@@ -202,8 +202,23 @@ const WorkOrdersTable: React.FC = () => {
       if (!totalToSend || isNaN(totalToSend)) {
         totalToSend = 0;
       }
-      // 3. Guardar el valor EXACTO que el usuario editó/calculó, sin recalcular ni modificar
-      const dataToSend = { ...safeData, date: dateToSend, totalLabAndParts: totalToSend };
+      // 3. Miscellaneous y Welding: asegurar valores por defecto
+      let miscToSend = data.miscellaneous;
+      if (miscToSend === undefined || miscToSend === null || miscToSend === '' || isNaN(Number(miscToSend))) {
+        miscToSend = '0';
+      }
+      let weldToSend = data.weldPercent;
+      if (weldToSend === undefined || weldToSend === null || weldToSend === '' || isNaN(Number(weldToSend))) {
+        weldToSend = '0';
+      }
+      // 4. Guardar el valor EXACTO que el usuario editó/calculó, sin recalcular ni modificar
+      const dataToSend = { 
+        ...safeData, 
+        date: dateToSend, 
+        totalLabAndParts: totalToSend,
+        miscellaneous: miscToSend,
+        weldPercent: weldToSend
+      };
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       // Mark pending parts as used
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
@@ -261,7 +276,12 @@ const WorkOrdersTable: React.FC = () => {
             ? Number(workOrderData.miscellaneous)
             : (typeof dataToSend.miscellaneous !== 'undefined' && dataToSend.miscellaneous !== null && dataToSend.miscellaneous !== '')
               ? Number(dataToSend.miscellaneous)
-              : 5 // fallback por defecto
+              : 0,
+          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
+            ? Number(workOrderData.weldPercent)
+            : (typeof dataToSend.weldPercent !== 'undefined' && dataToSend.weldPercent !== null && dataToSend.weldPercent !== '')
+              ? Number(dataToSend.weldPercent)
+              : 0
         };
         const pdf = await generateWorkOrderPDF(pdfData);
         const pdfBlob = pdf.output('blob');
@@ -1007,7 +1027,12 @@ const WorkOrdersTable: React.FC = () => {
             ? Number(workOrderData.miscellaneous)
             : (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
               ? Number(datosOrden.miscellaneous)
-              : 5 // fallback por defecto
+              : 0,
+          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
+            ? Number(workOrderData.weldPercent)
+            : (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
+              ? Number(datosOrden.weldPercent)
+              : 0
         };
         
         console.log('📄 Datos preparados para PDF:', pdfData);
@@ -1080,7 +1105,13 @@ const WorkOrdersTable: React.FC = () => {
             subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
               sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
             totalCost: Number(datosOrden.totalLabAndParts) || 0,
-            extraOptions: datosOrden.extraOptions || extraOptions || []
+            extraOptions: datosOrden.extraOptions || extraOptions || [],
+            miscellaneousPercent: (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
+              ? Number(datosOrden.miscellaneous)
+              : 0,
+            weldPercent: (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
+              ? Number(datosOrden.weldPercent)
+              : 0
           };
             const pdf = await generateWorkOrderPDF(basicPdfData);
           openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
@@ -1596,7 +1627,13 @@ const WorkOrdersTable: React.FC = () => {
         laborCost: laborCost,
         subtotalParts: subtotalParts,
         totalCost: totalCost,
-        extraOptions: finalWorkOrderData.extraOptions || []
+        extraOptions: finalWorkOrderData.extraOptions || [],
+        miscellaneousPercent: (typeof finalWorkOrderData.miscellaneous !== 'undefined' && finalWorkOrderData.miscellaneous !== null && finalWorkOrderData.miscellaneous !== '')
+          ? Number(finalWorkOrderData.miscellaneous)
+          : 0,
+        weldPercent: (typeof finalWorkOrderData.weldPercent !== 'undefined' && finalWorkOrderData.weldPercent !== null && finalWorkOrderData.weldPercent !== '')
+          ? Number(finalWorkOrderData.weldPercent)
+          : 0
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);
