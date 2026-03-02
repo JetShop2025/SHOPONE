@@ -2002,9 +2002,9 @@ const WorkOrdersTable: React.FC = () => {
       <div
         style={{
           padding: '32px',
-          background: 'linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%)',
+          background: 'linear-gradient(90deg, #fff9c4 0%, #ffffff 100%)',
           borderRadius: 16,
-          boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',
+          boxShadow: '0 4px 24px rgba(255, 193, 7, 0.10)',
           maxWidth: 1800,
           margin: '32px auto'
         }}
@@ -2015,22 +2015,20 @@ const WorkOrdersTable: React.FC = () => {
       width: 48,
       height: 48,
       borderRadius: '50%',
-      background: '#1976d2',
+      background: '#ffd600',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,
     }}
   >
-    <span style={{ color: 'white', fontWeight: 'bold', fontSize: 28, fontFamily: 'Courier New, Courier, monospace', letterSpacing: 2 }}>
-      WO
-    </span>
+    <span style={{ color: '#333', fontWeight: 'bold', fontSize: 22 }}>✓</span>
   </div>
   <span
     style={{
       fontSize: 32,
       fontWeight: 700,
-      color: '#1976d2',
+      color: '#ffd600',
       fontFamily: 'Courier New, Courier, monospace',
       letterSpacing: 2,
       textShadow: '1px 1px 0 #fff',
