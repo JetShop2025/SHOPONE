@@ -416,7 +416,10 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   const handleViewPDF = async (workOrderId: number) => {
     try {
-      const workOrderFromTable = workOrders.find(wo => wo.id === workOrderId);
+      // Fetch fresh data from API to ensure we have the latest information
+      const woResponse = await axios.get(`${API_URL}/work-orders/${workOrderId}`);
+      const workOrderFromTable = woResponse.data;
+      
       if (!workOrderFromTable) {
         alert('Work Order no encontrada');
         return;

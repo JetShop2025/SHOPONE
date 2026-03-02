@@ -158,7 +158,23 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(0, 150, 255);
   pdf.text('Mechanics:', rightBoxX + 3, firstRowY + 24);
   pdf.setTextColor(0, 0, 0);
-  const mechanicsText = String(workOrderData.mechanics || '');
+  
+  // Handle both array and string formats for mechanics
+  let mechanicsText = '';
+  if (Array.isArray((workOrderData as any).mechanics)) {
+    // If it's an array of mechanic objects, extract names and hours
+    mechanicsText = (workOrderData as any).mechanics
+      .map((m: any) => {
+        const hrs = Number(m.hrs) || 0;
+        return `${m.name} (${hrs}h)`;
+      })
+      .filter((text: string) => text.trim() !== '() (0h)')
+      .join(', ');
+  } else {
+    // If it's a string, use it directly
+    mechanicsText = String(workOrderData.mechanics || '');
+  }
+  
   // Usar splitTextToSize para que el texto se ajuste al ancho disponible
   const splitMechanics = pdf.splitTextToSize(mechanicsText, rightBoxWidth - 28);
   pdf.text(splitMechanics, rightBoxX + 25, firstRowY + 24);
