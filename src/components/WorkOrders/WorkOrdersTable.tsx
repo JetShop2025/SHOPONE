@@ -2856,14 +2856,14 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
                 alert('Contraseña incorrecta');
               }
             }}
-          >Editar</button>
+          >Edit</button>
           <button
             style={{ background: '#d32f2f', color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
             onClick={() => {
               handleDelete(contextMenu.order.id);
               setContextMenu({ ...contextMenu, visible: false });
             }}
-          >Eliminar</button>
+          >Delete</button>
           <button
             style={{ background: '#fff', color: '#1976d2', fontWeight: 700, fontSize: 16, padding: '16px 0', border: 'none', borderBottom: '2px solid #eee', width: '100%', cursor: 'pointer' }}
             onClick={() => {

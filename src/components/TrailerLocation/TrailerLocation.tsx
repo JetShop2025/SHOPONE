@@ -139,7 +139,7 @@ const TrailerLocation: React.FC = () => {
           status: asset.status || 'ACTIVE',
           lastUpdate: asset.lastUpdate || new Date().toISOString(),
           selected: false,
-          location: 'Obtener ubicación...',
+          location: 'Getting location...',
           coordinates: undefined
         }));
         
@@ -183,7 +183,7 @@ const loadTrailerLocations = async () => {
         // Transformar datos del backend al formato del frontend
         const transformedData: TrailerLocationData[] = responseData.data.map((item: any) => ({
           trailer: item.trailer || item.name || 'N/A',
-          location: item.location || 'Ubicación no disponible',
+          location: item.location || 'Location unavailable',
           lastUpdate: item.lastUpdate || new Date().toISOString(),
           status: (item.status?.toUpperCase() || 'UNKNOWN') as 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE',
           coordinates: item.coordinates || { lat: 0, lng: 0 }
@@ -360,7 +360,7 @@ const loadTrailerLocations = async () => {
             status: asset.status,
             location: locationData.coordinates ? 
               `Lat: ${locationData.coordinates.lat}, Lng: ${locationData.coordinates.lng}` : 
-              'Sin ubicación disponible',
+              'No location available',
             coordinates: locationData.coordinates,
             lastUpdate: locationData.lastUpdate || new Date().toISOString()
           };
@@ -370,7 +370,7 @@ const loadTrailerLocations = async () => {
             assetId: asset.assetId,
             name: asset.name,
             status: 'ERROR',
-            location: 'Error obteniendo ubicación',
+            location: 'Error getting location',
             coordinates: undefined,
             lastUpdate: new Date().toISOString()
           };
@@ -800,7 +800,7 @@ const loadTrailerLocations = async () => {
               </div>
               
               <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-                <strong>Ubicación:</strong> {asset.location || 'No disponible'}
+                <strong>Location:</strong> {asset.location || 'Unavailable'}
               </div>
               
               <div style={{ fontSize: 10, color: '#999' }}>
@@ -986,7 +986,7 @@ const loadTrailerLocations = async () => {
             minWidth: 400,
             maxWidth: 500
           }}>
-            <h3 style={{ color: '#ff9800', marginBottom: 24 }}>Agregar Destinatario</h3>
+            <h3 style={{ color: '#ff9800', marginBottom: 24 }}>Add Recipient</h3>
             
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Nombre:</label>
@@ -1001,7 +1001,7 @@ const loadTrailerLocations = async () => {
                   borderRadius: 6,
                   fontSize: 16
                 }}
-                placeholder="Nombre del destinatario"
+                placeholder="Recipient name"
               />
             </div>
 
@@ -1127,7 +1127,7 @@ const loadTrailerLocations = async () => {
               <strong>Trailer:</strong> {selectedTrailerDetail.trailer}
             </div>
             <div style={{ marginBottom: 16 }}>
-              <strong>Ubicación Actual:</strong> {selectedTrailerDetail.location}
+              <strong>Current Location:</strong> {selectedTrailerDetail.location}
             </div>
             <div style={{ marginBottom: 16 }}>
               <strong>Estado:</strong> 
@@ -1349,7 +1349,7 @@ const loadTrailerLocations = async () => {
                 <thead>
                   <tr style={{ background: '#ff9800', color: 'white' }}>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Fecha y Hora</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Ubicación</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Location</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Velocidad (km/h)</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Dirección</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Dirección</th>
@@ -1426,7 +1426,7 @@ const loadTrailerLocations = async () => {
               borderRadius: 8,
               marginBottom: 16
             }}>
-              <h4 style={{ color: '#333', marginBottom: 12 }}>📍 Ubicación Actual</h4>
+              <h4 style={{ color: '#333', marginBottom: 12 }}>📍 Current Location</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <strong>ID del Asset:</strong> {selectedTrailerDetail.assetId}
@@ -1446,7 +1446,7 @@ const loadTrailerLocations = async () => {
                   </span>
                 </div>
                 <div>
-                  <strong>Ubicación:</strong> {selectedTrailerDetail.location}
+                  <strong>Location:</strong> {selectedTrailerDetail.location}
                 </div>
                 <div>
                   <strong>Velocidad:</strong> {selectedTrailerDetail.speed} km/h

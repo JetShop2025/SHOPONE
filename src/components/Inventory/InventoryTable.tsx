@@ -346,7 +346,7 @@ const InventoryTable: React.FC = () => {
       <div style={{ marginBottom: 16 }}>
         <input
           type="text"
-          placeholder="Buscar por número de parte (SKU)..."
+          placeholder="Search by part number (SKU)..."
           value={skuSearch}
           onChange={e => setSkuSearch(e.target.value)}
           style={{

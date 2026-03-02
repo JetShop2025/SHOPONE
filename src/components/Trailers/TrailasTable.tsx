@@ -481,7 +481,7 @@ const TrailasTable: React.FC = () => {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
           }}></div>
-          <p style={{ color: '#1976d2', fontSize: '18px', margin: 0 }}>Cargando trailers...</p>
+          <p style={{ color: '#1976d2', fontSize: '18px', margin: 0 }}>Loading trailers...</p>
         </div>
       </div>
     );
@@ -769,7 +769,7 @@ const TrailasTable: React.FC = () => {
                         )}
                         {traila.ubicacion && (
                           <div style={{ marginBottom: '8px' }}>
-                            <span style={{ fontWeight: '600', color: '#666' }}>Ubicación: </span>
+                            <span style={{ fontWeight: '600', color: '#666' }}>Location: </span>
                             <span style={{ color: '#333' }}>{traila.ubicacion}</span>
                           </div>
                         )}
@@ -1142,7 +1142,7 @@ const TrailasTable: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '14px'
                 }}
-                placeholder="Ingrese el nombre del cliente..."
+                placeholder="Enter customer name..."
                 required
               />
             </div>
@@ -1191,7 +1191,7 @@ const TrailasTable: React.FC = () => {
               <textarea
                 value={rentalForm.observaciones}
                 onChange={(e) => setRentalForm({...rentalForm, observaciones: e.target.value})}
-                placeholder="Observaciones adicionales..."
+                placeholder="Additional observations..."
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1577,7 +1577,7 @@ const TrailasTable: React.FC = () => {
                   minHeight: '80px',
                   resize: 'vertical'
                 }}
-                placeholder="Detalles adicionales sobre el cambio de estado..."
+                placeholder="Additional status change details..."
               />
             </div>
 

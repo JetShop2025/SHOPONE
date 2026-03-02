@@ -803,7 +803,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             Descripción<span style={{ color: 'red' }}>*</span>
             <textarea
               name="description"
-              placeholder="Descripción*"
+              placeholder="Description*"
               value={workOrder.description || ''}
               onChange={onChange}
               rows={3}
@@ -991,7 +991,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     value={part.qty || ''}
                     onChange={e => handlePartChange(index, 'qty', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4 }}
-                    placeholder="Cantidad"
+                    placeholder="Quantity"
                   />
                 </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
                   Costo Unit.

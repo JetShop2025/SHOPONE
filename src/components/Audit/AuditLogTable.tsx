@@ -506,9 +506,9 @@ const AuditLogTable: React.FC = () => {
                 <option value="">Todas las acciones</option>
                 <option value="CREATE">Crear</option>
                 <option value="UPDATE">Actualizar</option>
-                <option value="DELETE">Eliminar</option>
+                <option value="DELETE">Delete</option>
                 <option value="DEDUCT">Deducir</option>
-                <option value="RENT">Rentar</option>
+                <option value="RENT">Rent</option>
                 <option value="RETURN">Devolver</option>
               </select>
             </div>
@@ -574,7 +574,7 @@ const AuditLogTable: React.FC = () => {
                 animation: 'spin 1s linear infinite',
                 margin: '0 auto 16px'
               }}></div>
-              <p style={{ color: '#666', fontSize: 16 }}>Cargando registros de auditoría...</p>
+              <p style={{ color: '#666', fontSize: 16 }}>Loading audit records...</p>
             </div>
           ) : logs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40 }}>
