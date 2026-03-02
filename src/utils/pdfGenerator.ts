@@ -232,13 +232,15 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       fontSize: 9,
       fontStyle: 'bold',
       halign: 'center',
-      cellPadding: 2
+      cellPadding: 2,
+      font: 'courier'
     },
     bodyStyles: {
       fontSize: 8,
       textColor: [0, 0, 0],
       cellPadding: 1.5,
-      overflow: 'ellipsize'
+      overflow: 'ellipsize',
+      font: 'courier'
     },
     columnStyles: {
       0: { halign: 'center', cellWidth: 12 },    // No.
@@ -256,7 +258,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     styles: {
       lineColor: [66, 139, 202],
       lineWidth: 0.3,
-      cellPadding: 1.5
+      cellPadding: 1.5,
+      font: 'courier'
     },
     didDrawCell: function(data) {
       // Hacer enlaces clickeables en la columna INVOICE (columna 7)

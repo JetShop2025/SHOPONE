@@ -90,14 +90,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         y = rect.top;
       }
       
-  // PRIORITY 1: Use custom description from the form if it exists
+      // PRIORITY 1: Use custom description from the form if it exists
       let customPartName = '';
+      let customCost = 0;
       if (partIndex !== undefined && workOrder.parts && workOrder.parts[partIndex]) {
         customPartName = workOrder.parts[partIndex].part || '';
+        customCost = workOrder.parts[partIndex].cost || 0;
       }
       
       // PRIORITY 2: If no custom description, use the inventory one
       const partName = customPartName || partInfo.part || partInfo.description || partInfo.name || 'Sin nombre';
+      
+      // PRIORITY 2: If no custom cost, use the inventory one
+      const precio = customCost || partInfo.precio || partInfo.cost || partInfo.price || 0;
       
       setTooltip({
         visible: true,
@@ -105,7 +110,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         y: y,
         info: {
           part: partName,
-          precio: partInfo.precio || partInfo.cost || partInfo.price || 0,
+          precio: precio,
           onHand: partInfo.onHand || partInfo.quantity || partInfo.qty || 0,
           um: partInfo.um || partInfo.unit || 'UN'
         }
