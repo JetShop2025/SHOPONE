@@ -139,22 +139,38 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     }
   }, [workOrder.weldPercent]);
 
-  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o miscellaneous
-  // SOLO para nuevas órdenes (no para edición)
+  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o extras
+  // Aplica tanto para nuevas órdenes como para edición
   React.useEffect(() => {
-    // Solo auto-calcular para nuevas órdenes, nunca sobrescribir en edición
-    if (!workOrder.id) {
-      const calculatedTotal = calculateTotalLabAndParts();
-      const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
-      // Si el campo está vacío, actualiza automáticamente
-      const currentValue = workOrder.totalLabAndParts;
-      if (!currentValue || currentValue === '$0.00') {
-        onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
-      }
-      // Si el usuario ya puso un valor manual diferente, no lo sobrescribas
+    const totalHours = Array.isArray(workOrder.mechanics)
+      ? workOrder.mechanics.reduce((total: number, mechanic: any) => {
+          const hrs = Number(mechanic?.hrs);
+          return total + (!isNaN(hrs) && hrs > 0 ? hrs : 0);
+        }, 0)
+      : 0;
+    const laborTotal = totalHours * 60;
+    const partsTotal = Array.isArray(workOrder.parts)
+      ? workOrder.parts.reduce((total: number, part: any) => {
+          if (!part || (!part.sku && !part.part && !part.qty && !part.cost)) return total;
+          const qty = Number(part?.qty);
+          const cost = Number(String(part?.cost ?? '').replace(/[^0-9.]/g, ''));
+          const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+          const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+          return total + (validQty * validCost);
+        }, 0)
+      : 0;
+    const subtotal = laborTotal + partsTotal;
+    const miscPercent = Number(workOrder.miscellaneous);
+    const weldPercent = Number(workOrder.weldPercent);
+    const miscAmount = subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100);
+    const weldAmount = subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100);
+    const calculatedTotal = subtotal + miscAmount + weldAmount;
+    const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
+    const currentValue = String(workOrder.totalLabAndParts ?? '').trim();
+    if (currentValue !== formattedTotal) {
+      onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-    // Si es edición, nunca sobrescribas el total, solo muestra el cálculo sugerido en la UI
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.id]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.totalLabAndParts, onChange]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -331,17 +347,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         }
         // Recalcular totalHrs
         totalHrs = calculateTotalHours();
-        // Miscellaneous por defecto '5' si está vacío o no es número válido
+        // Miscellaneous por defecto '0' si está vacío o no es número válido
         let miscValue = workOrder.miscellaneous;
         if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
-          miscValue = '5';
+          miscValue = '0';
         }
-        // Welding Supplies por defecto '15' si está vacío o no es número válido
+        // Welding Supplies por defecto '0' si está vacío o no es número válido
         let weldValue = workOrder.weldPercent;
         if (weldValue === undefined || weldValue === null || weldValue === '' || isNaN(Number(weldValue))) {
-          weldValue = '15';
+          weldValue = '0';
         }
         let miscPercentNum = parseFloat(miscValue) || 0;
+        let weldPercentNum = parseFloat(weldValue) || 0;
         const laborTotal = totalHrs * 60;
         const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
           const qty = Number(part && part.qty);
@@ -352,16 +369,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         }, 0) : 0;
         const subtotal = laborTotal + partsTotal;
         const miscAmount = subtotal * (miscPercentNum / 100);
-        const calculatedTotal = subtotal + miscAmount;
-
-        // Si el usuario puso un valor manual válido, respétalo y ENVÍA SIEMPRE COMO NÚMERO
-        let manualTotal = workOrder.totalLabAndParts;
-        if (manualTotal !== undefined && manualTotal !== null && manualTotal !== '' && !isNaN(Number(String(manualTotal).replace(/[^0-9.]/g, '')))) {
-          const num = Number(String(manualTotal).replace(/[^0-9.]/g, ''));
-          totalLabAndPartsValue = !isNaN(num) && num >= 0 ? num : calculatedTotal;
-        } else {
-          totalLabAndPartsValue = calculatedTotal;
-        }
+        const weldAmount = subtotal * (weldPercentNum / 100);
+        const calculatedTotal = subtotal + miscAmount + weldAmount;
+        totalLabAndPartsValue = calculatedTotal;
       }
 
       // Validar cantidades solo si se editan
@@ -391,15 +401,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         idClassicToSend = workOrder.idClassic && workOrder.idClassic.trim() !== '' ? workOrder.idClassic : '';
       }
 
-      // Miscellaneous por defecto '5' si está vacío o no es número válido
+      // Miscellaneous por defecto '0' si está vacío o no es número válido
       let miscValue = workOrder.miscellaneous;
       if (miscValue === undefined || miscValue === null || miscValue === '' || isNaN(Number(miscValue))) {
-        miscValue = '5';
+        miscValue = '0';
       }
-      // Welding Supplies por defecto '15' si está vacío o no es número válido
+      // Welding Supplies por defecto '0' si está vacío o no es número válido
       let weldValue = workOrder.weldPercent;
       if (weldValue === undefined || weldValue === null || weldValue === '' || isNaN(Number(weldValue))) {
-        weldValue = '15';
+        weldValue = '0';
       }
 
       // Convertir fecha a formato YYYY-MM-DD
@@ -1062,15 +1072,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 type="text"
                 name="totalLabAndParts"
                 value={
-                  workOrder.id
-                    ? (workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
-                        ? workOrder.totalLabAndParts
-                        : `$${calculateTotalLabAndParts().toFixed(2)}`)
-                    : (workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
-                        ? workOrder.totalLabAndParts
-                        : `$${calculateTotalLabAndParts().toFixed(2)}`)
+                  workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
+                    ? workOrder.totalLabAndParts
+                    : `$${calculateTotalLabAndParts().toFixed(2)}`
                 }
-                onChange={onChange}
+                readOnly
                 style={{ 
                   width: '100%', 
                   marginTop: 4, 
@@ -1084,25 +1090,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 placeholder="$0.00"
               />
             </label>
-            <button
-              type="button"
-              onClick={() => {
-                const calculatedTotal = calculateTotalLabAndParts();
-                onChange({ target: { name: 'totalLabAndParts', value: `$${calculatedTotal.toFixed(2)}` } } as any);
-              }}
+            <span
               style={{
                 padding: '8px 12px',
                 background: '#4caf50',
                 color: 'white',
-                border: 'none',
                 borderRadius: 4,
-                cursor: 'pointer',
                 fontSize: '12px',
-                marginTop: 20
+                marginTop: 20,
+                fontWeight: 700
               }}
             >
-              Calcular Auto
-            </button>
+              Auto
+            </span>
           </div>
           <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
             Cálculo sugerido: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + Miscellaneous (${(() => {

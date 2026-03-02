@@ -1147,25 +1147,6 @@ const WorkOrdersTable: React.FC = () => {
   // NOTA: useEffect problemático removido - causaba que se borraran las partes agregadas manualmente
   // El sistema ahora usa botones "Add Part" individuales en lugar de selección múltiple
 
-  // Calcula el total cada vez que cambian las partes o las horas
-  useEffect(() => {
-    // SOLO calcular el total si el campo está vacío o el usuario no lo ha editado manualmente
-    if (showForm) {
-      // Si el usuario NO ha editado manualmente el total, calcular automático
-      const totalValue = String(newWorkOrder.totalLabAndParts);
-      if (!totalValue || totalValue === '' || totalValue === '0' || totalValue === '0.00') {
-        const totalHrs = parseFloat(newWorkOrder.totalHrs) || 0;
-        const partsCost = newWorkOrder.parts.reduce((sum: number, p: any) => sum + (parseFloat(p.cost) || 0), 0);
-        const totalLabAndParts = (totalHrs * 60) + partsCost;
-        setNewWorkOrder(prev => ({
-          ...prev,
-          totalLabAndParts: totalLabAndParts ? totalLabAndParts.toFixed(2) : ''
-        }));
-      }
-      // Si el usuario ya puso un valor manual, NO modificarlo
-    }
-  }, [newWorkOrder.parts, newWorkOrder.totalHrs, showForm, setNewWorkOrder]);
-
   useEffect(() => {
     // ✅ NO MODIFICAR NADA AL ABRIR EL EDITOR
     // Preservar TODOS los valores originales tal como se guardaron
