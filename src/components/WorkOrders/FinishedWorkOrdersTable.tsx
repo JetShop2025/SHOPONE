@@ -335,6 +335,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
 
+    // SOLO mostrar W.O con status FINISHED
+    if (order.status !== 'FINISHED') return false;
+
     let inWeek = true;
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
@@ -582,7 +585,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           .wo-table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 1400px;
+            min-width: 1750px;
             background: #fff;
             border-radius: 12px;
             overflow: hidden;
@@ -592,10 +595,37 @@ const FinishedWorkOrdersTable: React.FC = () => {
           
           .wo-table th, .wo-table td {
             border: 1px solid #d0d7e2;
-            padding: 6px 8px;
+            padding: 6px 4px;
             font-size: 11px;
             text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
           }
+          
+          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
+          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
+          .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
+          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
+          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
+          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */
+          .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 220px; white-space: normal; } /* Description */
+          .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 65px; } /* PRT1 */
+          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */
+          .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 65px; } /* Costo1 */
+          .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 65px; } /* PRT2 */
+          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */
+          .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 65px; } /* Costo2 */
+          .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 65px; } /* PRT3 */
+          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */
+          .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 65px; } /* Costo3 */
+          .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 65px; } /* PRT4 */
+          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */
+          .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 65px; } /* Costo4 */
+          .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 65px; } /* PRT5 */
+          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */
+          .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 65px; } /* Costo5 */
+          .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 75px; } /* Total HRS */
+          .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
           
           .wo-table th {
             background: #1976d2;
@@ -605,6 +635,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
             position: sticky;
             top: 0;
             z-index: 10;
+            border-bottom: 2px solid #1565c0;
           }
           
           .wo-table tr:hover {
@@ -618,13 +649,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
           .wo-row-finished {
             background: #ffd600 !important;
             color: #333 !important;
-          }
-          
-          .error-text {
-            color: #d32f2f;
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 4px;
           }
         `}
       </style>
@@ -782,8 +806,15 @@ const FinishedWorkOrdersTable: React.FC = () => {
                 <th>Bill To Co</th>
                 <th>Trailer</th>
                 <th>Mechanic</th>
-                <th>Fecha</th>
-                <th>Descripción</th>
+                <th>Date</th>
+                <th>Description</th>
+                {[1,2,3,4,5].map(i => (
+                  <React.Fragment key={i}>
+                    <th>{`PRT${i}`}</th>
+                    <th>{`Qty${i}`}</th>
+                    <th>{`Costo${i}`}</th>
+                  </React.Fragment>
+                ))}
                 <th>Total HRS</th>
                 <th>Total LAB & PRTS</th>
               </tr>
@@ -819,7 +850,32 @@ const FinishedWorkOrdersTable: React.FC = () => {
                           : order.mechanic}
                       </td>
                       <td>{displayDate}</td>
-                      <td style={{ maxWidth: 250, whiteSpace: 'pre-wrap' }}>{order.description}</td>
+                      <td style={{ maxWidth: 220, whiteSpace: 'normal' }}>{order.description}</td>
+                      {[0,1,2,3,4].map(i => (
+                        <React.Fragment key={i}>
+                          <td
+                            style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2' }}
+                            onMouseEnter={order.parts && order.parts[i] && order.parts[i].sku
+                              ? (e) => handlePartHover(e, order.parts[i].sku)
+                              : undefined
+                            }
+                            onMouseLeave={hideTooltip}
+                          >
+                            {order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].sku : ''}
+                          </td>
+                          <td>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
+                          <td>
+                            {order.parts && order.parts[i] && order.parts[i].sku
+                              ? (
+                                  order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
+                                    ? Number(order.parts[i].cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                                    : '$0.00'
+                                )
+                              : ''
+                            }
+                          </td>
+                        </React.Fragment>
+                      ))}
                       <td>{order.totalHrs}</td>
                       <td>
                         {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null
