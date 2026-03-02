@@ -20,7 +20,7 @@ const MenuOptions: React.FC = () => {
     }
   };
 
-  // Keyboard shortcuts para Work Orders
+  // Keyboard shortcuts for Work Orders
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!showWorkOrderSubmenu) return;
@@ -96,7 +96,7 @@ const MenuOptions: React.FC = () => {
         WORK ORDERS
       </button>
 
-      {/* Submenu para Work Orders */}
+      {/* Submenu for Work Orders */}
       {showWorkOrderSubmenu && (
         <div style={{
           background: '#f5f5f5',

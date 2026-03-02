@@ -394,9 +394,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     if (id == null) return;
-    const pwd = window.prompt('Ingrese contraseña para eliminar:');
+    const pwd = window.prompt('Enter password to delete:');
     if (pwd === '6214') {
-      if (window.confirm('¿Estás seguro de que deseas eliminar esta orden?')) {
+      if (window.confirm('Are you sure you want to delete this order?')) {
         try {
           await axios.delete(`${API_URL}/work-orders/${id}`, {
             headers: { 'Content-Type': 'application/json' },
@@ -746,16 +746,16 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
         <div style={{ margin: '24px 0 16px 0' }}>
           <button style={primaryBtn} onClick={handleEdit} disabled={selectedRow === null}>
-            ✏️ Editar
+            ✏️ Edit
           </button>
           <button style={dangerBtn} onClick={() => selectedRow !== null && handleDelete(selectedRow)} disabled={selectedRow === null}>
-            🗑️ Eliminar
+            🗑️ Delete
           </button>
           <button style={secondaryBtn} disabled={selectedRow === null} onClick={() => selectedRow !== null && handleViewPDF(selectedRow)}>
-            📄 Ver PDF
+            📄 View PDF
           </button>
           <button style={secondaryBtn} onClick={exportToExcel}>
-            📊 Exportar Excel
+            📊 Export Excel
           </button>
         </div>
 
@@ -769,7 +769,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                 borderRadius: 8,
                 padding: 24,
               }}>
-                <h2 style={{ color: '#ffd600', marginBottom: 12 }}>Editar Orden Finalizada</h2>
+                <h2 style={{ color: '#ffd600', marginBottom: 12 }}>Edit Finished Work Order</h2>
                 {editWorkOrder && (
                   <>
                     <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
@@ -781,7 +781,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                       onPartChange={handlePartChange}
                       onSubmit={handleEditWorkOrderSubmit}
                       onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); }}
-                      title="Editar Work Order Finalizada"
+                      title="Edit Finished Work Order"
                       billToCoOptions={billToCoOptions}
                       getTrailerOptions={getTrailerOptions}
                       inventory={inventory}
@@ -917,12 +917,12 @@ const FinishedWorkOrdersTable: React.FC = () => {
               if (pwd === '6214') {
                 handleEdit();
               } else if (pwd !== null) {
-                alert('Contraseña incorrecta');
+                alert('Incorrect password');
               }
               setContextMenu({ ...contextMenu, visible: false });
             }}
           >
-            ✏️ Editar
+            ✏️ Edit
           </button>
           <button
             style={{ background: '#d32f2f', color: '#fff', fontWeight: 700, fontSize: 14, padding: '12px 0', border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer' }}
@@ -931,7 +931,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
               setContextMenu({ ...contextMenu, visible: false });
             }}
           >
-            🗑️ Eliminar
+            🗑️ Delete
           </button>
           <button
             style={{ background: '#1976d2', color: '#fff', fontWeight: 700, fontSize: 14, padding: '12px 0', border: 'none', cursor: 'pointer' }}
@@ -940,7 +940,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
               handleViewPDF(contextMenu.order.id);
             }}
           >
-            📄 Ver PDF
+            📄 View PDF
           </button>
         </div>
       )}

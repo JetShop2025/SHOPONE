@@ -2,7 +2,7 @@ import React from 'react';
 
 export {}; // Force module
 
-// Lista de mecánicos predefinidos
+// List of predefined mechanics
 const MECHANICS_LIST = [
   'ADAN R',
   'WILMER M', 
@@ -90,13 +90,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         y = rect.top;
       }
       
-      // PRIORIDAD 1: Usar la descripción personalizada del formulario si existe
+  // PRIORITY 1: Use custom description from the form if it exists
       let customPartName = '';
       if (partIndex !== undefined && workOrder.parts && workOrder.parts[partIndex]) {
         customPartName = workOrder.parts[partIndex].part || '';
       }
       
-      // PRIORIDAD 2: Si no hay descripción personalizada, usar la del inventario
+      // PRIORITY 2: If no custom description, use the inventory one
       const partName = customPartName || partInfo.part || partInfo.description || partInfo.name || 'Sin nombre';
       
       setTooltip({
@@ -153,7 +153,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     setManualTotalOverride(false);
   }, [workOrder.id, title]);
 
-  // Auto-calcular total automáticamente cuando cambian partes, mecánicos o extras
+  // Auto-calculate total automatically when parts, mechanics or extras change
   // Aplica tanto para nuevas órdenes como para edición
   React.useEffect(() => {
     if (manualTotalOverride) return;
@@ -770,7 +770,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <input
               type="text"
               name="idClassic"
-              placeholder={workOrder.status === 'FINISHED' ? "ID Classic (requerido)" : "ID Classic (solo disponible cuando status es FINISHED)"}
+              placeholder={workOrder.status === 'FINISHED' ? "ID Classic (required)" : "ID Classic (only available when status is FINISHED)"}
               value={workOrder.idClassic || ''}
               onChange={onChange}
               disabled={workOrder.status !== 'FINISHED'}
