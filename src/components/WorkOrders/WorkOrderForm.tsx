@@ -864,7 +864,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 type="number"
                 placeholder="Hours"
                 value={mechanic.hrs || ''}
-                onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}}
+                onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
                 style={{ width: 80, padding: 8 }}
                 step="0.25"
               />
