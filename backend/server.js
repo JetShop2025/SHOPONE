@@ -46,9 +46,9 @@ app.use(cors({
   allowedHeaders: ['*']
 }));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Body parsing with increased limit for large PDFs and work order data
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Request logging
 app.use((req, res, next) => {
