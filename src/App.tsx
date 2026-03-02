@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LoginForm from './components/Login/LoginForm';
 import MenuOptions from './components/Menu/MenuOptions';
 import WorkOrdersTable from './components/WorkOrders/WorkOrdersTable';
+import FinishedWorkOrdersTable from './components/WorkOrders/FinishedWorkOrdersTable';
 import InventoryList from './components/Inventory/index';
 import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
@@ -26,6 +27,7 @@ const App: React.FC = () => {
           <Route path="/" element={<LoginForm />} />
           <Route path="/menu" element={<PrivateRoute><MenuOptions /></PrivateRoute>} />
           <Route path="/work-orders" element={<PrivateRoute><WorkOrdersTable /></PrivateRoute>} />
+          <Route path="/finished-work-orders" element={<PrivateRoute><FinishedWorkOrdersTable /></PrivateRoute>} />
           <Route path="/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
           <Route path="/audit" element={<PrivateRoute><AuditLogTable /></PrivateRoute>} />
           <Route path="/trailas" element={<PrivateRoute><TrailasTable /></PrivateRoute>} />

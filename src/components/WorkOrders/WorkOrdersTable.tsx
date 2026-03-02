@@ -646,6 +646,9 @@ const WorkOrdersTable: React.FC = () => {
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
 
+    // Excluir W.O. con status FINISHED (van al apartado FINAL WORK ORDERS)
+    if (order.status === 'FINISHED') return false;
+
     // Si no hay filtro de semana, no filtra por semana
     let inWeek = true;
     if (selectedWeek) {
@@ -2011,7 +2014,7 @@ const WorkOrdersTable: React.FC = () => {
       fontFamily: 'Courier New, Courier, monospace',
       letterSpacing: 2,
       textShadow: '1px 1px 0 #fff',
-    }}  >    Work Orders
+    }}  >    W.O ENTRY
     {searchIdClassic && (
       <span style={{
         marginLeft: '16px',

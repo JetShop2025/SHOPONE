@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 
@@ -7,6 +7,7 @@ const MenuOptions: React.FC = () => {
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditPassword, setAuditPassword] = useState('');
   const [error, setError] = useState('');
+  const [showWorkOrderSubmenu, setShowWorkOrderSubmenu] = useState(false);
 
   const handleAuditAccess = () => {
     if (auditPassword === '6214') {
@@ -18,6 +19,26 @@ const MenuOptions: React.FC = () => {
       setError('wrong password, try  again!');
     }
   };
+
+  // Keyboard shortcuts para Work Orders
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (!showWorkOrderSubmenu) return;
+      
+      if (event.key === '1') {
+        setShowWorkOrderSubmenu(false);
+        navigate('/work-orders');
+      } else if (event.key === '2') {
+        setShowWorkOrderSubmenu(false);
+        navigate('/finished-work-orders');
+      } else if (event.key === 'Escape') {
+        setShowWorkOrderSubmenu(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showWorkOrderSubmenu, navigate]);
 
   return (
     <div
@@ -70,10 +91,64 @@ const MenuOptions: React.FC = () => {
           cursor: 'pointer',
           boxShadow: '0 2px 8px rgba(67,160,71,0.10)'
         }}
-        onClick={() => navigate('/work-orders')}
+        onClick={() => setShowWorkOrderSubmenu(!showWorkOrderSubmenu)}
       >
         WORK ORDERS
       </button>
+
+      {/* Submenu para Work Orders */}
+      {showWorkOrderSubmenu && (
+        <div style={{
+          background: '#f5f5f5',
+          borderRadius: 8,
+          padding: 16,
+          marginBottom: 18,
+          border: '2px solid #43a047'
+        }}>
+          <div
+            style={{
+              padding: '12px 0',
+              marginBottom: 8,
+              background: '#fff',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 16,
+              transition: 'all 0.2s ease'
+            }}
+            onClick={() => {
+              setShowWorkOrderSubmenu(false);
+              navigate('/work-orders');
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#e8f5e9')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+          >
+            <span style={{ marginRight: 8 }}>1.</span> W.O ENTRY
+          </div>
+          <div
+            style={{
+              padding: '12px 0',
+              background: '#fff',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 16,
+              transition: 'all 0.2s ease'
+            }}
+            onClick={() => {
+              setShowWorkOrderSubmenu(false);
+              navigate('/finished-work-orders');
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#e8f5e9')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+          >
+            <span style={{ marginRight: 8 }}>2.</span> FINAL W.O
+          </div>
+          <div style={{ fontSize: 12, color: '#666', marginTop: 12, fontStyle: 'italic' }}>
+            Press 1 or 2, or ESC to close
+          </div>
+        </div>
+      )}
       <button
         style={{
           width: '100%',
