@@ -561,7 +561,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       <h2 style={{ color: '#1976d2', marginBottom: 16 }}>{title}</h2>
       {loading && (
         <div style={{ color: '#1976d2', fontWeight: 700, marginBottom: 12 }}>
-          Procesando, por favor espera...
+          Processing, please wait...
         </div>
       )}
       {successMsg && (
@@ -573,7 +573,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
           <label style={{ flex: '1 1 200px' }}>
-            Bill To Co<span style={{ color: 'red' }}>*</span>
+            Bill To Company<span style={{ color: 'red' }}>*</span>
             <select
               name="billToCo"
               value={workOrder.billToCo || ''}
@@ -613,7 +613,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 onChange({ target: { name: 'trailer', value: cleanValue } } as any);
               }}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-              placeholder="Selecciona o escribe el trailer..."
+              placeholder="Select or type trailer..."
               autoComplete="off"
               list="trailer-options"
             />
@@ -644,7 +644,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               alignItems: 'center',
               gap: 8
             }}>
-              🚛 Partes Pendientes para {workOrder.trailer}
+              🚛 Pending Parts for {workOrder.trailer}
               <span style={{ 
                 fontSize: 12, 
                 background: '#4caf50', 
@@ -652,7 +652,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 padding: '2px 8px', 
                 borderRadius: 12 
               }}>
-                {pendingParts.length} disponible{pendingParts.length !== 1 ? 's' : ''}
+                {pendingParts.length} available
               </span>
             </h3>            <div style={{ 
               display: 'grid', 
@@ -681,10 +681,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                       {part.sku} - {part.item}
                     </div>
                     <div style={{ fontSize: 14, color: '#666' }}>
-                      Cantidad disponible: <strong style={{ 
+                      Available Qty: <strong style={{ 
                         color: hasQtyAvailable ? '#2e7d32' : '#f44336' 
                       }}>
-                        {availableQty} {hasQtyAvailable ? '' : '(Agotado)'}
+                        {availableQty} {hasQtyAvailable ? '' : '(Out of Stock)'}
                       </strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -728,7 +728,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                           fontSize: 12,
                           fontWeight: 'bold'
                         }}                    >
-                        {hasQtyAvailable ? '➕ Agregar a WO' : '❌ Agotado'}
+                        {hasQtyAvailable ? '➕ Add to WO' : '❌ Out of Stock'}
                       </button>
                     </div>
                   </div>
@@ -743,8 +743,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               fontSize: 12, 
               color: '#2e7d32' 
             }}>
-              💡 <strong>Tip:</strong> Estas partes ya están asignadas para este trailer. 
-              Al agregarlas, se descontarán automáticamente del inventario.
+              💡 <strong>Tip:</strong> These parts are already assigned to this trailer. 
+              When added, they will be automatically deducted from inventory.
             </div>
           </div>
         )}
@@ -862,9 +862,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </select>
               <input
                 type="number"
-                placeholder="Horas"
+                placeholder="Hours"
                 value={mechanic.hrs || ''}
-                onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
+                onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}}
                 style={{ width: 80, padding: 8 }}
                 step="0.25"
               />
@@ -886,14 +886,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           ))}
           {(!workOrder.mechanics || workOrder.mechanics.length === 0) && (
             <div style={{ color: '#666', fontStyle: 'italic' }}>
-              No hay mecánicos agregados. Haz clic en "Agregar" para añadir uno.
+              No mechanics added. Click "Add Mechanic" to add one.
             </div>
           )}
         </div>
 
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <strong>Partes</strong>
+            <strong>Parts</strong>
             {onAddEmptyPart && (
               <button
                 type="button"
@@ -944,7 +944,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                       justifyContent: 'center',
                       zIndex: 1
                     }}
-                    title="Eliminar parte"
+                    title="Delete part"
                   >
                     ×
                   </button>
@@ -984,17 +984,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   </datalist>
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  Parte
+                  Part Name
                   <input
                     type="text"
                     value={part.part || ''}
                     onChange={e => handlePartChange(index, 'part', e.target.value)}
                     style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: '#f0f8ff' }}
-                    placeholder="Nombre de la parte"
+                    placeholder="Part description"
                   />
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  Qty
+                  Quantity
                   <input
                     type="number"
                     value={part.qty || ''}
@@ -1003,7 +1003,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="Quantity"
                   />
                 </label>                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  Costo Unit.
+                  Unit Cost
                   <input
                     type="text"
                     value={part.cost || ''}
@@ -1045,7 +1045,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               />
             </label>
             <span style={{ color: '#1976d2', fontWeight: 700 }}>
-              Cargo extra: ${(() => {
+              Extra charge: ${(() => {
                 const totalHours = calculateTotalHours();
                 const laborTotal = totalHours * 60;
                 const partsTotal = calculatePartsTotal();

@@ -35,8 +35,8 @@ interface WorkOrderData {
 export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const pdf = new jsPDF('p', 'mm', 'a4'); // Especificar formato A4
   
-  // Configurar fuente
-  pdf.setFont('helvetica');
+  // Configurar fuente a Courier New
+  pdf.setFont('courier');
   
   // Márgenes de página (A4: 210mm ancho)
   const pageWidth = 210;

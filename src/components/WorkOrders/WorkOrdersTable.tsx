@@ -237,7 +237,10 @@ const WorkOrdersTable: React.FC = () => {
         const workOrderRes = await axios.get(`${API_URL}/work-orders/${editWorkOrder.id}`);
         const workOrderData = workOrderRes.data as any;
         const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
-        const partsWithInvoices = partsRes.data as any[];
+        const partsWithInvoices = (partsRes.data as any[]).map((part: any) => ({
+          ...part,
+          part: part.part || part.part_name || part.description || ''  // Asegurar que tenga el campo 'part'
+        }));
         // Usar SIEMPRE el valor que el usuario puso en el formulario, sin recalcular ni modificar
         const pdfData = {
           id: workOrderData.id,
@@ -253,7 +256,7 @@ const WorkOrdersTable: React.FC = () => {
           status: workOrderData.status || editWorkOrder.status || 'PROCESSING',
           parts: partsWithInvoices.map((part: any) => ({
             sku: part.sku,
-            description: part.part_name || part.sku,
+            description: part.part || part.part_name || part.sku,
             um: 'EA',
             qty: part.qty_used,
             unitCost: part.cost || 0,
@@ -975,7 +978,10 @@ const WorkOrdersTable: React.FC = () => {
         }
           // Obtener partes usadas con sus enlaces de facturas
         const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`, { timeout: 10000 });
-        const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data : [];
+        const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data.map((part: any) => ({
+          ...part,
+          part: part.part || part.part_name || part.description || ''  // Asegurar que tenga el campo 'part'
+        })) : [];
         
         console.log('✅ Partes de work order obtenidas:', partsWithInvoices.length, 'partes');
         
@@ -1010,7 +1016,7 @@ const WorkOrdersTable: React.FC = () => {
           status: workOrderData.status || datosOrden.status || 'PROCESSING', // Incluir status actual
           parts: enrichedParts.map((part: any) => ({
             sku: part.sku || '',
-            description: part.part_name || part.sku || 'N/A',
+            description: part.part || part.part_name || part.sku || 'N/A',
             um: 'EA',
             qty: Number(part.qty_used) || 0,
             unitCost: Number(part.cost) || 0,
@@ -1505,6 +1511,7 @@ const WorkOrdersTable: React.FC = () => {
         workOrderParts = finalWorkOrderData.parts.map((part: any, index: number) => ({
           id: `table_${index}`,
           sku: part.sku || '',
+          part: part.part || part.description || '', // Guardar el campo personalizado
           part_name: part.part || part.description || '',
           qty_used: Number(part.qty) || 0,
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
@@ -1515,7 +1522,10 @@ const WorkOrdersTable: React.FC = () => {
         // Si no hay partes en tabla, obtener del API
         try {
           const partsResponse = await axios.get(`${API_URL}/work-order-parts/${workOrderId}`);
-          workOrderParts = Array.isArray(partsResponse.data) ? partsResponse.data : [];
+          workOrderParts = Array.isArray(partsResponse.data) ? partsResponse.data.map((part: any) => ({
+            ...part,
+            part: part.part || part.part_name || part.description || ''  // Asegurar que tenga el campo 'part'
+          })) : [];
           console.log('📦 Partes desde API:', workOrderParts);
         } catch (partsError) {
           console.warn('⚠️ No se pudieron obtener partes del API:', partsError);
@@ -1618,7 +1628,7 @@ const WorkOrdersTable: React.FC = () => {
         status: finalWorkOrderData.status || 'PROCESSING', // Incluir status actual
         parts: enrichedParts.map((part: any) => ({
           sku: part.sku || '',
-          description: part.part_name || part.sku || 'N/A',
+          description: part.part || part.part_name || part.sku || 'N/A',
           um: 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
