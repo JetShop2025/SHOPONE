@@ -172,19 +172,23 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   // Resaltar el status según su valor
   const status = String(workOrderData.status || 'PROCESSING');
-  if (status === 'FINISHED') {
-    pdf.setTextColor(0, 150, 0); // Verde para FINISHED
+  if (status === 'PROCESSING') {
+    pdf.setTextColor(128, 128, 128); // Gris para PROCESSING
   } else if (status === 'APPROVED') {
-    pdf.setTextColor(255, 165, 0); // Naranja para APPROVED
+    pdf.setTextColor(0, 128, 0); // Verde para APPROVED
+  } else if (status === 'FINISHED') {
+    pdf.setTextColor(255, 200, 0); // Amarillo para FINISHED
+  } else if (status === 'MISSING PARTS') {
+    pdf.setTextColor(255, 0, 0); // Rojo para MISSING PARTS
   } else {
-    pdf.setTextColor(255, 0, 0); // Rojo para PROCESSING
+    pdf.setTextColor(0, 0, 0); // Negro por defecto
   }
   pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont('courier', 'bold');
   pdf.text(status, rightBoxX + 25, statusY);
   
   // Resetear estilo
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont('courier', 'normal');
   pdf.setTextColor(0, 0, 0);
   // DESCRIPCIÓN
   const descY = firstRowY + boxHeight + 18; // Aumentar espacio para el status
@@ -263,7 +267,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
           pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: part.invoiceLink });
           // Cambiar color del texto para indicar que es un enlace
           pdf.setTextColor(0, 100, 200);
-          pdf.setFont('helvetica', 'underline');
+          pdf.setFont('courier', 'underline');
           pdf.text('LINK', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
         }
       }
@@ -339,11 +343,11 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // TOTAL (en rojo)
   pdf.setFontSize(11);
   pdf.setTextColor(220, 20, 60);
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont('courier', 'bold');
   pdf.text('TOTAL LAB & PARTS:', totalsStartX, currentY);
   pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     // Resetear fuente
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont('courier', 'normal');
   
   // CUSTOMER AUTHORIZATION
   const authY = currentY + 15;

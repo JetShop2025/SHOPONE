@@ -936,7 +936,7 @@ const WorkOrdersTable: React.FC = () => {
         await axios.post(`${API_URL}/work-order-parts`, {
           work_order_id: newWorkOrderId,
           sku: part.sku,
-          part_name: inventory.find(i => i.sku === part.sku)?.part || '',
+          part_name: part.part || inventory.find(i => i.sku === part.sku)?.part || '',
           qty_used: part.qty,
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
           fifo_info: fifoInfoForPart, // Pasar información FIFO
