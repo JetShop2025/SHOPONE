@@ -72,7 +72,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   // Function to hide tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
   // Function to show tooltip with part info
-  const showTooltipForPart = (event: React.MouseEvent | React.FocusEvent, sku: string) => {
+  const showTooltipForPart = (event: React.MouseEvent | React.FocusEvent, sku: string, partIndex?: number) => {
     const partInfo = findPartBySku(sku);
     if (partInfo) {
       // For MouseEvent, use clientX/clientY. For FocusEvent, use element position
@@ -90,12 +90,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         y = rect.top;
       }
       
+      // PRIORIDAD 1: Usar la descripción personalizada del formulario si existe
+      let customPartName = '';
+      if (partIndex !== undefined && workOrder.parts && workOrder.parts[partIndex]) {
+        customPartName = workOrder.parts[partIndex].part || '';
+      }
+      
+      // PRIORIDAD 2: Si no hay descripción personalizada, usar la del inventario
+      const partName = customPartName || partInfo.part || partInfo.description || partInfo.name || 'Sin nombre';
+      
       setTooltip({
         visible: true,
         x: x,
         y: y,
         info: {
-          part: partInfo.part || partInfo.description || partInfo.name || 'Sin nombre',
+          part: partName,
           precio: partInfo.precio || partInfo.cost || partInfo.price || 0,
           onHand: partInfo.onHand || partInfo.quantity || partInfo.qty || 0,
           um: partInfo.um || partInfo.unit || 'UN'
@@ -948,13 +957,13 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     onChange={e => handlePartChange(index, 'sku', e.target.value)}                    onFocus={(e) => {
                       const target = e.target as HTMLInputElement;
                       if (target.value) {
-                        showTooltipForPart(e, target.value);
+                        showTooltipForPart(e, target.value, index);
                       }
                     }}
                     onMouseEnter={(e) => {
                       const target = e.target as HTMLInputElement;
                       if (target.value) {
-                        showTooltipForPart(e, target.value);
+                        showTooltipForPart(e, target.value, index);
                       }
                     }}
                     onMouseLeave={hideTooltip}
