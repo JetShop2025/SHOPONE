@@ -1459,14 +1459,24 @@ const WorkOrdersTable: React.FC = () => {
   // Función para ocultar el tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
 
-  const handlePartHover = (e: React.MouseEvent, sku: string) => {
+  const handlePartHover = (e: React.MouseEvent, partFromOrder: any) => {
+    const sku = partFromOrder.sku;
     const partInfo = inventory.find(i => i.sku === sku);
     if (partInfo) {
+      // Use custom part name and cost from the work order if available
+      const customPartName = partFromOrder.part || '';
+      const customCost = partFromOrder.cost || 0;
+      
       setTooltip({
         visible: true,
         x: e.clientX,
         y: e.clientY,
-        info: partInfo
+        info: {
+          part: customPartName || partInfo.part || partInfo.description || partInfo.name || 'N/A',
+          precio: customCost || partInfo.precio || partInfo.cost || partInfo.price || 0,
+          onHand: partInfo.onHand || partInfo.quantity || partInfo.qty || 0,
+          um: partInfo.um || partInfo.unit || 'UN'
+        }
       });    }
   };
 
@@ -2755,7 +2765,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               <td
                 style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2', position: 'relative' }}
                 onMouseEnter={order.parts && order.parts[i] && order.parts[i].sku
-                  ? (e) => handlePartHover(e, order.parts[i].sku)
+                  ? (e) => handlePartHover(e, order.parts[i])
                   : undefined
                 }
                 onMouseLeave={hideTooltip}
