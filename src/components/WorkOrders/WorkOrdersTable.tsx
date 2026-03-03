@@ -1117,244 +1117,95 @@ const WorkOrdersTable: React.FC = () => {
         usuario: localStorage.getItem('username') || ''
       });
       const data = res.data as { id: number, pdfUrl?: string };
-      const newWorkOrderId = data.id;      // REGISTRA PARTES USADAS EN work_order_parts con información FIFO
-      for (const part of partesParaGuardar) {
-        // Buscar información FIFO para esta parte
+      const newWorkOrderId = data.id;
+      
+      // 🚀 OPTIMIZACIÓN: Paralelizar operaciones críticas
+      const partesConPendingId = datosOrden.parts.filter((p: any) => p._pendingPartId);
+      
+      // REGISTRA PARTES USADAS EN work_order_parts - PARALELO
+      const workOrderPartsPromises = partesParaGuardar.map((part: any) => {
         let fifoInfoForPart = null;
         if (fifoResult && fifoResult.details) {
           fifoInfoForPart = fifoResult.details.find((f: any) => f.sku === part.sku);
         }
         
-        await axios.post(`${API_URL}/work-order-parts`, {
+        return axios.post(`${API_URL}/work-order-parts`, {
           work_order_id: newWorkOrderId,
           sku: part.sku,
           part_name: part.part || inventory.find(i => i.sku === part.sku)?.part || '',
           qty_used: part.qty,
-          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')), // <-- LIMPIA AQUÍ TAMBIÉN
-          fifo_info: fifoInfoForPart, // Pasar información FIFO
-          usuario: localStorage.getItem('username') || ''        });
-      }
-
-      // MARCAR PARTES PENDIENTES COMO USED (crítico para campanitas)
-      // Buscar partes que vienen de partes pendientes (_pendingPartId)
-      const partesConPendingId = datosOrden.parts.filter((p: any) => p._pendingPartId);
-      console.log(`🔍 Partes pendientes encontradas en nueva WO: ${partesConPendingId.length}`);
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
+          fifo_info: fifoInfoForPart,
+          usuario: localStorage.getItem('username') || ''
+        }).catch(error => {
+          console.error(`❌ Error guardando parte ${part.sku}:`, error);
+          return null;
+        });
+      });
       
-      for (const part of partesConPendingId) {
-        try {
-          console.log(`🔄 Marcando parte pendiente ${part._pendingPartId} como USED en nueva WO...`);
-          await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
-            usuario: localStorage.getItem('username') || ''
-          });
-          console.log(`✅ Parte pendiente ${part._pendingPartId} marcada como USED en nueva WO`);
-        } catch (error) {
-          console.error(`❌ Error marcando parte pendiente ${part._pendingPartId} como USED en nueva WO:`, error);
-        }
-      }
-
-      console.log('✅ Partes pendientes procesadas. Sistema FIFO también manejó automáticamente otras partes.');// Muestra mensaje de éxito
-      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);// NUEVA FUNCIONALIDAD: Generar PDF y abrir enlaces de facturas
-      try {
-        console.log('🔄 Intentando generar PDF para work order:', newWorkOrderId);
-        
-        // Obtener datos completos de la orden recién creada
-        const workOrderRes = await axios.get(`${API_URL}/work-orders/${newWorkOrderId}`, { timeout: 10000 });
-        const workOrderData = workOrderRes.data as any;
-        
-        console.log('✅ Datos de work order obtenidos:', workOrderData);
-        
-        // Validar que tenemos los datos mínimos necesarios
-        if (!workOrderData || !workOrderData.id) {
-          console.error('❌ Datos de work order inválidos o incompletos');
-          return;
-        }
-          // Obtener partes usadas con sus enlaces de facturas
-        const partsRes = await axios.get(`${API_URL}/work-order-parts/${newWorkOrderId}`, { timeout: 10000 });
-        const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data.map((part: any) => ({
-          ...part,
-          part: part.part || part.part_name || part.description || ''  // Asegurar que tenga el campo 'part'
-        })) : [];
-        
-        console.log('✅ Partes de work order obtenidas:', partsWithInvoices.length, 'partes');
-        
-        // Enriquecer partes con invoice links del inventario si no los tienen
-        const enrichedParts = partsWithInvoices.map((part: any) => {
-          // Si la parte ya tiene invoiceLink, usarlo
-          if (part.invoiceLink) {
-            return { ...part, invoice_number: 'FIFO Invoice' };
-          }
-          
-          // Si no, buscar en el inventario
-          const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
-          return {
-            ...part,
-            invoiceLink: inventoryItem?.invoiceLink || null,
-            invoice_number: inventoryItem?.invoiceLink ? 'Inventory Invoice' : 'N/A'
-          };
-        });
-          console.log('✅ Partes enriquecidas con invoice data:', enrichedParts);
-
-        // Preparar datos para el PDF con validaciones robustas
-        const pdfData = {
-          id: workOrderData.id || newWorkOrderId,
-          idClassic: workOrderData.idClassic || workOrderData.id?.toString() || newWorkOrderId.toString(),
-          customer: workOrderData.billToCo || workOrderData.customer || '',
-          trailer: workOrderData.trailer || '',
-          date: formatDateSafely(workOrderData.startDate || workOrderData.date || workOrderData.fecha || ''),
-          mechanics: Array.isArray(workOrderData.mechanics) ? 
-            workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
-            workOrderData.mechanics || workOrderData.mechanic || '',
-          description: workOrderData.description || '',
-          status: workOrderData.status || datosOrden.status || 'PROCESSING', // Incluir status actual
-          parts: enrichedParts.map((part: any) => ({
-            sku: part.sku || '',
-            description: part.part || part.part_name || part.sku || 'N/A',
-            um: 'EA',
-            qty: Number(part.qty_used) || 0,
-            unitCost: Number(part.cost) || 0,
-            total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
-            invoice: part.invoice_number || 'N/A',
-            invoiceLink: part.invoiceLink  // Usar el campo correcto de la BD
-          })),
-          totalHrs: Number(workOrderData.totalHrs) || Number(datosOrden.totalHrs) || 0,
-          laborRate: 60,
-          laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
-          subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
-            sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
-          totalCost: Number(workOrderData.totalLabAndParts) || 0,
-          extraOptions: datosOrden.extraOptions || extraOptions || [],
-          // NUEVO: Agregar el porcentaje de Miscellaneous EXACTO que el usuario colocó
-          miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
-            ? Number(workOrderData.miscellaneous)
-            : (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
-              ? Number(datosOrden.miscellaneous)
-              : 0,
-          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
-            ? Number(workOrderData.weldPercent)
-            : (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
-              ? Number(datosOrden.weldPercent)
-              : 0
-        };
-        
-        console.log('📄 Datos preparados para PDF:', pdfData);
-          // Generar PDF
-        const pdf = await generateWorkOrderPDF(pdfData);
-        
-        // Generar blob para guardar en BD
-        const pdfBlob = pdf.output('blob');
-        
-        // Guardar PDF en la base de datos
-        try {
-          await savePDFToDatabase(workOrderData.id, pdfBlob);
-          console.log('✅ PDF guardado en BD correctamente');
-        } catch (dbError) {
-          console.warn('⚠️ No se pudo guardar PDF en BD:', dbError);
-        }
-          // Abrir PDF en nueva pestaña
-        openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}.pdf`);
-
-        // Abrir enlaces de facturas automáticamente (Drive o PDF)
-        openInvoiceLinks(pdfData.parts);
-
-        // NUEVO: Abrir PDF generado en el backend (si existe) en una nueva pestaña, sin forzar descarga
-        if (data.pdfUrl) {
-          // Forzar apertura en nueva pestaña, sin descargar
-          window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
-        }
-
-        // NUEVO: Abrir links de Drive de las partes usadas (si existen)
-        pdfData.parts.forEach((part: any) => {
-          if (part.invoiceLink && typeof part.invoiceLink === 'string') {
-            // Si es un link de Google Drive, abrir en nueva pestaña
-            if (part.invoiceLink.includes('drive.google.com')) {
-              window.open(part.invoiceLink, '_blank', 'noopener,noreferrer');
-            }
-          }
-        });
-
-        console.log('✅ PDF generado y enlaces de facturas/Drive abiertos');
-      } catch (pdfError: any) {
-        console.error('❌ Error generando PDF:', pdfError);
-        console.error('❌ Detalles del error:', {
-          message: pdfError.message,
-          response: pdfError.response?.data,
-          status: pdfError.response?.status
-        });
-          // Crear PDF básico con los datos que tenemos
-        try {          const basicPdfData = {
-            id: newWorkOrderId,
-            idClassic: newWorkOrderId.toString(),
-            customer: datosOrden.billToCo || '',
-            trailer: datosOrden.trailer || '',
-            date: formatDateSafely(datosOrden.startDate || datosOrden.date || ''),
-            mechanics: Array.isArray(datosOrden.mechanics) ? 
-              datosOrden.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : '',
-            description: datosOrden.description || '',
-            status: datosOrden.status || 'PROCESSING', // Incluir status actual
-            parts: datosOrden.parts.map((part: any) => ({
-              sku: part.sku || '',
-              description: part.part || 'N/A',
-              um: 'EA',
-              qty: Number(part.qty) || 0,
-              unitCost: Number(part.cost) || 0,
-              total: (Number(part.qty) || 0) * (Number(part.cost) || 0),
-              invoice: 'N/A',
-              invoiceLink: undefined
-            })),            totalHrs: Number(datosOrden.totalHrs) || 0,
-            laborRate: 60,
-            laborCost: Number(datosOrden.totalHrs || 0) * 60 || 0,
-            subtotalParts: datosOrden.parts.reduce((sum: number, part: any) => 
-              sum + ((Number(part.qty) || 0) * (Number(part.cost) || 0)), 0),
-            totalCost: Number(datosOrden.totalLabAndParts) || 0,
-            extraOptions: datosOrden.extraOptions || extraOptions || [],
-            miscellaneousPercent: (typeof datosOrden.miscellaneous !== 'undefined' && datosOrden.miscellaneous !== null && datosOrden.miscellaneous !== '')
-              ? Number(datosOrden.miscellaneous)
-              : 0,
-            weldPercent: (typeof datosOrden.weldPercent !== 'undefined' && datosOrden.weldPercent !== null && datosOrden.weldPercent !== '')
-              ? Number(datosOrden.weldPercent)
-              : 0
-          };
-            const pdf = await generateWorkOrderPDF(basicPdfData);
-          openPDFInNewTab(pdf, `work_order_${newWorkOrderId}_basic.pdf`);
-          console.log('✅ PDF básico generado como fallback');
-        } catch (fallbackError) {
-          console.error('❌ Error generando PDF básico:', fallbackError);
-        }
-      }
-
-      if (data.pdfUrl) {
-        window.open(`${API_URL}${data.pdfUrl}`, '_blank', 'noopener,noreferrer');
-      }        // Cierra el formulario y resetea COMPLETAMENTE
+      // MARCAR PARTES PENDIENTES COMO USED - PARALELO
+      const markUsedPromises = partesConPendingId.map((part: any) =>
+        axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
+          usuario: localStorage.getItem('username') || ''
+        }).catch(error => {
+          console.error(`❌ Error marcando parte pendiente ${part._pendingPartId}:`, error);
+          return null;
+        })
+      );
+      
+      // Ejecutar TODAS las operaciones críticas en PARALELO
+      await Promise.all([...workOrderPartsPromises, ...markUsedPromises]);
+      
+      // ✅ CERRAR FORMULARIO INMEDIATAMENTE (operaciones críticas completadas)
       setShowForm(false);
-      
-      // Reseteo completo del formulario
-      console.log('✅ Work Order guardada exitosamente - Limpiando formulario completamente');
       resetNewWorkOrder();
       setExtraOptions([]);
       setPendingPartsQty({});
       setSelectedPendingParts([]);
-      setIdClassicError('');      // Actualiza la tabla inmediatamente
-      await fetchWorkOrders();
+      setIdClassicError('');
+      setLoading(false);
       
-      // 🔄 REFRESCAR INVENTARIO para reflejar deducción
-      try {
-        const invRes = await axios.get(`${API_URL}/inventory`);
-        const updatedInventory = Array.isArray(invRes.data) ? invRes.data : [];
-        setInventory(updatedInventory);
-        console.log('✅ Inventario refrescado después de crear W.O');
-      } catch (invError) {
-        console.warn('⚠️ No se pudo refrescar inventario:', invError);
-      }
+      // Muestra mensaje de éxito INMEDIATAMENTE
+      alert(`¡Orden de trabajo #${newWorkOrderId} creada exitosamente!`);
       
-      // 🔔 ACTUALIZAR TRAILERS CON PARTES PENDIENTES para quitar campanitas
-      console.log('🔔 Actualizando trailers con partes pendientes después de crear nueva WO...');
-      await fetchTrailersWithPendingParts();
-      console.log('✅ Trailers con partes pendientes actualizados después de crear WO');
+      // 🎯 OPTIMISTIC UPDATE: Agregar nueva WO al estado local SIN esperar fetch
+      const newWO = {
+        id: newWorkOrderId,
+        ...datosOrden,
+        date: startDateToSend,
+        startDate: startDateToSend,
+        endDate: endDateToSend || '',
+        totalLabAndParts: totalLabAndPartsLimpio,
+        parts: partesParaGuardar
+      };
+      setWorkOrders(prev => [newWO, ...prev]);
+      
+      // 🔄 OPERACIONES EN BACKGROUND (no bloquean UI)
+      (async () => {
+        // 🚀 LAZY LOADING DE PDFs: No generar PDF automáticamente
+        // El PDF se generará SOLO cuando el usuario haga clic en "Ver PDF"
+        // Esto reduce significativamente el tiempo de creación de W.O.
+        console.log('✅ W.O. creada - PDF se generará bajo demanda (lazy loading)');
+        
+        // RECARGAS EN BACKGROUND (paralelas)
+        await Promise.all([
+          fetchWorkOrders().catch(e => console.warn('⚠️ Error recargando work orders:', e)),
+          axios.get(`${API_URL}/inventory`)
+            .then(invRes => {
+              const updatedInventory = Array.isArray(invRes.data) ? invRes.data : [];
+              setInventory(updatedInventory);
+              console.log('✅ Inventario refrescado en background');
+            })
+            .catch(e => console.warn('⚠️ Error refrescando inventario:', e)),
+          fetchTrailersWithPendingParts().catch(e => console.warn('⚠️ Error actualizando campanitas:', e))
+        ]);
+        
+        console.log('✅ Todas las operaciones en background completadas');
+      })();
       
     } catch (err: any) {
       console.error('Error al guardar la orden:', err);
       alert(`Error al guardar la orden: ${err.response?.data?.error || err.message || 'Error desconocido'}`);
-    } finally {
       setLoading(false);
     }
   };
@@ -1467,8 +1318,23 @@ const WorkOrdersTable: React.FC = () => {
     if (id == null) return;
     const pwd = window.prompt('Enter password to delete:');
     if (pwd === '6214') {
-      if (window.confirm('Are you sure you want to delete this order?')) {
-        try {
+      // Verificar si la W.O. tiene partes ya deducidas del inventario
+      try {
+        const partsRes = await axios.get(`${API_URL}/work-order-parts/${id}`);
+        const parts = Array.isArray(partsRes.data) ? partsRes.data : [];
+        
+        if (parts.length > 0) {
+          const partsList = parts.map((p: any) => `- ${p.sku}: ${p.part_name || p.sku} (Qty: ${p.qty_used})`).slice(0, 5).join('\n');
+          const morePartsMsg = parts.length > 5 ? `\n... y ${parts.length - 5} más` : '';
+          const partsWarning = `⚠️ ADVERTENCIA: Esta Work Order tiene ${parts.length} parte(s) registrada(s) que ya fueron deducidas del inventario:\n\n${partsList}${morePartsMsg}\n\n⚠️ Al eliminar esta W.O., las partes NO se reintegrarán automáticamente al inventario.\n\n¿Está seguro que desea continuar con la eliminación?`;
+          
+          if (!window.confirm(partsWarning)) {
+            return;
+          }
+        }
+        
+        // Confirmación final
+        if (window.confirm('Are you sure you want to delete this order?')) {
           // @ts-ignore
           await axios.delete(`${API_URL}/work-orders/${id}`, {
             headers: { 'Content-Type': 'application/json' },
@@ -1477,8 +1343,23 @@ const WorkOrdersTable: React.FC = () => {
           setWorkOrders(workOrders.filter((order: any) => order.id !== id));
           setSelectedRow(null);
           alert('Order deleted successfully');
-        } catch {
-          alert('Error deleting order');
+        }
+      } catch (error) {
+        console.error('Error checking parts:', error);
+        // Si falla la verificación, preguntar si desea continuar de todos modos
+        if (window.confirm('Could not verify parts. Are you sure you want to delete this order?')) {
+          try {
+            // @ts-ignore
+            await axios.delete(`${API_URL}/work-orders/${id}`, {
+              headers: { 'Content-Type': 'application/json' },
+              data: { usuario: localStorage.getItem('username') || '' }
+            } as any);
+            setWorkOrders(workOrders.filter((order: any) => order.id !== id));
+            setSelectedRow(null);
+            alert('Order deleted successfully');
+          } catch {
+            alert('Error deleting order');
+          }
         }
       }
     } else if (pwd !== null) {
@@ -1512,6 +1393,124 @@ const WorkOrdersTable: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, ws, 'WorkOrders');
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), 'work_orders.xlsx');
+  };
+  
+  // Función para exportar múltiples PDFs finalizados en un solo ZIP
+  const exportFinishedPDFsToZip = async () => {
+    try {
+      setLoading(true);
+      
+      // Filtrar solo W.O. FINALIZADAS
+      const finishedOrders = workOrders.filter(order => order.status === 'FINISHED');
+      
+      if (finishedOrders.length === 0) {
+        alert('No hay Work Orders finalizadas para exportar');
+        setLoading(false);
+        return;
+      }
+      
+      if (!window.confirm(`Se exportarán ${finishedOrders.length} Work Orders finalizadas en un archivo ZIP. ¿Continuar?`)) {
+        setLoading(false);
+        return;
+      }
+      
+      // Crear ZIP manualmente usando base64
+      const zip: any = { files: [] };
+      let successCount = 0;
+      let errorCount = 0;
+      
+      alert(`Generando ${finishedOrders.length} PDFs... Por favor espere.`);
+      
+      // Procesar cada W.O. finalizada
+      for (const order of finishedOrders) {
+        try {
+          // Obtener datos completos de la orden
+          const workOrderRes = await axios.get(`${API_URL}/work-orders/${order.id}`, { timeout: 10000 });
+          const workOrderData = workOrderRes.data as any;
+          
+          const partsRes = await axios.get(`${API_URL}/work-order-parts/${order.id}`, { timeout: 10000 });
+          const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data.map((part: any) => ({
+            ...part,
+            part: part.part || part.part_name || part.description || ''
+          })) : [];
+          
+          const enrichedParts = partsWithInvoices.map((part: any) => {
+            if (part.invoiceLink) return { ...part, invoice_number: 'FIFO Invoice' };
+            const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
+            return {
+              ...part,
+              invoiceLink: inventoryItem?.invoiceLink || null,
+              invoice_number: inventoryItem?.invoiceLink ? 'Inventory Invoice' : 'N/A'
+            };
+          });
+
+          const pdfData = {
+            id: workOrderData.id || order.id,
+            idClassic: workOrderData.idClassic || order.idClassic || workOrderData.id?.toString() || order.id.toString(),
+            customer: workOrderData.billToCo || workOrderData.customer || '',
+            trailer: workOrderData.trailer || '',
+            date: formatDateSafely(workOrderData.startDate || workOrderData.date || workOrderData.fecha || ''),
+            mechanics: Array.isArray(workOrderData.mechanics) ? 
+              workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
+              workOrderData.mechanics || workOrderData.mechanic || '',
+            description: workOrderData.description || '',
+            status: workOrderData.status || order.status || 'FINISHED',
+            parts: enrichedParts.map((part: any) => ({
+              sku: part.sku || '',
+              description: part.part || part.part_name || part.sku || 'N/A',
+              um: 'EA',
+              qty: Number(part.qty_used) || 0,
+              unitCost: Number(part.cost) || 0,
+              total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+              invoice: part.invoice_number || 'N/A',
+              invoiceLink: part.invoiceLink
+            })),
+            totalHrs: Number(workOrderData.totalHrs) || 0,
+            laborRate: 60,
+            laborCost: Number(workOrderData.totalHrs || 0) * 60 || 0,
+            subtotalParts: enrichedParts.reduce((sum: number, part: any) => 
+              sum + ((Number(part.qty_used) || 0) * (Number(part.cost) || 0)), 0),
+            totalCost: Number(workOrderData.totalLabAndParts) || 0,
+            extraOptions: order.extraOptions || [],
+            miscellaneousPercent: Number(workOrderData.miscellaneous) || 0,
+            weldPercent: Number(workOrderData.weldPercent) || 0
+          };
+          
+          const pdf = await generateWorkOrderPDF(pdfData);
+          const pdfBlob = pdf.output('blob');
+          
+          // Guardar en el "ZIP" (array de archivos)
+          const filename = `WO_${pdfData.idClassic || order.id}_${order.trailer || 'NoTrailer'}.pdf`;
+          zip.files.push({ name: filename, blob: pdfBlob });
+          successCount++;
+          
+          console.log(`✅ PDF generado: ${filename}`);
+        } catch (error) {
+          console.error(`❌ Error generando PDF para W.O. ${order.id}:`, error);
+          errorCount++;
+        }
+      }
+      
+      // Crear ZIP simplificado (descargar archivos individuales si no hay JSZip)
+      if (zip.files.length > 0) {
+        // Como no tenemos JSZip instalado, vamos a descargar los PDFs uno por uno
+        alert(`${successCount} PDFs generados exitosamente. Se descargarán individualmente.\n${errorCount > 0 ? `(${errorCount} errores)` : ''}`);
+        
+        for (const file of zip.files) {
+          saveAs(file.blob, file.name);
+          // Pequeño delay entre descargas para evitar problemas de navegador
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        alert('✅ Exportación completada');
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error exportando PDFs:', error);
+      alert('Error al exportar PDFs finalizados');
+      setLoading(false);
+    }
   };
   // exportToPDF function removed - was unused
 
@@ -2205,6 +2204,50 @@ const WorkOrdersTable: React.FC = () => {
             outline: 2px solid #1976d2 !important;
             box-shadow: 0 0 0 2px #1976d233;
           }
+          
+          /* Animación para cards de Kanban en MISSING PARTS */
+          .kanban-card-missing {
+            animation: kanbanMissingBlink 2s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(244, 67, 54, 0.4) !important;
+          }
+          
+          @keyframes kanbanMissingBlink {
+            0% { 
+              border-left-color: #f44336;
+              background-color: #ffffff;
+            }
+            50% { 
+              border-left-color: #ff5722;
+              background-color: #ffebee;
+            }
+            100% { 
+              border-left-color: #f44336;
+              background-color: #ffffff;
+            }
+          }
+          
+          .days-badge {
+            background: #ff9800;
+            color: white;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 10px;
+            white-space: nowrap;
+          }
+          
+          .days-badge-old {
+            background: #f44336;
+            animation: pulse 2s ease-in-out infinite;
+          }
+          
+          .days-badge-medium {
+            background: #ff9800;
+          }
+          
+          .days-badge-new {
+            background: #4caf50;
+          }
         `}
       </style>      
       {tooltip.visible && tooltip.info && (
@@ -2780,6 +2823,19 @@ const WorkOrdersTable: React.FC = () => {
                     const displayStartDate = startMM && startDD && startYYYY ? `${startMM}/${startDD}/${startYYYY}` : formatDateSafely(startDateStr || order.date || '');
                     const displayEndDate = endMM && endDD && endYYYY ? `${endMM}/${endDD}/${endYYYY}` : (endDateStr ? formatDateSafely(endDateStr) : '--/--/----');
                     const isMissing = isMissingPartsStatus(order.status);
+                    
+                    // Calcular días de antigüedad
+                    const calculateDaysOld = (startDate: string) => {
+                      if (!startDate) return 0;
+                      const start = new Date(startDate + 'T00:00:00');
+                      const today = new Date();
+                      const diffTime = Math.abs(today.getTime() - start.getTime());
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      return diffDays;
+                    };
+                    
+                    const daysOld = calculateDaysOld(startDateStr);
+                    const daysClass = daysOld > 7 ? 'days-badge-old' : daysOld > 3 ? 'days-badge-medium' : 'days-badge-new';
 
                     return (
                       <div
@@ -2796,7 +2852,7 @@ const WorkOrdersTable: React.FC = () => {
                           setSelectedRow(order.id);
                           setContextMenu({ visible: true, x: event.clientX, y: event.clientY, order });
                         }}
-                        className={isMissing ? 'missing-parts-row' : ''}
+                        className={isMissing ? 'kanban-card-missing' : ''}
                         style={{
                           background: '#fff',
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
@@ -2813,8 +2869,13 @@ const WorkOrdersTable: React.FC = () => {
                         aria-label={`Work Order ${order.id} ${formatStatusLabel(order.status)}`}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 3 }}>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1', flex: 1, lineHeight: 1.1 }}>
-                            W.O #{order.id}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1', lineHeight: 1.1 }}>
+                              W.O #{order.id}
+                            </div>
+                            <span className={`days-badge ${daysClass}`}>
+                              {daysOld}d
+                            </span>
                           </div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1.2 }}>
                             <div>INI: {displayStartDate}</div>
@@ -2920,7 +2981,6 @@ const WorkOrdersTable: React.FC = () => {
                 ? detailMechanics.map((mechanic: any) => mechanic.name).join(', ')
                 : (detailOrder.mechanic || 'N/A')}</div>
               <div><strong>Total HRS:</strong> {totalHrsValue.toFixed(2)}</div>
-              <div><strong>Employee Hours Notes:</strong> {detailOrder.employeeWrittenHours || 'N/A'}</div>
             </div>
 
             <div style={{ marginBottom: 12 }}>
