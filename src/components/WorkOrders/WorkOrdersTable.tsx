@@ -703,26 +703,12 @@ const WorkOrdersTable: React.FC = () => {
     // Excluir W.O. con status FINISHED (van al apartado FINAL WORK ORDERS)
     if (order.status === 'FINISHED') return false;
 
-    // Filter by week
-    let inWeek = true;
-    if (selectedWeek) {
-      const { start, end } = getWeekRange(selectedWeek);
-      const orderDate = dayjs(orderStartDate.slice(0, 10));
-      inWeek = orderDate.isBetween(start, end, 'day', '[]');
-    }
-    
-    // Filter by status
-    const matchesStatus = !statusFilter || order.status === statusFilter;
-    
-    // Filter by day
-    const matchesDay = !selectedDay || orderStartDate.slice(0, 10) === selectedDay;
-    
-    // Filter by ID Classic (search)
+    // Filter by ID Classic (search) only
     const matchesSearch = !searchIdClassic || 
       (order.idClassic && String(order.idClassic).toLowerCase().includes(searchIdClassic.toLowerCase())) ||
       (String(order.id).toLowerCase().includes(searchIdClassic.toLowerCase()));
 
-    return inWeek && matchesStatus && matchesDay && matchesSearch;
+    return matchesSearch;
   });
 
   const getStatusForBoard = (status: unknown): 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS' => {
@@ -2360,42 +2346,8 @@ const WorkOrdersTable: React.FC = () => {
   </div>
 </div>
         </div>
-        {/* FILTROS DERECHA */}
+        {/* FILTRO: ID Classic (sin consulta al servidor) */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, marginTop: -16 }}>
-          <label className="wo-filter-label" style={{ marginBottom: 6 }}>
-            Filter by week:&nbsp;
-            <input
-              type="week"
-              value={selectedWeek}
-              onChange={e => setSelectedWeek(e.target.value)}
-              className="wo-filter-input"
-            />
-          </label>
-          <label className="wo-filter-label" style={{ marginBottom: 6 }}>
-            Filter by day:&nbsp;
-            <input
-              type="date"
-              value={selectedDay}
-              onChange={e => setSelectedDay(e.target.value)}
-              className="wo-filter-input"
-            />
-          </label>
-          <label className="wo-filter-label">
-            Filter by status:&nbsp;
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="wo-filter-input"
-              style={{ minWidth: 160 }}
-            >
-              <option value="">All</option>
-              <option value="PROCESSING">PROCESSING</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="MISSING_PARTS">MISSING PARTS</option>
-            </select>
-          </label>
-
-          {/* Filtro local por ID Classic (sin consulta al servidor) */}
           <label className="wo-filter-label">
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
             <input
@@ -2781,7 +2733,7 @@ const WorkOrdersTable: React.FC = () => {
           Drag and drop cards between columns to update status.
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(200px, 1fr))', gap: 10, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
           {boardColumns.map(column => {
             const columnOrders = sortedBoardOrders.filter(order => getStatusForBoard(order.status) === column.key);
 
@@ -2792,11 +2744,11 @@ const WorkOrdersTable: React.FC = () => {
                 onDrop={handleColumnDrop(column.key)}
                 onDragLeave={() => setDragOverStatus((prev) => (prev === column.key ? null : prev))}
                 style={{
-                  minHeight: 500,
+                  minHeight: 550,
                   background: dragOverStatus === column.key ? '#e3f2fd' : '#f8fbff',
                   border: `2px solid ${dragOverStatus === column.key ? '#1976d2' : '#d0d7e2'}`,
                   borderRadius: 12,
-                  padding: 8,
+                  padding: 12,
                   transition: 'all 0.2s ease',
                   overflowY: 'auto',
                   maxHeight: '85vh'
@@ -2809,7 +2761,7 @@ const WorkOrdersTable: React.FC = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {columnOrders.map(order => {
                     const startDateStr = getOrderStartDate(order);
                     const endDateStr = getOrderEndDate(order);
@@ -2840,32 +2792,35 @@ const WorkOrdersTable: React.FC = () => {
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
                           borderLeft: `4px solid ${column.color}`,
                           borderRadius: 8,
-                          padding: 7,
+                          padding: 12,
                           cursor: 'pointer',
                           boxShadow: '0 1px 3px rgba(25,118,210,0.08)',
-                          transition: 'all 0.15s ease'
+                          transition: 'all 0.15s ease',
+                          minHeight: '160px',
+                          display: 'flex',
+                          flexDirection: 'column'
                         }}
                         aria-label={`Work Order ${order.id} ${formatStatusLabel(order.status)}`}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0d47a1', flex: 1, lineHeight: 1.2 }}>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: '#0d47a1', flex: 1, lineHeight: 1.2 }}>
                             W.O #{order.id}
                           </div>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1.3 }}>
                             <div>INI: {displayStartDate}</div>
                             <div>FIN: {displayEndDate}</div>
                           </div>
                         </div>
 
-                        <div style={{ marginTop: 3, fontSize: 11, color: '#263238', fontWeight: 700, lineHeight: 1.2 }}>
+                        <div style={{ marginTop: 4, fontSize: 13, color: '#263238', fontWeight: 700, lineHeight: 1.3 }}>
                           {(order.billToCo || 'N/C').slice(0, 20)}
                         </div>
 
-                        <div style={{ marginTop: 2, fontSize: 10, color: '#455a64', lineHeight: 1.2 }}>
+                        <div style={{ marginTop: 2, fontSize: 12, color: '#455a64', lineHeight: 1.3, fontWeight: 600 }}>
                           {(order.trailer || 'N/T').slice(0, 15)}
                         </div>
 
-                        <div style={{ marginTop: 2, fontSize: 9, color: '#546e7a' }}>
+                        <div style={{ marginTop: 3, fontSize: 11, color: '#546e7a', lineHeight: 1.3 }}>
                           👨‍🔧 {Array.isArray(order.mechanics) && order.mechanics.length > 0
                             ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ').slice(0, 30)
                             : (order.mechanic || 'N/A').slice(0, 30)}
@@ -2874,39 +2829,18 @@ const WorkOrdersTable: React.FC = () => {
                             : (order.mechanic || 'N/A')).length > 30 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 4, fontSize: 9, color: '#546e7a', background: '#f4f8ff', borderRadius: 4, padding: '4px 5px', lineHeight: 1.3, maxHeight: 36, overflow: 'hidden' }}>
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#546e7a', background: '#f4f8ff', borderRadius: 4, padding: '5px 6px', lineHeight: 1.4, maxHeight: 44, overflow: 'hidden', flex: 1 }}>
                           {(order.description || 'S/D').slice(0, 80)}
                           {(order.description || '').length > 80 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10 }}>
+                        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginBottom: 'auto' }}>
                           <span style={{ fontWeight: 700, color: '#37474f' }}>HRS: {order.totalHrs || 0}</span>
-                          <span style={{ fontWeight: 800, color: '#1b5e20', fontSize: 10 }}>
+                          <span style={{ fontWeight: 800, color: '#1b5e20', fontSize: 13 }}>
                             {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
                               ? '$' + Number(order.totalLabAndParts).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
                               : '$0'}
                           </span>
-                        </div>
-
-                        <div style={{ marginTop: 5, display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
-                          {boardColumns
-                            .filter(option => option.key !== getStatusForBoard(order.status))
-                            .map(option => (
-                              <button
-                                key={option.key}
-                                onClick={async () => {
-                                  try {
-                                    await updateWorkOrderStatus(order, option.key);
-                                  } catch (error) {
-                                    alert('Error updating Work Order status');
-                                  }
-                                }}
-                                style={{ border: `1px solid ${option.color}`, background: '#fff', color: option.color, borderRadius: 999, padding: '1px 6px', fontSize: 8, fontWeight: 700, cursor: 'pointer' }}
-                                title={`Move to ${option.title}`}
-                              >
-                                → {option.title.slice(0, 6)}
-                              </button>
-                            ))}
                         </div>
                       </div>
                     );
