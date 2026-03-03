@@ -2838,8 +2838,8 @@ const WorkOrdersTable: React.FC = () => {
                           <span style={{ fontWeight: 700, color: '#37474f' }}>HRS: {order.totalHrs || 0}</span>
                           <span style={{ fontWeight: 800, color: '#1b5e20', fontSize: 13 }}>
                             {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
-                              ? '$' + Number(order.totalLabAndParts).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                              : '$0'}
+                              ? '$' + Number(order.totalLabAndParts).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : '$0.00'}
                           </span>
                         </div>
                       </div>
