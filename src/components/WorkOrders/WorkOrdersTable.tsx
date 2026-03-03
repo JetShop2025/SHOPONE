@@ -392,6 +392,9 @@ const WorkOrdersTable: React.FC = () => {
   const [activeWOsCount, setActiveWOsCount] = useState(0);
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
+  const [draggingOrderId, setDraggingOrderId] = useState<number | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | 'MISSING_PARTS' | null>(null);
+  const [detailOrder, setDetailOrder] = useState<any | null>(null);
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
     if (!idClassic || idClassic.trim() === '') return false;
@@ -690,6 +693,107 @@ const WorkOrdersTable: React.FC = () => {
 
     return inWeek && matchesStatus && matchesDay && matchesSearch;
   });
+
+  const getStatusForBoard = (status: unknown): 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS' => {
+    if (isMissingPartsStatus(status)) return 'MISSING_PARTS';
+    const normalized = String(status || '').trim().toUpperCase();
+    if (normalized === 'APPROVED') return 'APPROVED';
+    return 'PROCESSING';
+  };
+
+  const formatStatusLabel = (status: unknown) => {
+    if (isMissingPartsStatus(status)) return 'MISSING PARTS';
+    const normalized = String(status || '').trim().toUpperCase();
+    if (normalized === 'APPROVED') return 'APPROVED';
+    return 'PROCESSING';
+  };
+
+  const sortedBoardOrders = filteredOrders
+    .slice()
+    .sort((a, b) => {
+      const getTime = (value: string) => {
+        if (!value) return 0;
+        const parsed = dayjs(value, ["MM/DD/YYYY", "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY/MM/DD"], true);
+        return parsed.isValid() ? parsed.valueOf() : 0;
+      };
+      return getTime(b.date) - getTime(a.date);
+    });
+
+  const boardColumns = [
+    { key: 'PROCESSING' as const, title: 'PROCESSING', color: '#1976d2' },
+    { key: 'APPROVED' as const, title: 'APPROVED', color: '#43a047' },
+    { key: 'MISSING_PARTS' as const, title: 'MISSING PARTS', color: '#f44336' }
+  ];
+
+  const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS') => {
+    const currentStatus = getStatusForBoard(order?.status);
+    if (currentStatus === targetStatus) return;
+
+    await axios.put(`${API_URL}/work-orders/${order.id}`, {
+      ...order,
+      status: targetStatus,
+      usuario: localStorage.getItem('username') || ''
+    });
+
+    setWorkOrders(prev =>
+      prev.map(item =>
+        item.id === order.id ? { ...item, status: targetStatus } : item
+      )
+    );
+
+    setDetailOrder((prev: any) =>
+      prev && prev.id === order.id ? { ...prev, status: targetStatus } : prev
+    );
+
+    setContextMenu(prev =>
+      prev.order && prev.order.id === order.id
+        ? { ...prev, order: { ...prev.order, status: targetStatus } }
+        : prev
+    );
+  };
+
+  const handleCardDragStart = (orderId: number) => (event: React.DragEvent<HTMLDivElement>) => {
+    setDraggingOrderId(orderId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(orderId));
+  };
+
+  const handleCardDragEnd = () => {
+    setDraggingOrderId(null);
+    setDragOverStatus(null);
+  };
+
+  const handleColumnDragOver = (status: 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS') => (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOverStatus(status);
+  };
+
+  const handleColumnDrop = (status: 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS') => async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const draggedIdRaw = event.dataTransfer.getData('text/plain');
+    const draggedId = Number(draggedIdRaw || draggingOrderId);
+    setDragOverStatus(null);
+
+    if (!draggedId || Number.isNaN(draggedId)) {
+      setDraggingOrderId(null);
+      return;
+    }
+
+    const draggedOrder = workOrders.find(order => Number(order.id) === draggedId);
+    if (!draggedOrder) {
+      setDraggingOrderId(null);
+      return;
+    }
+
+    try {
+      await updateWorkOrderStatus(draggedOrder, status);
+    } catch (error) {
+      alert('Error updating Work Order status');
+    }
+
+    setDraggingOrderId(null);
+  };
 
   // Cambios generales
   const handleWorkOrderChange = (
@@ -2216,7 +2320,6 @@ const WorkOrdersTable: React.FC = () => {
               <option value="">All</option>
               <option value="PROCESSING">PROCESSING</option>
               <option value="APPROVED">APPROVED</option>
-              <option value="FINISHED">FINISHED</option>
               <option value="MISSING_PARTS">MISSING PARTS</option>
             </select>
           </label>
@@ -2582,7 +2685,7 @@ const WorkOrdersTable: React.FC = () => {
               </div>
             </div>
           </div>
-        )}        {/* --- TABLA ABAJO --- */}
+        )}        {/* --- BOARD ABAJO --- */}
           {/* Información de resultados */}
         {searchIdClassic && (
           <div style={{ 
@@ -2603,195 +2706,227 @@ const WorkOrdersTable: React.FC = () => {
             </span>
           </div>
         )}
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table className="wo-table">
-            <thead>
-              <tr>
+        <div style={{ marginBottom: 12, color: '#455a64', fontSize: 13, fontWeight: 600 }}>
+          Drag and drop cards between columns to update status.
+        </div>
 
-                <th>ID</th>
-                <th>ID CLASSIC</th>
-                <th>Bill To Co</th>
-                <th>Trailer</th>
-                <th>Mechanic</th>
-                <th>Date</th>
-                <th>Description</th>
-                {[1,2,3,4,5].map(i => (
-                  <React.Fragment key={i}>
-                    <th>{`PRT${i}`}</th>
-                    <th>{`Qty${i}`}</th>
-                    <th>{`Costo${i}`}</th>
-                  </React.Fragment>
-                ))}
-                <th>Total HRS</th>
-                <th>Total LAB & PRTS</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>  {filteredOrders
-              .filter(order => {
-                if (!searchIdClassic) return true;
-                return (
-                  (order.idClassic && order.idClassic.toString().toLowerCase().includes(searchIdClassic.toLowerCase()))
-                );
-              })
-              .slice() // copy array to avoid mutating original
-              .sort((a, b) => {
-                // Use dayjs for robust date parsing (handles both MM/DD/YYYY and YYYY-MM-DD)
-                // Fallback: invalid/missing dates are treated as oldest
-                const getTime = (d: string) => {
-                  if (!d) return 0;
-                  const parsed = dayjs(d, ["MM/DD/YYYY", "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY/MM/DD"], true);
-                  return parsed.isValid() ? parsed.valueOf() : 0;
-                };
-                return getTime(b.date) - getTime(a.date); // Descending: most recent first
-              })
-              .map((order, index) => {
-    let rowClass = '';
-    if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
-    else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
-    else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
-          else if (isMissingPartsStatus(order.status)) rowClass = 'missing-parts-row';
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(260px, 1fr))', gap: 16, alignItems: 'start' }}>
+          {boardColumns.map(column => {
+            const columnOrders = sortedBoardOrders.filter(order => getStatusForBoard(order.status) === column.key);
 
-    const hasMoreParts = order.parts && order.parts.length > 5;
-
-    const dateStr = (order.date || '').slice(0, 10); // '2025-05-29'
-const [yyyy, mm, dd] = dateStr.split('-');
-const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
-
-    // Nuevo: usar status MISSING_PARTS para marcar y guardar en BD
-    const isMissingParts = isMissingPartsStatus(order.status);
-    const handleMissingPartsClick = async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      try {
-        const newStatus = isMissingParts ? 'PROCESSING' : 'MISSING_PARTS';
-        await axios.put(`${API_URL}/workOrders/${order.id}`, { ...order, status: newStatus });
-        order.status = newStatus;
-        setSelectedRow(order.id);
-        setContextMenu({ ...contextMenu, order: { ...order } });
-      } catch (err) {
-        alert('Error actualizando status de Missing Parts');
-      }
-    };
-    return (
-      <React.Fragment key={order.id}>
-        <tr
-          className={
-            rowClass + 
-            (selectedRow === order.id ? ' wo-row-selected' : '')
-          }
-          style={{
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-          onClick={() => setSelectedRow(order.id)}
-          onContextMenu={e => {
-            e.preventDefault();
-            setSelectedRow(order.id);
-            setContextMenu({ visible: true, x: e.clientX, y: e.clientY, order });
-          }}
-        >
-          <td>
-            {hasMoreParts && (
-              <button
+            return (
+              <div
+                key={column.key}
+                onDragOver={handleColumnDragOver(column.key)}
+                onDrop={handleColumnDrop(column.key)}
+                onDragLeave={() => setDragOverStatus((prev) => (prev === column.key ? null : prev))}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#1976d2',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  marginRight: 4
-                }}
-                title={expandedRow === order.id ? 'Ocultar partes' : 'Ver todas las partes'}
-                onClick={e => {
-                  e.stopPropagation();
-                  setExpandedRow(expandedRow === order.id ? null : order.id);
+                  minHeight: 420,
+                  background: dragOverStatus === column.key ? '#e3f2fd' : '#f8fbff',
+                  border: `2px solid ${dragOverStatus === column.key ? '#1976d2' : '#d0d7e2'}`,
+                  borderRadius: 12,
+                  padding: 12,
+                  transition: 'all 0.2s ease'
                 }}
               >
-                {expandedRow === order.id ? '▼' : '▶'}
-              </button>
-            )}
-            {order.id}
-          </td>
-          <td>{order.idClassic || ''}</td>
-          <td>{order.billToCo}</td>
-          <td>{order.trailer}</td>
-          <td>
-            {Array.isArray(order.mechanics) && order.mechanics.length > 0
-              ? order.mechanics.map((m: any) => m.name).join(', ')
-              : order.mechanic}
-          </td>
-          <td>
-            {displayDate}
-          </td>
-          <td style={{ minWidth: 200, maxWidth: 300, whiteSpace: 'pre-line' }}>{order.description}</td>
-          {[0,1,2,3,4].map(i => (
-            <React.Fragment key={i}>
-              <td
-                style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2', position: 'relative' }}
-                onMouseEnter={order.parts && order.parts[i] && order.parts[i].sku
-                  ? (e) => handlePartHover(e, order.parts[i])
-                  : undefined
-                }
-                onMouseLeave={hideTooltip}
-              >
-                {order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].sku : ''}
-              </td>
-              <td>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
-              <td>
-                {order.parts && order.parts[i] && order.parts[i].sku
-                  ? (
-                      order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
-                        ? Number(order.parts[i].cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                        : '$0.00'
-                    )
-                  : ''
-                }
-              </td>
-            </React.Fragment>
-          ))}
-          <td>{order.totalHrs}</td>
-          <td>
-            {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
-              ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-              : '$0.00'}
-          </td>
-          <td>{order.status}</td>
-        </tr>
-        {expandedRow === order.id && hasMoreParts && (
-          <tr>
-            <td colSpan={16} style={{ background: '#e3f2fd', padding: 12 }}>
-              <strong>Partes adicionales:</strong>
-              <table style={{ width: '100%', marginTop: 8, background: '#fff' }}>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>SKU</th>
-                    <th>Cantidad</th>
-                    <th>Costo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.parts.slice(5).map((p: any, idx: number) => (
-                    <tr key={idx}>
-                      <td>{idx + 6}</td>
-                      <td>{p.sku}</td>
-                      <td>{p.qty}</td>
-                      <td>{p.cost}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </td>
-          </tr>
-        )}
-      </React.Fragment>
-    );
-  })}
-</tbody>
-          </table>
-        </div>       
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${column.color}` }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: column.color }}>{column.title}</span>
+                  <span style={{ minWidth: 26, textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#fff', background: column.color, borderRadius: 999, padding: '2px 8px' }}>
+                    {columnOrders.length}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {columnOrders.map(order => {
+                    const dateStr = (order.date || '').slice(0, 10);
+                    const [yyyy, mm, dd] = dateStr.split('-');
+                    const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : formatDateSafely(order.date || '');
+                    const isMissing = isMissingPartsStatus(order.status);
+
+                    return (
+                      <div
+                        key={order.id}
+                        draggable
+                        onDragStart={handleCardDragStart(Number(order.id))}
+                        onDragEnd={handleCardDragEnd}
+                        onClick={() => {
+                          setSelectedRow(order.id);
+                          setDetailOrder(order);
+                        }}
+                        onContextMenu={event => {
+                          event.preventDefault();
+                          setSelectedRow(order.id);
+                          setContextMenu({ visible: true, x: event.clientX, y: event.clientY, order });
+                        }}
+                        className={isMissing ? 'missing-parts-row' : ''}
+                        style={{
+                          background: '#fff',
+                          border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
+                          borderLeft: `6px solid ${column.color}`,
+                          borderRadius: 10,
+                          padding: 10,
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 6px rgba(25,118,210,0.12)'
+                        }}
+                        aria-label={`Work Order ${order.id} ${formatStatusLabel(order.status)}`}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1' }}>
+                            W.O #{order.id} {order.idClassic ? `• ${order.idClassic}` : ''}
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: column.color }}>{displayDate}</div>
+                        </div>
+
+                        <div style={{ marginTop: 6, fontSize: 12, color: '#263238', fontWeight: 700 }}>
+                          {order.billToCo || 'NO CLIENT'} • {order.trailer || 'NO TRAILER'}
+                        </div>
+
+                        <div style={{ marginTop: 4, fontSize: 12, color: '#455a64' }}>
+                          👨‍🔧 {Array.isArray(order.mechanics) && order.mechanics.length > 0
+                            ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ')
+                            : (order.mechanic || 'N/A')}
+                        </div>
+
+                        <div style={{ marginTop: 6, fontSize: 11, color: '#546e7a', background: '#f4f8ff', borderRadius: 6, padding: '6px 8px', minHeight: 32 }}>
+                          {(order.description || 'Sin descripción').slice(0, 120)}
+                          {(order.description || '').length > 120 ? '...' : ''}
+                        </div>
+
+                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#37474f' }}>HRS: {order.totalHrs || 0}</span>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#1b5e20' }}>
+                            {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
+                              ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                              : '$0.00'}
+                          </span>
+                        </div>
+
+                        <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
+                          {boardColumns
+                            .filter(option => option.key !== getStatusForBoard(order.status))
+                            .map(option => (
+                              <button
+                                key={option.key}
+                                onClick={async () => {
+                                  try {
+                                    await updateWorkOrderStatus(order, option.key);
+                                  } catch (error) {
+                                    alert('Error updating Work Order status');
+                                  }
+                                }}
+                                style={{ border: `1px solid ${option.color}`, background: '#fff', color: option.color, borderRadius: 999, padding: '2px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                title={`Move to ${option.title}`}
+                              >
+                                → {option.title}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {columnOrders.length === 0 && (
+                    <div style={{ border: '1px dashed #b0bec5', borderRadius: 10, padding: 18, textAlign: 'center', fontSize: 12, color: '#607d8b', background: '#fff' }}>
+                      Drop W.O. cards here
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {detailOrder && (
+        <div style={modalStyle} onClick={() => setDetailOrder(null)}>
+          <div style={{ ...modalContentStyle, maxWidth: 980, width: '90vw' }} onClick={event => event.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ margin: 0, color: '#1976d2' }}>
+                W.O #{detailOrder.id} {detailOrder.idClassic ? `• ${detailOrder.idClassic}` : ''}
+              </h2>
+              <button
+                onClick={() => setDetailOrder(null)}
+                style={{ border: 'none', background: '#eceff1', color: '#37474f', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
+              <div><strong>Status:</strong> {formatStatusLabel(detailOrder.status)}</div>
+              <div><strong>Bill To:</strong> {detailOrder.billToCo || 'N/A'}</div>
+              <div><strong>Trailer:</strong> {detailOrder.trailer || 'N/A'}</div>
+              <div><strong>Date:</strong> {formatDateSafely(detailOrder.date || '')}</div>
+              <div><strong>Mechanic:</strong> {Array.isArray(detailOrder.mechanics) && detailOrder.mechanics.length > 0
+                ? detailOrder.mechanics.map((mechanic: any) => mechanic.name).join(', ')
+                : (detailOrder.mechanic || 'N/A')}</div>
+              <div><strong>Total HRS:</strong> {detailOrder.totalHrs || 0}</div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <strong>Description:</strong>
+              <div style={{ marginTop: 6, background: '#f8f9fb', border: '1px solid #d0d7e2', borderRadius: 8, padding: 10, whiteSpace: 'pre-line' }}>
+                {detailOrder.description || 'No description'}
+              </div>
+            </div>
+
+            <div>
+              <strong>Parts:</strong>
+              <div style={{ marginTop: 8, overflowX: 'auto' }}>
+                <table className="wo-table" style={{ minWidth: 720 }}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>SKU</th>
+                      <th>Part</th>
+                      <th>Qty</th>
+                      <th>Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(detailOrder.parts) && detailOrder.parts.filter((part: any) => part && part.sku).length > 0 ? (
+                      detailOrder.parts
+                        .filter((part: any) => part && part.sku)
+                        .map((part: any, index: number) => (
+                          <tr key={`${detailOrder.id}-${index}`}>
+                            <td>{index + 1}</td>
+                            <td>{part.sku}</td>
+                            <td>{part.part || part.description || '-'}</td>
+                            <td>{part.qty || 0}</td>
+                            <td>
+                              {part.cost !== undefined && part.cost !== null && part.cost !== ''
+                                ? Number(part.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                                : '$0.00'}
+                            </td>
+                          </tr>
+                        ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5}>No parts registered</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ color: '#1b5e20', fontSize: 18 }}>
+                Total: {detailOrder.totalLabAndParts !== undefined && detailOrder.totalLabAndParts !== null && detailOrder.totalLabAndParts !== ''
+                  ? Number(detailOrder.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                  : '$0.00'}
+              </strong>
+              <button
+                style={secondaryBtn}
+                onClick={() => handleViewPDF(detailOrder.id)}
+              >
+                Ver PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Context Menu for Editar/Eliminar */}
       {contextMenu.visible && contextMenu.order && (
         <div
@@ -2865,15 +3000,8 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
               setContextMenu({ ...contextMenu, visible: false });
               const pwd = window.prompt('Enter password to approve:');
               if (pwd === 'Soledad14') {
-                // Cambiar status a APPROVED
                 try {
-                  await axios.put(`${API_URL}/work-orders/${contextMenu.order.id}`, {
-                    ...contextMenu.order,
-                    status: 'APPROVED',
-                    usuario: localStorage.getItem('username') || ''
-                  });
-                  // Opcional: recargar órdenes
-                  if (typeof fetchWorkOrders === 'function') fetchWorkOrders();
+                  await updateWorkOrderStatus(contextMenu.order, 'APPROVED');
                   alert('Work Order approved!');
                 } catch (err) {
                   alert('Error approving Work Order');
