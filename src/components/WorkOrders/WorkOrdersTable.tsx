@@ -2226,28 +2226,7 @@ const WorkOrdersTable: React.FC = () => {
             }
           }
           
-          .days-badge {
-            background: #ff9800;
-            color: white;
-            font-size: 9px;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 10px;
-            white-space: nowrap;
-          }
-          
-          .days-badge-old {
-            background: #f44336;
-            animation: pulse 2s ease-in-out infinite;
-          }
-          
-          .days-badge-medium {
-            background: #ff9800;
-          }
-          
-          .days-badge-new {
-            background: #4caf50;
-          }
+
         `}
       </style>      
       {tooltip.visible && tooltip.info && (
@@ -2823,19 +2802,6 @@ const WorkOrdersTable: React.FC = () => {
                     const displayStartDate = startMM && startDD && startYYYY ? `${startMM}/${startDD}/${startYYYY}` : formatDateSafely(startDateStr || order.date || '');
                     const displayEndDate = endMM && endDD && endYYYY ? `${endMM}/${endDD}/${endYYYY}` : (endDateStr ? formatDateSafely(endDateStr) : '--/--/----');
                     const isMissing = isMissingPartsStatus(order.status);
-                    
-                    // Calcular días de antigüedad
-                    const calculateDaysOld = (startDate: string) => {
-                      if (!startDate) return 0;
-                      const start = new Date(startDate + 'T00:00:00');
-                      const today = new Date();
-                      const diffTime = Math.abs(today.getTime() - start.getTime());
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                      return diffDays;
-                    };
-                    
-                    const daysOld = calculateDaysOld(startDateStr);
-                    const daysClass = daysOld > 7 ? 'days-badge-old' : daysOld > 3 ? 'days-badge-medium' : 'days-badge-new';
 
                     return (
                       <div
@@ -2873,9 +2839,6 @@ const WorkOrdersTable: React.FC = () => {
                             <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1', lineHeight: 1.1 }}>
                               W.O #{order.id}
                             </div>
-                            <span className={`days-badge ${daysClass}`}>
-                              {daysOld}d
-                            </span>
                           </div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1.2 }}>
                             <div>INI: {displayStartDate}</div>

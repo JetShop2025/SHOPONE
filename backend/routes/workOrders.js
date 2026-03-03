@@ -1219,7 +1219,53 @@ router.post('/', async (req, res) => {
     const id = result.insertId;
     
     console.log(`✅ [${requestId}] WO creada exitosamente - ID: ${id}`);
-    console.log(`📊 [${requestId}] Memoria después de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);    // RESPONDER INMEDIATAMENTE
+    console.log(`📊 [${requestId}] Memoria después de DB: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    
+    // AUDIT LOG: Registrar creación de Work Order en BACKGROUND
+    const auditPromise = (async () => {
+      try {
+        if (db.logWorkOrderAudit || db.logAuditEvent) {
+          const newData = {
+            billToCo,
+            trailer,
+            mechanic,
+            mechanics: mechanicsArr,
+            date,
+            description,
+            parts: partsArr,
+            totalHrs: totalHrsPut,
+            totalLabAndParts: totalLabAndPartsFinal,
+            status,
+            extraOptions: extraOptions || [],
+            miscellaneousPercent: miscPercent,
+            weldPercent,
+            employeeWrittenHours: fields.employeeWrittenHours || null,
+            idClassic
+          };
+          
+          if (db.logWorkOrderAudit) {
+            await db.logWorkOrderAudit(fields.usuario || 'SYSTEM', 'CREATE', id, null, newData);
+          } else if (db.logAuditEvent) {
+            const auditDetails = {
+              operation: 'Creación de Work Order',
+              workOrderId: id,
+              summary: `Nueva Work Order #${id} creada por ${fields.usuario || 'SYSTEM'}`,
+              detalles: {
+                cliente: billToCo || 'N/A',
+                trailer: trailer || 'N/A',
+                estado: status || 'PROCESSING',
+                costoTotal: `$${totalLabAndPartsFinal}`,
+                partes: partsArr.length
+              }
+            };
+            await db.logAuditEvent(fields.usuario || 'SYSTEM', 'CREATE', 'work_orders', id, auditDetails);
+          }
+          console.log(`✅ [${requestId}] Auditoría de creación registrada`);
+        }
+      } catch (auditError) {
+        console.warn(`⚠️ [${requestId}] Error registrando auditoría de creación:`, auditError.message);
+      }
+    })();    // RESPONDER INMEDIATAMENTE
     console.log(`📤 [${requestId}] Enviando respuesta al cliente...`);
     res.status(201).json({
       id: id,
@@ -1324,31 +1370,56 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   const { usuario } = req.body;
+  const usuarioFinal = usuario || req.body.usuario || req.headers['x-usuario'] || 'UNKNOWN';
+  
   try {
     const [results] = await db.query('SELECT * FROM work_orders WHERE id = ?', [id]);
     if (!results || results.length === 0) {
       return res.status(404).send('WORK ORDER NOT FOUND');
     }
     const oldData = results[0];
+    
+    // ELIMINAR DE BASE DE DATOS
     await db.query('DELETE FROM work_orders WHERE id = ?', [id]);
-    await logAccion(
-      usuario || req.body.usuario || req.headers['x-usuario'] || 'UNKNOWN',
-      'DELETE',
-      'work_orders',
-      id,
-      JSON.stringify({
-        id: oldData.id,
-        customer: oldData.billToCo,
-        trailer: oldData.trailer,
-        date: oldData.date,
-        description: oldData.description,
-        parts: oldData.parts,
-        mechanic: oldData.mechanic,
-        status: oldData.status
-      })
-    );
+    
+    // AUDIT LOG: Registrar eliminación con función moderna
+    if (db.logWorkOrderAudit) {
+      try {
+        await db.logWorkOrderAudit(usuarioFinal, 'DELETE', id, oldData, null);
+        console.log(`✅ Auditoría de eliminación registrada para WO #${id}`);
+      } catch (auditError) {
+        console.warn(`⚠️ Error registrando auditoría de eliminación:`, auditError.message);
+      }
+    } else if (db.logAuditEvent || typeof logAccion === 'function') {
+      // Fallback a logAuditEvent genérico o logAccion
+      try {
+        const auditDetails = {
+          operation: 'Eliminación de Work Order',
+          workOrderId: id,
+          summary: `Work Order #${id} eliminada por ${usuarioFinal}`,
+          datosEliminados: {
+            cliente: oldData.billToCo || 'N/A',
+            trailer: oldData.trailer || 'N/A',
+            estado: oldData.status || 'N/A',
+            costoTotal: oldData.totalLabAndParts ? `$${oldData.totalLabAndParts}` : '$0',
+            descripcion: oldData.description || 'Sin descripción'
+          }
+        };
+        
+        if (db.logAuditEvent) {
+          await db.logAuditEvent(usuarioFinal, 'DELETE', 'work_orders', id, auditDetails);
+        } else if (typeof logAccion === 'function') {
+          await logAccion(usuarioFinal, 'DELETE', 'work_orders', id, JSON.stringify(auditDetails));
+        }
+        console.log(`✅ Auditoría de eliminación registrada para WO #${id}`);
+      } catch (auditError) {
+        console.warn(`⚠️ Error registrando auditoría de eliminación:`, auditError.message);
+      }
+    }
+    
     res.status(200).send('WORK ORDER DELETED SUCCESSFULLY');
   } catch (err) {
+    console.error('Error eliminando Work Order:', err);
     res.status(500).send('ERROR DELETING WORK ORDER');
   }
 });
@@ -1522,26 +1593,58 @@ router.put('/:id', async (req, res) => {
 
     console.log(`🗄️ [${requestId}] Ejecutando query de actualización...`);
     await db.query(updateQuery, updateFields);
-    // AUDIT LOG: Si el único cambio es el estado, registrar solo ese campo
-    if (typeof logAccion === 'function') {
-      const changes = {};
-      if (oldResults[0].status !== status) {
-        changes.estado = {
-          antes: oldResults[0].status,
-          despues: status
+    
+    // AUDIT LOG: Registrar TODOS los cambios (no solo estado)
+    if (db.logWorkOrderAudit || db.logAuditEvent) {
+      try {
+        // Construir objeto con los nuevos datos
+        const newData = {
+          billToCo,
+          trailer,
+          mechanic,
+          mechanics: mechanicsArr,
+          date,
+          description,
+          parts: partsArr,
+          totalHrs: totalHrsPut,
+          totalLabAndParts: totalLabAndPartsFinal,
+          status,
+          extraOptions: extraOptions || [],
+          miscellaneousPercent: miscPercent,
+          weldPercent: weldPercentFinal,
+          employeeWrittenHours: employeeWrittenHours || null
         };
+        
+        if (status === 'FINISHED') {
+          newData.idClassic = idClassic || null;
+        }
+        
+        // Usar la función específica para auditar Work Orders
+        if (db.logWorkOrderAudit) {
+          await db.logWorkOrderAudit(usuario || 'SYSTEM', 'UPDATE', id, oldResults[0], newData);
+          console.log(`✅ [${requestId}] Auditoría registrada exitosamente`);
+        } else if (db.logAuditEvent) {
+          // Fallback a logAuditEvent genérico
+          const auditDetails = {
+            operation: 'Actualización de Work Order',
+            workOrderId: id,
+            summary: `Work Order #${id} actualizada por ${usuario || 'SYSTEM'}`,
+            cliente: newData.billToCo || 'N/A',
+            trailer: newData.trailer || 'N/A',
+            estado: newData.status || 'N/A',
+            cambios: {
+              campos_modificados: Object.keys(newData).filter(key => 
+                JSON.stringify(oldResults[0][key]) !== JSON.stringify(newData[key])
+              )
+            }
+          };
+          await db.logAuditEvent(usuario || 'SYSTEM', 'UPDATE', 'work_orders', id, auditDetails);
+          console.log(`✅ [${requestId}] Auditoría registrada exitosamente`);
+        }
+      } catch (auditError) {
+        console.warn(`⚠️ [${requestId}] Error registrando auditoría:`, auditError.message);
+        // No interrumpir la operación principal por error de auditoría
       }
-      // Si solo cambió el estado, registrar solo ese campo
-      if (Object.keys(changes).length === 1) {
-        await logAccion(
-          usuario || 'SYSTEM',
-          'STATUS_CHANGE',
-          'work_orders',
-          id,
-          JSON.stringify({ summary: 'Aprobación de Work Order', changes })
-        );
-      }
-      // Si hay otros cambios, puedes agregar aquí la lógica para registrar el objeto completo si lo deseas
     }
     
     console.log(`✅ [${requestId}] WO actualizada exitosamente`);

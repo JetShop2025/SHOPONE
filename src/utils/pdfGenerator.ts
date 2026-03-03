@@ -19,13 +19,16 @@ interface WorkOrderData {
     qty: number;
     unitCost: number;
     total: number;
-    invoice: string;
+    invoice?: string;
+    invoiceReference?: string;
+    invoice_number?: string;
     invoiceLink?: string;
+    invoice_link?: string;
   }>;
   laborCost: number;
   subtotalParts: number;
   totalCost: number;
-  extraOptions?: string[]; // Agregar extras seleccionados
+  extraOptions?: string[];
   miscellaneousPercent?: number;
   weldPercent?: number;
 }
@@ -229,44 +232,46 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const tableStartY = descY + 20 + descriptionHeight;
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
-    String(part.sku || '').substring(0, 12), // Limitar SKU
-    String(part.description || '').substring(0, 30), // Limitar descripción
+    String(part.sku || '').substring(0, 14), // SKU
+    String(part.description || '').substring(0, 40), // Descripción más larga
     String(part.um || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
     `$${(part.total || 0).toFixed(2)}`,
-    part.invoiceLink ? 'LINK' : 'N/A'
+    String((part as any).invoice || (part as any).invoiceReference || (part as any).invoice_number || 'N/A').substring(0, 16), // Invoice REF
+    part.invoiceLink ? '✓ LINK' : '' // Show if link exists
   ]);
   autoTable(pdf, {
     startY: tableStartY,
-    head: [['No.', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT COST', 'TOTAL', 'INVOICE']],
+    head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT $', 'TOTAL', 'INVOICE REF', 'LINK']],
     body: tableData,
     theme: 'grid',
     headStyles: {
       fillColor: [66, 139, 202],
       textColor: [255, 255, 255],
-      fontSize: 9,
+      fontSize: 8,
       fontStyle: 'bold',
       halign: 'center',
       cellPadding: 2,
       font: 'courier'
     },
     bodyStyles: {
-      fontSize: 8,
+      fontSize: 7.5,
       textColor: [0, 0, 0],
-      cellPadding: 1.5,
+      cellPadding: 1,
       overflow: 'ellipsize',
       font: 'courier'
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 12 },    // No.
-      1: { halign: 'center', cellWidth: 22 },    // SKU
-      2: { halign: 'left', cellWidth: 50 },      // DESCRIPTION
-      3: { halign: 'center', cellWidth: 12 },    // U/M
-      4: { halign: 'center', cellWidth: 12 },    // QTY
-      5: { halign: 'right', cellWidth: 25 },     // UNIT COST
-      6: { halign: 'right', cellWidth: 25 },     // TOTAL
-      7: { halign: 'center', cellWidth: 22 }     // INVOICE
+      0: { halign: 'center', cellWidth: 8 },      // #
+      1: { halign: 'center', cellWidth: 18 },     // SKU
+      2: { halign: 'left', cellWidth: 52 },       // DESCRIPTION
+      3: { halign: 'center', cellWidth: 10 },     // U/M
+      4: { halign: 'center', cellWidth: 10 },     // QTY
+      5: { halign: 'right', cellWidth: 18 },      // UNIT $
+      6: { halign: 'right', cellWidth: 18 },      // TOTAL
+      7: { halign: 'center', cellWidth: 22 },     // INVOICE REF
+      8: { halign: 'center', cellWidth: 10 }      // LINK
     },
     margin: { left: leftMargin, right: rightMargin },
     tableLineColor: [66, 139, 202],
@@ -274,20 +279,24 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     styles: {
       lineColor: [66, 139, 202],
       lineWidth: 0.3,
-      cellPadding: 1.5,
+      cellPadding: 1,
       font: 'courier'
     },
     didDrawCell: function(data) {
-      // Hacer enlaces clickeables en la columna INVOICE (columna 7)
-      if (data.column.index === 7 && data.cell.section === 'body') {
+      // Hacer enlaces clickeables en la columna LINK (columna 8)
+      if (data.column.index === 8 && data.cell.section === 'body') {
         const part = workOrderData.parts[data.row.index];
         if (part.invoiceLink) {
           // Agregar enlace clickeable
           pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: part.invoiceLink });
           // Cambiar color del texto para indicar que es un enlace
-          pdf.setTextColor(0, 100, 200);
-          pdf.setFont('courier', 'underline');
-          pdf.text('LINK', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
+          pdf.setTextColor(0, 150, 255);
+          pdf.setFont('courier', 'bold');
+          pdf.text('✓ LINK', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
+        } else {
+          pdf.setTextColor(200, 200, 200);
+          pdf.setFont('courier', 'normal');
+          pdf.text('—', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
         }
       }
     }
