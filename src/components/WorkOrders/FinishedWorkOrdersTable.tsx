@@ -14,6 +14,7 @@ import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
 import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
+
 dayjs.extend(isBetween);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -87,9 +88,25 @@ function getWeekRange(weekStr: string) {
 
 const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
 
+// PROFESSIONAL COLOR SCHEME: Blue Dark + Grays + Accents
+const colors = {
+  primary: '#1565C0',      // Dark Blue
+  primaryDark: '#0D47A1',  // Darker Blue
+  accent: '#E3F2FD',       // Light Blue (accent)
+  success: '#388E3C',      // Green
+  warning: '#F57C00',      // Orange
+  danger: '#C62828',       // Red
+  gray100: '#F5F7FA',      // Lightest gray bg
+  gray200: '#EEEEEE',      // Light gray
+  gray300: '#E0E0E0',      // Medium-light gray
+  gray600: '#424242',      // Dark gray text
+  gray700: '#212121',      // Darker gray text
+  white:   '#FFFFFF'
+};
+
 const primaryBtn = {
-  background: '#1976d2',
-  color: '#fff',
+  background: colors.primary,
+  color: colors.white,
   border: 'none',
   padding: '8px 16px',
   borderRadius: '6px',
@@ -100,8 +117,8 @@ const primaryBtn = {
 };
 
 const dangerBtn = {
-  background: '#d32f2f',
-  color: '#fff',
+  background: colors.danger,
+  color: colors.white,
   border: 'none',
   padding: '8px 16px',
   borderRadius: '6px',
@@ -112,9 +129,9 @@ const dangerBtn = {
 };
 
 const secondaryBtn = {
-  background: '#fff',
-  color: '#1976d2',
-  border: '1px solid #1976d2',
+  background: colors.gray200,
+  color: colors.gray600,
+  border: `1px solid ${colors.gray300}`,
   padding: '8px 16px',
   borderRadius: '6px',
   fontWeight: '600',
@@ -202,9 +219,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
       setEditId('');
       setEditError('');
 
-      alert(`Work Order updated successfully. Total: ${dataToSend.totalLabAndParts}`);
+      alert(`✅ Work Order updated successfully!`);
     } catch (err) {
-      alert('Error updating Work Order.');
+      alert('❌ Error updating Work Order.');
     } finally {
       setLoading(false);
     }
@@ -479,13 +496,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
           } as any);
           setWorkOrders(workOrders.filter((order: any) => order.id !== id));
           setSelectedRow(null);
-          alert('Orden eliminada exitosamente');
+          alert('✅ Order deleted successfully');
         } catch {
-          alert('Error eliminando orden');
+          alert('❌ Error deleting order');
         }
       }
     } else if (pwd !== null) {
-      alert('Contraseña incorrecta');
+      alert('Incorrect password');
     }
   };
 
@@ -567,7 +584,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
       openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_finished.pdf`);
     } catch (error: any) {
       console.error('Error visualizando PDF:', error);
-      alert(`Error: ${error.message}`);
+      alert(`❌ Error: ${error.message}`);
     }
   };
 
@@ -577,7 +594,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
     const sku = partFromOrder.sku;
     const partInfo = inventory.find(i => i.sku === sku);
     if (partInfo) {
-      // Use custom part name and cost from the work order if available
       const customPartName = partFromOrder.part || '';
       const customCost = partFromOrder.cost || 0;
       
@@ -607,22 +623,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
       'Total Hours': order.totalHrs || 0,
       'Total $': Number(order.totalLabAndParts).toFixed(2)
     }));
-
-    // Add summary at top
-    const summarySheet = XLSX.utils.json_to_sheet([
-      {
-        'FINISHED W.O REPORT': '',
-        'Period': dateFrom && dateTo 
-          ? `${dayjs(dateFrom).format('MM/DD/YYYY')} - ${dayjs(dateTo).format('MM/DD/YYYY')}`
-          : 'All',
-        'Total W.O': stats.totalWOs,
-        'Total Revenue': `$${stats.totalRevenue.toFixed(2)}`,
-        'Average': `$${stats.averagePerWO.toFixed(2)}`,
-        '': ''
-      },
-      {},
-      ...exportData
-    ]);
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -654,7 +654,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
         workOrders: filteredOrders
       };
 
-      // Send to backend API
       await axios.post(`${API_URL}/reports/send-email`, {
         type: 'final_work_orders',
         report: reportData,
@@ -666,15 +665,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
       console.error('Error sending email report:', error);
       alert('❌ Error sending report. Try exporting to Excel manually.');
     }
-  };
-
-  const normalizeWorkOrderForEdit = (workOrder: any) => {
-    return {
-      ...workOrder,
-      date: workOrder?.date ? workOrder.date.slice(0, 10) : '',
-      parts: Array.isArray(workOrder?.parts) ? workOrder.parts : [],
-      mechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics : [],
-    };
   };
 
   const addEmptyPart = () => {
@@ -709,14 +699,14 @@ const FinishedWorkOrdersTable: React.FC = () => {
   };
 
   const modalContentStyle: React.CSSProperties = {
-    background: '#fff',
-    borderRadius: 16,
+    background: colors.white,
+    borderRadius: 12,
     padding: 32,
     minWidth: 400,
     maxWidth: 520,
     maxHeight: '80vh',
     overflowY: 'auto',
-    boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
+    boxShadow: `0 4px 24px rgba(21,101,192,0.15)`
   };
 
   return (
@@ -727,69 +717,66 @@ const FinishedWorkOrdersTable: React.FC = () => {
             border-collapse: collapse;
             width: 100%;
             min-width: 1750px;
-            background: #fff;
-            border-radius: 12px;
+            background: ${colors.white};
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 2px 12px rgba(25,118,210,0.07);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid ${colors.gray300};
             font-size: 11px;
           }
           
           .wo-table th, .wo-table td {
-            border: 1px solid #d0d7e2;
-            padding: 6px 4px;
-            font-size: 11px;
+            border: 1px solid ${colors.gray300};
+            padding: 12px 16px;
+            font-size: 12px;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
           }
           
-          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 45px; } /* ID */
-          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; } /* ID CLASSIC */
-          .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 75px; } /* Bill To Co */
-          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; } /* Trailer */
-          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 85px; } /* Mechanic */
-          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 95px; } /* Date */
-          .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 220px; white-space: normal; } /* Description */
-          .wo-table th:nth-child(8), .wo-table td:nth-child(8) { width: 65px; } /* PRT1 */
-          .wo-table th:nth-child(9), .wo-table td:nth-child(9) { width: 45px; } /* Qty1 */
-          .wo-table th:nth-child(10), .wo-table td:nth-child(10) { width: 65px; } /* Costo1 */
-          .wo-table th:nth-child(11), .wo-table td:nth-child(11) { width: 65px; } /* PRT2 */
-          .wo-table th:nth-child(12), .wo-table td:nth-child(12) { width: 45px; } /* Qty2 */
-          .wo-table th:nth-child(13), .wo-table td:nth-child(13) { width: 65px; } /* Costo2 */
-          .wo-table th:nth-child(14), .wo-table td:nth-child(14) { width: 65px; } /* PRT3 */
-          .wo-table th:nth-child(15), .wo-table td:nth-child(15) { width: 45px; } /* Qty3 */
-          .wo-table th:nth-child(16), .wo-table td:nth-child(16) { width: 65px; } /* Costo3 */
-          .wo-table th:nth-child(17), .wo-table td:nth-child(17) { width: 65px; } /* PRT4 */
-          .wo-table th:nth-child(18), .wo-table td:nth-child(18) { width: 45px; } /* Qty4 */
-          .wo-table th:nth-child(19), .wo-table td:nth-child(19) { width: 65px; } /* Costo4 */
-          .wo-table th:nth-child(20), .wo-table td:nth-child(20) { width: 65px; } /* PRT5 */
-          .wo-table th:nth-child(21), .wo-table td:nth-child(21) { width: 45px; } /* Qty5 */
-          .wo-table th:nth-child(22), .wo-table td:nth-child(22) { width: 65px; } /* Costo5 */
-          .wo-table th:nth-child(23), .wo-table td:nth-child(23) { width: 75px; } /* Total HRS */
-          .wo-table th:nth-child(24), .wo-table td:nth-child(24) { width: 110px; } /* Total LAB & PRTS */
+          .wo-table th:nth-child(1), .wo-table td:nth-child(1) { width: 60px; text-align: left; }
+          .wo-table th:nth-child(2), .wo-table td:nth-child(2) { width: 85px; text-align: left; }
+          .wo-table th:nth-child(3), .wo-table td:nth-child(3) { width: 85px; text-align: left; }
+          .wo-table th:nth-child(4), .wo-table td:nth-child(4) { width: 85px; text-align: left; }
+          .wo-table th:nth-child(5), .wo-table td:nth-child(5) { width: 100px; text-align: left; }
+          .wo-table th:nth-child(6), .wo-table td:nth-child(6) { width: 100px; text-align: left; }
+          .wo-table th:nth-child(7), .wo-table td:nth-child(7) { width: 200px; text-align: left; white-space: normal; }
+          .wo-table th:nth-child(n+8), .wo-table td:nth-child(n+8) { text-align: right; }
           
           .wo-table th {
-            background: #1976d2;
-            color: #fff;
+            background: ${colors.primary};
+            color: ${colors.white};
             font-weight: 700;
             font-size: 13px;
             position: sticky;
             top: 0;
             z-index: 10;
-            border-bottom: 2px solid #1565c0;
+            border-bottom: 2px solid ${colors.primaryDark};
           }
           
-          .wo-table tr:hover {
-            background-color: #e3f2fd !important;
+          .wo-table tbody tr {
+            background: ${colors.white};
+            border-bottom: 1px solid ${colors.gray300};
+            transition: background 0.2s;
+          }
+          
+          .wo-table tbody tr:nth-child(even) {
+            background: ${colors.gray100};
+          }
+          
+          .wo-table tbody tr:hover {
+            background: ${colors.accent} !important;
           }
           
           .wo-table tr.selected {
-            background-color: #bbdefb !important;
+            background: ${colors.accent} !important;
+            font-weight: 700;
           }
           
           .wo-row-finished {
-            background: #ffd600 !important;
-            color: #333 !important;
+            background: #FFFDE7 !important;
+            color: ${colors.gray700} !important;
+            font-weight: 600;
           }
         `}
       </style>
@@ -800,21 +787,21 @@ const FinishedWorkOrdersTable: React.FC = () => {
             position: 'fixed',
             top: tooltip.y + 10,
             left: tooltip.x + 10,
-            background: '#fff',
-            border: '1px solid #1976d2',
+            background: colors.white,
+            border: `1px solid ${colors.primary}`,
             borderRadius: 8,
-            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            boxShadow: `0 2px 8px rgba(21,101,192,0.15)`,
             padding: 16,
             zIndex: 9999,
             minWidth: 220
           }}
           onClick={hideTooltip}
         >
-          <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
-          <div><b>Part Name:</b> {tooltip.info.part || 'N/A'}</div>
-          <div><b>On Hand:</b> {tooltip.info.onHand || 'N/A'}</div>
-          <div><b>U/M:</b> {tooltip.info.um || 'N/A'}</div>
-          <div>
+          <div style={{ fontWeight: 700, color: colors.primary, marginBottom: 6 }}>Part Info</div>
+          <div style={{ fontSize: 12, color: colors.gray600 }}><b>Part Name:</b> {tooltip.info.part || 'N/A'}</div>
+          <div style={{ fontSize: 12, color: colors.gray600 }}><b>On Hand:</b> {tooltip.info.onHand || 'N/A'}</div>
+          <div style={{ fontSize: 12, color: colors.gray600 }}><b>U/M:</b> {tooltip.info.um || 'N/A'}</div>
+          <div style={{ fontSize: 12, color: colors.gray600, marginTop: 4 }}>
             <b>Precio:</b>{" "}
             {tooltip.info.precio
               ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -823,89 +810,78 @@ const FinishedWorkOrdersTable: React.FC = () => {
         </div>
       )}
 
-      <div
-        style={{
-          padding: '32px',
-          background: 'linear-gradient(90deg, #fff9c4 0%, #ffffff 100%)',
-          borderRadius: 16,
-          boxShadow: '0 4px 24px rgba(255, 193, 7, 0.10)',
-          maxWidth: 1800,
-          margin: '32px auto'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: '#ffd600',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-          >
-            <span style={{ color: '#333', fontWeight: 'bold', fontSize: 22 }}>✓</span>
-          </div>
-          <span
-            style={{
-              fontSize: 32,
+      <div style={{ padding: 24, background: colors.gray100, minHeight: '100vh' }}>
+        {/* Professional Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '20px 24px',
+          marginBottom: 24,
+          background: colors.primary,
+          borderRadius: 8,
+          boxShadow: `0 2px 8px rgba(21,101,192,0.15)`
+        }}>
+          <div>
+            <div style={{
+              fontSize: 24,
               fontWeight: 700,
-              color: '#ffd600',
-              letterSpacing: 2,
-              textShadow: '1px 1px 0 #fff',
-            }}
-          >
-            FINAL WORK ORDERS
-          </span>
-          <div style={{ marginLeft: 'auto', fontSize: 14, color: '#666', fontWeight: '500' }}>
-            📋 Total: {filteredOrders.length} | 💰 ${stats.totalRevenue.toFixed(2)}
+              color: colors.white,
+              letterSpacing: 0.5,
+            }}>
+              📋 FINALIZED WORK ORDERS
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4, fontWeight: 500 }}>
+              Historical records & analytics
+            </div>
+          </div>
+          <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+            <div style={{ fontSize: 16, color: colors.accent, fontWeight: 600 }}>
+              {filteredOrders.length} Records
+            </div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: 500, marginTop: 4 }}>
+              💰 ${stats.totalRevenue.toFixed(2)}
+            </div>
           </div>
         </div>
 
-        {/* Admin Filter Section - Redesigned */}
+        {/* Filter Section - Professional */}
         <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: 12,
-          padding: 24,
+          background: colors.white,
+          borderRadius: 8,
           marginBottom: 24,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          border: `1px solid ${colors.gray300}`,
+          overflow: 'hidden'
         }}>
-          <div style={{ 
-            fontSize: 16, 
-            fontWeight: 700, 
-            color: '#fff', 
-            marginBottom: 20,
+          {/* Filter Header */}
+          <div style={{
+            background: colors.primary,
+            padding: '16px 24px',
             display: 'flex',
             alignItems: 'center',
-            gap: 10
+            gap: 12
           }}>
-            <span style={{ fontSize: 24 }}>🔎</span>
-            <span>FILTER & ANALYTICS</span>
+            <span style={{ fontSize: 20 }}>🔍</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: colors.white, letterSpacing: 0.5 }}>FILTERS & ANALYTICS</span>
           </div>
 
           {/* Filters Grid */}
-          <div style={{ 
-            background: 'rgba(255,255,255,0.95)', 
-            borderRadius: 8, 
-            padding: 20,
-            marginBottom: 16
-          }}>
+          <div style={{ padding: '24px', borderBottom: `1px solid ${colors.gray300}` }}>
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-              gap: 16,
-              marginBottom: 16
+              gap: 20,
+              marginBottom: 0
             }}>
-              {/* Client Filter - Required */}
+              {/* Client Filter */}
               <div>
                 <label style={{ 
-                  fontSize: 12, 
+                  fontSize: 11, 
                   fontWeight: 700, 
-                  color: '#667eea', 
+                  color: colors.gray600, 
                   display: 'block', 
-                  marginBottom: 6,
+                  marginBottom: 8,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
@@ -917,14 +893,14 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '2px solid #667eea',
+                    border: `1px solid ${colors.gray300}`,
                     borderRadius: 6,
                     fontSize: 14,
-                    fontWeight: 600,
+                    fontWeight: 500,
                     fontFamily: 'inherit',
-                    background: '#fff',
+                    background: colors.white,
                     cursor: 'pointer',
-                    transition: 'all 0.2s'
+                    color: colors.gray600
                   }}
                 >
                   <option value="">Select Client...</option>
@@ -938,11 +914,11 @@ const FinishedWorkOrdersTable: React.FC = () => {
               {/* Date From */}
               <div>
                 <label style={{ 
-                  fontSize: 12, 
+                  fontSize: 11, 
                   fontWeight: 700, 
-                  color: '#667eea', 
+                  color: colors.gray600, 
                   display: 'block', 
-                  marginBottom: 6,
+                  marginBottom: 8,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
@@ -955,11 +931,12 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '2px solid #ddd',
+                    border: `1px solid ${colors.gray300}`,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
-                    background: '#fff'
+                    background: colors.white,
+                    color: colors.gray600
                   }}
                 />
               </div>
@@ -967,11 +944,11 @@ const FinishedWorkOrdersTable: React.FC = () => {
               {/* Date To */}
               <div>
                 <label style={{ 
-                  fontSize: 12, 
+                  fontSize: 11, 
                   fontWeight: 700, 
-                  color: '#667eea', 
+                  color: colors.gray600, 
                   display: 'block', 
-                  marginBottom: 6,
+                  marginBottom: 8,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
@@ -984,11 +961,12 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '2px solid #ddd',
+                    border: `1px solid ${colors.gray300}`,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
-                    background: '#fff'
+                    background: colors.white,
+                    color: colors.gray600
                   }}
                 />
               </div>
@@ -996,11 +974,11 @@ const FinishedWorkOrdersTable: React.FC = () => {
               {/* Search */}
               <div>
                 <label style={{ 
-                  fontSize: 12, 
+                  fontSize: 11, 
                   fontWeight: 700, 
-                  color: '#667eea', 
+                  color: colors.gray600, 
                   display: 'block', 
-                  marginBottom: 6,
+                  marginBottom: 8,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
@@ -1014,28 +992,33 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    border: '2px solid #ddd',
+                    border: `1px solid ${colors.gray300}`,
                     borderRadius: 6,
                     fontSize: 14,
                     fontFamily: 'inherit',
-                    background: '#fff'
+                    background: colors.white,
+                    color: colors.gray600
                   }}
                 />
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 20 }}>
               <button 
                 style={{
-                  ...secondaryBtn,
-                  padding: '10px 20px',
+                  padding: '10px 18px',
                   fontSize: 13,
                   fontWeight: 600,
                   borderRadius: 6,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6
+                  gap: 6,
+                  background: colors.gray200,
+                  color: colors.gray600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
                 }} 
                 onClick={handleResetFilters}
               >
@@ -1043,15 +1026,18 @@ const FinishedWorkOrdersTable: React.FC = () => {
               </button>
               <button 
                 style={{
-                  ...primaryBtn,
-                  padding: '10px 20px',
+                  padding: '10px 18px',
                   fontSize: 13,
                   fontWeight: 600,
                   borderRadius: 6,
-                  background: '#43a047',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6
+                  gap: 6,
+                  background: colors.success,
+                  color: colors.white,
+                  border: 'none',
+                  cursor: !selectedClient || selectedClient === '' ? 'not-allowed' : 'pointer',
+                  opacity: !selectedClient || selectedClient === '' ? 0.5 : 1
                 }} 
                 onClick={exportToExcel}
                 disabled={!selectedClient || selectedClient === ''}
@@ -1060,15 +1046,18 @@ const FinishedWorkOrdersTable: React.FC = () => {
               </button>
               <button 
                 style={{
-                  ...primaryBtn,
-                  padding: '10px 20px',
+                  padding: '10px 18px',
                   fontSize: 13,
                   fontWeight: 600,
                   borderRadius: 6,
-                  background: '#ff9800',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6
+                  gap: 6,
+                  background: colors.warning,
+                  color: colors.white,
+                  border: 'none',
+                  cursor: !selectedClient || selectedClient === '' ? 'not-allowed' : 'pointer',
+                  opacity: !selectedClient || selectedClient === '' ? 0.5 : 1
                 }} 
                 onClick={handleSendEmailReport}
                 disabled={!selectedClient || selectedClient === ''}
@@ -1078,61 +1067,71 @@ const FinishedWorkOrdersTable: React.FC = () => {
             </div>
           </div>
 
-          {/* Stats Cards - Only show when client selected */}
+          {/* Stats Cards */}
           {selectedClient && selectedClient !== '' && (
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', 
-              gap: 12
+              gap: 16,
+              padding: '24px',
+              background: colors.gray100
             }}>
               <div style={{ 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                borderRadius: 10, 
-                padding: 16, 
+                background: colors.white,
+                borderRadius: 8, 
+                padding: '16px',
                 textAlign: 'center',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                border: `1px solid ${colors.gray300}`,
+                borderLeft: `4px solid ${colors.primary}`
               }}>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
-                  Total W.O
+                <div style={{ fontSize: 10, color: '#90A4AE', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Total Work Orders
                 </div>
-                <div style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{stats.totalWOs}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: colors.primary }}>{stats.totalWOs}</div>
               </div>
               <div style={{ 
-                background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)', 
-                borderRadius: 10, 
-                padding: 16, 
+                background: colors.white,
+                borderRadius: 8, 
+                padding: '16px',
                 textAlign: 'center',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                border: `1px solid ${colors.gray300}`,
+                borderLeft: `4px solid ${colors.success}`
               }}>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 10, color: '#90A4AE', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Total Revenue
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>${stats.totalRevenue.toFixed(2)}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: colors.success }}>${stats.totalRevenue.toFixed(2)}</div>
               </div>
               <div style={{ 
-                background: 'linear-gradient(135deg, #ff9800 0%, #e65100 100%)', 
-                borderRadius: 10, 
-                padding: 16, 
+                background: colors.white,
+                borderRadius: 8, 
+                padding: '16px',
                 textAlign: 'center',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                border: `1px solid ${colors.gray300}`,
+                borderLeft: `4px solid ${colors.warning}`
               }}>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
-                  Average per W.O
+                <div style={{ fontSize: 10, color: '#90A4AE', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Average Per Order
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>${stats.averagePerWO.toFixed(2)}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: colors.warning }}>${stats.averagePerWO.toFixed(2)}</div>
               </div>
               {stats.topClients.length > 0 && (
                 <div style={{ 
-                  background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)', 
-                  borderRadius: 10, 
-                  padding: 16, 
+                  background: colors.white,
+                  borderRadius: 8, 
+                  padding: '16px',
                   textAlign: 'center',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                  border: `1px solid ${colors.gray300}`,
+                  borderLeft: `4px solid ${colors.danger}`
                 }}>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: 10, color: '#90A4AE', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Top Client
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: colors.danger, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {stats.topClients[0].name}
                   </div>
                 </div>
@@ -1143,50 +1142,52 @@ const FinishedWorkOrdersTable: React.FC = () => {
           {/* No client selected message */}
           {(!selectedClient || selectedClient === '') && (
             <div style={{
-              background: 'rgba(255,255,255,0.95)',
-              borderRadius: 8,
-              padding: 20,
+              padding: '32px 24px',
               textAlign: 'center',
-              color: '#666',
-              fontSize: 14,
-              fontWeight: 600
+              background: colors.gray100,
+              borderTop: `1px solid ${colors.gray300}`
             }}>
-              ⚠️ Please select a client to view work orders and statistics
+              <div style={{ fontSize: 16, color: '#90A4AE', fontWeight: 600 }}>
+                ⚠️ Select a client to view orders and analytics
+              </div>
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, gap: 8 }}>
-          <label style={{ fontWeight: 600, fontSize: 14, color: '#666' }}>
-            Filter by week:&nbsp;
-            <input
-              type="week"
-              value={selectedWeek}
-              onChange={e => setSelectedWeek(e.target.value)}
-              style={{ padding: '8px 10px', border: '2px solid #ddd', borderRadius: 6, fontSize: 14 }}
-            />
-          </label>
-          <label style={{ fontWeight: 600, fontSize: 14, color: '#666' }}>
-            Filter by day:&nbsp;
-            <input
-              type="date"
-              value={selectedDay}
-              onChange={e => setSelectedDay(e.target.value)}
-              style={{ padding: '8px 10px', border: '2px solid #ddd', borderRadius: 6, fontSize: 14 }}
-            />
-          </label>
-        </div>
-
-        <div style={{ margin: '24px 0 16px 0' }}>
-          <button style={primaryBtn} onClick={handleEdit} disabled={selectedRow === null}>
-            ✏️ Edit
-          </button>
-          <button style={dangerBtn} onClick={() => selectedRow !== null && handleDelete(selectedRow)} disabled={selectedRow === null}>
-            🗑️ Delete
-          </button>
-          <button style={secondaryBtn} disabled={selectedRow === null} onClick={() => selectedRow !== null && handleViewPDF(selectedRow)}>
-            📄 View PDF
-          </button>
+        {/* Additional Filters */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <label style={{ fontWeight: 600, fontSize: 13, color: colors.gray600, display: 'flex', alignItems: 'center', gap: 8 }}>
+              📅 Filter by week:
+              <input
+                type="week"
+                value={selectedWeek}
+                onChange={e => setSelectedWeek(e.target.value)}
+                style={{ padding: '8px 12px', border: `1px solid ${colors.gray300}`, borderRadius: 6, fontSize: 13 }}
+              />
+            </label>
+            <label style={{ fontWeight: 600, fontSize: 13, color: colors.gray600, display: 'flex', alignItems: 'center', gap: 8 }}>
+              📆 Filter by day:
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={e => setSelectedDay(e.target.value)}
+                style={{ padding: '8px 12px', border: `1px solid ${colors.gray300}`, borderRadius: 6, fontSize: 13 }}
+              />
+            </label>
+          </div>
+          
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button style={{ ...primaryBtn, padding: '10px 18px' }} onClick={handleEdit} disabled={selectedRow === null}>
+              ✏️ Edit
+            </button>
+            <button style={{ ...dangerBtn, padding: '10px 18px' }} onClick={() => selectedRow !== null && handleDelete(selectedRow)} disabled={selectedRow === null}>
+              🗑️ Delete
+            </button>
+            <button style={{ ...secondaryBtn, padding: '10px 18px' }} disabled={selectedRow === null} onClick={() => selectedRow !== null && handleViewPDF(selectedRow)}>
+              📄 View PDF
+            </button>
+          </div>
         </div>
 
         {showEditForm && (
@@ -1194,15 +1195,15 @@ const FinishedWorkOrdersTable: React.FC = () => {
             <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
               <div style={{
                 marginBottom: 24,
-                border: '1px solid #ffd600',
-                background: '#fffbe6',
+                border: `1px solid ${colors.primary}`,
+                background: colors.accent,
                 borderRadius: 8,
                 padding: 24,
               }}>
-                <h2 style={{ color: '#ffd600', marginBottom: 12 }}>Edit Finished Work Order</h2>
+                <h2 style={{ color: colors.primary, marginBottom: 12 }}>Edit Finished Work Order</h2>
                 {editWorkOrder && (
                   <>
-                    <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
+                    <div style={{ marginBottom: 12, fontWeight: 'bold', color: colors.primary }}>
                       ID: {editWorkOrder.id} | ID CLASSIC: {editWorkOrder.idClassic}
                     </div>
                     <WorkOrderForm
@@ -1227,7 +1228,14 @@ const FinishedWorkOrdersTable: React.FC = () => {
           </div>
         )}
 
-        <div style={{ overflowX: 'auto', marginTop: 24 }}>
+        {/* Table Container */}
+        <div style={{ 
+          background: colors.white,
+          borderRadius: 8,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          border: `1px solid ${colors.gray300}`,
+          overflowX: 'auto'
+        }}>
           <table className="wo-table">
             <thead>
               <tr>
@@ -1246,14 +1254,14 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   </React.Fragment>
                 ))}
                 <th>Total HRS</th>
-                <th>Total LAB & PRTS</th>
+                <th>Total Amount</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders
                 .slice()
                 .sort((a, b) => (new Date(b.date).getTime()) - (new Date(a.date).getTime()))
-                .map((order) => {
+                .map((order, idx) => {
                   const dateStr = (order.date || '').slice(0, 10);
                   const [yyyy, mm, dd] = dateStr.split('-');
                   const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
@@ -1262,7 +1270,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                     <tr
                       key={order.id}
                       className={'wo-row-finished' + (selectedRow === order.id ? ' selected' : '')}
-                      style={{ cursor: 'pointer', fontWeight: 600 }}
+                      style={{ cursor: 'pointer', fontWeight: '600' }}
                       onClick={() => setSelectedRow(order.id)}
                       onContextMenu={e => {
                         e.preventDefault();
@@ -1270,21 +1278,20 @@ const FinishedWorkOrdersTable: React.FC = () => {
                         setContextMenu({ visible: true, x: e.clientX, y: e.clientY, order });
                       }}
                     >
-                      <td>{order.id}</td>
-                      <td>{order.idClassic || ''}</td>
-                      <td>{order.billToCo}</td>
-                      <td>{order.trailer}</td>
-                      <td>
+                      <td style={{ color: colors.primary, fontWeight: 700 }}>{order.id}</td>
+                      <td style={{ color: colors.gray600 }}>{order.idClassic || '-'}</td>
+                      <td style={{ color: colors.gray600, fontWeight: 600 }}>{order.billToCo}</td>
+                      <td style={{ color: colors.gray600, fontWeight: 600 }}>{order.trailer}</td>
+                      <td style={{ color: colors.gray600 }}>
                         {Array.isArray(order.mechanics) && order.mechanics.length > 0
                           ? order.mechanics.map((m: any) => m.name).join(', ')
                           : order.mechanic}
                       </td>
-                      <td>{displayDate}</td>
-                      <td style={{ maxWidth: 220, whiteSpace: 'normal' }}>{order.description}</td>
+                      <td style={{ color: colors.primary, fontWeight: 600 }}>{displayDate}</td>
+                      <td style={{ color: colors.gray600 }}>{order.description}</td>
                       {[0,1,2,3,4].map(i => (
                         <React.Fragment key={i}>
-                          <td
-                            style={{ cursor: order.parts && order.parts[i] && order.parts[i].sku ? 'pointer' : 'default', color: '#1976d2' }}
+                          <td style={{ color: colors.primary, fontWeight: 600 }}
                             onMouseEnter={order.parts && order.parts[i] && order.parts[i].sku
                               ? (e) => handlePartHover(e, order.parts[i])
                               : undefined
@@ -1293,8 +1300,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
                           >
                             {order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].sku : ''}
                           </td>
-                          <td>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
-                          <td>
+                          <td style={{ color: colors.gray600 }}>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
+                          <td style={{ color: colors.gray600 }}>
                             {order.parts && order.parts[i] && order.parts[i].sku
                               ? (
                                   order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
@@ -1306,8 +1313,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
                           </td>
                         </React.Fragment>
                       ))}
-                      <td>{order.totalHrs}</td>
-                      <td>
+                      <td style={{ color: colors.gray600, fontWeight: 600 }}>{order.totalHrs}</td>
+                      <td style={{ color: colors.success, fontWeight: 700 }}>
                         {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null
                           ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                           : '$0.00'}
@@ -1326,10 +1333,10 @@ const FinishedWorkOrdersTable: React.FC = () => {
             position: 'fixed',
             top: contextMenu.y,
             left: contextMenu.x,
-            background: '#fff',
-            border: '2px solid #ffd600',
-            borderRadius: 12,
-            boxShadow: '0 4px 16px rgba(255,193,7,0.18)',
+            background: colors.white,
+            border: `1px solid ${colors.gray300}`,
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
             zIndex: 9999,
             minWidth: 180,
             padding: '0',
@@ -1341,7 +1348,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           onClick={e => e.stopPropagation()}
         >
           <button
-            style={{ background: '#ffd600', color: '#333', fontWeight: 700, fontSize: 14, padding: '12px 0', border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer' }}
+            style={{ background: colors.primary, color: colors.white, fontWeight: 700, fontSize: 13, padding: '12px 0', border: 'none', borderBottom: `1px solid ${colors.gray300}`, cursor: 'pointer', transition: 'all 0.2s' }}
             onClick={async () => {
               const pwd = window.prompt('Enter password (Level 3):');
               if (pwd === '6214') {
@@ -1355,7 +1362,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
             ✏️ Edit
           </button>
           <button
-            style={{ background: '#d32f2f', color: '#fff', fontWeight: 700, fontSize: 14, padding: '12px 0', border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer' }}
+            style={{ background: colors.danger, color: colors.white, fontWeight: 700, fontSize: 13, padding: '12px 0', border: 'none', borderBottom: `1px solid ${colors.gray300}`, cursor: 'pointer', transition: 'all 0.2s' }}
             onClick={() => {
               handleDelete(contextMenu.order.id);
               setContextMenu({ ...contextMenu, visible: false });
@@ -1364,7 +1371,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
             🗑️ Delete
           </button>
           <button
-            style={{ background: '#1976d2', color: '#fff', fontWeight: 700, fontSize: 14, padding: '12px 0', border: 'none', cursor: 'pointer' }}
+            style={{ background: colors.primaryDark, color: colors.white, fontWeight: 700, fontSize: 13, padding: '12px 0', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
             onClick={() => {
               setContextMenu({ ...contextMenu, visible: false });
               handleViewPDF(contextMenu.order.id);
@@ -1386,14 +1393,22 @@ const FinishedWorkOrdersTable: React.FC = () => {
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(255,255,255,0.7)',
+          background: 'rgba(0,0,0,0.5)',
           zIndex: 2000,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <div style={{ color: '#ffd600', fontWeight: 700, fontSize: 20 }}>
-            Procesando...
+          <div style={{ 
+            color: colors.primary, 
+            fontWeight: 700, 
+            fontSize: 18,
+            background: colors.white,
+            padding: '24px 32px',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          }}>
+            ⏳ Processing...
           </div>
         </div>
       )}
