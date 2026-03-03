@@ -219,120 +219,126 @@ const WorkOrdersTable: React.FC = () => {
         miscellaneous: miscToSend,
         weldPercent: weldToSend
       };
+      
+      // OPTIMIZATION: Run critical updates in parallel and defer PDF generation
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
-      // Mark pending parts as used
+      
+      // Mark pending parts as used in parallel
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
-      for (const part of partesConPendingId) {
-        try {
-          await axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
-            usuario: localStorage.getItem('username') || ''
-          });
-        } catch (error) {}
-      }
       if (partesConPendingId.length > 0) {
-        await fetchTrailersWithPendingParts();
-      }
-      // Generate new PDF after edit
-      try {
-        const workOrderRes = await axios.get(`${API_URL}/work-orders/${editWorkOrder.id}`);
-        const workOrderData = workOrderRes.data as any;
-        const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
-        const partsWithInvoices = (partsRes.data as any[]).map((part: any) => ({
-          ...part,
-          part: part.part || part.part_name || part.description || ''  // Asegurar que tenga el campo 'part'
-        }));
-        // Usar SIEMPRE el valor que el usuario puso en el formulario, sin recalcular ni modificar
-        const pdfData = {
-          id: workOrderData.id,
-          idClassic: workOrderData.idClassic || workOrderData.id.toString(),
-          customer: workOrderData.billToCo || workOrderData.customer || '',
-          trailer: workOrderData.trailer || '',
-          // Usar SIEMPRE el valor exacto que el usuario seleccionó/guardó
-          date: workOrderData.date || workOrderData.fecha || '',
-          mechanics: Array.isArray(workOrderData.mechanics)
-            ? workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ')
-            : workOrderData.mechanics || workOrderData.mechanic || '',
-          description: workOrderData.description || '',
-          status: workOrderData.status || editWorkOrder.status || 'PROCESSING',
-          parts: partsWithInvoices.map((part: any) => ({
-            sku: part.sku,
-            description: part.part || part.part_name || part.sku,
-            um: 'EA',
-            qty: part.qty_used,
-            unitCost: part.cost || 0,
-            total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
-              ? Number(part.qty_used) * Number(part.cost)
-              : 0,
-            invoice: part.invoice_number || 'N/A',
-            invoiceLink: part.invoice_link
-          })),
-          totalHrs: Number(workOrderData.totalHrs) || 0,
-          laborRate: 60,
-          laborCost: Number(workOrderData.laborCost) || 0,
-          subtotalParts: Number(workOrderData.subtotalParts) || 0,
-          // Usar SIEMPRE el valor exacto que el usuario editó/calculó, sin recalcular ni modificar
-          totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
-          totalCost: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
-          extraOptions: editWorkOrder.extraOptions || extraOptions || [],
-          // NUEVO: Agregar el porcentaje de Miscellaneous EXACTO que el usuario colocó
-          miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
-            ? Number(workOrderData.miscellaneous)
-            : (typeof dataToSend.miscellaneous !== 'undefined' && dataToSend.miscellaneous !== null && dataToSend.miscellaneous !== '')
-              ? Number(dataToSend.miscellaneous)
-              : 0,
-          weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
-            ? Number(workOrderData.weldPercent)
-            : (typeof dataToSend.weldPercent !== 'undefined' && dataToSend.weldPercent !== null && dataToSend.weldPercent !== '')
-              ? Number(dataToSend.weldPercent)
-              : 0
-        };
-        const pdf = await generateWorkOrderPDF(pdfData);
-        const pdfBlob = pdf.output('blob');
-        try {
-          await savePDFToDatabase(editWorkOrder.id, pdfBlob);
-        } catch (dbError) {}
-        openPDFInNewTab(pdf, `work_order_${workOrderData.idClassic || editWorkOrder.id}.pdf`);
-        openInvoiceLinks(pdfData.parts);
-        await axios.post(`${API_URL}/work-orders/${editWorkOrder.id}/generate-pdf`);
-      } catch (pdfError) {}
-      await fetchWorkOrders();
-      await fetchTrailersWithPendingParts();
-      
-      // 🔄 REFRESCAR INVENTARIO para reflejar cambios
-      try {
-        const invRes = await axios.get(`${API_URL}/inventory`);
-        const updatedInventory = Array.isArray(invRes.data) ? invRes.data : [];
-        setInventory(updatedInventory);
-        console.log('✅ Inventario refrescado después de editar W.O');
-      } catch (invError) {
-        console.warn('⚠️ No se pudo refrescar inventario:', invError);
+        await Promise.all(
+          partesConPendingId.map((part: any) =>
+            axios.put(`${API_URL}/receive/${part._pendingPartId}/mark-used`, {
+              usuario: localStorage.getItem('username') || ''
+            }).catch(error => console.warn('Error marking part as used:', error))
+          )
+        );
       }
       
+      // Update state immediately (fast)
       setWorkOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === editWorkOrder.id
             ? { ...order, ...editWorkOrder, ...data,
-                // Asegura que el total nunca sea NaN ni undefined
                 totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
                 date: dataToSend.date || editWorkOrder.date || ''
               }
             : order
         )
       );
+      
+      // Close form immediately - don't wait for PDF or refresh
       setShowEditForm(false);
       setEditWorkOrder(null);
       setEditId('');
       setEditError('');
-      // Always show a valid total value in the alert
+      
+      // Show success alert
       let totalValue = dataToSend.totalLabAndParts;
       if (!totalValue || isNaN(Number(String(totalValue).replace(/[^0-9.]/g, '')))) {
         totalValue = '$0.00';
       }
-      alert(`Work Order updated successfully and PDF regenerated. Total: ${totalValue}`);
-    } catch (err) {
-      alert('Error updating Work Order.');
-    } finally {
+      alert(`Work Order updated successfully!`);
+      
+      // DEFERRED OPERATIONS (non-blocking, run in background)
+      // Refresh data asynchronously without blocking the UI
+      Promise.all([
+        fetchWorkOrders().catch(e => console.warn('Error fetching orders:', e)),
+        fetchTrailersWithPendingParts().catch(e => console.warn('Error fetching pending parts:', e)),
+        axios.get(`${API_URL}/inventory`)
+          .then(invRes => {
+            const updatedInventory = Array.isArray(invRes.data) ? invRes.data : [];
+            setInventory(updatedInventory);
+            console.log('✅ Inventario refrescado después de editar W.O');
+          })
+          .catch(invError => console.warn('⚠️ No se pudo refrescar inventario:', invError))
+      ]).catch(e => console.warn('Error in deferred operations:', e));
+      
+      // DEFERRED: Generate PDF in background (don't wait for it)
+      (async () => {
+        try {
+          const workOrderRes = await axios.get(`${API_URL}/work-orders/${editWorkOrder.id}`);
+          const workOrderData = workOrderRes.data as any;
+          const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
+          const partsWithInvoices = (partsRes.data as any[]).map((part: any) => ({
+            ...part,
+            part: part.part || part.part_name || part.description || ''
+          }));
+          
+          const pdfData = {
+            id: workOrderData.id,
+            idClassic: workOrderData.idClassic || workOrderData.id.toString(),
+            customer: workOrderData.billToCo || workOrderData.customer || '',
+            trailer: workOrderData.trailer || '',
+            date: workOrderData.date || workOrderData.fecha || '',
+            mechanics: Array.isArray(workOrderData.mechanics)
+              ? workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ')
+              : workOrderData.mechanics || workOrderData.mechanic || '',
+            description: workOrderData.description || '',
+            status: workOrderData.status || editWorkOrder.status || 'PROCESSING',
+            parts: partsWithInvoices.map((part: any) => ({
+              sku: part.sku,
+              description: part.part || part.part_name || part.sku,
+              um: 'EA',
+              qty: part.qty_used,
+              unitCost: part.cost || 0,
+              total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
+                ? Number(part.qty_used) * Number(part.cost)
+                : 0,
+              invoice: part.invoice_number || 'N/A',
+              invoiceLink: part.invoice_link
+            })),
+            totalHrs: Number(workOrderData.totalHrs) || 0,
+            laborRate: 60,
+            laborCost: Number(workOrderData.laborCost) || 0,
+            subtotalParts: Number(workOrderData.subtotalParts) || 0,
+            totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
+            totalCost: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
+            extraOptions: editWorkOrder.extraOptions || extraOptions || [],
+            miscellaneousPercent: (typeof workOrderData.miscellaneous !== 'undefined' && workOrderData.miscellaneous !== null && workOrderData.miscellaneous !== '')
+              ? Number(workOrderData.miscellaneous)
+              : (typeof dataToSend.miscellaneous !== 'undefined' && dataToSend.miscellaneous !== null && dataToSend.miscellaneous !== '')
+                ? Number(dataToSend.miscellaneous)
+                : 0,
+            weldPercent: (typeof workOrderData.weldPercent !== 'undefined' && workOrderData.weldPercent !== null && workOrderData.weldPercent !== '')
+              ? Number(workOrderData.weldPercent)
+              : (typeof dataToSend.weldPercent !== 'undefined' && dataToSend.weldPercent !== null && dataToSend.weldPercent !== '')
+                ? Number(dataToSend.weldPercent)
+                : 0
+          };
+          
+          const pdf = await generateWorkOrderPDF(pdfData);
+          await savePDFToDatabase(editWorkOrder.id, pdf.output('blob')).catch(e => console.warn('Error saving PDF:', e));
+          console.log('✅ PDF generado y guardado en background');
+        } catch (pdfError) {
+          console.warn('⚠️ Error generando PDF en background:', pdfError);
+        }
+      })();
+      
       setLoading(false);
+    } catch (err: any) {
+      setLoading(false);
+      alert(`Error updating Work Order: ${err.message}`);
     }
   };
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
@@ -652,16 +658,26 @@ const WorkOrdersTable: React.FC = () => {
     // Excluir W.O. con status FINISHED (van al apartado FINAL WORK ORDERS)
     if (order.status === 'FINISHED') return false;
 
-    // Si no hay filtro de semana, no filtra por semana
+    // Filter by week
     let inWeek = true;
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
       const orderDate = dayjs(order.date.slice(0, 10));
       inWeek = orderDate.isBetween(start, end, 'day', '[]');
-    }    const matchesStatus = !statusFilter || order.status === statusFilter;
+    }
+    
+    // Filter by status
+    const matchesStatus = !statusFilter || order.status === statusFilter;
+    
+    // Filter by day
     const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
+    
+    // Filter by ID Classic (search)
+    const matchesSearch = !searchIdClassic || 
+      (order.idClassic && String(order.idClassic).toLowerCase().includes(searchIdClassic.toLowerCase())) ||
+      (String(order.id).toLowerCase().includes(searchIdClassic.toLowerCase()));
 
-    return inWeek && matchesStatus && matchesDay;
+    return inWeek && matchesStatus && matchesDay && matchesSearch;
   });
 
   // Cambios generales
@@ -2191,75 +2207,6 @@ const WorkOrdersTable: React.FC = () => {
           </label>
         </div>
         
-        {/* Indicador de Estado del Servidor */}
-        <div style={{ 
-          margin: '12px 0', 
-          padding: '12px 16px', 
-          backgroundColor: serverStatus === 'online' ? '#e8f5e8' : 
-                           serverStatus === 'waking' ? '#fff3cd' : '#f8d7da',
-          borderRadius: '8px',
-          border: `1px solid ${serverStatus === 'online' ? '#28a745' : 
-                                serverStatus === 'waking' ? '#ffc107' : '#dc3545'}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ 
-              fontSize: '14px', 
-              fontWeight: '600',
-              color: serverStatus === 'online' ? '#155724' : 
-                     serverStatus === 'waking' ? '#856404' : '#721c24'
-            }}>
-              {serverStatus === 'online' && '🟢 Server Online'}
-              {serverStatus === 'waking' && '🟡 Server Waking Up...'}
-              {serverStatus === 'offline' && '🔴 Server Offline'}
-            </span>
-            {fetchingData && (
-              <span style={{ fontSize: '12px', color: '#6c757d' }}>
-                🔄 Loading data...
-              </span>
-            )}
-          </div>
-          
-          {/* Botón para despertar servidor manualmente */}
-          {(serverStatus === 'offline' || serverStatus === 'waking') && (
-            <button
-              onClick={async () => {
-                console.log('🚀 Intentando despertar servidor manualmente...');
-                setServerStatus('waking');
-                setRetryCount(0); // Reset counter
-                try {
-                  const success = await keepAliveService.manualPing();
-                  if (success) {
-                    console.log('✅ Servidor despertado, recargando datos...');
-                    await fetchWorkOrders();
-                  } else {
-                    console.log('⚠️ No se pudo despertar el servidor, reintentando...');
-                    setTimeout(() => fetchWorkOrders(), 5000);
-                  }
-                } catch (error) {
-                  console.error('❌ Error despertando servidor:', error);
-                  setTimeout(() => fetchWorkOrders(), 10000);
-                }
-              }}
-              disabled={fetchingData}
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: fetchingData ? 'not-allowed' : 'pointer',
-                fontWeight: '600'
-              }}
-            >
-              {fetchingData ? '🔄 Trying...' : '🚀 Wake Server'}
-            </button>
-          )}
-        </div>
-        
         {/* Controles de Paginación */}
         {!searchIdClassic && totalPages > 1 && (
           <div style={{ 
@@ -2440,39 +2387,6 @@ const WorkOrdersTable: React.FC = () => {
             onClick={() => setShowHourmeter(true)}
           >
             Hourmeter
-          </button>          <button
-            className="wo-btn"
-            style={secondaryBtn}
-            disabled={selectedRow === null}
-            onClick={() => {
-              if (selectedRow !== null) {
-                // Debug: Mostrar datos de la Work Order seleccionada
-                const selectedWorkOrder = workOrders.find(wo => wo.id === selectedRow);
-                console.log('🔍 Work Order seleccionada para PDF:', selectedWorkOrder);
-                console.log('📊 Campos disponibles:', selectedWorkOrder ? Object.keys(selectedWorkOrder) : 'No encontrada');
-                
-                if (selectedWorkOrder) {
-                  console.log('📋 Detalles de la WO:', {
-                    id: selectedWorkOrder.id,
-                    idClassic: selectedWorkOrder.idClassic,
-                    billToCo: selectedWorkOrder.billToCo,
-                    customer: selectedWorkOrder.customer,
-                    trailer: selectedWorkOrder.trailer,
-                    date: selectedWorkOrder.date,
-                    mechanic: selectedWorkOrder.mechanic,
-                    mechanics: selectedWorkOrder.mechanics,
-                    totalHrs: selectedWorkOrder.totalHrs,
-                    totalLabAndParts: selectedWorkOrder.totalLabAndParts,
-                    parts: selectedWorkOrder.parts,
-                    partsLength: selectedWorkOrder.parts ? selectedWorkOrder.parts.length : 0
-                  });
-                }
-                
-                handleViewPDF(selectedRow);
-              }
-            }}
-          >
-            View PDF
           </button>
         </div>
 
