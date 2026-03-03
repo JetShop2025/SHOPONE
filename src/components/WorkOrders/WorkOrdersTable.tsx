@@ -1850,6 +1850,15 @@ const WorkOrdersTable: React.FC = () => {
             background-color: #e3f2fd !important;
           }
           
+          /* MISSING PARTS no debe tener hover ni transitions que bloqueen la animación */
+          .wo-table tr.missing-parts-row {
+            transition: none !important;
+          }
+          
+          .wo-table tr.missing-parts-row:hover {
+            background-color: transparent !important;
+          }
+          
           .wo-table tr.selected {
             background-color: #bbdefb !important;
           }
@@ -1920,12 +1929,6 @@ const WorkOrdersTable: React.FC = () => {
               background-color: #f44336 !important; 
               color: #ffffff !important; 
             }
-          }
-          
-          .missing-parts-row {
-            animation: missingPartsBlink 1s ease-in-out infinite !important;
-            font-weight: 700 !important;
-            border: 2px solid #f44336 !important;
           }
           
           .reconnect-btn {
@@ -2001,25 +2004,31 @@ const WorkOrdersTable: React.FC = () => {
           }
           
           /* Colores por estatus */
-          .wo-row-approved {
+          .wo-table .wo-row-approved {
             background: #43a047 !important; /* Verde fuerte */
             color: #fff !important;
           }
-          .wo-row-finished {
+          .wo-table .wo-row-finished {
             background: #ffd600 !important; /* Amarillo fuerte */
             color: #333 !important;
           }
-          .wo-row-processing {
+          .wo-table .wo-row-processing {
             background: #fff !important; /* Blanco */
             color: #1976d2 !important;
           }
-          .missing-parts-row {
+          .wo-table .missing-parts-row {
             animation: missingPartsBlink 1s ease-in-out infinite !important;
             font-weight: 700 !important;
-            border: 2px solid #f44336 !important;
+            border: 3px solid #f44336 !important;
+            transition: none !important;
           }
-          .missing-parts-row td {
+          .wo-table .missing-parts-row td {
             animation: missingPartsBlink 1s ease-in-out infinite !important;
+            font-weight: 700 !important;
+          }
+          .wo-table .missing-parts-row:hover {
+            animation: missingPartsBlink 1s ease-in-out infinite !important;
+            background-color: transparent !important;
           }
           .wo-row-selected {
             outline: 2px solid #1976d2 !important;
