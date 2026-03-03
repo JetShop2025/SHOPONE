@@ -220,6 +220,9 @@ const WorkOrdersTable: React.FC = () => {
         weldPercent: weldToSend
       };
       
+      // CRITICAL: Remove pdf_file to avoid sending 3.4MB in PUT request
+      delete (dataToSend as any).pdf_file;
+      
       // OPTIMIZATION: Run critical updates in parallel and defer PDF generation
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
       
@@ -1895,6 +1898,20 @@ const WorkOrdersTable: React.FC = () => {
             100% { opacity: 1; }
           }
           
+          /* Animación de parpadeo para MISSING PARTS */
+          @keyframes missingPartsBlink {
+            0% { background-color: #ffebee !important; }
+            25% { background-color: #ffcdd2 !important; }
+            50% { background-color: #ff5252 !important; color: #fff !important; }
+            75% { background-color: #ffcdd2 !important; }
+            100% { background-color: #ffebee !important; }
+          }
+          
+          .missing-parts-row {
+            animation: missingPartsBlink 1.5s ease-in-out infinite;
+            font-weight: 700;
+          }
+          
           .reconnect-btn {
             margin-left: 8px;
             padding: 4px 8px;
@@ -1979,6 +1996,11 @@ const WorkOrdersTable: React.FC = () => {
           .wo-row-processing {
             background: #fff !important; /* Blanco */
             color: #1976d2 !important;
+          }
+          .missing-parts-row {
+            animation: missingPartsBlink 1.5s ease-in-out infinite !important;
+            font-weight: 700 !important;
+            color: #c62828 !important;
           }
           .wo-row-selected {
             outline: 2px solid #1976d2 !important;
@@ -2601,6 +2623,7 @@ const WorkOrdersTable: React.FC = () => {
     if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
     else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
     else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
+    else if (order.status === 'MISSING_PARTS') rowClass = 'missing-parts-row';
 
     const hasMoreParts = order.parts && order.parts.length > 5;
 
@@ -2625,11 +2648,13 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
     return (
       <React.Fragment key={order.id}>
         <tr
-          className={rowClass + (selectedRow === order.id ? ' wo-row-selected' : '')}
+          className={
+            rowClass + 
+            (selectedRow === order.id ? ' wo-row-selected' : '')
+          }
           style={{
             fontWeight: 600,
-            cursor: 'pointer',
-            background: isMissingParts ? '#ff9800' : undefined
+            cursor: 'pointer'
           }}
           onClick={() => setSelectedRow(order.id)}
           onContextMenu={e => {

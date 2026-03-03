@@ -3,6 +3,8 @@ import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import 'dayjs/locale/es';
 import * as XLSX from 'xlsx';
@@ -13,6 +15,8 @@ import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
 import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
 dayjs.extend(isBetween);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 dayjs.extend(weekOfYear);
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
@@ -231,6 +235,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
+  
+  // NEW: Admin filters
+  const [selectedClient, setSelectedClient] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [searchId, setSearchId] = useState('');
+  
   const pageSize = 100;
 
   const formatDateSafely = (dateString: string) => {
@@ -347,8 +358,69 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
     const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
 
+    // NEW: Admin filters
+    if (selectedClient && selectedClient !== 'all') {
+      const client = order.billToCo || 'Sin Cliente';
+      if (client !== selectedClient) return false;
+    }
+
+    if (dateFrom) {
+      const woDate = dayjs(order.date.slice(0, 10));
+      const fromDate = dayjs(dateFrom);
+      if (!woDate.isAfter(fromDate) && !woDate.isSame(fromDate)) return false;
+    }
+
+    if (dateTo) {
+      const woDate = dayjs(order.date.slice(0, 10));
+      const toDate = dayjs(dateTo);
+      if (!woDate.isBefore(toDate) && !woDate.isSame(toDate)) return false;
+    }
+
+    if (searchId) {
+      const searchLower = searchId.toLowerCase();
+      const matches = String(order.id).toLowerCase().includes(searchLower) ||
+        (order.idClassic && String(order.idClassic).toLowerCase().includes(searchLower)) ||
+        (order.billToCo && order.billToCo.toLowerCase().includes(searchLower)) ||
+        (order.trailer && String(order.trailer).toLowerCase().includes(searchLower));
+      if (!matches) return false;
+    }
+
     return inWeek && matchesDay;
   });
+
+  // NEW: Calculate statistics
+  const stats = React.useMemo(() => {
+    const totalWOs = filteredOrders.length;
+    const totalRevenue = filteredOrders.reduce((sum, wo) => {
+      return sum + (Number(wo.totalLabAndParts) || 0);
+    }, 0);
+    const averagePerWO = totalWOs > 0 ? totalRevenue / totalWOs : 0;
+
+    // Get unique clients
+    const clientStats = new Map<string, { count: number; revenue: number }>();
+    filteredOrders.forEach(wo => {
+      const client = wo.billToCo || 'Sin Cliente';
+      const current = clientStats.get(client) || { count: 0, revenue: 0 };
+      clientStats.set(client, {
+        count: current.count + 1,
+        revenue: current.revenue + (Number(wo.totalLabAndParts) || 0)
+      });
+    });
+
+    const topClients = Array.from(clientStats.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 3);
+
+    return { totalWOs, totalRevenue, averagePerWO, topClients };
+  }, [filteredOrders]);
+
+  // Get unique clients for dropdown
+  const uniqueClients = React.useMemo(() => {
+    return Array.from(
+      new Set(workOrders.map(wo => wo.billToCo || 'Sin Cliente'))
+    ).sort();
+  }, [workOrders]);
 
   const handleWorkOrderChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | any
@@ -521,23 +593,76 @@ const FinishedWorkOrdersTable: React.FC = () => {
   };
 
   const exportToExcel = () => {
-    const data = filteredOrders.map(order => ({
-      ID: order.id,
-      'ID CLASSIC': order.idClassic || '',
-      'Bill To Co': order.billToCo,
-      Trailer: order.trailer,
-      Mechanic: order.mechanic,
-      Date: order.date?.slice(0, 10),
-      Description: order.description,
-      'Total HRS': order.totalHrs,
-      'Total LAB & PRTS': calcularTotalWO(order),
+    const exportData = filteredOrders.map(order => ({
+      'ID': order.id,
+      'ID Classic': order.idClassic || 'N/A',
+      'Cliente': order.billToCo || 'Sin Cliente',
+      'Traila': order.trailer || 'N/A',
+      'Mecánico': order.mechanic || 'N/A',
+      'Fecha': dayjs(order.date).format('MM/DD/YYYY'),
+      'Descripción': order.description || 'N/A',
+      'Total Horas': order.totalHrs || 0,
+      'Total $': Number(order.totalLabAndParts).toFixed(2)
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
+    // Add summary at top
+    const summarySheet = XLSX.utils.json_to_sheet([
+      {
+        'REPORTE DE W.O FINALIZADAS': '',
+        'Período': dateFrom && dateTo 
+          ? `${dayjs(dateFrom).format('MM/DD/YYYY')} - ${dayjs(dateTo).format('MM/DD/YYYY')}`
+          : 'Todos',
+        'Total W.O': stats.totalWOs,
+        'Total Ingresos': `$${stats.totalRevenue.toFixed(2)}`,
+        'Promedio': `$${stats.averagePerWO.toFixed(2)}`,
+        '': ''
+      },
+      {},
+      ...exportData
+    ]);
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'FinishedWorkOrders');
+    XLSX.utils.book_append_sheet(wb, ws, 'W.O Finalizadas');
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), 'finished_work_orders.xlsx');
+    saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), `reporte_wo_finales_${dayjs().format('YYYY-MM-DD')}.xlsx`);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedClient('');
+    setDateFrom('');
+    setDateTo('');
+    setSearchId('');
+    setSelectedWeek('');
+    setSelectedDay('');
+  };
+
+  const handleSendEmailReport = async () => {
+    try {
+      const reportData = {
+        period: dateFrom && dateTo 
+          ? `${dayjs(dateFrom).format('MM/DD/YYYY')} - ${dayjs(dateTo).format('MM/DD/YYYY')}`
+          : 'Período seleccionado',
+        generatedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        totalWOs: stats.totalWOs,
+        totalRevenue: stats.totalRevenue,
+        averagePerWO: stats.averagePerWO,
+        topClients: stats.topClients,
+        workOrders: filteredOrders
+      };
+
+      // Send to backend API
+      await axios.post(`${API_URL}/reports/send-email`, {
+        type: 'final_work_orders',
+        report: reportData,
+        usuario: localStorage.getItem('username') || 'system'
+      });
+
+      alert('✅ Reporte enviado exitosamente por email');
+    } catch (error) {
+      console.error('Error sending email report:', error);
+      alert('❌ Error al enviar el reporte. Intente exportar a Excel manualmente.');
+    }
   };
 
   const normalizeWorkOrderForEdit = (workOrder: any) => {
@@ -732,7 +857,143 @@ const FinishedWorkOrdersTable: React.FC = () => {
             FINAL WORK ORDERS
           </span>
           <div style={{ marginLeft: 'auto', fontSize: 14, color: '#666', fontWeight: '500' }}>
-            📋 Total: {filteredOrders.length} Órdenes Finalizadas
+            📋 Total: {filteredOrders.length} | 💰 ${stats.totalRevenue.toFixed(2)}
+          </div>
+        </div>
+
+        {/* NEW: Admin Filter Section */}
+        <div style={{
+          background: '#f9f9f9',
+          border: '1px solid #ddd',
+          borderRadius: 8,
+          padding: 16,
+          marginBottom: 16
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 12, textTransform: 'uppercase' }}>
+            🔎 FILTROS DE ADMINISTRACIÓN
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
+            {/* Client Filter */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
+                Cliente
+              </label>
+              <select
+                value={selectedClient}
+                onChange={(e) => { setSelectedClient(e.target.value); setCurrentPageData(1); }}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontFamily: 'inherit'
+                }}
+              >
+                <option value="">Todos</option>
+                {uniqueClients.map(client => (
+                  <option key={client} value={client}>{client}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date From */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
+                Desde Fecha
+              </label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCurrentPageData(1); }}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            {/* Date To */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
+                Hasta Fecha
+              </label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCurrentPageData(1); }}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            {/* Search */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
+                Búsqueda
+              </label>
+              <input
+                type="text"
+                placeholder="ID/ Cliente / Traila"
+                value={searchId}
+                onChange={(e) => { setSearchId(e.target.value); setCurrentPageData(1); }}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* NEW: Stats Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 12 }}>
+            <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Total W.O</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#1976d2' }}>{stats.totalWOs}</div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Total $</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#43a047' }}>${stats.totalRevenue.toFixed(2)}</div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Promedio</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#ff9800' }}>${stats.averagePerWO.toFixed(2)}</div>
+            </div>
+            {stats.topClients.length > 0 && (
+              <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Top Cliente</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#d32f2f' }}>
+                  {stats.topClients[0].name.substring(0, 12)}...
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button style={secondaryBtn} onClick={handleResetFilters}>
+              🔄 Resetear
+            </button>
+            <button style={primaryBtn} onClick={exportToExcel}>
+              📥 Exportar Excel
+            </button>
+            <button style={primaryBtn} onClick={handleSendEmailReport}>
+              📧 Enviar Email (Semanal)
+            </button>
           </div>
         </div>
 
@@ -767,8 +1028,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
           <button style={secondaryBtn} disabled={selectedRow === null} onClick={() => selectedRow !== null && handleViewPDF(selectedRow)}>
             📄 View PDF
           </button>
-          <button style={secondaryBtn} onClick={exportToExcel}>
-            📊 Export Excel
+          <button style={secondaryBtn} onClick={() => handleSendEmailReport()}>
+            📧 Email Semanal
           </button>
         </div>
 
