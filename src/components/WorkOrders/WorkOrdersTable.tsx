@@ -822,6 +822,16 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
 
+    // Request password before changing status
+    const pwd = window.prompt('Enter password to change Work Order status:');
+    if (pwd !== '6214') {
+      if (pwd !== null) {
+        alert('Incorrect password. Status change cancelled.');
+      }
+      setDraggingOrderId(null);
+      return;
+    }
+
     try {
       await updateWorkOrderStatus(draggedOrder, status);
     } catch (error) {
@@ -2761,7 +2771,7 @@ const WorkOrdersTable: React.FC = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, alignItems: 'start' }}>
                   {columnOrders.map(order => {
                     const startDateStr = getOrderStartDate(order);
                     const endDateStr = getOrderEndDate(order);
@@ -2791,52 +2801,52 @@ const WorkOrdersTable: React.FC = () => {
                           background: '#fff',
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
                           borderLeft: `4px solid ${column.color}`,
-                          borderRadius: 8,
-                          padding: 12,
+                          borderRadius: 6,
+                          padding: 8,
                           cursor: 'pointer',
                           boxShadow: '0 1px 3px rgba(25,118,210,0.08)',
                           transition: 'all 0.15s ease',
-                          minHeight: '160px',
+                          minHeight: '130px',
                           display: 'flex',
                           flexDirection: 'column'
                         }}
                         aria-label={`Work Order ${order.id} ${formatStatusLabel(order.status)}`}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: '#0d47a1', flex: 1, lineHeight: 1.2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 3 }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1', flex: 1, lineHeight: 1.1 }}>
                             W.O #{order.id}
                           </div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1.3 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1.2 }}>
                             <div>INI: {displayStartDate}</div>
                             <div>FIN: {displayEndDate}</div>
                           </div>
                         </div>
 
-                        <div style={{ marginTop: 4, fontSize: 13, color: '#263238', fontWeight: 700, lineHeight: 1.3 }}>
-                          {(order.billToCo || 'N/C').slice(0, 20)}
+                        <div style={{ marginTop: 3, fontSize: 11, color: '#263238', fontWeight: 700, lineHeight: 1.2 }}>
+                          {(order.billToCo || 'N/C').slice(0, 18)}
                         </div>
 
-                        <div style={{ marginTop: 2, fontSize: 12, color: '#455a64', lineHeight: 1.3, fontWeight: 600 }}>
-                          {(order.trailer || 'N/T').slice(0, 15)}
+                        <div style={{ marginTop: 2, fontSize: 10, color: '#455a64', lineHeight: 1.2, fontWeight: 600 }}>
+                          {(order.trailer || 'N/T').slice(0, 12)}
                         </div>
 
-                        <div style={{ marginTop: 3, fontSize: 11, color: '#546e7a', lineHeight: 1.3 }}>
+                        <div style={{ marginTop: 2, fontSize: 9, color: '#546e7a', lineHeight: 1.2 }}>
                           👨‍🔧 {Array.isArray(order.mechanics) && order.mechanics.length > 0
-                            ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ').slice(0, 30)
-                            : (order.mechanic || 'N/A').slice(0, 30)}
+                            ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ').slice(0, 20)
+                            : (order.mechanic || 'N/A').slice(0, 20)}
                           {(Array.isArray(order.mechanics) && order.mechanics.length > 0
                             ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ')
-                            : (order.mechanic || 'N/A')).length > 30 ? '...' : ''}
+                            : (order.mechanic || 'N/A')).length > 20 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 4, fontSize: 11, color: '#546e7a', background: '#f4f8ff', borderRadius: 4, padding: '5px 6px', lineHeight: 1.4, maxHeight: 44, overflow: 'hidden', flex: 1 }}>
-                          {(order.description || 'S/D').slice(0, 80)}
-                          {(order.description || '').length > 80 ? '...' : ''}
+                        <div style={{ marginTop: 3, fontSize: 9, color: '#546e7a', background: '#f4f8ff', borderRadius: 3, padding: '4px 5px', lineHeight: 1.3, maxHeight: 36, overflow: 'hidden', flex: 1 }}>
+                          {(order.description || 'S/D').slice(0, 60)}
+                          {(order.description || '').length > 60 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginBottom: 'auto' }}>
+                        <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, marginBottom: 'auto' }}>
                           <span style={{ fontWeight: 700, color: '#37474f' }}>HRS: {order.totalHrs || 0}</span>
-                          <span style={{ fontWeight: 800, color: '#1b5e20', fontSize: 13 }}>
+                          <span style={{ fontWeight: 800, color: '#1b5e20', fontSize: 11 }}>
                             {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
                               ? '$' + Number(order.totalLabAndParts).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                               : '$0.00'}
