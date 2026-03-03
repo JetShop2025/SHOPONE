@@ -1906,18 +1906,26 @@ const WorkOrdersTable: React.FC = () => {
             100% { opacity: 1; }
           }
           
-          /* Animación de parpadeo para MISSING PARTS */
+          /* Animación de parpadeo para MISSING PARTS - MÁS VISIBLE */
           @keyframes missingPartsBlink {
-            0% { background-color: #ffebee !important; }
-            25% { background-color: #ffcdd2 !important; }
-            50% { background-color: #ff5252 !important; color: #fff !important; }
-            75% { background-color: #ffcdd2 !important; }
-            100% { background-color: #ffebee !important; }
+            0% { 
+              background-color: #f44336 !important; 
+              color: #ffffff !important; 
+            }
+            50% { 
+              background-color: #ffffff !important; 
+              color: #f44336 !important; 
+            }
+            100% { 
+              background-color: #f44336 !important; 
+              color: #ffffff !important; 
+            }
           }
           
           .missing-parts-row {
-            animation: missingPartsBlink 1.5s ease-in-out infinite;
-            font-weight: 700;
+            animation: missingPartsBlink 1s ease-in-out infinite !important;
+            font-weight: 700 !important;
+            border: 2px solid #f44336 !important;
           }
           
           .reconnect-btn {
@@ -2006,9 +2014,12 @@ const WorkOrdersTable: React.FC = () => {
             color: #1976d2 !important;
           }
           .missing-parts-row {
-            animation: missingPartsBlink 1.5s ease-in-out infinite !important;
+            animation: missingPartsBlink 1s ease-in-out infinite !important;
             font-weight: 700 !important;
-            color: #c62828 !important;
+            border: 2px solid #f44336 !important;
+          }
+          .missing-parts-row td {
+            animation: missingPartsBlink 1s ease-in-out infinite !important;
           }
           .wo-row-selected {
             outline: 2px solid #1976d2 !important;
