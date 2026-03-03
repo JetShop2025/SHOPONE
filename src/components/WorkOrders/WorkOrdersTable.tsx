@@ -2682,13 +2682,7 @@ const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
           }
           style={{
             fontWeight: 600,
-            cursor: 'pointer',
-            ...(isMissingParts ? {
-              animation: 'missingPartsBlink 1s ease-in-out infinite',
-              border: '3px solid #f44336',
-              backgroundColor: '#f44336',
-              color: '#ffffff'
-            } : {})
+            cursor: 'pointer'
           }}
           onClick={() => setSelectedRow(order.id)}
           onContextMenu={e => {
