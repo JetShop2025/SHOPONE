@@ -535,7 +535,8 @@ app.get('/api/work-orders', async (req, res) => {
         try { parts = JSON.parse(order.parts || '[]'); } catch (e) { parts = []; }
         try { mechanics = JSON.parse(order.mechanics || '[]'); } catch (e) { mechanics = []; }
         try { extraOptions = JSON.parse(order.extraOptions || '[]'); } catch (e) { extraOptions = []; }
-        return { ...order, parts, mechanics, extraOptions };
+        const startDate = order.startDate || order.date || null;
+        return { ...order, date: startDate, startDate, endDate: order.endDate || null, parts, mechanics, extraOptions };
       });
       
       console.log(`[GET] /api/work-orders - Found ${parsedResults.length} work orders matching search`);
@@ -570,7 +571,8 @@ app.get('/api/work-orders', async (req, res) => {
       try { parts = JSON.parse(order.parts || '[]'); } catch (e) { parts = []; }
       try { mechanics = JSON.parse(order.mechanics || '[]'); } catch (e) { mechanics = []; }
       try { extraOptions = JSON.parse(order.extraOptions || '[]'); } catch (e) { extraOptions = []; }
-      return { ...order, parts, mechanics, extraOptions };
+      const startDate = order.startDate || order.date || null;
+      return { ...order, date: startDate, startDate, endDate: order.endDate || null, parts, mechanics, extraOptions };
     });
     
     console.log(`[GET] /api/work-orders - Found ${parsedResults.length} work orders (Page ${page}/${totalPages}, Total: ${totalRecords})`);

@@ -439,28 +439,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         weldValue = '0';
       }
 
-      // Convertir fecha a formato YYYY-MM-DD
-      let dateToSend = workOrder.date;
-      if (dateToSend) {
-        let yyyy = '', mm = '', dd = '';
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateToSend)) {
-          [mm, dd, yyyy] = dateToSend.split('/');
-        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateToSend)) {
-          [yyyy, mm, dd] = dateToSend.split('-');
-        } else {
-          const d = new Date(dateToSend);
-          if (!isNaN(d.getTime())) {
-            yyyy = String(d.getFullYear());
-            mm = String(d.getMonth() + 1).padStart(2, '0');
-            dd = String(d.getDate()).padStart(2, '0');
-          }
-        }
-        if (yyyy && mm && dd) {
-          dateToSend = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-        } else {
-          dateToSend = workOrder.date;
-        }
-      }
+      const startDateToSend = normalizeDateForSubmit(workOrder.startDate || workOrder.date);
+      const endDateToSend = normalizeDateForSubmit(workOrder.endDate);
 
 
       const normalizedTotal = Number(String(totalLabAndPartsValue ?? '').replace(/[^0-9.]/g, ''));
@@ -478,7 +458,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         weldPercent: weldValue,
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
-        date: dateToSend
+        date: startDateToSend,
+        startDate: startDateToSend,
+        endDate: endDateToSend || ''
       };
 
       await onSubmit(dataToSend);
@@ -543,13 +525,36 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return '';
   };
 
-  // Handler for date input change (always store as YYYY-MM-DD string, never parse or convert)
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const normalizeDateForSubmit = (dateValue: string | undefined): string => {
+    if (!dateValue) return '';
+    const trimmed = String(dateValue).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      const [mm, dd, yyyy] = trimmed.split('/');
+      return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
+    const parsedDate = new Date(trimmed);
+    if (isNaN(parsedDate.getTime())) return '';
+    const yyyy = String(parsedDate.getFullYear());
+    const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsedDate.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  // Handler for date inputs (always store as YYYY-MM-DD string)
+  const handleDateFieldChange = (fieldName: 'startDate' | 'endDate') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      onChange({ target: { name: 'date', value } } as any);
+      onChange({ target: { name: fieldName, value } } as any);
+      if (fieldName === 'startDate') {
+        onChange({ target: { name: 'date', value } } as any);
+      }
+      return;
     }
-    // Ignore any other format (do not update state)
+    if (value === '' && fieldName === 'endDate') {
+      onChange({ target: { name: 'endDate', value: '' } } as any);
+    }
   };
   return (
     <div style={{
@@ -593,14 +598,27 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </select>
           </label>
           
-          <label style={{ flex: '1 1 120px' }}>
-            Date<span style={{ color: 'red' }}>*</span>
+          <label style={{ flex: '1 1 140px' }}>
+            Start Date<span style={{ color: 'red' }}>*</span>
             <input
               type="date"
-              name="date"
-              value={formatDateYYYYMMDD(workOrder.date)}
-              onChange={handleDateChange}
+              name="startDate"
+              value={formatDateYYYYMMDD(workOrder.startDate || workOrder.date)}
+              onChange={handleDateFieldChange('startDate')}
               required
+              style={{ width: '100%', marginTop: 4, padding: 8 }}
+              pattern="\d{4}-\d{2}-\d{2}"
+              inputMode="numeric"
+              autoComplete="off"
+            />
+          </label>
+          <label style={{ flex: '1 1 140px' }}>
+            End Date
+            <input
+              type="date"
+              name="endDate"
+              value={formatDateYYYYMMDD(workOrder.endDate)}
+              onChange={handleDateFieldChange('endDate')}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               pattern="\d{4}-\d{2}-\d{2}"
               inputMode="numeric"

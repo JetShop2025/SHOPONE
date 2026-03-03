@@ -138,6 +138,30 @@ async function ensureWorkOrdersTableHasMiscellaneousFields() {
   }
 }
 
+async function ensureWorkOrdersTableHasStartEndDates() {
+  try {
+    const [startDateColumns] = await connection.execute("SHOW COLUMNS FROM work_orders LIKE 'startDate'");
+    if (!startDateColumns || startDateColumns.length === 0) {
+      console.log('[DB] Adding startDate column to work_orders table...');
+      await connection.execute('ALTER TABLE work_orders ADD COLUMN startDate DATE NULL');
+      console.log('[DB] Column startDate added to work_orders table.');
+    } else {
+      console.log('[DB] work_orders table already has startDate column.');
+    }
+
+    const [endDateColumns] = await connection.execute("SHOW COLUMNS FROM work_orders LIKE 'endDate'");
+    if (!endDateColumns || endDateColumns.length === 0) {
+      console.log('[DB] Adding endDate column to work_orders table...');
+      await connection.execute('ALTER TABLE work_orders ADD COLUMN endDate DATE NULL');
+      console.log('[DB] Column endDate added to work_orders table.');
+    } else {
+      console.log('[DB] work_orders table already has endDate column.');
+    }
+  } catch (err) {
+    console.error('[DB] Error ensuring startDate/endDate columns:', err.message);
+  }
+}
+
 async function ensureAuditTableExists() {
   try {
     // Primero verificar si la tabla existe
@@ -209,6 +233,7 @@ testConnection().then(() => {
   ensureReceivesTableStructure();
   ensureWorkOrdersTableHasEmployeeWrittenHours();
   ensureWorkOrdersTableHasMiscellaneousFields();
+  ensureWorkOrdersTableHasStartEndDates();
 });
 
 // Trailers functions
@@ -445,9 +470,28 @@ async function getOrdersByTrailer(trailerId, opts = {}) {
       } else if (row.date) {
         try { dateStr = String(row.date).slice(0, 10); } catch { dateStr = ''; }
       }
+
+      let startDateStr = '';
+      if (typeof row.startDate === 'string') {
+        const m = row.startDate.match(/^\d{4}-\d{2}-\d{2}/);
+        startDateStr = m ? m[0] : row.startDate;
+      } else if (row.startDate) {
+        try { startDateStr = String(row.startDate).slice(0, 10); } catch { startDateStr = ''; }
+      }
+
+      let endDateStr = '';
+      if (typeof row.endDate === 'string') {
+        const m = row.endDate.match(/^\d{4}-\d{2}-\d{2}/);
+        endDateStr = m ? m[0] : row.endDate;
+      } else if (row.endDate) {
+        try { endDateStr = String(row.endDate).slice(0, 10); } catch { endDateStr = ''; }
+      }
+
       return {
         ...row,
-        date: dateStr,
+        date: startDateStr || dateStr,
+        startDate: startDateStr || dateStr,
+        endDate: endDateStr,
         parts: row.parts ? JSON.parse(row.parts) : [],
         mechanics: row.mechanics ? JSON.parse(row.mechanics) : [],
         extraOptions: row.extraOptions ? JSON.parse(row.extraOptions) : []
@@ -468,11 +512,29 @@ async function createOrder(order) {
     
     // Convert undefined values to null for MySQL compatibility
 
+    const normalizeDateValue = (value) => {
+      if (typeof value !== 'string') return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+      if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+        const [mm, dd, yyyy] = trimmed.split('/');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return null;
+    };
+
+    const startDate = normalizeDateValue(order.startDate) || normalizeDateValue(order.date);
+    const endDate = normalizeDateValue(order.endDate);
+
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      order.date || null,
+      startDate || null,
+      startDate || null,
+      endDate || null,
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
@@ -487,7 +549,7 @@ async function createOrder(order) {
     ];
 
     const [result] = await connection.execute(
-      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts, employeeWrittenHours, miscellaneous, weldPercent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO work_orders (billToCo, trailer, mechanic, date, startDate, endDate, description, totalHrs, totalLabAndParts, status, idClassic, mechanics, extraOptions, parts, employeeWrittenHours, miscellaneous, weldPercent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       safeValues
     );
     
@@ -569,23 +631,42 @@ async function updateOrder(id, order) {
 
     // Actualizar la work order (sin tocar work_order_parts aún)
     // Fecha: preservar tal cual si no se envía una válida; si se envía string válido YYYY-MM-DD usarlo sin convertir zona horaria
-    let originalDate = currentData.date;
-    if (typeof originalDate === 'string') {
-      originalDate = originalDate.slice(0, 10);
-    }
-    // Si order.date viene como string 'YYYY-MM-DD', usarlo; si viene vacío/undefined, mantener originalDate
-    if (order && typeof order.date === 'string') {
-      const trimmed = order.date.trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-        originalDate = trimmed; // usar exactamente lo que envió el cliente
+    const normalizeDateValue = (value) => {
+      if (typeof value !== 'string') return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+      if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+        const [mm, dd, yyyy] = trimmed.split('/');
+        return `${yyyy}-${mm}-${dd}`;
       }
-      // cualquier otro formato se ignora para evitar sobrescribir con valores inválidos
+      return null;
+    };
+
+    const currentStartDate = normalizeDateValue(currentData.startDate) || normalizeDateValue(currentData.date);
+    const requestedStartDate = normalizeDateValue(order.startDate) || normalizeDateValue(order.date);
+    const finalStartDate = requestedStartDate || currentStartDate;
+
+    let currentEndDate = normalizeDateValue(currentData.endDate);
+    let finalEndDate = currentEndDate;
+    if (typeof order.endDate === 'string') {
+      const endTrimmed = order.endDate.trim();
+      if (endTrimmed === '') {
+        finalEndDate = null;
+      } else {
+        const normalizedEnd = normalizeDateValue(endTrimmed);
+        if (normalizedEnd) finalEndDate = normalizedEnd;
+      }
     }
+
     const safeValues = [
       order.billToCo || null,
       order.trailer || null,
       order.mechanic || null,
-      originalDate || null,
+      finalStartDate || null,
+      finalStartDate || null,
+      finalEndDate || null,
       order.description || null,
       order.totalHrs || null,
       order.totalLabAndParts || null,
@@ -600,14 +681,14 @@ async function updateOrder(id, order) {
       id
     ];
     // LOG: Valor de la fecha que se usará en el UPDATE
-  console.log('[DEBUG][W.O. DATE] Valor de date para UPDATE (sin TZ conv):', originalDate, 'Tipo:', typeof originalDate);
+  console.log('[DEBUG][W.O. DATE] Valor de startDate para UPDATE (sin TZ conv):', finalStartDate, 'Tipo:', typeof finalStartDate);
     const [result] = await connection.execute(
-      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ?, employeeWrittenHours = ?, miscellaneous = ?, weldPercent = ? WHERE id = ?',
+      'UPDATE work_orders SET billToCo = ?, trailer = ?, mechanic = ?, date = ?, startDate = ?, endDate = ?, description = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, idClassic = ?, mechanics = ?, extraOptions = ?, parts = ?, employeeWrittenHours = ?, miscellaneous = ?, weldPercent = ? WHERE id = ?',
       safeValues
     );
     console.log('[DB] Successfully updated work order with ID:', id);
     // LOG: Valor de la fecha después de UPDATE
-    console.log('[DEBUG][W.O. DATE] UPDATE ejecutado con date =', originalDate);
+    console.log('[DEBUG][W.O. DATE] UPDATE ejecutado con startDate =', finalStartDate, 'endDate =', finalEndDate);
 
     // Descontar solo la diferencia positiva de inventario (por parte agrupada)
     if (partsToDeduct.length > 0) {
@@ -730,19 +811,24 @@ async function getOrderById(id) {
       return null;
     }
     
-    // Parse JSON fields y forzar date como string YYYY-MM-DD (sin importar si es Date, string, null, undefined, etc)
-    let dateStr = '';
-    if (typeof rows[0].date === 'string') {
-      const match = rows[0].date.match(/^\d{4}-\d{2}-\d{2}/);
-      dateStr = match ? match[0] : rows[0].date;
-    } else if (rows[0].date) {
-      try { dateStr = String(rows[0].date).slice(0, 10); } catch { dateStr = ''; }
-    } else {
-      dateStr = '';
-    }
+    const normalizeDateForResponse = (value) => {
+      if (typeof value === 'string') {
+        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+        return match ? match[0] : value;
+      }
+      if (value) {
+        try { return String(value).slice(0, 10); } catch { return ''; }
+      }
+      return '';
+    };
+
+    const startDateStr = normalizeDateForResponse(rows[0].startDate) || normalizeDateForResponse(rows[0].date);
+    const endDateStr = normalizeDateForResponse(rows[0].endDate);
     const order = {
       ...rows[0],
-      date: dateStr,
+      date: startDateStr,
+      startDate: startDateStr,
+      endDate: endDateStr,
       parts: rows[0].parts ? JSON.parse(rows[0].parts) : [],
       mechanics: rows[0].mechanics ? JSON.parse(rows[0].mechanics) : [],
       extraOptions: rows[0].extraOptions ? JSON.parse(rows[0].extraOptions) : []

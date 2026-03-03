@@ -5,6 +5,8 @@ export interface WorkOrder {
   trailer: string;
   mechanic: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   description: string;
   parts: { part: string; sku: string; qty: string; cost: string }[];
   totalHrs: string;
@@ -20,6 +22,8 @@ const EMPTY_WORK_ORDER: WorkOrder = {
   trailer: '',
   mechanic: '',
   date: '',
+  startDate: '',
+  endDate: '',
   description: '',
   parts: [
     { part: '', sku: '', qty: '', cost: '' },
@@ -47,6 +51,8 @@ export function useNewWorkOrder(): [
       trailer: '',
       mechanic: '',
       date: '',
+      startDate: '',
+      endDate: '',
       description: '',
       parts: [
         { part: '', sku: '', qty: '', cost: '' },

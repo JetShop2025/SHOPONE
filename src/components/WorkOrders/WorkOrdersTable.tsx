@@ -93,6 +93,27 @@ const isMissingPartsStatus = (status: unknown): boolean => {
   return normalized === 'MISSING_PARTS';
 };
 
+const normalizeOrderDate = (value: any): string => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    const [mm, dd, yyyy] = raw.split('/');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return '';
+};
+
+const getOrderStartDate = (order: any): string => {
+  return normalizeOrderDate(order?.startDate) || normalizeOrderDate(order?.date);
+};
+
+const getOrderEndDate = (order: any): string => {
+  return normalizeOrderDate(order?.endDate);
+};
+
 const buttonBase = {
   padding: '10px 28px',
   borderRadius: 6,
@@ -172,8 +193,12 @@ const WorkOrdersTable: React.FC = () => {
       } else if (typeof safeData.mechanic !== 'string') {
         safeData.mechanic = '';
       }
-      // Asegurar que date, description, status, totalLabAndParts no sean nulos
-      safeData.date = safeData.date || '';
+      // Asegurar que fechas, description, status, totalLabAndParts no sean nulos
+      const normalizedStartDate = normalizeOrderDate(safeData.startDate) || normalizeOrderDate(safeData.date);
+      const normalizedEndDate = normalizeOrderDate(safeData.endDate);
+      safeData.startDate = normalizedStartDate || '';
+      safeData.date = normalizedStartDate || '';
+      safeData.endDate = normalizedEndDate || '';
       safeData.description = safeData.description || '';
       safeData.status = safeData.status || 'PROCESSING';
       safeData.totalLabAndParts = safeData.totalLabAndParts || '$0.00';
@@ -193,7 +218,7 @@ const WorkOrdersTable: React.FC = () => {
       
       // Update the work order
       // 1. Fecha: enviar SIEMPRE en formato YYYY-MM-DD
-      let dateToSend = data.date;
+      let dateToSend = normalizeOrderDate(data.startDate) || normalizeOrderDate(data.date);
       if (dateToSend && dateToSend.length >= 10) {
         if (dateToSend.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
           const [month, day, year] = dateToSend.split('/');
@@ -202,6 +227,7 @@ const WorkOrdersTable: React.FC = () => {
           dateToSend = dateToSend.slice(0, 10);
         }
       }
+      const endDateToSend = normalizeOrderDate(data.endDate);
       // 2. Total: enviar SIEMPRE como número (sin $)
       let totalToSend = data.totalLabAndParts;
       if (typeof totalToSend === 'string') {
@@ -223,6 +249,8 @@ const WorkOrdersTable: React.FC = () => {
       const dataToSend = { 
         ...safeData, 
         date: dateToSend, 
+        startDate: dateToSend,
+        endDate: endDateToSend || '',
         totalLabAndParts: totalToSend,
         miscellaneous: miscToSend,
         weldPercent: weldToSend
@@ -252,7 +280,9 @@ const WorkOrdersTable: React.FC = () => {
           order.id === editWorkOrder.id
             ? { ...order, ...editWorkOrder, ...data,
                 totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
-                date: dataToSend.date || editWorkOrder.date || ''
+                date: dataToSend.date || editWorkOrder.date || '',
+                startDate: dataToSend.startDate || editWorkOrder.startDate || editWorkOrder.date || '',
+                endDate: dataToSend.endDate || editWorkOrder.endDate || ''
               }
             : order
         )
@@ -301,7 +331,7 @@ const WorkOrdersTable: React.FC = () => {
             idClassic: workOrderData.idClassic || workOrderData.id.toString(),
             customer: workOrderData.billToCo || workOrderData.customer || '',
             trailer: workOrderData.trailer || '',
-            date: workOrderData.date || workOrderData.fecha || '',
+            date: workOrderData.startDate || workOrderData.date || workOrderData.fecha || '',
             mechanics: Array.isArray(workOrderData.mechanics)
               ? workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ')
               : workOrderData.mechanics || workOrderData.mechanic || '',
@@ -667,7 +697,8 @@ const WorkOrdersTable: React.FC = () => {
   }, [newWorkOrder.trailer]);
 
   const filteredOrders = workOrders.filter(order => {
-    if (!order.date) return false;
+    const orderStartDate = getOrderStartDate(order);
+    if (!orderStartDate) return false;
 
     // Excluir W.O. con status FINISHED (van al apartado FINAL WORK ORDERS)
     if (order.status === 'FINISHED') return false;
@@ -676,7 +707,7 @@ const WorkOrdersTable: React.FC = () => {
     let inWeek = true;
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
-      const orderDate = dayjs(order.date.slice(0, 10));
+      const orderDate = dayjs(orderStartDate.slice(0, 10));
       inWeek = orderDate.isBetween(start, end, 'day', '[]');
     }
     
@@ -684,7 +715,7 @@ const WorkOrdersTable: React.FC = () => {
     const matchesStatus = !statusFilter || order.status === statusFilter;
     
     // Filter by day
-    const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
+    const matchesDay = !selectedDay || orderStartDate.slice(0, 10) === selectedDay;
     
     // Filter by ID Classic (search)
     const matchesSearch = !searchIdClassic || 
@@ -716,7 +747,7 @@ const WorkOrdersTable: React.FC = () => {
         const parsed = dayjs(value, ["MM/DD/YYYY", "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ss", "YYYY/MM/DD"], true);
         return parsed.isValid() ? parsed.valueOf() : 0;
       };
-      return getTime(b.date) - getTime(a.date);
+      return getTime(getOrderStartDate(b)) - getTime(getOrderStartDate(a));
     });
 
   const boardColumns = [
@@ -729,12 +760,7 @@ const WorkOrdersTable: React.FC = () => {
     const currentStatus = getStatusForBoard(order?.status);
     if (currentStatus === targetStatus) return;
 
-    await axios.put(`${API_URL}/work-orders/${order.id}`, {
-      ...order,
-      status: targetStatus,
-      usuario: localStorage.getItem('username') || ''
-    });
-
+    // 🚀 OPTIMISTIC UPDATE: Actualizar estado localmente INMEDIATAMENTE (sin esperar API)
     setWorkOrders(prev =>
       prev.map(item =>
         item.id === order.id ? { ...item, status: targetStatus } : item
@@ -750,6 +776,30 @@ const WorkOrdersTable: React.FC = () => {
         ? { ...prev, order: { ...prev.order, status: targetStatus } }
         : prev
     );
+
+    // 📡 DEFERRED: Hacer el PUT en background sin bloquear la UI
+    (async () => {
+      try {
+        await axios.put(`${API_URL}/work-orders/${order.id}`, {
+          ...order,
+          status: targetStatus,
+          usuario: localStorage.getItem('username') || ''
+        });
+        console.log(`✅ Status actualizado a ${targetStatus} (sincronizado con backend)`);
+      } catch (error) {
+        // Si falla, revertir al estado anterior
+        console.error('❌ Error actualizando status:', error);
+        setWorkOrders(prev =>
+          prev.map(item =>
+            item.id === order.id ? { ...item, status: currentStatus } : item
+          )
+        );
+        setDetailOrder((prev: any) =>
+          prev && prev.id === order.id ? { ...prev, status: currentStatus } : prev
+        );
+        alert('⚠️ Error actualizando Work Order. Se revirtió al estado anterior.');
+      }
+    })();
   };
 
   const handleCardDragStart = (orderId: number) => (event: React.DragEvent<HTMLDivElement>) => {
@@ -802,15 +852,26 @@ const WorkOrdersTable: React.FC = () => {
     // Si es un evento (input, select, textarea)
     if (e && e.target) {
       const { name, value, type } = e.target;
-      // Permitir edición y selección libre en el input de fecha tipo date
+      // Manejo especial para campos de fecha
       if (type === 'date' && showForm) {
-        // Siempre guardar el valor en formato YYYY-MM-DD
-        setNewWorkOrder(prev => ({ ...prev, date: value }));
-        return;
+        if (name === 'startDate' || name === 'date') {
+          setNewWorkOrder(prev => ({ ...prev, startDate: value, date: value }));
+          return;
+        }
+        if (name === 'endDate') {
+          setNewWorkOrder(prev => ({ ...prev, endDate: value }));
+          return;
+        }
       }
       if (type === 'date' && showEditForm && editWorkOrder) {
-        setEditWorkOrder((prev: any) => ({ ...prev, date: value }));
-        return;
+        if (name === 'startDate' || name === 'date') {
+          setEditWorkOrder((prev: any) => ({ ...prev, startDate: value, date: value }));
+          return;
+        }
+        if (name === 'endDate') {
+          setEditWorkOrder((prev: any) => ({ ...prev, endDate: value }));
+          return;
+        }
       }
       if (showForm) {
         setNewWorkOrder(prev => {
@@ -1022,7 +1083,8 @@ const WorkOrdersTable: React.FC = () => {
             (wo.status === 'PROCESSING' || wo.status === 'APPROVED')
         );
         if (duplicateWO) {
-          const msg = `Ya existe una Work Order para la traila "${trailerToCheck}" en estado PROCESSING o APPROVED (ID: ${duplicateWO.id}, Fecha: ${duplicateWO.date ? duplicateWO.date.slice(0,10) : ''}).\n¿Desea continuar y crear la orden de todos modos?`;
+          const duplicateStartDate = getOrderStartDate(duplicateWO);
+          const msg = `Ya existe una Work Order para la traila "${trailerToCheck}" en estado PROCESSING o APPROVED (ID: ${duplicateWO.id}, Fecha: ${duplicateStartDate ? duplicateStartDate.slice(0,10) : ''}).\n¿Desea continuar y crear la orden de todos modos?`;
           const proceed = window.confirm(msg);
           if (!proceed) {
             setLoading(false);
@@ -1043,13 +1105,16 @@ const WorkOrdersTable: React.FC = () => {
           cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
         }));
 
+      const startDateToSend = normalizeOrderDate(datosOrden.startDate) || normalizeOrderDate(datosOrden.date);
+      const endDateToSend = normalizeOrderDate(datosOrden.endDate);
+
       // LIMPIA EL TOTAL ANTES DE ENVIAR
       const totalLabAndPartsLimpio = Number(String(datosOrden.totalLabAndParts).replace(/[^0-9.]/g, ''));
-      // Formatear la fecha SOLO si está en formato MM/DD/YYYY, para mostrar y PDF, pero backend acepta lo que el usuario puso
-      let dateToSend = datosOrden.date;
-      // NO modificar el formato para el backend, solo enviar lo que el usuario puso
       const res = await axios.post(`${API_URL}/work-orders`, {
         ...datosOrden,
+        date: startDateToSend,
+        startDate: startDateToSend,
+        endDate: endDateToSend || '',
         totalLabAndParts: totalLabAndPartsLimpio, // <-- ENVÍA EL TOTAL LIMPIO
         parts: partesParaGuardar,
         extraOptions,
@@ -1139,7 +1204,7 @@ const WorkOrdersTable: React.FC = () => {
           idClassic: workOrderData.idClassic || workOrderData.id?.toString() || newWorkOrderId.toString(),
           customer: workOrderData.billToCo || workOrderData.customer || '',
           trailer: workOrderData.trailer || '',
-          date: formatDateSafely(workOrderData.date || workOrderData.fecha || ''),
+          date: formatDateSafely(workOrderData.startDate || workOrderData.date || workOrderData.fecha || ''),
           mechanics: Array.isArray(workOrderData.mechanics) ? 
             workOrderData.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') :
             workOrderData.mechanics || workOrderData.mechanic || '',
@@ -1225,7 +1290,7 @@ const WorkOrdersTable: React.FC = () => {
             idClassic: newWorkOrderId.toString(),
             customer: datosOrden.billToCo || '',
             trailer: datosOrden.trailer || '',
-            date: formatDateSafely(datosOrden.date || ''),
+            date: formatDateSafely(datosOrden.startDate || datosOrden.date || ''),
             mechanics: Array.isArray(datosOrden.mechanics) ? 
               datosOrden.mechanics.map((m: any) => `${m.name} (${m.hrs}h)`).join(', ') : '',
             description: datosOrden.description || '',
@@ -1360,9 +1425,14 @@ const WorkOrdersTable: React.FC = () => {
       }
     }
 
+    const normalizedStartDate = getOrderStartDate(workOrder);
+    const normalizedEndDate = getOrderEndDate(workOrder);
+
     return {
       ...workOrder,
-      date: workOrder?.date ? workOrder.date.slice(0, 10) : '',
+      date: normalizedStartDate,
+      startDate: normalizedStartDate,
+      endDate: normalizedEndDate,
       parts: Array.isArray(workOrder?.parts) ? workOrder.parts : [],
       mechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics : [],
       extraOptions: normalizedExtraOptions,
@@ -1427,7 +1497,8 @@ const WorkOrdersTable: React.FC = () => {
       'Bill To Co': order.billToCo,
       Trailer: order.trailer,
       Mechanic: order.mechanic,
-      Date: order.date?.slice(0, 10),
+      'Start Date': getOrderStartDate(order),
+      'End Date': getOrderEndDate(order),
       Description: order.description,
       Status: order.status,
       'Total HRS': order.totalHrs,
@@ -1731,7 +1802,7 @@ const WorkOrdersTable: React.FC = () => {
       if (totalHrs === 0) {
         totalHrs = Number(finalWorkOrderData.totalHrs) || 0;
         console.log('📊 Usando totalHrs directo:', totalHrs);      }        // 7. Procesar fecha correctamente sin problemas de zona horaria
-      const formattedDate = formatDateSafely(finalWorkOrderData.date || '') || 
+      const formattedDate = formatDateSafely(finalWorkOrderData.startDate || finalWorkOrderData.date || '') || 
                            formatDateSafely(finalWorkOrderData.fecha || '') || 
                            new Date().toLocaleDateString('en-US');
       console.log('📅 Fecha procesada:', formattedDate, 'desde:', finalWorkOrderData.date);
@@ -2710,7 +2781,7 @@ const WorkOrdersTable: React.FC = () => {
           Drag and drop cards between columns to update status.
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(260px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(200px, 1fr))', gap: 10, alignItems: 'start' }}>
           {boardColumns.map(column => {
             const columnOrders = sortedBoardOrders.filter(order => getStatusForBoard(order.status) === column.key);
 
@@ -2721,26 +2792,31 @@ const WorkOrdersTable: React.FC = () => {
                 onDrop={handleColumnDrop(column.key)}
                 onDragLeave={() => setDragOverStatus((prev) => (prev === column.key ? null : prev))}
                 style={{
-                  minHeight: 420,
+                  minHeight: 500,
                   background: dragOverStatus === column.key ? '#e3f2fd' : '#f8fbff',
                   border: `2px solid ${dragOverStatus === column.key ? '#1976d2' : '#d0d7e2'}`,
                   borderRadius: 12,
-                  padding: 12,
-                  transition: 'all 0.2s ease'
+                  padding: 8,
+                  transition: 'all 0.2s ease',
+                  overflowY: 'auto',
+                  maxHeight: '85vh'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${column.color}` }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: column.color }}>{column.title}</span>
-                  <span style={{ minWidth: 26, textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#fff', background: column.color, borderRadius: 999, padding: '2px 8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', border: `1px solid ${column.color}` }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: column.color }}>{column.title}</span>
+                  <span style={{ minWidth: 24, textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#fff', background: column.color, borderRadius: 999, padding: '2px 6px' }}>
                     {columnOrders.length}
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {columnOrders.map(order => {
-                    const dateStr = (order.date || '').slice(0, 10);
-                    const [yyyy, mm, dd] = dateStr.split('-');
-                    const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : formatDateSafely(order.date || '');
+                    const startDateStr = getOrderStartDate(order);
+                    const endDateStr = getOrderEndDate(order);
+                    const [startYYYY, startMM, startDD] = startDateStr.split('-');
+                    const [endYYYY, endMM, endDD] = endDateStr.split('-');
+                    const displayStartDate = startMM && startDD && startYYYY ? `${startMM}/${startDD}/${startYYYY}` : formatDateSafely(startDateStr || order.date || '');
+                    const displayEndDate = endMM && endDD && endYYYY ? `${endMM}/${endDD}/${endYYYY}` : (endDateStr ? formatDateSafely(endDateStr) : '--/--/----');
                     const isMissing = isMissingPartsStatus(order.status);
 
                     return (
@@ -2762,46 +2838,57 @@ const WorkOrdersTable: React.FC = () => {
                         style={{
                           background: '#fff',
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
-                          borderLeft: `6px solid ${column.color}`,
-                          borderRadius: 10,
-                          padding: 10,
+                          borderLeft: `4px solid ${column.color}`,
+                          borderRadius: 8,
+                          padding: 7,
                           cursor: 'pointer',
-                          boxShadow: '0 1px 6px rgba(25,118,210,0.12)'
+                          boxShadow: '0 1px 3px rgba(25,118,210,0.08)',
+                          transition: 'all 0.15s ease'
                         }}
                         aria-label={`Work Order ${order.id} ${formatStatusLabel(order.status)}`}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1' }}>
-                            W.O #{order.id} {order.idClassic ? `• ${order.idClassic}` : ''}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0d47a1', flex: 1, lineHeight: 1.2 }}>
+                            W.O #{order.id}
                           </div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: column.color }}>{displayDate}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                            <div>INI: {displayStartDate}</div>
+                            <div>FIN: {displayEndDate}</div>
+                          </div>
                         </div>
 
-                        <div style={{ marginTop: 6, fontSize: 12, color: '#263238', fontWeight: 700 }}>
-                          {order.billToCo || 'NO CLIENT'} • {order.trailer || 'NO TRAILER'}
+                        <div style={{ marginTop: 3, fontSize: 11, color: '#263238', fontWeight: 700, lineHeight: 1.2 }}>
+                          {(order.billToCo || 'N/C').slice(0, 20)}
                         </div>
 
-                        <div style={{ marginTop: 4, fontSize: 12, color: '#455a64' }}>
+                        <div style={{ marginTop: 2, fontSize: 10, color: '#455a64', lineHeight: 1.2 }}>
+                          {(order.trailer || 'N/T').slice(0, 15)}
+                        </div>
+
+                        <div style={{ marginTop: 2, fontSize: 9, color: '#546e7a' }}>
                           👨‍🔧 {Array.isArray(order.mechanics) && order.mechanics.length > 0
+                            ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ').slice(0, 30)
+                            : (order.mechanic || 'N/A').slice(0, 30)}
+                          {(Array.isArray(order.mechanics) && order.mechanics.length > 0
                             ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ')
-                            : (order.mechanic || 'N/A')}
+                            : (order.mechanic || 'N/A')).length > 30 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 6, fontSize: 11, color: '#546e7a', background: '#f4f8ff', borderRadius: 6, padding: '6px 8px', minHeight: 32 }}>
-                          {(order.description || 'Sin descripción').slice(0, 120)}
-                          {(order.description || '').length > 120 ? '...' : ''}
+                        <div style={{ marginTop: 4, fontSize: 9, color: '#546e7a', background: '#f4f8ff', borderRadius: 4, padding: '4px 5px', lineHeight: 1.3, maxHeight: 36, overflow: 'hidden' }}>
+                          {(order.description || 'S/D').slice(0, 80)}
+                          {(order.description || '').length > 80 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#37474f' }}>HRS: {order.totalHrs || 0}</span>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: '#1b5e20' }}>
+                        <div style={{ marginTop: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10 }}>
+                          <span style={{ fontWeight: 700, color: '#37474f' }}>HRS: {order.totalHrs || 0}</span>
+                          <span style={{ fontWeight: 800, color: '#1b5e20', fontSize: 10 }}>
                             {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== ''
-                              ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                              : '$0.00'}
+                              ? '$' + Number(order.totalLabAndParts).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                              : '$0'}
                           </span>
                         </div>
 
-                        <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
+                        <div style={{ marginTop: 5, display: 'flex', gap: 4, flexWrap: 'wrap' }} onClick={event => event.stopPropagation()}>
                           {boardColumns
                             .filter(option => option.key !== getStatusForBoard(order.status))
                             .map(option => (
@@ -2814,10 +2901,10 @@ const WorkOrdersTable: React.FC = () => {
                                     alert('Error updating Work Order status');
                                   }
                                 }}
-                                style={{ border: `1px solid ${option.color}`, background: '#fff', color: option.color, borderRadius: 999, padding: '2px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                style={{ border: `1px solid ${option.color}`, background: '#fff', color: option.color, borderRadius: 999, padding: '1px 6px', fontSize: 8, fontWeight: 700, cursor: 'pointer' }}
                                 title={`Move to ${option.title}`}
                               >
-                                → {option.title}
+                                → {option.title.slice(0, 6)}
                               </button>
                             ))}
                         </div>
@@ -2826,8 +2913,8 @@ const WorkOrdersTable: React.FC = () => {
                   })}
 
                   {columnOrders.length === 0 && (
-                    <div style={{ border: '1px dashed #b0bec5', borderRadius: 10, padding: 18, textAlign: 'center', fontSize: 12, color: '#607d8b', background: '#fff' }}>
-                      Drop W.O. cards here
+                    <div style={{ border: '1px dashed #b0bec5', borderRadius: 8, padding: 12, textAlign: 'center', fontSize: 11, color: '#607d8b', background: '#fff' }}>
+                      Drop here
                     </div>
                   )}
                 </div>
@@ -2837,7 +2924,34 @@ const WorkOrdersTable: React.FC = () => {
         </div>
       </div>
 
-      {detailOrder && (
+      {detailOrder && (() => {
+        const detailMechanics = Array.isArray(detailOrder.mechanics) ? detailOrder.mechanics : [];
+        const validParts = Array.isArray(detailOrder.parts)
+          ? detailOrder.parts.filter((part: any) => part && part.sku)
+          : [];
+        const totalHrsValue = detailMechanics.length > 0
+          ? detailMechanics.reduce((sum: number, mechanic: any) => sum + (Number(mechanic?.hrs) || 0), 0)
+          : (Number(detailOrder.totalHrs) || 0);
+        const laborRate = 60;
+        const laborSubtotal = totalHrsValue * laborRate;
+        const partsSubtotal = validParts.reduce((sum: number, part: any) => {
+          const qty = Number(part.qty) || 0;
+          const unitCost = Number(String(part.cost ?? '').replace(/[^0-9.-]/g, '')) || 0;
+          return sum + (qty * unitCost);
+        }, 0);
+        const baseSubtotal = laborSubtotal + partsSubtotal;
+        const miscPercentRaw = detailOrder.miscellaneous ?? detailOrder.miscellaneousPercent;
+        const miscPercent = Number(miscPercentRaw);
+        const miscPercentValue = Number.isFinite(miscPercent) && miscPercent > 0 ? miscPercent : 0;
+        const weldPercent = Number(detailOrder.weldPercent);
+        const weldPercentValue = Number.isFinite(weldPercent) && weldPercent > 0 ? weldPercent : 0;
+        const miscAmount = baseSubtotal * (miscPercentValue / 100);
+        const weldAmount = baseSubtotal * (weldPercentValue / 100);
+        const calculatedTotal = baseSubtotal + miscAmount + weldAmount;
+        const storedTotal = Number(String(detailOrder.totalLabAndParts ?? '').replace(/[^0-9.-]/g, ''));
+        const finalTotal = Number.isFinite(storedTotal) && storedTotal > 0 ? storedTotal : calculatedTotal;
+
+        return (
         <div style={modalStyle} onClick={() => setDetailOrder(null)}>
           <div style={{ ...modalContentStyle, maxWidth: 980, width: '90vw' }} onClick={event => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -2856,11 +2970,13 @@ const WorkOrdersTable: React.FC = () => {
               <div><strong>Status:</strong> {formatStatusLabel(detailOrder.status)}</div>
               <div><strong>Bill To:</strong> {detailOrder.billToCo || 'N/A'}</div>
               <div><strong>Trailer:</strong> {detailOrder.trailer || 'N/A'}</div>
-              <div><strong>Date:</strong> {formatDateSafely(detailOrder.date || '')}</div>
-              <div><strong>Mechanic:</strong> {Array.isArray(detailOrder.mechanics) && detailOrder.mechanics.length > 0
-                ? detailOrder.mechanics.map((mechanic: any) => mechanic.name).join(', ')
+              <div><strong>Start Date:</strong> {formatDateSafely(getOrderStartDate(detailOrder) || '')}</div>
+              <div><strong>End Date:</strong> {getOrderEndDate(detailOrder) ? formatDateSafely(getOrderEndDate(detailOrder)) : 'Pending'}</div>
+              <div><strong>Mechanic:</strong> {detailMechanics.length > 0
+                ? detailMechanics.map((mechanic: any) => mechanic.name).join(', ')
                 : (detailOrder.mechanic || 'N/A')}</div>
-              <div><strong>Total HRS:</strong> {detailOrder.totalHrs || 0}</div>
+              <div><strong>Total HRS:</strong> {totalHrsValue.toFixed(2)}</div>
+              <div><strong>Employee Hours Notes:</strong> {detailOrder.employeeWrittenHours || 'N/A'}</div>
             </div>
 
             <div style={{ marginBottom: 12 }}>
@@ -2884,9 +3000,8 @@ const WorkOrdersTable: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.isArray(detailOrder.parts) && detailOrder.parts.filter((part: any) => part && part.sku).length > 0 ? (
-                      detailOrder.parts
-                        .filter((part: any) => part && part.sku)
+                    {validParts.length > 0 ? (
+                      validParts
                         .map((part: any, index: number) => (
                           <tr key={`${detailOrder.id}-${index}`}>
                             <td>{index + 1}</td>
@@ -2910,11 +3025,51 @@ const WorkOrdersTable: React.FC = () => {
               </div>
             </div>
 
+            <div style={{ marginTop: 14 }}>
+              <strong>Hours Logged:</strong>
+              <div style={{ marginTop: 6, background: '#f8f9fb', border: '1px solid #d0d7e2', borderRadius: 8, padding: 10 }}>
+                {detailMechanics.length > 0 ? (
+                  detailMechanics.map((mechanic: any, index: number) => (
+                    <div key={`hrs-${index}`} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span>{mechanic?.name || `Mechanic ${index + 1}`}</span>
+                      <strong>{(Number(mechanic?.hrs) || 0).toFixed(2)} h</strong>
+                    </div>
+                  ))
+                ) : (
+                  <div>No individual mechanic hours recorded.</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <strong>Totals Breakdown:</strong>
+              <div style={{ marginTop: 6, background: '#f8f9fb', border: '1px solid #d0d7e2', borderRadius: 8, padding: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Labor ({totalHrsValue.toFixed(2)}h × ${laborRate}/h)</span>
+                  <strong>{laborSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Parts Subtotal</span>
+                  <strong>{partsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Miscellaneous ({miscPercentValue.toFixed(2)}%)</span>
+                  <strong>{miscAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Welding Supplies ({weldPercentValue.toFixed(2)}%)</span>
+                  <strong>{weldAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #d0d7e2', paddingTop: 6, marginTop: 6 }}>
+                  <span><strong>Total Calculated</strong></span>
+                  <strong>{calculatedTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+              </div>
+            </div>
+
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ color: '#1b5e20', fontSize: 18 }}>
-                Total: {detailOrder.totalLabAndParts !== undefined && detailOrder.totalLabAndParts !== null && detailOrder.totalLabAndParts !== ''
-                  ? Number(detailOrder.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                  : '$0.00'}
+                Total W.O: {finalTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
               </strong>
               <button
                 style={secondaryBtn}
@@ -2925,7 +3080,7 @@ const WorkOrdersTable: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      )})()}
 
       {/* Context Menu for Editar/Eliminar */}
       {contextMenu.visible && contextMenu.order && (
