@@ -86,14 +86,7 @@ function getWeekRange(weekStr: string) {
   return { start, end };
 }
 
-const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED', 'MISSING_PARTS'];
-
-// Helper function to check if status is MISSING_PARTS
-const isMissingPartsStatus = (status: unknown): boolean => {
-  if (typeof status !== 'string') return false;
-  const normalized = status.toUpperCase().replace(/[\s-]/g, '_');
-  return normalized === 'MISSING_PARTS';
-};
+const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
 
 // PROFESSIONAL COLOR SCHEME: Blue Dark + Grays + Accents
 const colors = {
@@ -785,20 +778,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
             color: ${colors.gray700} !important;
             font-weight: 600;
           }
-          
-          /* Animación de parpadeo para MISSING PARTS */
-          @keyframes missingPartsBlink {
-            0% { background-color: #ffebee !important; }
-            25% { background-color: #ffcdd2 !important; }
-            50% { background-color: #ff5252 !important; color: #fff !important; }
-            75% { background-color: #ffcdd2 !important; }
-            100% { background-color: #ffebee !important; }
-          }
-          
-          .missing-parts-row {
-            animation: missingPartsBlink 1.5s ease-in-out infinite;
-            font-weight: 700;
-          }
         `}
       </style>
 
@@ -1287,19 +1266,10 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   const [yyyy, mm, dd] = dateStr.split('-');
                   const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
 
-                  // Determine row class based on status
-                  let rowClass = 'wo-row-finished';
-                  if (isMissingPartsStatus(order.status)) {
-                    rowClass = 'missing-parts-row';
-                  }
-                  if (selectedRow === order.id) {
-                    rowClass += ' selected';
-                  }
-
                   return (
                     <tr
                       key={order.id}
-                      className={rowClass}
+                      className={'wo-row-finished' + (selectedRow === order.id ? ' selected' : '')}
                       style={{ cursor: 'pointer', fontWeight: '600' }}
                       onClick={() => setSelectedRow(order.id)}
                       onContextMenu={e => {
