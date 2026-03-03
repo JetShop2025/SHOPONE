@@ -85,6 +85,14 @@ function getWeekRange(weekStr: string) {
 
 const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
 
+const isMissingPartsStatus = (status: unknown): boolean => {
+  const normalized = String(status || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  return normalized === 'MISSING_PARTS';
+};
+
 const buttonBase = {
   padding: '10px 28px',
   borderRadius: 6,
@@ -2623,7 +2631,7 @@ const WorkOrdersTable: React.FC = () => {
     if (order.status === 'APPROVED') rowClass = 'wo-row-approved';
     else if (order.status === 'FINISHED') rowClass = 'wo-row-finished';
     else if (order.status === 'PROCESSING') rowClass = 'wo-row-processing';
-    else if (order.status === 'MISSING_PARTS') rowClass = 'missing-parts-row';
+          else if (isMissingPartsStatus(order.status)) rowClass = 'missing-parts-row';
 
     const hasMoreParts = order.parts && order.parts.length > 5;
 
@@ -2632,7 +2640,7 @@ const [yyyy, mm, dd] = dateStr.split('-');
 const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
 
     // Nuevo: usar status MISSING_PARTS para marcar y guardar en BD
-    const isMissingParts = order.status === 'MISSING_PARTS';
+    const isMissingParts = isMissingPartsStatus(order.status);
     const handleMissingPartsClick = async (e: React.MouseEvent) => {
       e.stopPropagation();
       try {

@@ -349,6 +349,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
     // SOLO mostrar W.O con status FINISHED
     if (order.status !== 'FINISHED') return false;
 
+    // CRITICAL: Don't show any orders until a client is selected
+    if (!selectedClient || selectedClient === '') return false;
+
     let inWeek = true;
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
@@ -358,9 +361,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
     const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
 
-    // NEW: Admin filters
-    if (selectedClient && selectedClient !== 'all') {
-      const client = order.billToCo || 'Sin Cliente';
+    // Client filter (required)
+    if (selectedClient !== 'all') {
+      const client = order.billToCo || 'No Client';
       if (client !== selectedClient) return false;
     }
 
@@ -418,7 +421,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
   // Get unique clients for dropdown
   const uniqueClients = React.useMemo(() => {
     return Array.from(
-      new Set(workOrders.map(wo => wo.billToCo || 'Sin Cliente'))
+      new Set(workOrders.map(wo => wo.billToCo || 'No Client'))
     ).sort();
   }, [workOrders]);
 
@@ -447,7 +450,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   const handleEdit = () => {
     if (selectedRow === null) return;
-    const pwd = window.prompt('Ingrese contraseña de edición (Level 3):');
+    const pwd = window.prompt('Enter edit password (Level 3):');
     if (pwd === '6214') {
       const found = workOrders.find(wo => wo.id === selectedRow);
       if (found) {
@@ -460,7 +463,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
         setShowEditForm(true);
       }
     } else if (pwd !== null) {
-      alert('Contraseña incorrecta');
+      alert('Incorrect password');
     }
   };
 
@@ -596,25 +599,25 @@ const FinishedWorkOrdersTable: React.FC = () => {
     const exportData = filteredOrders.map(order => ({
       'ID': order.id,
       'ID Classic': order.idClassic || 'N/A',
-      'Cliente': order.billToCo || 'Sin Cliente',
-      'Traila': order.trailer || 'N/A',
-      'Mecánico': order.mechanic || 'N/A',
-      'Fecha': dayjs(order.date).format('MM/DD/YYYY'),
-      'Descripción': order.description || 'N/A',
-      'Total Horas': order.totalHrs || 0,
+      'Client': order.billToCo || 'No Client',
+      'Trailer': order.trailer || 'N/A',
+      'Mechanic': order.mechanic || 'N/A',
+      'Date': dayjs(order.date).format('MM/DD/YYYY'),
+      'Description': order.description || 'N/A',
+      'Total Hours': order.totalHrs || 0,
       'Total $': Number(order.totalLabAndParts).toFixed(2)
     }));
 
     // Add summary at top
     const summarySheet = XLSX.utils.json_to_sheet([
       {
-        'REPORTE DE W.O FINALIZADAS': '',
-        'Período': dateFrom && dateTo 
+        'FINISHED W.O REPORT': '',
+        'Period': dateFrom && dateTo 
           ? `${dayjs(dateFrom).format('MM/DD/YYYY')} - ${dayjs(dateTo).format('MM/DD/YYYY')}`
-          : 'Todos',
+          : 'All',
         'Total W.O': stats.totalWOs,
-        'Total Ingresos': `$${stats.totalRevenue.toFixed(2)}`,
-        'Promedio': `$${stats.averagePerWO.toFixed(2)}`,
+        'Total Revenue': `$${stats.totalRevenue.toFixed(2)}`,
+        'Average': `$${stats.averagePerWO.toFixed(2)}`,
         '': ''
       },
       {},
@@ -623,9 +626,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'W.O Finalizadas');
+    XLSX.utils.book_append_sheet(wb, ws, 'Finished W.O');
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), `reporte_wo_finales_${dayjs().format('YYYY-MM-DD')}.xlsx`);
+    saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), `finished_wo_report_${dayjs().format('YYYY-MM-DD')}.xlsx`);
   };
 
   const handleResetFilters = () => {
@@ -642,7 +645,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
       const reportData = {
         period: dateFrom && dateTo 
           ? `${dayjs(dateFrom).format('MM/DD/YYYY')} - ${dayjs(dateTo).format('MM/DD/YYYY')}`
-          : 'Período seleccionado',
+          : 'Selected Period',
         generatedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
         totalWOs: stats.totalWOs,
         totalRevenue: stats.totalRevenue,
@@ -658,10 +661,10 @@ const FinishedWorkOrdersTable: React.FC = () => {
         usuario: localStorage.getItem('username') || 'system'
       });
 
-      alert('✅ Reporte enviado exitosamente por email');
+      alert('✅ Report sent successfully via email');
     } catch (error) {
       console.error('Error sending email report:', error);
-      alert('❌ Error al enviar el reporte. Intente exportar a Excel manualmente.');
+      alert('❌ Error sending report. Try exporting to Excel manually.');
     }
   };
 
@@ -861,159 +864,315 @@ const FinishedWorkOrdersTable: React.FC = () => {
           </div>
         </div>
 
-        {/* NEW: Admin Filter Section */}
+        {/* Admin Filter Section - Redesigned */}
         <div style={{
-          background: '#f9f9f9',
-          border: '1px solid #ddd',
-          borderRadius: 8,
-          padding: 16,
-          marginBottom: 16
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 24,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
         }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 12, textTransform: 'uppercase' }}>
-            🔎 FILTROS DE ADMINISTRACIÓN
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
-            {/* Client Filter */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
-                Cliente
-              </label>
-              <select
-                value={selectedClient}
-                onChange={(e) => { setSelectedClient(e.target.value); setCurrentPageData(1); }}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid #ddd',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  fontFamily: 'inherit'
-                }}
-              >
-                <option value="">Todos</option>
-                {uniqueClients.map(client => (
-                  <option key={client} value={client}>{client}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date From */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
-                Desde Fecha
-              </label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setCurrentPageData(1); }}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid #ddd',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-
-            {/* Date To */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
-                Hasta Fecha
-              </label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setCurrentPageData(1); }}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid #ddd',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-
-            {/* Search */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#666', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
-                Búsqueda
-              </label>
-              <input
-                type="text"
-                placeholder="ID/ Cliente / Traila"
-                value={searchId}
-                onChange={(e) => { setSearchId(e.target.value); setCurrentPageData(1); }}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid #ddd',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
+          <div style={{ 
+            fontSize: 16, 
+            fontWeight: 700, 
+            color: '#fff', 
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10
+          }}>
+            <span style={{ fontSize: 24 }}>🔎</span>
+            <span>FILTER & ANALYTICS</span>
           </div>
 
-          {/* NEW: Stats Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 12 }}>
-            <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Total W.O</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#1976d2' }}>{stats.totalWOs}</div>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Total $</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#43a047' }}>${stats.totalRevenue.toFixed(2)}</div>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Promedio</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#ff9800' }}>${stats.averagePerWO.toFixed(2)}</div>
-            </div>
-            {stats.topClients.length > 0 && (
-              <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 10, color: '#666', fontWeight: 600, marginBottom: 4 }}>Top Cliente</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#d32f2f' }}>
-                  {stats.topClients[0].name.substring(0, 12)}...
-                </div>
+          {/* Filters Grid */}
+          <div style={{ 
+            background: 'rgba(255,255,255,0.95)', 
+            borderRadius: 8, 
+            padding: 20,
+            marginBottom: 16
+          }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: 16,
+              marginBottom: 16
+            }}>
+              {/* Client Filter - Required */}
+              <div>
+                <label style={{ 
+                  fontSize: 12, 
+                  fontWeight: 700, 
+                  color: '#667eea', 
+                  display: 'block', 
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  📋 Client *
+                </label>
+                <select
+                  value={selectedClient}
+                  onChange={(e) => { setSelectedClient(e.target.value); setCurrentPageData(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #667eea',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <option value="">Select Client...</option>
+                  <option value="all">🌎 All Clients</option>
+                  {uniqueClients.map(client => (
+                    <option key={client} value={client}>{client}</option>
+                  ))}
+                </select>
               </div>
-            )}
+
+              {/* Date From */}
+              <div>
+                <label style={{ 
+                  fontSize: 12, 
+                  fontWeight: 700, 
+                  color: '#667eea', 
+                  display: 'block', 
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  📅 From Date
+                </label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); setCurrentPageData(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #ddd',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    background: '#fff'
+                  }}
+                />
+              </div>
+
+              {/* Date To */}
+              <div>
+                <label style={{ 
+                  fontSize: 12, 
+                  fontWeight: 700, 
+                  color: '#667eea', 
+                  display: 'block', 
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  📅 To Date
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setCurrentPageData(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #ddd',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    background: '#fff'
+                  }}
+                />
+              </div>
+
+              {/* Search */}
+              <div>
+                <label style={{ 
+                  fontSize: 12, 
+                  fontWeight: 700, 
+                  color: '#667eea', 
+                  display: 'block', 
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  🔍 Search
+                </label>
+                <input
+                  type="text"
+                  placeholder="ID / Client / Trailer"
+                  value={searchId}
+                  onChange={(e) => { setSearchId(e.target.value); setCurrentPageData(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #ddd',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    background: '#fff'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button 
+                style={{
+                  ...secondaryBtn,
+                  padding: '10px 20px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }} 
+                onClick={handleResetFilters}
+              >
+                <span>🔄</span> Reset
+              </button>
+              <button 
+                style={{
+                  ...primaryBtn,
+                  padding: '10px 20px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  background: '#43a047',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }} 
+                onClick={exportToExcel}
+                disabled={!selectedClient || selectedClient === ''}
+              >
+                <span>📥</span> Export Excel
+              </button>
+              <button 
+                style={{
+                  ...primaryBtn,
+                  padding: '10px 20px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  background: '#ff9800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }} 
+                onClick={handleSendEmailReport}
+                disabled={!selectedClient || selectedClient === ''}
+              >
+                <span>📧</span> Send Email Report
+              </button>
+            </div>
           </div>
 
-          {/* Buttons */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button style={secondaryBtn} onClick={handleResetFilters}>
-              🔄 Resetear
-            </button>
-            <button style={primaryBtn} onClick={exportToExcel}>
-              📥 Exportar Excel
-            </button>
-            <button style={primaryBtn} onClick={handleSendEmailReport}>
-              📧 Enviar Email (Semanal)
-            </button>
-          </div>
+          {/* Stats Cards - Only show when client selected */}
+          {selectedClient && selectedClient !== '' && (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', 
+              gap: 12
+            }}>
+              <div style={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                borderRadius: 10, 
+                padding: 16, 
+                textAlign: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
+                  Total W.O
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{stats.totalWOs}</div>
+              </div>
+              <div style={{ 
+                background: 'linear-gradient(135deg, #43a047 0%, #1b5e20 100%)', 
+                borderRadius: 10, 
+                padding: 16, 
+                textAlign: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
+                  Total Revenue
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>${stats.totalRevenue.toFixed(2)}</div>
+              </div>
+              <div style={{ 
+                background: 'linear-gradient(135deg, #ff9800 0%, #e65100 100%)', 
+                borderRadius: 10, 
+                padding: 16, 
+                textAlign: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
+                  Average per W.O
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>${stats.averagePerWO.toFixed(2)}</div>
+              </div>
+              {stats.topClients.length > 0 && (
+                <div style={{ 
+                  background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)', 
+                  borderRadius: 10, 
+                  padding: 16, 
+                  textAlign: 'center',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>
+                    Top Client
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                    {stats.topClients[0].name}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No client selected message */}
+          {(!selectedClient || selectedClient === '') && (
+            <div style={{
+              background: 'rgba(255,255,255,0.95)',
+              borderRadius: 8,
+              padding: 20,
+              textAlign: 'center',
+              color: '#666',
+              fontSize: 14,
+              fontWeight: 600
+            }}>
+              ⚠️ Please select a client to view work orders and statistics
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, gap: 8 }}>
-          <label style={{ fontWeight: 600 }}>
-            Filtrar por semana:&nbsp;
+          <label style={{ fontWeight: 600, fontSize: 14, color: '#666' }}>
+            Filter by week:&nbsp;
             <input
               type="week"
               value={selectedWeek}
               onChange={e => setSelectedWeek(e.target.value)}
-              style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4 }}
+              style={{ padding: '8px 10px', border: '2px solid #ddd', borderRadius: 6, fontSize: 14 }}
             />
           </label>
-          <label style={{ fontWeight: 600 }}>
-            Filtrar por día:&nbsp;
+          <label style={{ fontWeight: 600, fontSize: 14, color: '#666' }}>
+            Filter by day:&nbsp;
             <input
               type="date"
               value={selectedDay}
               onChange={e => setSelectedDay(e.target.value)}
-              style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4 }}
+              style={{ padding: '8px 10px', border: '2px solid #ddd', borderRadius: 6, fontSize: 14 }}
             />
           </label>
         </div>
@@ -1027,9 +1186,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
           </button>
           <button style={secondaryBtn} disabled={selectedRow === null} onClick={() => selectedRow !== null && handleViewPDF(selectedRow)}>
             📄 View PDF
-          </button>
-          <button style={secondaryBtn} onClick={() => handleSendEmailReport()}>
-            📧 Email Semanal
           </button>
         </div>
 
@@ -1187,7 +1343,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           <button
             style={{ background: '#ffd600', color: '#333', fontWeight: 700, fontSize: 14, padding: '12px 0', border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer' }}
             onClick={async () => {
-              const pwd = window.prompt('Ingrese contraseña (Level 3):');
+              const pwd = window.prompt('Enter password (Level 3):');
               if (pwd === '6214') {
                 handleEdit();
               } else if (pwd !== null) {
