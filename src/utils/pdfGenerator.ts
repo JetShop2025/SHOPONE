@@ -19,6 +19,7 @@ interface WorkOrderData {
     qty: number;
     unitCost: number;
     total: number;
+    invoiceLink?: string;
   }>;
   laborCost: number;
   subtotalParts: number;
@@ -228,15 +229,16 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
     String(part.sku || '').substring(0, 14), // SKU
-    String(part.description || '').substring(0, 40), // Descripción más larga
+    String(part.description || '').substring(0, 35), // Descripción
     String(part.um || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
-    `$${(part.total || 0).toFixed(2)}`
+    `$${(part.total || 0).toFixed(2)}`,
+    part.invoiceLink ? '✓ LINK' : '—' // Indicador de enlace
   ]);
   autoTable(pdf, {
     startY: tableStartY,
-    head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT $', 'TOTAL']],
+    head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT $', 'TOTAL', 'LINK']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -258,11 +260,12 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     columnStyles: {
       0: { halign: 'center', cellWidth: 8 },      // #
       1: { halign: 'center', cellWidth: 18 },     // SKU
-      2: { halign: 'left', cellWidth: 68 },       // DESCRIPTION
+      2: { halign: 'left', cellWidth: 50 },       // DESCRIPTION
       3: { halign: 'center', cellWidth: 10 },     // U/M
       4: { halign: 'center', cellWidth: 10 },     // QTY
       5: { halign: 'right', cellWidth: 18 },      // UNIT $
-      6: { halign: 'right', cellWidth: 18 }       // TOTAL
+      6: { halign: 'right', cellWidth: 18 },      // TOTAL
+      7: { halign: 'center', cellWidth: 14 }      // LINK
     },
     margin: { left: leftMargin, right: rightMargin },
     tableLineColor: [66, 139, 202],
@@ -273,7 +276,24 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       cellPadding: 1,
       font: 'courier'
     },
-
+    didDrawCell: function(data) {
+      // Hacer enlaces clickeables en la columna LINK (columna 7)
+      if (data.column.index === 7 && data.cell.section === 'body') {
+        const part = workOrderData.parts[data.row.index];
+        if (part.invoiceLink) {
+          // Agregar enlace clickeable
+          pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: part.invoiceLink });
+          // Cambiar color del texto para indicar que es un enlace
+          pdf.setTextColor(0, 150, 255);
+          pdf.setFont('courier', 'bold');
+          pdf.text('✓ LINK', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
+        } else {
+          pdf.setTextColor(200, 200, 200);
+          pdf.setFont('courier', 'normal');
+          pdf.text('—', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
+        }
+      }
+    }
   });
   // TOTALES Y EXTRAS - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
   const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;

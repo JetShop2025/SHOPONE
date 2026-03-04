@@ -11,7 +11,7 @@ import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
-import { generateWorkOrderPDF, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
+import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -321,10 +321,18 @@ const WorkOrdersTable: React.FC = () => {
           const workOrderRes = await axios.get(`${API_URL}/work-orders/${editWorkOrder.id}`);
           const workOrderData = workOrderRes.data as any;
           const partsRes = await axios.get(`${API_URL}/work-order-parts/${editWorkOrder.id}`);
-          const partsWithInvoices = (partsRes.data as any[]).map((part: any) => ({
-            ...part,
-            part: part.part || part.part_name || part.description || ''
-          }));
+          const partsWithInvoices = (partsRes.data as any[]).map((part: any) => {
+            // Si la parte ya tiene invoiceLink (de work_order_parts), usarlo
+            if (part.invoiceLink) return { ...part, part: part.part || part.part_name || part.description || '' };
+            
+            // Si no, buscar en el inventario
+            const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
+            return {
+              ...part,
+              part: part.part || part.part_name || part.description || '',
+              invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
+            };
+          });
           
           const pdfData = {
             id: workOrderData.id,
@@ -345,7 +353,8 @@ const WorkOrdersTable: React.FC = () => {
               unitCost: part.cost || 0,
               total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
                 ? Number(part.qty_used) * Number(part.cost)
-                : 0
+                : 0,
+              invoiceLink: part.invoiceLink || null
             })),
             totalHrs: Number(workOrderData.totalHrs) || 0,
             laborRate: 60,
@@ -1427,10 +1436,18 @@ const WorkOrdersTable: React.FC = () => {
           const workOrderData = workOrderRes.data as any;
           
           const partsRes = await axios.get(`${API_URL}/work-order-parts/${order.id}`, { timeout: 10000 });
-          const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data.map((part: any) => ({
-            ...part,
-            part: part.part || part.part_name || part.description || ''
-          })) : [];
+          const partsWithInvoices = Array.isArray(partsRes.data) ? partsRes.data.map((part: any) => {
+            // Si la parte ya tiene invoiceLink (de work_order_parts), usarlo
+            if (part.invoiceLink) return { ...part, part: part.part || part.part_name || part.description || '' };
+            
+            // Si no, buscar en el inventario
+            const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
+            return {
+              ...part,
+              part: part.part || part.part_name || part.description || '',
+              invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
+            };
+          }) : [];
           
           const enrichedParts = partsWithInvoices;
 
@@ -1451,7 +1468,8 @@ const WorkOrdersTable: React.FC = () => {
               um: 'EA',
               qty: Number(part.qty_used) || 0,
               unitCost: Number(part.cost) || 0,
-              total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0)
+              total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+              invoiceLink: part.invoiceLink || null
             })),
             totalHrs: Number(workOrderData.totalHrs) || 0,
             laborRate: 60,
@@ -1726,8 +1744,18 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       
-      // 5. Mantener partes tal como están registradas
-      const enrichedParts = workOrderParts;
+      // 5. Enriquecer partes con invoice links del inventario/work_order_parts
+      const enrichedParts = workOrderParts.map((part: any) => {
+        // Si la parte ya tiene invoiceLink (de work_order_parts), usarlo
+        if (part.invoiceLink) return part;
+        
+        // Si no, buscar en el inventario
+        const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
+        return {
+          ...part,
+          invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
+        };
+      });
         // 6. Procesar mecánicos correctamente
       let mechanicsString = '';
       let totalHrs = 0;
@@ -1825,7 +1853,8 @@ const WorkOrdersTable: React.FC = () => {
           um: 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
-          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0)
+          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
+          invoiceLink: part.invoiceLink || null
         })),        totalHrs: totalHrs,
         laborRate: 60,
         laborCost: laborCost,
@@ -1854,7 +1883,10 @@ const WorkOrdersTable: React.FC = () => {
         // 11. Abrir PDF en nueva pestaña
       openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
       
-      console.log('✅ PDF visualizado para WO existente');
+      // 12. Abrir enlaces de facturas automáticamente (de partes destinadas)
+      openInvoiceLinks(pdfData.parts);
+      
+      console.log('✅ PDF visualizado y enlaces de facturas abiertos para WO existente');
       
     } catch (error: any) {
       console.error('❌ Error al visualizar PDF:', error);
