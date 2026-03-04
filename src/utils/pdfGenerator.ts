@@ -19,11 +19,6 @@ interface WorkOrderData {
     qty: number;
     unitCost: number;
     total: number;
-    invoice?: string;
-    invoiceReference?: string;
-    invoice_number?: string;
-    invoiceLink?: string;
-    invoice_link?: string;
   }>;
   laborCost: number;
   subtotalParts: number;
@@ -237,13 +232,11 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     String(part.um || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
-    `$${(part.total || 0).toFixed(2)}`,
-    String((part as any).invoice || (part as any).invoiceReference || (part as any).invoice_number || 'N/A').substring(0, 16), // Invoice REF
-    part.invoiceLink ? '✓ LINK' : '' // Show if link exists
+    `$${(part.total || 0).toFixed(2)}`
   ]);
   autoTable(pdf, {
     startY: tableStartY,
-    head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT $', 'TOTAL', 'INVOICE REF', 'LINK']],
+    head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT $', 'TOTAL']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -265,13 +258,11 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     columnStyles: {
       0: { halign: 'center', cellWidth: 8 },      // #
       1: { halign: 'center', cellWidth: 18 },     // SKU
-      2: { halign: 'left', cellWidth: 52 },       // DESCRIPTION
+      2: { halign: 'left', cellWidth: 68 },       // DESCRIPTION
       3: { halign: 'center', cellWidth: 10 },     // U/M
       4: { halign: 'center', cellWidth: 10 },     // QTY
       5: { halign: 'right', cellWidth: 18 },      // UNIT $
-      6: { halign: 'right', cellWidth: 18 },      // TOTAL
-      7: { halign: 'center', cellWidth: 22 },     // INVOICE REF
-      8: { halign: 'center', cellWidth: 10 }      // LINK
+      6: { halign: 'right', cellWidth: 18 }       // TOTAL
     },
     margin: { left: leftMargin, right: rightMargin },
     tableLineColor: [66, 139, 202],
@@ -282,24 +273,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       cellPadding: 1,
       font: 'courier'
     },
-    didDrawCell: function(data) {
-      // Hacer enlaces clickeables en la columna LINK (columna 8)
-      if (data.column.index === 8 && data.cell.section === 'body') {
-        const part = workOrderData.parts[data.row.index];
-        if (part.invoiceLink) {
-          // Agregar enlace clickeable
-          pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: part.invoiceLink });
-          // Cambiar color del texto para indicar que es un enlace
-          pdf.setTextColor(0, 150, 255);
-          pdf.setFont('courier', 'bold');
-          pdf.text('✓ LINK', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
-        } else {
-          pdf.setTextColor(200, 200, 200);
-          pdf.setFont('courier', 'normal');
-          pdf.text('—', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
-        }
-      }
-    }
+
   });
   // TOTALES Y EXTRAS - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
   const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;

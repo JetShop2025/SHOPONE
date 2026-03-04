@@ -1044,26 +1044,6 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="$0.00"
                   />
                 </label>
-                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  Invoice Reference
-                  <input
-                    type="text"
-                    value={part.invoice_number || part.invoiceReference || ''}
-                    onChange={e => handlePartChange(index, 'invoice_number', e.target.value)}
-                    style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: '#f9f9f9' }}
-                    placeholder="Invoice # or PO"
-                  />
-                </label>
-                <label style={{ fontSize: 12, fontWeight: 'bold' }}>
-                  Invoice Link
-                  <input
-                    type="url"
-                    value={part.invoice_link || part.invoiceLink || ''}
-                    onChange={e => handlePartChange(index, 'invoice_link', e.target.value)}
-                    style={{ width: '100%', marginTop: 2, padding: 4, backgroundColor: '#f0f8ff' }}
-                    placeholder="https://example.com/invoice"
-                  />
-                </label>
                 <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
                   Total: ${((parseFloat(String(part.qty || '0'))) * (parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0)).toFixed(2)}
                 </div>

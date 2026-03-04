@@ -11,7 +11,7 @@ import 'jspdf-autotable';
 import HourmeterModal from './HourmeterModal';
 import { useNewWorkOrder } from './useNewWorkOrder';
 import { keepAliveService } from '../../services/keepAlive';
-import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
+import { generateWorkOrderPDF, openPDFInNewTab, savePDFToDatabase } from '../../utils/pdfGenerator';
 dayjs.extend(isBetween);
 dayjs.extend(weekOfYear);
 
@@ -345,9 +345,7 @@ const WorkOrdersTable: React.FC = () => {
               unitCost: part.cost || 0,
               total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
                 ? Number(part.qty_used) * Number(part.cost)
-                : 0,
-              invoice: part.invoice_number || 'N/A',
-              invoiceLink: part.invoice_link
+                : 0
             })),
             totalHrs: Number(workOrderData.totalHrs) || 0,
             laborRate: 60,
@@ -1434,15 +1432,7 @@ const WorkOrdersTable: React.FC = () => {
             part: part.part || part.part_name || part.description || ''
           })) : [];
           
-          const enrichedParts = partsWithInvoices.map((part: any) => {
-            if (part.invoiceLink) return { ...part, invoice_number: 'FIFO Invoice' };
-            const inventoryItem = inventory.find((item: any) => item.sku === part.sku);
-            return {
-              ...part,
-              invoiceLink: inventoryItem?.invoiceLink || null,
-              invoice_number: inventoryItem?.invoiceLink ? 'Inventory Invoice' : 'N/A'
-            };
-          });
+          const enrichedParts = partsWithInvoices;
 
           const pdfData = {
             id: workOrderData.id || order.id,
@@ -1461,9 +1451,7 @@ const WorkOrdersTable: React.FC = () => {
               um: 'EA',
               qty: Number(part.qty_used) || 0,
               unitCost: Number(part.cost) || 0,
-              total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
-              invoice: part.invoice_number || 'N/A',
-              invoiceLink: part.invoiceLink
+              total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0)
             })),
             totalHrs: Number(workOrderData.totalHrs) || 0,
             laborRate: 60,
@@ -1721,9 +1709,7 @@ const WorkOrdersTable: React.FC = () => {
           part: part.part || part.description || '', // Guardar el campo personalizado
           part_name: part.part || part.description || '',
           qty_used: Number(part.qty) || 0,
-          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
-          invoiceLink: null,
-          invoice_number: 'N/A'
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0
         }));
       } else {
         // Si no hay partes en tabla, obtener del API
@@ -1740,15 +1726,8 @@ const WorkOrdersTable: React.FC = () => {
         }
       }
       
-      // 5. Enriquecer partes con invoice links del inventario
-      const enrichedParts = workOrderParts.map((part: any) => {
-        const inventoryItem = inventory.find(item => item.sku === part.sku);
-        return {
-          ...part,
-          invoiceLink: part.invoiceLink || inventoryItem?.invoiceLink || inventoryItem?.invoice_link,
-          invoice_number: part.invoice_number || 'N/A'
-        };
-      });
+      // 5. Mantener partes tal como están registradas
+      const enrichedParts = workOrderParts;
         // 6. Procesar mecánicos correctamente
       let mechanicsString = '';
       let totalHrs = 0;
@@ -1846,9 +1825,7 @@ const WorkOrdersTable: React.FC = () => {
           um: 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
-          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
-          invoice: part.invoice_number || 'N/A',
-          invoiceLink: part.invoiceLink
+          total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0)
         })),        totalHrs: totalHrs,
         laborRate: 60,
         laborCost: laborCost,
@@ -1877,10 +1854,7 @@ const WorkOrdersTable: React.FC = () => {
         // 11. Abrir PDF en nueva pestaña
       openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_view.pdf`);
       
-      // 12. Abrir enlaces de facturas automáticamente
-      openInvoiceLinks(pdfData.parts);
-      
-      console.log('✅ PDF visualizado y enlaces de facturas abiertos para WO existente');
+      console.log('✅ PDF visualizado para WO existente');
       
     } catch (error: any) {
       console.error('❌ Error al visualizar PDF:', error);

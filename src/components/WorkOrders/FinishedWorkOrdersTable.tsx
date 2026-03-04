@@ -524,9 +524,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           sku: part.sku || '',
           part_name: part.part || part.description || '',
           qty_used: Number(part.qty) || 0,
-          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
-          invoiceLink: null,
-          invoice_number: 'N/A'
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0
         }));
       }
 
@@ -568,9 +566,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           um: 'EA',
           qty: part.qty_used,
           unitCost: part.cost,
-          total: part.qty_used * part.cost,
-          invoice: part.invoice_number,
-          invoiceLink: part.invoiceLink
+          total: part.qty_used * part.cost
         })),
         totalHrs: totalHrs,
         laborRate: 60,
