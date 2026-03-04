@@ -2350,10 +2350,10 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
           }
           
-          /* Sin estilos especiales en la card para CONTINUE */
+          /* Animación para cards de Kanban en CONTINUE (NARANJA) - PROCESSING sin fecha de fin */
           .kanban-card-continue {
-            animation: none !important;
-            box-shadow: 0 1px 3px rgba(25,118,210,0.08) !important;
+            animation: kanbanContinueBlink 2s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(255, 152, 0, 0.4) !important;
           }
           
           /* Animación para cards de Kanban en FINISHED (AMARILLO/DORADO) */
@@ -2418,6 +2418,21 @@ const WorkOrdersTable: React.FC = () => {
             }
             100% { 
               border-left-color: #fb8c00;
+              background-color: #ffffff;
+            }
+          }
+          
+          @keyframes kanbanContinueBlink {
+            0% { 
+              border-left-color: #ff9800;
+              background-color: #ffffff;
+            }
+            50% { 
+              border-left-color: #ffa726;
+              background-color: #fff3e0;
+            }
+            100% { 
+              border-left-color: #ff9800;
               background-color: #ffffff;
             }
           }
@@ -3020,7 +3035,7 @@ const WorkOrdersTable: React.FC = () => {
           Drag and drop cards between columns to update status.
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(350px, 1fr))', gap: 16, alignItems: 'start' }}>
           {boardColumns.map(column => {
             const columnOrders = sortedBoardOrders.filter(order => getStatusForBoard(order.status) === column.key);
 
@@ -3035,7 +3050,7 @@ const WorkOrdersTable: React.FC = () => {
                   background: dragOverStatus === column.key ? '#e3f2fd' : '#f8fbff',
                   border: `2px solid ${dragOverStatus === column.key ? '#1976d2' : '#d0d7e2'}`,
                   borderRadius: 12,
-                  padding: 12,
+                  padding: 8,
                   transition: 'all 0.2s ease',
                   overflowY: 'auto',
                   maxHeight: '85vh'
@@ -3048,7 +3063,7 @@ const WorkOrdersTable: React.FC = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'start' }}>
                   {columnOrders.map(order => {
                     const startDateStr = getOrderStartDate(order);
                     const endDateStr = getOrderEndDate(order);
@@ -3071,11 +3086,11 @@ const WorkOrdersTable: React.FC = () => {
                     } else if (order.status === 'APPROVED' || order.status?.toUpperCase() === 'APPROVED') {
                       // Status APPROVED → verde parpadeando (en columna APPROVED)
                       cardClassName = 'kanban-card-approved';
-                    } else if (!hasEndDate) {
-                      // Sin fecha de fin → naranja parpadeando (CONTINUE)
+                    } else if (order.status === 'PROCESSING' && !hasEndDate) {
+                      // Status PROCESSING sin fecha de fin → naranja parpadeando (CONTINUE)
                       cardClassName = 'kanban-card-continue';
                     } else {
-                      // Status PROCESSING → azul parpadeando (en columna PROCESSING)
+                      // Status PROCESSING con fecha de fin → azul parpadeando
                       cardClassName = 'kanban-card-processing';
                     }
 

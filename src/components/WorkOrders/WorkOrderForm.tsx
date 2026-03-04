@@ -592,29 +592,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  // Handler for date inputs (UI en MM/DD/YYYY)
+  // Handler for date inputs (now using type="date" for native calendar picker)
   const handleDateFieldChange = (fieldName: 'startDate' | 'endDate') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = normalizeDateInputToMMDDYYYY(e.target.value);
+    const value = e.target.value; // type="date" returns YYYY-MM-DD format
     onChange({ target: { name: fieldName, value } } as any);
     if (fieldName === 'startDate') {
       onChange({ target: { name: 'date', value } } as any);
-    }
-  };
-
-  const handleDateFieldBlur = (fieldName: 'startDate' | 'endDate') => (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = String(e.target.value || '').trim();
-    if (!value) {
-      if (fieldName === 'endDate') {
-        onChange({ target: { name: 'endDate', value: '' } } as any);
-      }
-      return;
-    }
-    const normalizedToBackend = normalizeDateForSubmit(value);
-    if (!normalizedToBackend) return;
-    const mmddyyyy = formatDateMMDDYYYY(normalizedToBackend);
-    onChange({ target: { name: fieldName, value: mmddyyyy } } as any);
-    if (fieldName === 'startDate') {
-      onChange({ target: { name: 'date', value: mmddyyyy } } as any);
     }
   };
   return (
@@ -662,32 +645,24 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 140px' }}>
             Start Date<span style={{ color: 'red' }}>*</span>
             <input
-              type="text"
+              type="date"
               name="startDate"
-              value={formatDateMMDDYYYY(workOrder.startDate || workOrder.date)}
+              value={workOrder.startDate || workOrder.date || ''}
               onChange={handleDateFieldChange('startDate')}
-              onBlur={handleDateFieldBlur('startDate')}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-              pattern="\d{2}/\d{2}/\d{4}"
-              inputMode="numeric"
               autoComplete="off"
-              placeholder="MM/DD/YYYY"
             />
           </label>
           <label style={{ flex: '1 1 140px' }}>
             End Date
             <input
-              type="text"
+              type="date"
               name="endDate"
-              value={formatDateMMDDYYYY(workOrder.endDate)}
+              value={workOrder.endDate || ''}
               onChange={handleDateFieldChange('endDate')}
-              onBlur={handleDateFieldBlur('endDate')}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-              pattern="\d{2}/\d{2}/\d{4}"
-              inputMode="numeric"
               autoComplete="off"
-              placeholder="MM/DD/YYYY"
             />
           </label>
           <label style={{ flex: '1 1 120px' }}>
