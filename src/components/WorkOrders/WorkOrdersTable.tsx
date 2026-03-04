@@ -2272,6 +2272,12 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
           }
           
+          /* Animación para cards de Kanban sin fecha de fin (CONTINUE) */
+          .kanban-card-continue {
+            animation: none !important;
+            box-shadow: 0 0 12px rgba(255, 152, 0, 0.4) !important;
+          }
+          
           @keyframes kanbanMissingBlink {
             0% { 
               border-left-color: #f44336;
@@ -2315,6 +2321,33 @@ const WorkOrdersTable: React.FC = () => {
               border-left-color: #4caf50;
               background-color: #ffffff;
             }
+          }
+          
+          /* Animación de destelleo naranja para CONTINUE */
+          @keyframes continueBlink {
+            0% { 
+              color: #ff9800;
+              text-shadow: 0 0 4px rgba(255, 152, 0, 0.3);
+              background-color: #fff3e0;
+            }
+            50% { 
+              color: #ffb74d;
+              text-shadow: 0 0 8px rgba(255, 152, 0, 0.7);
+              background-color: #ffe0b2;
+            }
+            100% { 
+              color: #ff9800;
+              text-shadow: 0 0 4px rgba(255, 152, 0, 0.3);
+              background-color: #fff3e0;
+            }
+          }
+          
+          .continue-text {
+            animation: continueBlink 1.5s ease-in-out infinite !important;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
           }
           
 
@@ -2924,6 +2957,7 @@ const WorkOrdersTable: React.FC = () => {
                     const [endYYYY, endMM, endDD] = endDateStr.split('-');
                     const displayStartDate = startMM && startDD && startYYYY ? `${startMM}/${startDD}/${startYYYY}` : formatDateSafely(startDateStr || order.date || '');
                     const displayEndDate = endMM && endDD && endYYYY ? `${endMM}/${endDD}/${endYYYY}` : (endDateStr ? formatDateSafely(endDateStr) : '--/--/----');
+                    const hasEndDate = displayEndDate !== '--/--/----' && displayEndDate !== '';
                     const isMissing = isMissingPartsStatus(order.status);
                     const boardStatus = getStatusForBoard(order.status);
                     
@@ -2935,6 +2969,9 @@ const WorkOrdersTable: React.FC = () => {
                     } else if (order.status === 'APPROVED' || order.status?.toUpperCase() === 'APPROVED') {
                       // Status APPROVED → verde parpadeando (en columna APPROVED)
                       cardClassName = 'kanban-card-approved';
+                    } else if (!hasEndDate) {
+                      // Sin fecha de fin → naranja parpadeando (CONTINUE)
+                      cardClassName = 'kanban-card-continue';
                     } else {
                       // Status PROCESSING → azul parpadeando (en columna PROCESSING)
                       cardClassName = 'kanban-card-processing';
@@ -2979,7 +3016,13 @@ const WorkOrdersTable: React.FC = () => {
                           </div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: column.color, whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1.2 }}>
                             <div>INI: {displayStartDate}</div>
-                            <div>FIN: {displayEndDate}</div>
+                            <div>
+                              {!hasEndDate ? (
+                                <span className="continue-text">CONTINUE</span>
+                              ) : (
+                                <>FIN: {displayEndDate}</>
+                              )}
+                            </div>
                           </div>
                         </div>
 

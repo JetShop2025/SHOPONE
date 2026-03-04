@@ -25,6 +25,13 @@ const blinkGreen = keyframes`
   100% { background-color: #e8f5e9; }
 `;
 
+// Animación de parpadeo para CONTINUE (NARANJA)
+const blinkOrange = keyframes`
+  0% { background-color: #fff3e0; }
+  50% { background-color: #ff9800; }
+  100% { background-color: #fff3e0; }
+`;
+
 export const WorkOrdersContainer = styled.div<ThemeProps>`
   padding: ${(props: any) => props.theme.spacing.large};
   background-color: ${(props: any) => props.theme.colors.background};
