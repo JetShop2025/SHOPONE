@@ -433,7 +433,7 @@ const WorkOrdersTable: React.FC = () => {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
   const [draggingOrderId, setDraggingOrderId] = useState<number | null>(null);
-  const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | 'MISSING_PARTS' | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | null>(null);
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
@@ -721,8 +721,9 @@ const WorkOrdersTable: React.FC = () => {
     return matchesSearch;
   });
 
-  const getStatusForBoard = (status: unknown): 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS' => {
-    if (isMissingPartsStatus(status)) return 'MISSING_PARTS';
+  const getStatusForBoard = (status: unknown): 'PROCESSING' | 'APPROVED' => {
+    // Los W.O. con MISSING_PARTS se muestran en PROCESSING (pero mantienen su animación roja)
+    if (isMissingPartsStatus(status)) return 'PROCESSING';
     const normalized = String(status || '').trim().toUpperCase();
     if (normalized === 'APPROVED') return 'APPROVED';
     return 'PROCESSING';
@@ -748,11 +749,10 @@ const WorkOrdersTable: React.FC = () => {
 
   const boardColumns = [
     { key: 'PROCESSING' as const, title: 'PROCESSING', color: '#1976d2' },
-    { key: 'APPROVED' as const, title: 'APPROVED', color: '#43a047' },
-    { key: 'MISSING_PARTS' as const, title: 'MISSING PARTS', color: '#f44336' }
+    { key: 'APPROVED' as const, title: 'APPROVED', color: '#43a047' }
   ];
 
-  const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS') => {
+  const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED') => {
     const currentStatus = getStatusForBoard(order?.status);
     if (currentStatus === targetStatus) return;
 
@@ -809,13 +809,13 @@ const WorkOrdersTable: React.FC = () => {
     setDragOverStatus(null);
   };
 
-  const handleColumnDragOver = (status: 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS') => (event: React.DragEvent<HTMLDivElement>) => {
+  const handleColumnDragOver = (status: 'PROCESSING' | 'APPROVED') => (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
     setDragOverStatus(status);
   };
 
-  const handleColumnDrop = (status: 'PROCESSING' | 'APPROVED' | 'MISSING_PARTS') => async (event: React.DragEvent<HTMLDivElement>) => {
+  const handleColumnDrop = (status: 'PROCESSING' | 'APPROVED') => async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const draggedIdRaw = event.dataTransfer.getData('text/plain');
     const draggedId = Number(draggedIdRaw || draggingOrderId);
@@ -2375,34 +2375,6 @@ const WorkOrdersTable: React.FC = () => {
   }}>
     📋 Total: {filteredOrders.length} Work Orders
   </div>
-  
-  {/* Botón de acceso directo a Final W.O */}
-  <button
-    onClick={() => navigate('/finished-work-orders')}
-    style={{
-      marginTop: '12px',
-      padding: '10px 20px',
-      background: '#4caf50',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      boxShadow: '0 2px 8px rgba(76,175,80,0.3)',
-      transition: 'all 0.2s ease'
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.background = '#45a049';
-      e.currentTarget.style.transform = 'scale(1.05)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.background = '#4caf50';
-      e.currentTarget.style.transform = 'scale(1)';
-    }}
-  >
-    ➡️ Go to FINAL W.O
-  </button>
   {/* Indicador de estado del servidor */}
   <div style={{ 
     marginLeft: 'auto',
@@ -2499,6 +2471,38 @@ const WorkOrdersTable: React.FC = () => {
               </button>
             )}
           </label>
+          
+          {/* Botón de acceso directo a Final W.O - DEBAJO del search */}
+          <button
+            onClick={() => navigate('/finished-work-orders')}
+            style={{
+              marginTop: '12px',
+              padding: '10px 24px',
+              background: '#e65100',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              boxShadow: '0 3px 10px rgba(230,81,0,0.4)',
+              transition: 'all 0.2s ease',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#d84315';
+              e.currentTarget.style.transform = 'scale(1.05)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(216,67,21,0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#e65100';
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 3px 10px rgba(230,81,0,0.4)';
+            }}
+          >
+            ➡️ Go to FINAL W.O
+          </button>
         </div>
         
         {/* Controles de Paginación */}
@@ -2890,14 +2894,17 @@ const WorkOrdersTable: React.FC = () => {
                     const isMissing = isMissingPartsStatus(order.status);
                     const boardStatus = getStatusForBoard(order.status);
                     
-                    // Determinar clase de animación según status
+                    // Determinar clase de animación según STATUS REAL (no según columna)
                     let cardClassName = '';
                     if (isMissing) {
+                      // Status MISSING_PARTS → rojo parpadeando (en columna PROCESSING)
                       cardClassName = 'kanban-card-missing';
-                    } else if (boardStatus === 'PROCESSING') {
-                      cardClassName = 'kanban-card-processing';
-                    } else if (boardStatus === 'APPROVED') {
+                    } else if (order.status === 'APPROVED' || order.status?.toUpperCase() === 'APPROVED') {
+                      // Status APPROVED → verde parpadeando (en columna APPROVED)
                       cardClassName = 'kanban-card-approved';
+                    } else {
+                      // Status PROCESSING → azul parpadeando (en columna PROCESSING)
+                      cardClassName = 'kanban-card-processing';
                     }
 
                     return (
