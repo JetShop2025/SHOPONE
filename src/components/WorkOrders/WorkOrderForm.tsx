@@ -227,6 +227,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       if (foundPart) {
         // Autocompletar nombre de la parte
         newParts[index].part = foundPart.part || foundPart.description || foundPart.name || '';
+        // Autocompletar unidad de medida desde el Master Inventory
+        newParts[index].um = foundPart.um || foundPart.unit || 'EA';
         // Autocompletar costo - PRIORIDAD AL CAMPO 'precio' de la tabla inventory
         let cost = 0;
         if (foundPart.precio) {

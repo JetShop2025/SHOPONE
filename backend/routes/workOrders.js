@@ -73,8 +73,8 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
 
       // Registra en work_order_parts
       await db.query(
-        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, usuario]
+        'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, um, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, part.um || 'EA', usuario]
       );
       console.log(`✓ [${fifoId}] Parte registrada en work_order_parts`);
 
@@ -101,8 +101,8 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
         await db.query('UPDATE inventory SET onHand = ?, salidasWo = ? WHERE sku = ?', [newOnHand, newSalidasWo, sku]);
         // Registrar en work_order_parts (sin invoice/invoiceLink)
         await db.query(
-          'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, usuario]
+          'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, um, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, part.um || 'EA', usuario]
         );
         // (Opcional) Registrar en log/auditoría
         if (db.logAuditEvent) {

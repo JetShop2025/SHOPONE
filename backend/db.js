@@ -162,6 +162,21 @@ async function ensureWorkOrdersTableHasStartEndDates() {
   }
 }
 
+async function ensureWorkOrderPartsTableHasUmColumn() {
+  try {
+    const [umColumns] = await connection.execute("SHOW COLUMNS FROM work_order_parts LIKE 'um'");
+    if (!umColumns || umColumns.length === 0) {
+      console.log('[DB] Adding um column to work_order_parts table...');
+      await connection.execute('ALTER TABLE work_order_parts ADD COLUMN um VARCHAR(10) DEFAULT \'EA\' NULL');
+      console.log('[DB] Column um added to work_order_parts table.');
+    } else {
+      console.log('[DB] work_order_parts table already has um column.');
+    }
+  } catch (err) {
+    console.error('[DB] Error ensuring um column in work_order_parts:', err.message);
+  }
+}
+
 async function ensureAuditTableExists() {
   try {
     // Primero verificar si la tabla existe
@@ -234,6 +249,7 @@ testConnection().then(() => {
   ensureWorkOrdersTableHasEmployeeWrittenHours();
   ensureWorkOrdersTableHasMiscellaneousFields();
   ensureWorkOrdersTableHasStartEndDates();
+  ensureWorkOrderPartsTableHasUmColumn();
 });
 
 // Trailers functions
@@ -891,16 +907,17 @@ async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
         console.warn('[DB] Could not fetch invoice link from inventory:', inventoryError.message);
       }
     }
-      // Usar los campos que existen en la tabla work_order_parts (incluyendo invoiceLink)
+      // Usar los campos que existen en la tabla work_order_parts (incluyendo invoiceLink y um)
     const [result] = await connection.execute(
-  'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoiceLink) VALUES (?, ?, ?, ?, ?, ?)',
+  'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoiceLink, um) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         workOrderPart.work_order_id,
         workOrderPart.sku || null,
         workOrderPart.part_name || null,
         workOrderPart.qty_used || 1,
         workOrderPart.cost || 0,
-        invoiceLink
+        invoiceLink,
+        workOrderPart.um || 'EA'
       ]
     );
     
@@ -955,11 +972,12 @@ async function updateWorkOrderPart(id, updates, fifoInfo = null) {
 
     // Actualizar los campos necesarios
     const [result] = await connection.execute(
-      'UPDATE work_order_parts SET qty_used = ?, cost = ?, invoiceLink = ?, updated_at = NOW() WHERE id = ?',
+      'UPDATE work_order_parts SET qty_used = ?, cost = ?, invoiceLink = ?, um = ?, updated_at = NOW() WHERE id = ?',
       [
         updates.qty_used || 1,
         updates.cost || 0,
         invoiceLink,
+        updates.um || 'EA',
         id
       ]
     );

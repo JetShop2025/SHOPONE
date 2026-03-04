@@ -433,7 +433,7 @@ const WorkOrdersTable: React.FC = () => {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
   const [draggingOrderId, setDraggingOrderId] = useState<number | null>(null);
-  const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | 'FINISHED' | null>(null);
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
@@ -721,11 +721,12 @@ const WorkOrdersTable: React.FC = () => {
     return matchesSearch;
   });
 
-  const getStatusForBoard = (status: unknown): 'PROCESSING' | 'APPROVED' => {
+  const getStatusForBoard = (status: unknown): 'PROCESSING' | 'APPROVED' | 'FINISHED' => {
+    const normalized = String(status || '').trim().toUpperCase();
+    if (normalized === 'FINISHED') return 'FINISHED';
+    if (normalized === 'APPROVED') return 'APPROVED';
     // Los W.O. con MISSING_PARTS se muestran en PROCESSING (pero mantienen su animación roja)
     if (isMissingPartsStatus(status)) return 'PROCESSING';
-    const normalized = String(status || '').trim().toUpperCase();
-    if (normalized === 'APPROVED') return 'APPROVED';
     return 'PROCESSING';
   };
 
@@ -749,10 +750,11 @@ const WorkOrdersTable: React.FC = () => {
 
   const boardColumns = [
     { key: 'PROCESSING' as const, title: 'PROCESSING', color: '#1976d2' },
-    { key: 'APPROVED' as const, title: 'APPROVED', color: '#43a047' }
+    { key: 'APPROVED' as const, title: 'APPROVED', color: '#43a047' },
+    { key: 'FINISHED' as const, title: 'TRANSFER TO FINAL W.O', color: '#fb8c00' }
   ];
 
-  const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED') => {
+  const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'FINISHED') => {
     const currentStatus = getStatusForBoard(order?.status);
     if (currentStatus === targetStatus) return;
 
@@ -809,13 +811,13 @@ const WorkOrdersTable: React.FC = () => {
     setDragOverStatus(null);
   };
 
-  const handleColumnDragOver = (status: 'PROCESSING' | 'APPROVED') => (event: React.DragEvent<HTMLDivElement>) => {
+  const handleColumnDragOver = (status: 'PROCESSING' | 'APPROVED' | 'FINISHED') => (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
     setDragOverStatus(status);
   };
 
-  const handleColumnDrop = (status: 'PROCESSING' | 'APPROVED') => async (event: React.DragEvent<HTMLDivElement>) => {
+  const handleColumnDrop = (status: 'PROCESSING' | 'APPROVED' | 'FINISHED') => async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const draggedIdRaw = event.dataTransfer.getData('text/plain');
     const draggedId = Number(draggedIdRaw || draggingOrderId);
@@ -832,6 +834,77 @@ const WorkOrdersTable: React.FC = () => {
       return;
     }
 
+    // Check if the order is already in the target column - if so, do nothing
+    const currentBoardStatus = getStatusForBoard(draggedOrder.status);
+    if (currentBoardStatus === status) {
+      // Order is already in this column, no action needed
+      setDraggingOrderId(null);
+      return;
+    }
+
+    // Handling for FINISHED status (Transfer to Final W.O)
+    if (status === 'FINISHED') {
+      // Request password before transferring
+      const pwd = window.prompt('Enter password to transfer to FINAL W.O:');
+      if (pwd !== '6214') {
+        if (pwd !== null) {
+          alert('Incorrect password. Transfer cancelled.');
+        }
+        setDraggingOrderId(null);
+        return;
+      }
+
+      // Request ID Classic
+      const idClassic = window.prompt('Enter ID Classic for this Work Order:');
+      if (!idClassic || idClassic.trim() === '') {
+        alert('ID Classic is required to transfer to FINAL W.O');
+        setDraggingOrderId(null);
+        return;
+      }
+
+      try {
+        // Update with FINISHED status and ID Classic
+        setWorkOrders(prev =>
+          prev.map(item =>
+            item.id === draggedOrder.id ? { ...item, status: 'FINISHED', idClassic: idClassic } : item
+          )
+        );
+
+        setDetailOrder((prev: any) =>
+          prev && prev.id === draggedOrder.id ? { ...prev, status: 'FINISHED', idClassic: idClassic } : prev
+        );
+
+        setContextMenu(prev =>
+          prev.order && prev.order.id === draggedOrder.id
+            ? { ...prev, order: { ...prev.order, status: 'FINISHED', idClassic: idClassic } }
+            : prev
+        );
+
+        // Send to backend
+        await axios.put(`${API_URL}/work-orders/${draggedOrder.id}`, {
+          ...draggedOrder,
+          status: 'FINISHED',
+          idClassic: idClassic,
+          usuario: localStorage.getItem('username') || ''
+        });
+
+        console.log(`✅ Work Order transferred to FINAL W.O with ID Classic: ${idClassic}`);
+        alert(`✅ Work Order #${draggedOrder.id} has been transferred to FINAL W.O`);
+      } catch (error) {
+        console.error('Error transferring Work Order:', error);
+        // Revert on error
+        setWorkOrders(prev =>
+          prev.map(item =>
+            item.id === draggedOrder.id ? { ...item, status: draggedOrder.status } : item
+          )
+        );
+        alert('⚠️ Error transferring Work Order. Please try again.');
+      }
+      setDraggingOrderId(null);
+      return;
+    }
+
+    // For PROCESSING and APPROVED, use existing logic
     // Request password before changing status
     const pwd = window.prompt('Enter password to change Work Order status:');
     if (pwd !== '6214') {
@@ -843,7 +916,7 @@ const WorkOrdersTable: React.FC = () => {
     }
 
     try {
-      await updateWorkOrderStatus(draggedOrder, status);
+      await updateWorkOrderStatus(draggedOrder, status as 'PROCESSING' | 'APPROVED');
     } catch (error) {
       alert('Error updating Work Order status');
     }
@@ -2278,6 +2351,12 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 1px 3px rgba(25,118,210,0.08) !important;
           }
           
+          /* Animación para cards de Kanban en FINISHED (AMARILLO/DORADO) */
+          .kanban-card-finished {
+            animation: kanbanFinishedBlink 2s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(251, 140, 0, 0.4) !important;
+          }
+          
           @keyframes kanbanMissingBlink {
             0% { 
               border-left-color: #f44336;
@@ -2319,6 +2398,21 @@ const WorkOrdersTable: React.FC = () => {
             }
             100% { 
               border-left-color: #4caf50;
+              background-color: #ffffff;
+            }
+          }
+          
+          @keyframes kanbanFinishedBlink {
+            0% { 
+              border-left-color: #fb8c00;
+              background-color: #ffffff;
+            }
+            50% { 
+              border-left-color: #ffa726;
+              background-color: #fff3e0;
+            }
+            100% { 
+              border-left-color: #fb8c00;
               background-color: #ffffff;
             }
           }
@@ -2963,7 +3057,10 @@ const WorkOrdersTable: React.FC = () => {
                     
                     // Determinar clase de animación según STATUS REAL (no según columna)
                     let cardClassName = '';
-                    if (isMissing) {
+                    if (order.status === 'FINISHED' || order.status?.toUpperCase() === 'FINISHED') {
+                      // Status FINISHED → amarillo/dorado parpadeando (en columna TRANSFER TO FINAL)
+                      cardClassName = 'kanban-card-finished';
+                    } else if (isMissing) {
                       // Status MISSING_PARTS → rojo parpadeando (en columna PROCESSING)
                       cardClassName = 'kanban-card-missing';
                     } else if (order.status === 'APPROVED' || order.status?.toUpperCase() === 'APPROVED') {
