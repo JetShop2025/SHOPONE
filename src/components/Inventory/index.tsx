@@ -1,9 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InventoryTable from './InventoryTable';
 import ReceiveInventory from './ReceiveInventory';
 
 const Inventory: React.FC = () => {
   const [view, setView] = useState<'master' | 'receive' | null>(null);
+
+  // Keyboard shortcuts for Inventory submenu
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === '1') {
+        setView('master');
+      } else if (event.key === '2') {
+        setView('receive');
+      } else if (event.key === 'Escape') {
+        setView(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
 
   if (view === 'master') {
     return <InventoryTable />;
@@ -35,6 +51,9 @@ const Inventory: React.FC = () => {
       >
         INVENTORY
       </h1>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 24, fontStyle: 'italic' }}>
+        Press <strong>1</strong> for MASTER or <strong>2</strong> for RECEIVE
+      </div>
       <div style={{ marginBottom: 24 }}>
         <button
           onClick={() => setView('master')}
@@ -54,7 +73,7 @@ const Inventory: React.FC = () => {
           onMouseOver={e => (e.currentTarget.style.background = '#1565c0')}
           onMouseOut={e => (e.currentTarget.style.background = '#1976d2')}
         >
-          MASTER
+          <span style={{ marginRight: 8 }}>1.</span> MASTER
         </button>
         <button
           onClick={() => setView('receive')}
@@ -79,7 +98,7 @@ const Inventory: React.FC = () => {
             e.currentTarget.style.color = '#1976d2';
           }}
         >
-          RECEIVE
+          <span style={{ marginRight: 8 }}>2.</span> RECEIVE
         </button>
       </div>
     </div>

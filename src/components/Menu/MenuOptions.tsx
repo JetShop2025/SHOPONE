@@ -20,25 +20,45 @@ const MenuOptions: React.FC = () => {
     }
   };
 
-  // Keyboard shortcuts for Work Orders
+  // Keyboard shortcuts for Main Menu and Work Orders Submenu
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (!showWorkOrderSubmenu) return;
-      
+      // Ignore if modal is open
+      if (showAuditModal) return;
+
+      // Work Orders submenu is open - capture 1, 2, and Escape
+      if (showWorkOrderSubmenu) {
+        if (event.key === '1') {
+          setShowWorkOrderSubmenu(false);
+          navigate('/work-orders');
+        } else if (event.key === '2') {
+          setShowWorkOrderSubmenu(false);
+          navigate('/finished-work-orders');
+        } else if (event.key === 'Escape') {
+          setShowWorkOrderSubmenu(false);
+        }
+        return;
+      }
+
+      // Main menu navigation - capture 1-5
       if (event.key === '1') {
-        setShowWorkOrderSubmenu(false);
-        navigate('/work-orders');
+        navigate('/inventory');
       } else if (event.key === '2') {
-        setShowWorkOrderSubmenu(false);
-        navigate('/finished-work-orders');
-      } else if (event.key === 'Escape') {
-        setShowWorkOrderSubmenu(false);
+        setShowWorkOrderSubmenu(true);
+      } else if (event.key === '3') {
+        navigate('/trailas');
+      } else if (event.key === '4') {
+        navigate('/trailer-location');
+      } else if (event.key === '5') {
+        setShowAuditModal(true);
+        setError('');
+        setAuditPassword('');
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [showWorkOrderSubmenu, navigate]);
+  }, [showWorkOrderSubmenu, showAuditModal, navigate]);
 
   return (
     <div
@@ -59,6 +79,9 @@ const MenuOptions: React.FC = () => {
         style={{ width: 120, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px rgba(25,118,210,0.10)' }}
       />
       <h1 style={{ color: '#1976d2', fontWeight: 800, marginBottom: 32, letterSpacing: 2 }}>MAIN MENU</h1>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 24, fontStyle: 'italic' }}>
+        Press <strong>1-5</strong> to navigate
+      </div>
       <button
         style={{
           width: '100%',
@@ -75,7 +98,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => navigate('/inventory')}
       >
-        INVENTORY
+        <span style={{ marginRight: 12 }}>1.</span> INVENTORY
       </button>
       <button
         style={{
@@ -93,7 +116,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => setShowWorkOrderSubmenu(!showWorkOrderSubmenu)}
       >
-        WORK ORDERS
+        <span style={{ marginRight: 12 }}>2.</span> WORK ORDERS
       </button>
 
       {/* Submenu for Work Orders */}
@@ -145,7 +168,7 @@ const MenuOptions: React.FC = () => {
             <span style={{ marginRight: 8 }}>2.</span> FINAL W.O
           </div>
           <div style={{ fontSize: 12, color: '#666', marginTop: 12, fontStyle: 'italic' }}>
-            Press 1 or 2, or ESC to close
+            Press <strong>1</strong> or <strong>2</strong>, or <strong>ESC</strong> to close
           </div>
         </div>
       )}
@@ -165,7 +188,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => navigate('/trailas')}
       >
-        TRAILER CONTROL
+        <span style={{ marginRight: 12 }}>3.</span> TRAILER CONTROL
       </button>
       <button
         style={{
@@ -183,7 +206,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => navigate('/trailer-location')}
       >
-        🛰️ TRAILER LOCATION
+        <span style={{ marginRight: 12 }}>4.</span> 🛰️ TRAILER LOCATION
       </button>
       <button
         style={{
@@ -201,7 +224,7 @@ const MenuOptions: React.FC = () => {
         }}
         onClick={() => { setShowAuditModal(true); setError(''); setAuditPassword(''); }}
       >
-        AUDIT
+        <span style={{ marginRight: 12 }}>5.</span> AUDIT
       </button>
 
       {/* Modal para password de auditoría */}
