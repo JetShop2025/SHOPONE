@@ -1220,19 +1220,23 @@ const WorkOrdersTable: React.FC = () => {
     }
   };
   // Función para obtener partes pendientes para una traila
-  const fetchPendingParts = async (trailer: string) => {
+  const fetchPendingParts = async (trailer: string): Promise<any[]> => {
     if (!trailer) {
       setPendingParts([]);
-      return;
+      return [];
     }
     try {
       console.log(`🔍 Obteniendo partes pendientes para trailer: ${trailer}`);
       const res = await axios.get(`${API_URL}/receive/pending/${encodeURIComponent(trailer)}`);
       console.log(`✅ Partes pendientes obtenidas para ${trailer}:`, res.data);
-      setPendingParts(res.data as any[]);
+      const pending = Array.isArray(res.data) ? (res.data as any[]) : [];
+      setPendingParts(pending);
+      return pending;
     } catch (error) {
       console.error(`❌ Error obteniendo partes pendientes para ${trailer}:`, error);
-      setPendingParts([]);    }
+      setPendingParts([]);
+      return [];
+    }
   };
 
   const partesSeleccionadas = pendingParts.filter((p: any) => selectedPendingParts.includes(p.id));
@@ -1248,6 +1252,32 @@ const WorkOrdersTable: React.FC = () => {
     // El formulario debe mostrar exactamente los valores que están en la base de datos
     // sin ningún tipo de recálculo automático
   }, [editWorkOrder?.mechanics, showEditForm]);
+
+  // En edición: detectar nuevas partes pendientes para la unidad y avisar al usuario
+  useEffect(() => {
+    if (!showEditForm) return;
+
+    const trailer = String(editWorkOrder?.trailer || '').trim();
+    if (!trailer) {
+      setPendingParts([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const pending = await fetchPendingParts(trailer);
+      if (cancelled) return;
+
+      if (pending.length > 0) {
+        alert(`⚠️ This unit has ${pending.length} pending part(s) in Receives. You can add them below using \"Add to WO\".`);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showEditForm, editWorkOrder?.trailer]);
 
   const parseExtraOptions = (extraOptionsValue: any): string[] => {
     if (Array.isArray(extraOptionsValue)) return extraOptionsValue;
@@ -1307,16 +1337,7 @@ const WorkOrdersTable: React.FC = () => {
         const normalizedOrder = normalizeWorkOrderForEdit(found);
         setEditWorkOrder(normalizedOrder);
         setExtraOptions(normalizedOrder.extraOptions || []);
-        
-        // 🔥 IMPORTANTE: Cargar partes pendientes automáticamente si ya hay un trailer seleccionado.
-        if (found.trailer) {
-          console.log(`🔄 Cargando partes pendientes para trailer preseleccionado: ${found.trailer}`);
-          fetchPendingParts(found.trailer);
-        } else {
-          // Si no hay trailer, limpiar partes pendientes
-          setPendingParts([]);
-        }
-        
+
         setShowEditForm(true);
       }
     } else if (pwd !== null) {

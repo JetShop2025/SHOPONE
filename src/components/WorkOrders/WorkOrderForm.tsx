@@ -788,6 +788,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               <option value="PROCESSING">PROCESSING</option>
               <option value="APPROVED">APPROVED</option>
               <option value="FINISHED">FINISHED</option>
+              <option value="MISSING_PARTS">MISSING PARTS</option>
             </select>
           </label>
           <label style={{ flex: '1 1 150px' }}>
