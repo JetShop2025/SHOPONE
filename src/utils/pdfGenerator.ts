@@ -228,8 +228,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const tableStartY = descY + 20 + descriptionHeight;
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
-    String(part.sku || '').substring(0, 15), // SKU
-    String(part.description || ''), // Descripción completa sin recortar
+    String(part.sku || '').replace(/\s+/g, '').substring(0, 20), // SKU limpio (sin saltos)
+    String(part.description || '').replace(/\s+/g, ' ').trim(), // Descripción limpia
     String(part.um || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
@@ -244,31 +244,33 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     headStyles: {
       fillColor: [66, 139, 202],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.5,
       fontStyle: 'bold',
       halign: 'center',
-      cellPadding: 2,
+      valign: 'middle',
+      overflow: 'hidden',
+      cellPadding: { top: 1, right: 1, bottom: 1, left: 1 },
       font: 'courier'
     },
     bodyStyles: {
       fontSize: 7.5,
       textColor: [0, 0, 0],
-      cellPadding: 2,
-      overflow: 'linebreak',
+      cellPadding: { top: 1, right: 1, bottom: 1, left: 1 },
+      overflow: 'ellipsize',
       font: 'courier'
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 5 },      // #
-      1: { halign: 'center', cellWidth: 20 },     // SKU
-      2: { halign: 'left', cellWidth: 'auto' },   // DESCRIPTION (usa todo el espacio restante)
+      0: { halign: 'center', cellWidth: 6 },      // #
+      1: { halign: 'center', cellWidth: 24 },     // SKU
+      2: { halign: 'left', cellWidth: 84, overflow: 'linebreak' }, // DESCRIPTION (1 línea normalmente, 2 si requiere)
       3: { halign: 'center', cellWidth: 10 },     // U/M
       4: { halign: 'center', cellWidth: 10 },     // QTY
-      5: { halign: 'right', cellWidth: 20 },      // UNIT $
-      6: { halign: 'right', cellWidth: 20 },      // TOTAL
-      7: { halign: 'center', cellWidth: 10 }      // LINK
+      5: { halign: 'right', cellWidth: 21 },      // UNIT $
+      6: { halign: 'right', cellWidth: 21 },      // TOTAL
+      7: { halign: 'center', cellWidth: 12 }      // LINK
     },
     margin: { left: leftMargin, right: rightMargin },
-    tableWidth: 'auto',
+    tableWidth: contentWidth,
     tableLineColor: [66, 139, 202],
     tableLineWidth: 0.3,
     styles: {
@@ -294,6 +296,14 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
         if (part.invoiceLink) {
           data.cell.styles.textColor = [0, 102, 204];
           data.cell.styles.fontStyle = 'bold';
+        }
+      }
+
+      // Permitir máximo 2 líneas en DESCRIPTION cuando el texto es extenso
+      if (data.column.index === 2 && data.cell.section === 'body') {
+        const cellText = Array.isArray(data.cell.text) ? data.cell.text : [String(data.cell.text || '')];
+        if (cellText.length > 2) {
+          data.cell.text = [cellText[0], `${cellText[1]}...`];
         }
       }
     }
