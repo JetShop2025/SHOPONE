@@ -234,7 +234,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
     `$${(part.total || 0).toFixed(2)}`,
-    part.invoiceLink ? '✓ LINK' : '—' // Indicador de enlace
+    part.invoiceLink ? 'LINK' : '' // Clickeable si hay invoiceLink
   ]);
   autoTable(pdf, {
     startY: tableStartY,
@@ -293,8 +293,6 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
         if (part.invoiceLink) {
           data.cell.styles.textColor = [0, 102, 204];
           data.cell.styles.fontStyle = 'bold';
-        } else {
-          data.cell.styles.textColor = [150, 150, 150];
         }
       }
     }
