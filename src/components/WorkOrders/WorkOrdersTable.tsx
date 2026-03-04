@@ -1338,6 +1338,18 @@ const WorkOrdersTable: React.FC = () => {
         setEditWorkOrder(normalizedOrder);
         setExtraOptions(normalizedOrder.extraOptions || []);
 
+        // Fetch pending parts IMMEDIATELY when opening the edit form
+        const trailer = String(normalizedOrder?.trailer || '').trim();
+        if (trailer) {
+          fetchPendingParts(trailer).then((pending) => {
+            if (pending.length > 0) {
+              alert(`⚠️ This unit has ${pending.length} pending part(s) in Receives. You can add them below using \"Add to WO\".`);
+            }
+          }).catch((error) => {
+            console.error('Error fetching pending parts:', error);
+          });
+        }
+
         setShowEditForm(true);
       }
     } else if (pwd !== null) {
