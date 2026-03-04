@@ -121,6 +121,8 @@ function renderContextInfo(parsed: any) {
   );
 }
 
+*/
+
 // Función para renderizar tabla de cambios (antes/después)
 function renderChangesTable(changes: any) {
   if (!changes || typeof changes !== 'object') return null;
@@ -293,8 +295,6 @@ function renderDataTable(data: any, title: string = 'Información', color: strin
     </div>
   );
 }
-
-*/
 
 // Función auxiliar para ajustar colores
 function adjustColor(color: string, amount: number): string {
