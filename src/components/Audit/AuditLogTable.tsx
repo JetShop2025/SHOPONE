@@ -66,6 +66,8 @@ function renderDetalles(detalles: string | null | undefined) {
   return <div style={{ fontSize: 12, color: '#999' }}>Información registrada</div>;
 }
 
+/* FUNCIONES COMENTADAS - Se usan en versiones futuras si es necesario
+
 // Función para renderizar información contextual
 function renderContextInfo(parsed: any) {
   if (!parsed || typeof parsed !== 'object') return null;
@@ -291,6 +293,8 @@ function renderDataTable(data: any, title: string = 'Información', color: strin
     </div>
   );
 }
+
+*/
 
 // Función auxiliar para ajustar colores
 function adjustColor(color: string, amount: number): string {
