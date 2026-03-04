@@ -1144,8 +1144,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 type="text"
                 name="totalLabAndParts"
                 value={
-                  workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''
-                    ? workOrder.totalLabAndParts
+                  (workOrder.totalLabAndParts === 0 || (workOrder.totalLabAndParts !== undefined && workOrder.totalLabAndParts !== null && workOrder.totalLabAndParts !== ''))
+                    ? (typeof workOrder.totalLabAndParts === 'number' ? `$${workOrder.totalLabAndParts.toFixed(2)}` : workOrder.totalLabAndParts)
                     : `$${calculateTotalLabAndParts().toFixed(2)}`
                 }
                 onChange={(e) => {
