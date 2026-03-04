@@ -4,21 +4,18 @@ import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
-// Función para renderizar detalles de auditoría de forma profesional
+// Función para renderizar detalles de auditoría de forma profesional y compacta
 function renderDetalles(detalles: string | null | undefined) {
   // Verificar si detalles es null, undefined o string vacío
   if (!detalles || detalles === 'null' || detalles === 'undefined') {
     return (
       <div style={{ 
         fontSize: 12, 
-        color: '#666', 
+        color: '#999', 
         fontStyle: 'italic',
-        padding: '8px 12px',
-        background: '#f5f5f5',
-        borderRadius: 4,
-        border: '1px solid #e0e0e0'
+        padding: '4px 0'
       }}>
-        Sin detalles disponibles
+        Sin detalles
       </div>
     );
   }
@@ -27,77 +24,47 @@ function renderDetalles(detalles: string | null | undefined) {
   try {
     parsed = JSON.parse(detalles);
   } catch {
-    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
+    return <div style={{ fontSize: 12, color: '#666' }}>{String(detalles).substring(0, 100)}</div>;
   }
 
-  // Verificar si parsed es null después del JSON.parse
+  // Verificar si parsed es null
   if (!parsed || typeof parsed !== 'object') {
-    return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
+    return <div style={{ fontSize: 12, color: '#666' }}>{String(detalles).substring(0, 100)}</div>;
   }
 
-  // Si tiene summary y el único cambio es estado, mostrar solo la tabla de cambio de estado
-  if (
-    parsed.summary &&
-    parsed.changes &&
-    typeof parsed.changes === 'object' &&
-    Object.keys(parsed.changes).length === 1 &&
-    Object.keys(parsed.changes)[0].toLowerCase() === 'estado'
-  ) {
+  // Si tiene cambios, mostrar tabla simple de ANTES → DESPUÉS
+  if (parsed.changes && typeof parsed.changes === 'object' && Object.keys(parsed.changes).length > 0) {
+    const keys = Object.keys(parsed.changes).filter(k => parsed.changes[k]);
+    
+    if (keys.length === 0) {
+      return <div style={{ fontSize: 12, color: '#999', fontStyle: 'italic' }}>Sin cambios registrados</div>;
+    }
+
     return (
-      <div style={{ fontSize: 13 }}>
-        <div style={{ 
-          fontWeight: 600, 
-          color: '#1565c0', 
-          marginBottom: 12,
-          padding: '8px 12px',
-          background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-          borderRadius: 8,
-          border: '1px solid #2196f3',
-          boxShadow: '0 2px 4px rgba(33, 150, 243, 0.1)'
-        }}>
-          📋 {parsed.summary}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#1976d2', marginBottom: 6 }}>
+          🔄 {keys.length} campo{keys.length > 1 ? 's' : ''} modificad{keys.length > 1 ? 'o' : 'a'}
         </div>
-        {/* Solo mostrar la tabla de cambio de estado */}
         {renderChangesTable(parsed.changes)}
       </div>
     );
   }
 
-  // Si tiene summary, mostrarlo primero como encabezado principal (completo)
+  // Si tiene summary, mostrarlo
   if (parsed.summary) {
     return (
-      <div style={{ fontSize: 13 }}>
-        <div style={{ 
-          fontWeight: 600, 
-          color: '#1565c0', 
-          marginBottom: 12,
-          padding: '8px 12px',
-          background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-          borderRadius: 8,
-          border: '1px solid #2196f3',
-          boxShadow: '0 2px 4px rgba(33, 150, 243, 0.1)'
-        }}>
-          📋 {parsed.summary}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#388e3c', marginBottom: 4 }}>
+          {parsed.summary}
         </div>
-        {/* Mostrar información contextual si existe */}
-        {renderContextInfo(parsed)}
         {/* Mostrar cambios si existen */}
         {parsed.changes && renderChangesTable(parsed.changes)}
-        {/* Mostrar detalles adicionales */}
-        {parsed.detalles && renderDataTable(parsed.detalles, 'Detalles', '#4caf50')}
-        {parsed.datosEliminados && renderDataTable(parsed.datosEliminados, 'Datos Eliminados', '#f44336')}
       </div>
     );
   }
 
-  // Si es un objeto con changes, mostrar tabla de cambios
-  if (parsed.changes) {
-    return renderChangesTable(parsed.changes);
-  }
-
-  // Si es un objeto, mostrar tabla general
-  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-    return renderDataTable(parsed, 'Información', '#2196f3');
+  return <div style={{ fontSize: 12, color: '#999' }}>Información registrada</div>;
+}
   }
 
   // Si no es objeto, mostrar como texto plano
@@ -347,9 +314,6 @@ function getActionIcon(action: string) {
     case 'create': return '✅';
     case 'update': return '✏️';
     case 'delete': return '❌';
-    case 'deduct': return '📉';
-    case 'rent': return '🏠';
-    case 'return': return '↩️';
     default: return '📝';
   }
 }
@@ -360,9 +324,6 @@ function getActionColor(action: string) {
     case 'create': return '#4caf50';
     case 'update': return '#ff9800';
     case 'delete': return '#f44336';
-    case 'deduct': return '#9c27b0';
-    case 'rent': return '#2196f3';
-    case 'return': return '#607d8b';
     default: return '#757575';
   }
 }
@@ -384,12 +345,19 @@ const AuditLogTable: React.FC = () => {
       if (filters.usuario) params.append('usuario', filters.usuario);
       if (filters.accion) params.append('accion', filters.accion);
       if (filters.tabla) params.append('tabla', filters.tabla);
-        axios.get<any[]>(`${API_URL}/audit/audit-log?${params.toString()}`)
+      // Siempre filtrar por acciones válidas (CREATE, UPDATE, DELETE)
+      const validActions = ['CREATE', 'UPDATE', 'DELETE'];
+      params.append('validActions', validActions.join(','));
+      axios.get<any[]>(`${API_URL}/audit/audit-log?${params.toString()}`)
         .then(res => { 
           if (isMounted) {
             console.log('Audit logs response:', res.data);
             const safeData = Array.isArray(res.data) ? res.data : [];
-            setLogs(safeData);
+            // Filtrar solo acciones CREATE, UPDATE, DELETE en frontend también
+            const filteredData = safeData.filter(log => 
+              ['CREATE', 'UPDATE', 'DELETE'].includes(String(log.accion).toUpperCase())
+            );
+            setLogs(filteredData);
             setLoading(false);
           }
         })
@@ -401,7 +369,7 @@ const AuditLogTable: React.FC = () => {
           }
         });
     };
-      fetchData();
+    fetchData();
     // Reducir frecuencia de polling para optimizar memoria (cada 30 segundos en lugar de 10)
     const interval = setInterval(fetchData, 30000);
     return () => { isMounted = false; clearInterval(interval); };
@@ -504,12 +472,9 @@ const AuditLogTable: React.FC = () => {
                 }}
               >
                 <option value="">Todas las acciones</option>
-                <option value="CREATE">Crear</option>
-                <option value="UPDATE">Actualizar</option>
-                <option value="DELETE">Delete</option>
-                <option value="DEDUCT">Deducir</option>
-                <option value="RENT">Rent</option>
-                <option value="RETURN">Devolver</option>
+                <option value="CREATE">✅ Crear</option>
+                <option value="UPDATE">✏️ Actualizar</option>
+                <option value="DELETE">❌ Eliminar</option>
               </select>
             </div>
 

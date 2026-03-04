@@ -2869,16 +2869,9 @@ const WorkOrdersTable: React.FC = () => {
         </div>
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
-        {showForm && (          <div style={modalStyle} onClick={() => {
-            // RESETEAR TODO CUANDO SE CIERRA EL MODAL
-            resetNewWorkOrder();
-            setExtraOptions([]);
-            setPendingPartsQty({});
-            setSelectedPendingParts([]);
-            setIdClassicError('');
-            setShowForm(false);
-          }}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+        {showForm && (
+          <div style={modalStyle}>
+            <div style={modalContentStyle}>
               <WorkOrderForm
                 workOrder={newWorkOrder}
                 onChange={handleWorkOrderChange}
@@ -2912,8 +2905,8 @@ const WorkOrdersTable: React.FC = () => {
         )}
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
         {showEditForm && (
-          <div style={modalStyle} onClick={() => { setShowEditForm(false); setIdClassicError(''); }}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+          <div style={modalStyle}>
+            <div style={modalContentStyle}>
               <div style={{
                 marginBottom: 24,
                 border: '1px solid orange',
