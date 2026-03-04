@@ -65,11 +65,6 @@ function renderDetalles(detalles: string | null | undefined) {
 
   return <div style={{ fontSize: 12, color: '#999' }}>Información registrada</div>;
 }
-  }
-
-  // Si no es objeto, mostrar como texto plano
-  return <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{detalles}</pre>;
-}
 
 // Función para renderizar información contextual
 function renderContextInfo(parsed: any) {
