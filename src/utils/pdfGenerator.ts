@@ -281,16 +281,20 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       if (data.column.index === 7 && data.cell.section === 'body') {
         const part = workOrderData.parts[data.row.index];
         if (part.invoiceLink) {
-          // Agregar enlace clickeable
+          // Agregar solo el link clickeable
           pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: part.invoiceLink });
-          // Cambiar color del texto para indicar que es un enlace
-          pdf.setTextColor(0, 150, 255);
-          pdf.setFont('courier', 'bold');
-          pdf.text('✓ LINK', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
+        }
+      }
+    },
+    didParseCell: function(data) {
+      // Aplicar color azul al texto del LINK cuando hay invoiceLink
+      if (data.column.index === 7 && data.cell.section === 'body') {
+        const part = workOrderData.parts[data.row.index];
+        if (part.invoiceLink) {
+          data.cell.styles.textColor = [0, 102, 204];
+          data.cell.styles.fontStyle = 'bold';
         } else {
-          pdf.setTextColor(200, 200, 200);
-          pdf.setFont('courier', 'normal');
-          pdf.text('—', data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
+          data.cell.styles.textColor = [150, 150, 150];
         }
       }
     }
