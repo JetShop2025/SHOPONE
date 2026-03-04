@@ -261,13 +261,13 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     },
     columnStyles: {
       0: { halign: 'center', cellWidth: 6 },      // #
-      1: { halign: 'center', cellWidth: 24 },     // SKU
-      2: { halign: 'left', cellWidth: 84, overflow: 'linebreak' }, // DESCRIPTION (1 línea normalmente, 2 si requiere)
+      1: { halign: 'center', cellWidth: 22 },     // SKU
+      2: { halign: 'left', cellWidth: 80, overflow: 'linebreak' }, // DESCRIPTION (1 línea normalmente, 2 si requiere)
       3: { halign: 'center', cellWidth: 10 },     // U/M
       4: { halign: 'center', cellWidth: 10 },     // QTY
-      5: { halign: 'right', cellWidth: 21 },      // UNIT $
-      6: { halign: 'right', cellWidth: 21 },      // TOTAL
-      7: { halign: 'center', cellWidth: 12 }      // LINK
+      5: { halign: 'right', cellWidth: 19 },      // UNIT $
+      6: { halign: 'right', cellWidth: 19 },      // TOTAL
+      7: { halign: 'center', cellWidth: 14 }      // LINK
     },
     margin: { left: leftMargin, right: rightMargin },
     tableWidth: contentWidth,
