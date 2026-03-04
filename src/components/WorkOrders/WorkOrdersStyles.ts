@@ -4,11 +4,25 @@ interface ThemeProps {
   theme: any;
 }
 
-// Animación de parpadeo para MISSING PARTS
-const blink = keyframes`
+// Animación de parpadeo para MISSING PARTS (ROJO)
+const blinkRed = keyframes`
   0% { background-color: #ffebee; }
   50% { background-color: #ff5252; }
   100% { background-color: #ffebee; }
+`;
+
+// Animación de parpadeo para PROCESSING (AZUL)
+const blinkBlue = keyframes`
+  0% { background-color: #e3f2fd; }
+  50% { background-color: #42a5f5; }
+  100% { background-color: #e3f2fd; }
+`;
+
+// Animación de parpadeo para APPROVED (VERDE)
+const blinkGreen = keyframes`
+  0% { background-color: #e8f5e9; }
+  50% { background-color: #66bb6a; }
+  100% { background-color: #e8f5e9; }
 `;
 
 export const WorkOrdersContainer = styled.div<ThemeProps>`
@@ -38,14 +52,35 @@ export const TableCell = styled.td<ThemeProps>`
   padding: 8px;
 `;
 
-// Celda parpadeante para MISSING PARTS
-export const BlinkingTableCell = styled.td<ThemeProps>`
+// Celda parpadeante para MISSING PARTS (ROJO)
+export const BlinkingTableCellRed = styled.td<ThemeProps>`
   border: 1px solid ${(props: any) => props.theme.colors.secondary};
   padding: 8px;
-  animation: ${blink} 1.5s ease-in-out infinite;
+  animation: ${blinkRed} 1.5s ease-in-out infinite;
   font-weight: bold;
   color: #c62828;
 `;
+
+// Celda parpadeante para PROCESSING (AZUL)
+export const BlinkingTableCellBlue = styled.td<ThemeProps>`
+  border: 1px solid ${(props: any) => props.theme.colors.secondary};
+  padding: 8px;
+  animation: ${blinkBlue} 1.5s ease-in-out infinite;
+  font-weight: bold;
+  color: #1565c0;
+`;
+
+// Celda parpadeante para APPROVED (VERDE)
+export const BlinkingTableCellGreen = styled.td<ThemeProps>`
+  border: 1px solid ${(props: any) => props.theme.colors.secondary};
+  padding: 8px;
+  animation: ${blinkGreen} 1.5s ease-in-out infinite;
+  font-weight: bold;
+  color: #2e7d32;
+`;
+
+// Legacy alias for backward compatibility
+export const BlinkingTableCell = BlinkingTableCellRed;
 
 export const ButtonContainer = styled.div`
   margin-top: 20px;

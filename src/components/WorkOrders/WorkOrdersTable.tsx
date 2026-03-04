@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
 import dayjs from 'dayjs';
@@ -183,6 +184,8 @@ function calcularTotalWO(order: any) {
 }
 
 const WorkOrdersTable: React.FC = () => {
+  const navigate = useNavigate();
+  
   // Handler for Edit Work Order submit
   const handleEditWorkOrderSubmit = async (data: any) => {
       // Validar y limpiar campos obligatorios antes de enviar
@@ -2224,6 +2227,18 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 0 12px rgba(244, 67, 54, 0.4) !important;
           }
           
+          /* Animación para cards de Kanban en PROCESSING (AZUL) */
+          .kanban-card-processing {
+            animation: kanbanProcessingBlink 2s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(25, 118, 210, 0.4) !important;
+          }
+          
+          /* Animación para cards de Kanban en APPROVED (VERDE) */
+          .kanban-card-approved {
+            animation: kanbanApprovedBlink 2s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
+          }
+          
           @keyframes kanbanMissingBlink {
             0% { 
               border-left-color: #f44336;
@@ -2235,6 +2250,36 @@ const WorkOrdersTable: React.FC = () => {
             }
             100% { 
               border-left-color: #f44336;
+              background-color: #ffffff;
+            }
+          }
+          
+          @keyframes kanbanProcessingBlink {
+            0% { 
+              border-left-color: #1976d2;
+              background-color: #ffffff;
+            }
+            50% { 
+              border-left-color: #42a5f5;
+              background-color: #e3f2fd;
+            }
+            100% { 
+              border-left-color: #1976d2;
+              background-color: #ffffff;
+            }
+          }
+          
+          @keyframes kanbanApprovedBlink {
+            0% { 
+              border-left-color: #4caf50;
+              background-color: #ffffff;
+            }
+            50% { 
+              border-left-color: #66bb6a;
+              background-color: #e8f5e9;
+            }
+            100% { 
+              border-left-color: #4caf50;
               background-color: #ffffff;
             }
           }
@@ -2330,6 +2375,34 @@ const WorkOrdersTable: React.FC = () => {
   }}>
     📋 Total: {filteredOrders.length} Work Orders
   </div>
+  
+  {/* Botón de acceso directo a Final W.O */}
+  <button
+    onClick={() => navigate('/finished-work-orders')}
+    style={{
+      marginTop: '12px',
+      padding: '10px 20px',
+      background: '#4caf50',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      boxShadow: '0 2px 8px rgba(76,175,80,0.3)',
+      transition: 'all 0.2s ease'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = '#45a049';
+      e.currentTarget.style.transform = 'scale(1.05)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = '#4caf50';
+      e.currentTarget.style.transform = 'scale(1)';
+    }}
+  >
+    ➡️ Go to FINAL W.O
+  </button>
   {/* Indicador de estado del servidor */}
   <div style={{ 
     marginLeft: 'auto',
@@ -2815,6 +2888,17 @@ const WorkOrdersTable: React.FC = () => {
                     const displayStartDate = startMM && startDD && startYYYY ? `${startMM}/${startDD}/${startYYYY}` : formatDateSafely(startDateStr || order.date || '');
                     const displayEndDate = endMM && endDD && endYYYY ? `${endMM}/${endDD}/${endYYYY}` : (endDateStr ? formatDateSafely(endDateStr) : '--/--/----');
                     const isMissing = isMissingPartsStatus(order.status);
+                    const boardStatus = getStatusForBoard(order.status);
+                    
+                    // Determinar clase de animación según status
+                    let cardClassName = '';
+                    if (isMissing) {
+                      cardClassName = 'kanban-card-missing';
+                    } else if (boardStatus === 'PROCESSING') {
+                      cardClassName = 'kanban-card-processing';
+                    } else if (boardStatus === 'APPROVED') {
+                      cardClassName = 'kanban-card-approved';
+                    }
 
                     return (
                       <div
@@ -2831,7 +2915,7 @@ const WorkOrdersTable: React.FC = () => {
                           setSelectedRow(order.id);
                           setContextMenu({ visible: true, x: event.clientX, y: event.clientY, order });
                         }}
-                        className={isMissing ? 'kanban-card-missing' : ''}
+                        className={cardClassName}
                         style={{
                           background: '#fff',
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',

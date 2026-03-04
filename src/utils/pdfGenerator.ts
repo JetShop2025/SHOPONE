@@ -228,8 +228,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const tableStartY = descY + 20 + descriptionHeight;
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
-    String(part.sku || '').substring(0, 14), // SKU
-    String(part.description || '').substring(0, 35), // Descripción
+    String(part.sku || '').substring(0, 15), // SKU
+    String(part.description || '').substring(0, 60), // Descripción más larga
     String(part.um || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
@@ -251,21 +251,21 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       font: 'courier'
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 8,
       textColor: [0, 0, 0],
-      cellPadding: 1,
-      overflow: 'ellipsize',
+      cellPadding: 1.5,
+      overflow: 'linebreak',
       font: 'courier'
     },
     columnStyles: {
       0: { halign: 'center', cellWidth: 8 },      // #
-      1: { halign: 'center', cellWidth: 18 },     // SKU
-      2: { halign: 'left', cellWidth: 50 },       // DESCRIPTION
+      1: { halign: 'center', cellWidth: 16 },     // SKU
+      2: { halign: 'left', cellWidth: 78 },       // DESCRIPTION (aumentado)
       3: { halign: 'center', cellWidth: 10 },     // U/M
       4: { halign: 'center', cellWidth: 10 },     // QTY
-      5: { halign: 'right', cellWidth: 18 },      // UNIT $
-      6: { halign: 'right', cellWidth: 18 },      // TOTAL
-      7: { halign: 'center', cellWidth: 14 }      // LINK
+      5: { halign: 'right', cellWidth: 17 },      // UNIT $
+      6: { halign: 'right', cellWidth: 17 },      // TOTAL
+      7: { halign: 'center', cellWidth: 12 }      // LINK
     },
     margin: { left: leftMargin, right: rightMargin },
     tableLineColor: [66, 139, 202],
