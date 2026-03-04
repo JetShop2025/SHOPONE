@@ -2272,10 +2272,10 @@ const WorkOrdersTable: React.FC = () => {
             box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
           }
           
-          /* Animación para cards de Kanban sin fecha de fin (CONTINUE) */
+          /* Sin estilos especiales en la card para CONTINUE */
           .kanban-card-continue {
             animation: none !important;
-            box-shadow: 0 0 12px rgba(255, 152, 0, 0.4) !important;
+            box-shadow: 0 1px 3px rgba(25,118,210,0.08) !important;
           }
           
           @keyframes kanbanMissingBlink {
