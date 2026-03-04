@@ -68,6 +68,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 }) => {const [successMsg, setSuccessMsg] = React.useState('');
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [manualTotalOverride, setManualTotalOverride] = React.useState(false);
+  const isEditingMode = Boolean(workOrder?.id && Number(workOrder.id) > 0) || /edit/i.test(String(title || ''));
   
   // Function to hide tooltip
   const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
@@ -155,16 +156,39 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   }, [workOrder.weldPercent]);
 
   React.useEffect(() => {
-    // Si es una edición (workOrder.id > 0), respetar el valor guardado
-    // Si es una creación nueva (workOrder.id falsy), permitir auto-cálculo
-    const isEditing = workOrder.id && Number(workOrder.id) > 0;
-    setManualTotalOverride(isEditing);
+    // Al abrir crear/editar, iniciar sin override manual.
+    // En edición no recalcularemos hasta detectar cambios reales.
+    setManualTotalOverride(false);
   }, [workOrder.id, title]);
 
-  // Auto-calculate total automatically when parts, mechanics or extras change
-  // Aplica tanto para nuevas órdenes como para edición
+  // Auto-calculate total automatically:
+  // - NEW: siempre
+  // - EDIT: solo cuando haya cambios reales respecto al valor original
   React.useEffect(() => {
     if (manualTotalOverride) return;
+
+    const currentParts = Array.isArray(workOrder.parts) ? workOrder.parts : [];
+    const currentMechanics = Array.isArray(workOrder.mechanics) ? workOrder.mechanics : [];
+    const originalParts = Array.isArray(workOrder.originalParts) ? workOrder.originalParts : [];
+    const originalMechanics = Array.isArray(workOrder.originalMechanics) ? workOrder.originalMechanics : [];
+
+    const partsChanged = isEditingMode
+      ? !shallowArrayEqual(currentParts, originalParts, ['sku', 'part', 'qty', 'cost'])
+      : true;
+    const mechanicsChanged = isEditingMode
+      ? !shallowArrayEqual(currentMechanics, originalMechanics, ['name', 'hrs'])
+      : true;
+
+    const currentMisc = Number(workOrder.miscellaneous ?? 0);
+    const originalMisc = Number(workOrder.originalMiscellaneous ?? workOrder.miscellaneous ?? 0);
+    const currentWeld = Number(workOrder.weldPercent ?? 0);
+    const originalWeld = Number(workOrder.originalWeldPercent ?? workOrder.weldPercent ?? 0);
+    const miscChanged = isEditingMode ? currentMisc !== originalMisc : true;
+    const weldChanged = isEditingMode ? currentWeld !== originalWeld : true;
+
+    const shouldRecalculate = !isEditingMode || partsChanged || mechanicsChanged || miscChanged || weldChanged;
+    if (!shouldRecalculate) return;
+
     const totalHours = Array.isArray(workOrder.mechanics)
       ? workOrder.mechanics.reduce((total: number, mechanic: any) => {
           const hrs = Number(mechanic?.hrs);
@@ -193,7 +217,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (currentValue !== formattedTotal) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.totalLabAndParts, onChange, manualTotalOverride]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.totalLabAndParts, workOrder.originalParts, workOrder.originalMechanics, workOrder.originalMiscellaneous, workOrder.originalWeldPercent, onChange, manualTotalOverride, isEditingMode]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -523,11 +547,32 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return getTrailerOptions ? getTrailerOptions(billToCo) : [];
   };
 
-  // Helper to format date to YYYY-MM-DD (for input type="date")
-  const formatDateYYYYMMDD = (date: string | undefined): string => {
+  // Mostrar fechas en MM/DD/YYYY en los formularios (crear/editar)
+  const formatDateMMDDYYYY = (date: string | undefined): string => {
     if (!date) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-    return '';
+    const trimmed = String(date).trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return trimmed;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [yyyy, mm, dd] = trimmed.split('-');
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
+      const [yyyy, mm, dd] = trimmed.slice(0, 10).split('-');
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    const parsed = new Date(trimmed);
+    if (isNaN(parsed.getTime())) return '';
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    const yyyy = String(parsed.getFullYear());
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
+  const normalizeDateInputToMMDDYYYY = (value: string): string => {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
   };
 
   const normalizeDateForSubmit = (dateValue: string | undefined): string => {
@@ -547,18 +592,29 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  // Handler for date inputs (always store as YYYY-MM-DD string)
+  // Handler for date inputs (UI en MM/DD/YYYY)
   const handleDateFieldChange = (fieldName: 'startDate' | 'endDate') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      onChange({ target: { name: fieldName, value } } as any);
-      if (fieldName === 'startDate') {
-        onChange({ target: { name: 'date', value } } as any);
+    const value = normalizeDateInputToMMDDYYYY(e.target.value);
+    onChange({ target: { name: fieldName, value } } as any);
+    if (fieldName === 'startDate') {
+      onChange({ target: { name: 'date', value } } as any);
+    }
+  };
+
+  const handleDateFieldBlur = (fieldName: 'startDate' | 'endDate') => (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = String(e.target.value || '').trim();
+    if (!value) {
+      if (fieldName === 'endDate') {
+        onChange({ target: { name: 'endDate', value: '' } } as any);
       }
       return;
     }
-    if (value === '' && fieldName === 'endDate') {
-      onChange({ target: { name: 'endDate', value: '' } } as any);
+    const normalizedToBackend = normalizeDateForSubmit(value);
+    if (!normalizedToBackend) return;
+    const mmddyyyy = formatDateMMDDYYYY(normalizedToBackend);
+    onChange({ target: { name: fieldName, value: mmddyyyy } } as any);
+    if (fieldName === 'startDate') {
+      onChange({ target: { name: 'date', value: mmddyyyy } } as any);
     }
   };
   return (
@@ -606,28 +662,32 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 140px' }}>
             Start Date<span style={{ color: 'red' }}>*</span>
             <input
-              type="date"
+              type="text"
               name="startDate"
-              value={formatDateYYYYMMDD(workOrder.startDate || workOrder.date)}
+              value={formatDateMMDDYYYY(workOrder.startDate || workOrder.date)}
               onChange={handleDateFieldChange('startDate')}
+              onBlur={handleDateFieldBlur('startDate')}
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-              pattern="\d{4}-\d{2}-\d{2}"
+              pattern="\d{2}/\d{2}/\d{4}"
               inputMode="numeric"
               autoComplete="off"
+              placeholder="MM/DD/YYYY"
             />
           </label>
           <label style={{ flex: '1 1 140px' }}>
             End Date
             <input
-              type="date"
+              type="text"
               name="endDate"
-              value={formatDateYYYYMMDD(workOrder.endDate)}
+              value={formatDateMMDDYYYY(workOrder.endDate)}
               onChange={handleDateFieldChange('endDate')}
+              onBlur={handleDateFieldBlur('endDate')}
               style={{ width: '100%', marginTop: 4, padding: 8 }}
-              pattern="\d{4}-\d{2}-\d{2}"
+              pattern="\d{2}/\d{2}/\d{4}"
               inputMode="numeric"
               autoComplete="off"
+              placeholder="MM/DD/YYYY"
             />
           </label>
           <label style={{ flex: '1 1 120px' }}>

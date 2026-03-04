@@ -1395,6 +1395,11 @@ const WorkOrdersTable: React.FC = () => {
       endDate: normalizedEndDate,
       parts: Array.isArray(workOrder?.parts) ? workOrder.parts : [],
       mechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics : [],
+      originalParts: Array.isArray(workOrder?.parts) ? workOrder.parts.map((part: any) => ({ ...part })) : [],
+      originalMechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics.map((mechanic: any) => ({ ...mechanic })) : [],
+      originalMiscellaneous: (normalizedMisc !== undefined && normalizedMisc !== null) ? String(normalizedMisc) : '',
+      originalWeldPercent: (normalizedWeld !== undefined && normalizedWeld !== null) ? String(normalizedWeld) : '',
+      originalTotalLabAndParts: workOrder?.totalLabAndParts,
       extraOptions: normalizedExtraOptions,
       miscellaneous: (normalizedMisc !== undefined && normalizedMisc !== null) ? String(normalizedMisc) : '',
       weldPercent: (normalizedWeld !== undefined && normalizedWeld !== null) ? String(normalizedWeld) : ''
