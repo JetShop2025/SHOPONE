@@ -1815,7 +1815,14 @@ const WorkOrdersTable: React.FC = () => {
       
       const laborCost = totalHrs * 60; // $60 por hora
       
-      const totalCost = Number(finalWorkOrderData.totalLabAndParts) || (laborCost + subtotalParts);
+      const rawStoredTotal = finalWorkOrderData.totalLabAndParts;
+      const parsedStoredTotal = Number(rawStoredTotal);
+      const hasStoredTotal =
+        rawStoredTotal !== undefined &&
+        rawStoredTotal !== null &&
+        String(rawStoredTotal).trim() !== '' &&
+        !Number.isNaN(parsedStoredTotal);
+      const totalCost = hasStoredTotal ? parsedStoredTotal : (laborCost + subtotalParts);
       
       console.log('💰 Cálculos de totales:', {
         totalHrs,
@@ -2916,8 +2923,14 @@ const WorkOrdersTable: React.FC = () => {
         const miscAmount = baseSubtotal * (miscPercentValue / 100);
         const weldAmount = baseSubtotal * (weldPercentValue / 100);
         const calculatedTotal = baseSubtotal + miscAmount + weldAmount;
-        const storedTotal = Number(String(detailOrder.totalLabAndParts ?? '').replace(/[^0-9.-]/g, ''));
-        const finalTotal = Number.isFinite(storedTotal) && storedTotal > 0 ? storedTotal : calculatedTotal;
+        const rawStoredTotal = detailOrder.totalLabAndParts;
+        const storedTotal = Number(String(rawStoredTotal ?? '').replace(/[^0-9.-]/g, ''));
+        const hasStoredTotal =
+          rawStoredTotal !== undefined &&
+          rawStoredTotal !== null &&
+          String(rawStoredTotal).trim() !== '' &&
+          Number.isFinite(storedTotal);
+        const finalTotal = hasStoredTotal ? storedTotal : calculatedTotal;
 
         return (
         <div style={modalStyle} onClick={() => setDetailOrder(null)}>
