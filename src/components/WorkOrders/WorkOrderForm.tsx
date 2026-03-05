@@ -1086,8 +1086,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               if (autoDescription) setAutoDescription(false);
               onChange(e);
             }}
-            rows={6}
-            style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 8 }}
+            rows={10}
+            style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 10, minHeight: 220, fontSize: 14, lineHeight: 1.45 }}
             required
           />
           <div style={{ marginTop: 6, fontSize: 11, color: '#546e7a' }}>
