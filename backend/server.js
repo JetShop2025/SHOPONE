@@ -1208,6 +1208,23 @@ app.get('/api/assets/logo.png', (req, res) => {
   });
 });
 
+// ROOT ROUTE - Quick response for deployment platform health checks
+app.get('/', (req, res) => {
+  // If it's a browser request (accepts HTML), serve the React app
+  if (req.accepts('html')) {
+    console.log('[ROOT] Serving React app for browser');
+    return res.sendFile(path.join(__dirname, '../build/index.html'));
+  }
+  // Otherwise (likely a health check), return JSON immediately
+  console.log('[ROOT] Health check via root path');
+  res.json({ 
+    status: 'healthy',
+    message: 'JetShop API Server',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // STATIC FILES - Build de React
 app.use(express.static(path.join(__dirname, '../build')));
 

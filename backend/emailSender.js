@@ -34,7 +34,13 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verificación opcional al inicio (no bloqueante si falla)
-transporter.verify().then(()=>{
+// Add timeout to prevent hanging during deployment
+Promise.race([
+  transporter.verify(),
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('SMTP verification timeout')), 5000)
+  )
+]).then(()=>{
   console.log('[MAIL] SMTP listo para enviar (', MAIL_HOST, ')');
 }).catch(err=>{
   console.warn('[MAIL] No se pudo verificar SMTP:', err.message);
