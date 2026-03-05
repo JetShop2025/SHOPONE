@@ -5,7 +5,8 @@ const router = express.Router();
 // GET / - Obtener registros recientes de auditoría (para el dashboard)
 router.get('/', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 8;
+    const limitParam = parseInt(req.query.limit);
+    const limit = !isNaN(limitParam) && limitParam > 0 ? limitParam : 8;
     const [logs] = await db.connection.execute(`
       SELECT id, usuario, accion, tabla, registro_id, detalles, fecha 
       FROM audit_log 

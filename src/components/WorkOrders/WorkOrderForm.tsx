@@ -165,10 +165,47 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   }, [workOrder.weldPercent]);
 
   React.useEffect(() => {
-    // Al abrir crear/editar, iniciar sin override manual.
-    // En edición no recalcularemos hasta detectar cambios reales.
-    setManualTotalOverride(false);
-  }, [workOrder.id, title]);
+    // Al abrir el formulario, detectar si el total es un valor manual
+    // comparándolo con el cálculo automático
+    if (isEditingMode && workOrder.id) {
+      const totalHours = Array.isArray(workOrder.mechanics)
+        ? workOrder.mechanics.reduce((total: number, mechanic: any) => {
+            const hrs = Number(mechanic?.hrs);
+            return total + (!isNaN(hrs) && hrs > 0 ? hrs : 0);
+          }, 0)
+        : 0;
+      const laborTotal = totalHours * 60;
+      const partsTotal = Array.isArray(workOrder.parts)
+        ? workOrder.parts.reduce((total: number, part: any) => {
+            if (!part || (!part.sku && !part.part && !part.qty && !part.cost)) return total;
+            const qty = Number(part?.qty);
+            const cost = Number(String(part?.cost ?? '').replace(/[^0-9.]/g, ''));
+            const validQty = !isNaN(qty) && qty > 0 ? qty : 0;
+            const validCost = !isNaN(cost) && cost >= 0 ? cost : 0;
+            return total + (validQty * validCost);
+          }, 0)
+        : 0;
+      const subtotal = laborTotal + partsTotal;
+      const miscPercent = Number(workOrder.miscellaneous ?? 0);
+      const weldPercent = Number(workOrder.weldPercent ?? 0);
+      const miscAmount = subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100);
+      const weldAmount = subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100);
+      const calculatedTotal = subtotal + miscAmount + weldAmount;
+      
+      // Obtener el valor actual del total
+      const currentTotal = Number(String(workOrder.totalLabAndParts ?? '').replace(/[^0-9.]/g, ''));
+      
+      // Si el valor actual difiere del calculado, es un valor manual
+      if (!isNaN(currentTotal) && Math.abs(currentTotal - calculatedTotal) > 0.01) {
+        setManualTotalOverride(true);
+      } else {
+        setManualTotalOverride(false);
+      }
+    } else {
+      // En modo creación, iniciar sin override
+      setManualTotalOverride(false);
+    }
+  }, [workOrder.id, title, isEditingMode]);
 
   // Auto-calculate total automatically:
   // - NEW: siempre
