@@ -16,6 +16,9 @@ const LayoutWithDashboard: React.FC<LayoutWithDashboardProps> = ({ children }) =
       if (event.defaultPrevented) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (location.pathname === '/') return;
+      
+      // Don't handle ESC on work orders pages - they have their own ESC handlers
+      if (location.pathname === '/work-orders' || location.pathname === '/finished-work-orders') return;
 
       event.preventDefault();
       navigate(-1);
