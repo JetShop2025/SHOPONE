@@ -9,6 +9,7 @@ import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
 import TrailasTable from './components/Trailers/TrailasTable';  
 import TrailerLocation from './components/TrailerLocation/TrailerLocation';
+import LayoutWithDashboard from './components/Layout/LayoutWithDashboard';
 import './env-test';
 import './services/keepAlive'; // Importar el servicio keep-alive
 
@@ -25,13 +26,13 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<LoginForm />} />
-          <Route path="/menu" element={<PrivateRoute><MenuOptions /></PrivateRoute>} />
-          <Route path="/work-orders" element={<PrivateRoute><WorkOrdersTable /></PrivateRoute>} />
-          <Route path="/finished-work-orders" element={<PrivateRoute><FinishedWorkOrdersTable /></PrivateRoute>} />
-          <Route path="/inventory" element={<PrivateRoute><InventoryList /></PrivateRoute>} />
-          <Route path="/audit" element={<PrivateRoute><AuditLogTable /></PrivateRoute>} />
-          <Route path="/trailas" element={<PrivateRoute><TrailasTable /></PrivateRoute>} />
-          <Route path="/trailer-location" element={<PrivateRoute><TrailerLocation /></PrivateRoute>} />
+          <Route path="/menu" element={<PrivateRoute><LayoutWithDashboard><MenuOptions /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/work-orders" element={<PrivateRoute><LayoutWithDashboard><WorkOrdersTable /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/finished-work-orders" element={<PrivateRoute><LayoutWithDashboard><FinishedWorkOrdersTable /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/inventory" element={<PrivateRoute><LayoutWithDashboard><InventoryList /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/audit" element={<PrivateRoute><LayoutWithDashboard><AuditLogTable /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/trailas" element={<PrivateRoute><LayoutWithDashboard><TrailasTable /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/trailer-location" element={<PrivateRoute><LayoutWithDashboard><TrailerLocation /></LayoutWithDashboard></PrivateRoute>} />
         </Routes>
       </Router>
     </>

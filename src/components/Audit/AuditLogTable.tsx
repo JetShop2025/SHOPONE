@@ -352,10 +352,26 @@ const AuditLogTable: React.FC = () => {
           if (isMounted) {
             console.log('Audit logs response:', res.data);
             const safeData = Array.isArray(res.data) ? res.data : [];
-            // Filtrar solo acciones CREATE, UPDATE, DELETE en frontend también
-            const filteredData = safeData.filter(log => 
-              ['CREATE', 'UPDATE', 'DELETE'].includes(String(log.accion).toUpperCase())
-            );
+            // Filtrar solo acciones CREATE, UPDATE, DELETE y excluir usuario SYSTEM
+            // También filtrar UPDATE sin cambios reales
+            const filteredData = safeData.filter(log => {
+              const isNotSystem = String(log.usuario || '').toUpperCase() !== 'SYSTEM';
+              const isValidAction = ['CREATE', 'UPDATE', 'DELETE'].includes(String(log.accion).toUpperCase());
+              
+              // Para UPDATE, verificar que tenga cambios reales
+              if (String(log.accion).toUpperCase() === 'UPDATE') {
+                try {
+                  const detalles = log.detalles ? JSON.parse(log.detalles) : {};
+                  const hasChanges = detalles.changes && Object.keys(detalles.changes).length > 0;
+                  const hasSummary = !!detalles.summary;
+                  return isNotSystem && isValidAction && (hasChanges || hasSummary);
+                } catch {
+                  return false; // Excluir UPDATE con detalles inválidos
+                }
+              }
+              
+              return isNotSystem && isValidAction;
+            });
             setLogs(filteredData);
             setLoading(false);
           }

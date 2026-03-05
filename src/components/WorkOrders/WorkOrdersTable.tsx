@@ -2499,9 +2499,9 @@ const WorkOrdersTable: React.FC = () => {
       <div
         style={{
           padding: '32px',
-          background: 'linear-gradient(90deg, #fff9c4 0%, #ffffff 100%)',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #e8eef7 100%)',
           borderRadius: 16,
-          boxShadow: '0 4px 24px rgba(255, 193, 7, 0.10)',
+          boxShadow: '0 4px 24px rgba(25, 118, 210, 0.08)',
           maxWidth: 1800,
           margin: '32px auto'
         }}
@@ -2512,24 +2512,26 @@ const WorkOrdersTable: React.FC = () => {
       width: 48,
       height: 48,
       borderRadius: '50%',
-      background: '#ffd600',
+      background: '#1976d2',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,
     }}
   >
-    <span style={{ color: '#333', fontWeight: 'bold', fontSize: 22 }}>✓</span>
+    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: 22 }}>✓</span>
   </div>
   <span
     style={{
       fontSize: 32,
       fontWeight: 700,
-      color: '#ffd600',
+      color: '#1976d2',
       fontFamily: 'Courier New, Courier, monospace',
       letterSpacing: 2,
-      textShadow: '1px 1px 0 #fff',
-    }}  >    W.O ENTRY
+      textShadow: '1px 1px 2px rgba(25,118,210,0.1)',
+    }}
+  >
+    W.O ENTRY
     {searchIdClassic && (
       <span style={{
         marginLeft: '16px',
