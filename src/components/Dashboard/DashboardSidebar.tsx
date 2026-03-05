@@ -5,28 +5,18 @@ import logo from '../../assets/logo.png';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
-interface DashboardStats {
-  totalWorkOrders: number;
-  processingOrders: number;
-  approvedOrders: number;
-  inventoryItems: number;
-  lowStockItems: number;
-  trailers: number;
-  activeRentals: number;
+interface RecentChange {
+  id: string;
+  action: string;
+  module: string;
+  user: string;
+  timestamp: string;
+  details?: string;
 }
 
 const DashboardSidebar: React.FC = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalWorkOrders: 0,
-    processingOrders: 0,
-    approvedOrders: 0,
-    inventoryItems: 0,
-    lowStockItems: 0,
-    trailers: 0,
-    activeRentals: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditPassword, setAuditPassword] = useState('');
@@ -34,34 +24,62 @@ const DashboardSidebar: React.FC = () => {
   const username = localStorage.getItem('username') || 'USER';
 
   useEffect(() => {
-    fetchDashboardStats();
-    const interval = setInterval(fetchDashboardStats, 60000); // Refresh every minute
+    fetchRecentChanges();
+    const interval = setInterval(fetchRecentChanges, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchRecentChanges = async () => {
     try {
-      const [wo, inv, trailers] = await Promise.all([
-        axios.get(`${API_URL}/work-orders?limit=1`),
-        axios.get(`${API_URL}/inventory?limit=1`),
-        axios.get(`${API_URL}/trailas?limit=1`),
-      ]);
-
-      setStats({
-        totalWorkOrders: wo.data?.total || 0,
-        processingOrders: wo.data?.processing || 0,
-        approvedOrders: wo.data?.approved || 0,
-        inventoryItems: inv.data?.total || 0,
-        lowStockItems: inv.data?.lowStock || 0,
-        trailers: trailers.data?.total || 0,
-        activeRentals: trailers.data?.rented || 0,
-      });
-
-      setLoading(false);
+      const response = await axios.get(`${API_URL}/audit?limit=8`);
+      const changes = response.data?.data || response.data || [];
+      setRecentChanges(
+        changes.map((item: any) => ({
+          id: item._id || item.id,
+          action: item.action || 'Updated',
+          module: item.module || 'System',
+          user: item.username || item.user || 'Unknown',
+          timestamp: item.timestamp || new Date().toISOString(),
+          details: item.details || item.description,
+        }))
+      );
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      setLoading(false);
+      console.error('Error fetching recent changes:', error);
+      // Fallback con datos de demostración si la API falla
+      setRecentChanges([]);
     }
+  };
+
+  const formatTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Ahora';
+      if (diffMins < 60) return `${diffMins}m`;
+      if (diffHours < 24) return `${diffHours}h`;
+      if (diffDays < 7) return `${diffDays}d`;
+      
+      return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+    } catch {
+      return 'Hace poco';
+    }
+  };
+
+  const getModuleIcon = (module: string) => {
+    const icons: { [key: string]: string } = {
+      'Work Orders': '📋',
+      'Inventory': '📦',
+      'Trailers': '🚚',
+      'Audit': '🔍',
+      'Users': '👤',
+      'default': '⚙️',
+    };
+    return icons[module] || icons['default'];
   };
   const menuItems = [
       {
@@ -156,15 +174,19 @@ const DashboardSidebar: React.FC = () => {
             src={logo}
             alt="JetShop Logo"
             style={{
-              width: 100,
-              height: 100,
+              width: 240,
+              height: 'auto',
+              maxWidth: '100%',
+              objectFit: 'contain',
               borderRadius: 12,
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
               border: '2px solid rgba(255,255,255,0.2)',
-              imageRendering: '-webkit-optimize-contrast',
+              imageRendering: 'crisp-edges',
               WebkitBackfaceVisibility: 'hidden',
               backfaceVisibility: 'hidden',
               transform: 'translateZ(0)',
+              display: 'block',
+              margin: '0 auto'
             }}
           />
         </div>
@@ -264,62 +286,61 @@ const DashboardSidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Section */}
+        {/* Recent Activity Section */}
         <div style={{ flex: 1, marginBottom: 32 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 }}>
-            📊 Quick Stats
+            📝 Recent Activity
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Work Orders Quick Stat */}
-          <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: 10,
-                padding: 12,
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.2)',
-            }}
-            >
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Work Orders</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{stats.totalWorkOrders}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 6 }}>
-                🟠 Processing: {stats.processingOrders}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto', paddingRight: 6 }}>
+            {recentChanges.length > 0 ? (
+              recentChanges.map((change) => (
+                <div
+                  key={change.id}
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 14, minWidth: 20 }}>{getModuleIcon(change.module)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#fff', fontWeight: 600, wordBreak: 'break-word' }}>
+                        {change.action}
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 }}>
+                        {change.module}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0 0 0', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9 }}>
+                      👤 {change.user}
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 500 }}>
+                      {formatTime(change.timestamp)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  borderRadius: 8,
+                  padding: '16px 12px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: 12,
+                }}
+              >
+                No recent activity
               </div>
-            </div>
-
-            {/* Inventory Quick Stat */}
-            <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: 10,
-                padding: 12,
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}
-            >
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Inventory Items</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{stats.inventoryItems}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 6 }}>
-                ⚠️ Low Stock: {stats.lowStockItems}
-              </div>
-            </div>
-
-            {/* Trailers Quick Stat */}
-            <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: 10,
-                padding: 12,
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}
-            >
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Trailers</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{stats.trailers}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 6 }}>
-                🔴 Rented: {stats.activeRentals}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
