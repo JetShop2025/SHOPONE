@@ -3072,7 +3072,9 @@ const WorkOrdersTable: React.FC = () => {
         <div style={{ overflowX: 'auto', paddingBottom: 6 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(620px, 2.35fr) minmax(170px, 0.48fr)', gap: 12, alignItems: 'start', minWidth: 1170 }}>
           {boardColumns.map(column => {
-            const columnOrders = sortedBoardOrders.filter(order => getStatusForBoard(order.status) === column.key);
+            const columnOrders = sortedBoardOrders
+              .filter(order => getStatusForBoard(order.status) === column.key)
+              .sort((a, b) => Number(a.id) - Number(b.id));
             const cardMinWidth = column.key === 'APPROVED' ? 165 : column.key === 'PROCESSING' ? 182 : 145;
             const cardGridTemplate = column.key === 'APPROVED'
               ? (columnOrders.length >= 12
