@@ -45,6 +45,14 @@ interface Part {
   [key: string]: any;
 }
 
+interface LaborEntry {
+  name?: string;
+  hrs?: string | number;
+  date?: string;
+  task?: string;
+  deadHrs?: string | number;
+}
+
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   workOrder, 
   onChange, 
@@ -68,6 +76,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 }) => {const [successMsg, setSuccessMsg] = React.useState('');
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [manualTotalOverride, setManualTotalOverride] = React.useState(false);
+  const [autoDescription, setAutoDescription] = React.useState(true);
   const isEditingMode = Boolean(workOrder?.id && Number(workOrder.id) > 0) || /edit/i.test(String(title || ''));
   
   // Function to hide tooltip
@@ -347,6 +356,54 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return true;
   }
 
+  const aggregateMechanicsForSubmit = (entries: LaborEntry[]) => {
+    const grouped = new Map<string, { name: string; hrs: number; deadHrs: number }>();
+
+    entries.forEach((entry) => {
+      const name = String(entry?.name || '').trim();
+      if (!name) return;
+      const hrs = Number(entry?.hrs) || 0;
+      const deadHrs = Number(entry?.deadHrs) || 0;
+
+      if (grouped.has(name)) {
+        const current = grouped.get(name)!;
+        current.hrs += hrs;
+        current.deadHrs += deadHrs;
+      } else {
+        grouped.set(name, { name, hrs, deadHrs });
+      }
+    });
+
+    return Array.from(grouped.values()).map((item) => ({
+      name: item.name,
+      hrs: Number(item.hrs.toFixed(2)),
+      deadHrs: Number(item.deadHrs.toFixed(2)),
+    }));
+  };
+
+  const buildDescriptionFromEntries = (entries: LaborEntry[]) => {
+    return entries
+      .filter((entry) => String(entry?.task || '').trim() !== '')
+      .map((entry) => {
+        const task = String(entry.task || '').trim();
+        const mechanic = String(entry.name || '').trim();
+        const dateRaw = String(entry.date || '').trim();
+        const mmddyyyy = formatDateMMDDYYYY(dateRaw).replace(/\//g, '-');
+        const hrs = Number(entry.hrs) || 0;
+        const hrsText = hrs > 0 ? ` (${hrs}h)` : '';
+        const mechanicText = mechanic ? ` BY ${mechanic}` : '';
+        const dateText = mmddyyyy ? ` ${mmddyyyy}` : '';
+        return `- ${task}${mechanicText}${dateText}${hrsText}`;
+      })
+      .join('\n\n');
+  };
+
+  const getMechanicHoursSummary = (entries: LaborEntry[]) => {
+    const aggregated = aggregateMechanicsForSubmit(entries);
+    if (!aggregated.length) return '';
+    return aggregated.map((m) => `${m.name}: ${m.hrs}h`).join(' | ');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -362,12 +419,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const originalTotalHrs = workOrder.originalTotalHrs !== undefined ? Number(workOrder.originalTotalHrs) : undefined;
       const currentTotalHrs = calculateTotalHours();
       const hoursChanged = originalTotalHrs !== undefined ? (Number(originalTotalHrs) !== Number(currentTotalHrs)) : false;
+      const generatedDescription = buildDescriptionFromEntries(currentMechanics);
+      const aggregatedMechanics = aggregateMechanicsForSubmit(currentMechanics);
 
       // Si NO cambió nada, usar los valores originales
       let cleanParts = currentParts;
-      let cleanMechanics = currentMechanics;
+      let cleanMechanics = aggregatedMechanics;
       let totalHrs = currentTotalHrs;
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
+      let descriptionToSend = (autoDescription && generatedDescription) ? generatedDescription : (workOrder.description || '');
       if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged) {
         cleanParts = originalParts;
         cleanMechanics = originalMechanics;
@@ -479,6 +539,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const dataToSend = {
         ...workOrder,
         idClassic: idClassicToSend,
+        description: descriptionToSend,
         parts: cleanParts,
         mechanics: cleanMechanics,
         totalHrs: totalHrs,
@@ -511,8 +572,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
 
+  const getDefaultLaborDate = () => {
+    return normalizeDateForSubmit(workOrder.endDate || workOrder.startDate || workOrder.date || new Date().toISOString().slice(0, 10));
+  };
+
   const addMechanic = () => {
-    const newMechanics = [...(workOrder.mechanics || []), { name: '', hrs: '' }];
+    const newMechanics = [...(workOrder.mechanics || []), { name: '', hrs: '', date: getDefaultLaborDate(), task: '' }];
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
 
@@ -520,6 +585,35 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const newMechanics = (workOrder.mechanics || []).filter((_: any, i: number) => i !== index);
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
+
+  React.useEffect(() => {
+    if (!Array.isArray(workOrder.mechanics)) return;
+    if (workOrder.mechanics.length > 0) return;
+    onChange({
+      target: {
+        name: 'mechanics',
+        value: [{ name: '', hrs: '', date: getDefaultLaborDate(), task: '' }],
+      },
+    } as any);
+  }, [workOrder.id]);
+
+  React.useEffect(() => {
+    const hasStructuredRows = Array.isArray(workOrder.mechanics)
+      ? workOrder.mechanics.some((m: any) => String(m?.task || '').trim() !== '' || String(m?.date || '').trim() !== '')
+      : false;
+    const hasDescription = String(workOrder.description || '').trim() !== '';
+    setAutoDescription(hasStructuredRows || !hasDescription);
+  }, [workOrder.id, title]);
+
+  React.useEffect(() => {
+    if (!autoDescription) return;
+    if (!Array.isArray(workOrder.mechanics)) return;
+    const generated = buildDescriptionFromEntries(workOrder.mechanics);
+    if (!generated && String(workOrder.description || '').trim() !== '') return;
+    if ((workOrder.description || '') !== generated) {
+      onChange({ target: { name: 'description', value: generated } } as any);
+    }
+  }, [workOrder.mechanics, autoDescription]);
   // Eliminar lógica de extras anteriores
 
 
@@ -871,23 +965,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </div>
         
         <div style={{ marginBottom: 16 }}>
-          <label style={{ width: '100%' }}>
-            Descripción<span style={{ color: 'red' }}>*</span>
-            <textarea
-              name="description"
-              placeholder="Description*"
-              value={workOrder.description || ''}
-              onChange={onChange}
-              rows={3}
-              style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 8 }}
-              required
-            />
-          </label>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <strong>Mecánicos</strong>
+            <strong>Labor Log (Date, Mechanic, Hours, Work Done)</strong>
             <button
               type="button"
               onClick={addMechanic}
@@ -900,10 +979,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 cursor: 'pointer'
               }}
             >
-              + Agregar
+              + Add Row
             </button>
-          </div>          {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
-            <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+          </div>
+
+          {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 90px 2fr 36px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <input
+                type="date"
+                value={mechanic.date || getDefaultLaborDate()}
+                onChange={e => handleMechanicChange(index, 'date', e.target.value)}
+                style={{ padding: 8 }}
+              />
               <select
                 value={mechanic.name || ''}
                 onChange={e => handleMechanicChange(index, 'name', e.target.value)}
@@ -930,6 +1017,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
                 style={{ width: 80, padding: 8 }}
                 step="0.25"
+                min="0"
+              />
+              <input
+                type="text"
+                placeholder="Work done on this date..."
+                value={mechanic.task || ''}
+                onChange={e => handleMechanicChange(index, 'task', e.target.value)}
+                style={{ width: '100%', padding: 8 }}
               />
               <button
                 type="button"
@@ -947,11 +1042,47 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </button>
             </div>
           ))}
+
+          <div style={{ marginTop: 10, padding: '8px 10px', background: '#eef5ff', borderRadius: 6, border: '1px solid #d6e6ff', fontSize: 12 }}>
+            <strong>Hours by mechanic:</strong> {getMechanicHoursSummary(workOrder.mechanics || []) || 'No hours logged yet'}
+          </div>
+
           {(!workOrder.mechanics || workOrder.mechanics.length === 0) && (
             <div style={{ color: '#666', fontStyle: 'italic' }}>
-              No mechanics added. Click "Add Mechanic" to add one.
+              No labor rows yet. Click "Add Row" to start logging by date.
             </div>
           )}
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <label style={{ width: '100%' }}>
+              Descripción / Invoice Notes<span style={{ color: 'red' }}>*</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={autoDescription}
+                onChange={(e) => setAutoDescription(e.target.checked)}
+              />
+              Auto build
+            </label>
+          </div>
+          <textarea
+            name="description"
+            placeholder="Description*"
+            value={workOrder.description || ''}
+            onChange={(e) => {
+              if (autoDescription) setAutoDescription(false);
+              onChange(e);
+            }}
+            rows={6}
+            style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 8 }}
+            required
+          />
+          <div style={{ marginTop: 6, fontSize: 11, color: '#546e7a' }}>
+            Tip: Use labor rows to generate clear lines by date/mecanic/hours automatically.
+          </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
