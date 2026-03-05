@@ -712,12 +712,14 @@ const WorkOrdersTable: React.FC = () => {
 
       if (showHourmeter) {
         event.preventDefault();
+        event.stopPropagation();
         setShowHourmeter(false);
         return;
       }
 
       if (showForm) {
         event.preventDefault();
+        event.stopPropagation();
         resetNewWorkOrder();
         setExtraOptions([]);
         setPendingPartsQty({});
@@ -729,6 +731,7 @@ const WorkOrdersTable: React.FC = () => {
 
       if (showEditForm) {
         event.preventDefault();
+        event.stopPropagation();
         setShowEditForm(false);
         setEditWorkOrder(null);
         setEditId('');
@@ -1686,7 +1689,7 @@ const WorkOrdersTable: React.FC = () => {
     width: '96vw',
     maxWidth: 1480,
     maxHeight: '92vh',
-    overflow: 'hidden',
+    overflow: 'auto',
     boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
   };
 
