@@ -2,6 +2,36 @@ const express = require('express');
 const db = require('../db');
 const router = express.Router();
 
+// GET / - Obtener registros recientes de auditoría (para el dashboard)
+router.get('/', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 8;
+    const [logs] = await db.connection.execute(`
+      SELECT id, usuario, accion, tabla, registro_id, detalles, fecha 
+      FROM audit_log 
+      ORDER BY fecha DESC 
+      LIMIT ?
+    `, [limit]);
+    
+    res.json({
+      data: logs.map(log => ({
+        _id: log.id,
+        id: log.id,
+        action: log.accion,
+        module: log.tabla || 'System',
+        user: log.usuario,
+        username: log.usuario,
+        timestamp: log.fecha,
+        details: log.detalles,
+        description: log.detalles,
+      }))
+    });
+  } catch (err) {
+    console.error('[AUDIT] Error fetching recent logs:', err);
+    res.status(500).json({ error: 'Error fetching recent logs', details: err.message });
+  }
+});
+
 // Obtener logs de auditoría con filtros opcionales
 router.get('/audit-log', async (req, res) => {
   try {

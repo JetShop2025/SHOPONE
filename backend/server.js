@@ -1228,8 +1228,13 @@ app.get('/', (req, res) => {
 // STATIC FILES - Build de React
 app.use(express.static(path.join(__dirname, '../build')));
 
-// CATCH ALL - Para React Router
+// CATCH ALL - Para React Router (solo si NO es una ruta de API)
 app.get('*', (req, res) => {
+  // Don't serve React app for API routes
+  if (req.url.startsWith('/api')) {
+    return res.status(404).json({ error: 'API endpoint not found', path: req.url });
+  }
+  
   console.log(`[CATCH-ALL] Serving React app for: ${req.url}`);
   res.sendFile(path.join(__dirname, '../build/index.html'));
 });
