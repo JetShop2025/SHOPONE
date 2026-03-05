@@ -23,6 +23,15 @@ const MenuOptions: React.FC = () => {
   // Keyboard shortcuts for Main Menu and Work Orders Submenu
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input, textarea, or contenteditable element
+      const activeElement = document.activeElement as HTMLElement;
+      const isEditableElement = 
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.contentEditable === 'true';
+      
+      if (isEditableElement) return;
+
       // Ignore if modal is open
       if (showAuditModal) return;
 

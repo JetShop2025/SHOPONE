@@ -8,6 +8,15 @@ const Inventory: React.FC = () => {
   // Keyboard shortcuts for Inventory submenu
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input, textarea, or contenteditable element
+      const activeElement = document.activeElement as HTMLElement;
+      const isEditableElement = 
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
+        activeElement?.contentEditable === 'true';
+      
+      if (isEditableElement) return;
+
       if (event.key === '1') {
         setView('master');
       } else if (event.key === '2') {
