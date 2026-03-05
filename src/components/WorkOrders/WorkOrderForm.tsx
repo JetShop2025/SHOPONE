@@ -726,8 +726,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           onSubmit={handleSubmit}
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 20,
+            gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+            gap: 16,
             alignItems: 'start'
           }}
         >
@@ -920,7 +920,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         )}
 
         {/* Segunda fila - Status, ID Classic (solo en edición) */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
           <label style={{ flex: '1 1 150px' }}>
             Status
             <select
@@ -977,7 +977,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </label>
         </div>
         
-        <div style={{ marginBottom: 0 }}>
+        <div style={{ marginBottom: 0, gridColumn: 'span 6', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <strong>Labor Log (Date, Mechanic, Hours, Work Done)</strong>
             <button
@@ -985,7 +985,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               onClick={addMechanic}
               style={{
                 padding: '4px 8px',
-                background: '#1976d2',
+                background: '#0A3854',
                 color: 'white',
                 border: 'none',
                 borderRadius: 4,
@@ -996,8 +996,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </button>
           </div>
 
+          <div style={{ overflowX: 'auto' }}>
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(115px, 140px) minmax(140px, 1fr) minmax(75px, 95px) minmax(160px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '130px minmax(150px, 1fr) 90px minmax(240px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 660 }}>
               <input
                 type="date"
                 value={mechanic.date || getDefaultLaborDate()}
@@ -1055,6 +1056,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </button>
             </div>
           ))}
+          </div>
 
           <div style={{ marginTop: 10, padding: '8px 10px', background: '#eef5ff', borderRadius: 6, border: '1px solid #d6e6ff', fontSize: 12 }}>
             <strong>Hours by mechanic:</strong> {getMechanicHoursSummary(workOrder.mechanics || []) || 'No hours logged yet'}
@@ -1067,7 +1069,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           )}
         </div>
 
-        <div style={{ marginBottom: 0 }}>
+        <div style={{ marginBottom: 0, gridColumn: 'span 6', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <label style={{ width: '100%' }}>
               Descripción / Invoice Notes<span style={{ color: 'red' }}>*</span>
@@ -1098,16 +1100,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ marginBottom: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <strong>Parts</strong>
+        <div style={{ marginBottom: 0, gridColumn: '1 / -1', minWidth: 0, maxHeight: 430, overflowY: 'auto', overflowX: 'hidden', padding: 12, border: '1px solid #d9e2ec', borderRadius: 8, background: '#f8fbff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, justifyContent: 'space-between' }}>
+            <strong>Parts ({(workOrder.parts || []).length})</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {onAddEmptyPart && (
               <button
                 type="button"
                 onClick={onAddEmptyPart}
                 style={{
                   padding: '4px 8px',
-                  background: '#1976d2',
+                  background: '#0A3854',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
@@ -1117,16 +1120,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 + Agregar Parte
               </button>
             )}
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>            {workOrder.parts && workOrder.parts.map((part: Part, index: number) => (
+          <div style={{ fontSize: 11, color: '#5f7387', marginBottom: 10 }}>
+            Vista en lista por tarjetas con 2+ columnas y scroll interno para evitar desbordes.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, alignItems: 'start' }}>            {workOrder.parts && workOrder.parts.map((part: Part, index: number) => (
               <div key={index} style={{
-                border: '1px solid #ccc',
-                borderRadius: 4,
-                padding: 8,
+                border: '1px solid #cdd9e5',
+                borderRadius: 8,
+                padding: 10,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
-                position: 'relative'
+                position: 'relative',
+                background: '#fff',
+                boxShadow: '0 1px 3px rgba(10,56,84,0.08)'
               }}>
                 {/* Botón para eliminar parte */}
                 {onDeletePart && (
@@ -1233,7 +1242,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
         
-        <div style={{ marginBottom: 0 }}>
+        <div style={{ marginBottom: 0, gridColumn: 'span 4', minWidth: 0 }}>
           <strong>Miscellaneous</strong>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
             <label style={{ fontWeight: 500, color: '#0A3854', marginRight: 4, display: 'inline-flex', alignItems: 'center' }}>
@@ -1265,7 +1274,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
         {/* Welding Supplies field */}
-        <div style={{ marginBottom: 0 }}>
+        <div style={{ marginBottom: 0, gridColumn: 'span 4', minWidth: 0 }}>
           <strong>Welding Supplies</strong>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
             <label style={{ fontWeight: 500, color: '#0A3854', marginRight: 4, display: 'inline-flex', alignItems: 'center' }}>
@@ -1297,7 +1306,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, gridColumn: 'span 4', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <label style={{ display: 'inline-flex', flexDirection: 'column' }}>
               Total LAB & PARTS
@@ -1320,8 +1329,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   padding: '8px 10px', 
                   fontWeight: 'bold',
                   backgroundColor: '#ffffff',
-                  border: '2px solid #1976d2',
-                  color: '#1976d2',
+                  border: '2px solid #0A3854',
+                  color: '#0A3854',
                   fontSize: '16px',
                   borderRadius: 6
                 }}
@@ -1377,7 +1386,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 16, marginTop: 8, gridColumn: '1 / -1' }}>
+        <div style={{ display: 'flex', gap: 16, marginTop: 8, gridColumn: '1 / -1', position: 'sticky', bottom: 0, background: '#fff', paddingTop: 12, borderTop: '1px solid #d9e2ec', zIndex: 3 }}>
           <button
             type="submit"
             disabled={loading}

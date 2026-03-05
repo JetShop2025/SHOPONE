@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DashboardSidebar from '../Dashboard/DashboardSidebar';
 
 interface LayoutWithDashboardProps {
@@ -6,6 +7,24 @@ interface LayoutWithDashboardProps {
 }
 
 const LayoutWithDashboard: React.FC<LayoutWithDashboardProps> = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleEscToBack = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (event.defaultPrevented) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (location.pathname === '/') return;
+
+      event.preventDefault();
+      navigate(-1);
+    };
+
+    window.addEventListener('keydown', handleEscToBack);
+    return () => window.removeEventListener('keydown', handleEscToBack);
+  }, [navigate, location.pathname]);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <DashboardSidebar />

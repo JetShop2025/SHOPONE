@@ -706,6 +706,42 @@ const WorkOrdersTable: React.FC = () => {
     }
   }, [newWorkOrder.trailer]);
 
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+
+      if (showHourmeter) {
+        event.preventDefault();
+        setShowHourmeter(false);
+        return;
+      }
+
+      if (showForm) {
+        event.preventDefault();
+        resetNewWorkOrder();
+        setExtraOptions([]);
+        setPendingPartsQty({});
+        setSelectedPendingParts([]);
+        setIdClassicError('');
+        setShowForm(false);
+        return;
+      }
+
+      if (showEditForm) {
+        event.preventDefault();
+        setShowEditForm(false);
+        setEditWorkOrder(null);
+        setEditId('');
+        setEditError('');
+        setEditPassword('');
+        setIdClassicError('');
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [showHourmeter, showForm, showEditForm, resetNewWorkOrder]);
+
   const filteredOrders = workOrders.filter(order => {
     const orderStartDate = getOrderStartDate(order);
     if (!orderStartDate) return false;
@@ -2909,18 +2945,19 @@ const WorkOrdersTable: React.FC = () => {
         {showEditForm && (
           <div style={modalStyle}>
             <div style={modalContentStyle}>
-              <div style={{
-                marginBottom: 24,
-                border: '1px solid orange',
-                background: '#fffbe6',
-                borderRadius: 8,
-                padding: 24,
-                maxWidth: 700,
-                boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
-              }}>
-                <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>
-                {!editWorkOrder ? (
-                  <>
+              {!editWorkOrder ? (
+                <div style={{
+                  marginBottom: 24,
+                  border: '1px solid orange',
+                  background: '#fffbe6',
+                  borderRadius: 8,
+                  padding: 24,
+                  maxWidth: 700,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
+                }}>
+                  <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>
                     <label style={{ fontWeight: 600 }}>
                       ID:
                       <input
@@ -2970,39 +3007,38 @@ const WorkOrdersTable: React.FC = () => {
                       Cancel
                     </button>
                     {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
-                  </>
-                ) : (
-                  <>
-                    <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#1976d2' }}>
-                      Order ID: {editWorkOrder.id}
-                    </div>
-                    {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (
-  <div style={{ color: 'red', padding: 32 }}>No data to edit.</div>
-)}
-                    <WorkOrderForm
-                      workOrder={editWorkOrder}
-                      onChange={handleWorkOrderChange}
-                      onPartChange={handlePartChange}
-                      onSubmit={handleEditWorkOrderSubmit}
-                      onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); setIdClassicError(''); }}
-                      title="Edit Work Order"
-                      billToCoOptions={billToCoOptions}
-                      getTrailerOptions={billToCo => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
-                      inventory={inventory}
-                      onAddEmptyPart={addEmptyPart}
-                      onAddPendingPart={addPendingPart}
-                      onDeletePart={deletePart}
-                      trailersWithPendingParts={trailersWithPendingParts}
-                      pendingParts={pendingParts}
-                      pendingPartsQty={pendingPartsQty}
-                      setPendingPartsQty={setPendingPartsQty}
-                      loading={loading}
-                      setLoading={setLoading}
-                      idClassicError={idClassicError}
-                    />
-                  </>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#0A3854' }}>
+                    Order ID: {editWorkOrder.id}
+                  </div>
+                  {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (
+                    <div style={{ color: 'red', padding: 32 }}>No data to edit.</div>
+                  )}
+                  <WorkOrderForm
+                    workOrder={editWorkOrder}
+                    onChange={handleWorkOrderChange}
+                    onPartChange={handlePartChange}
+                    onSubmit={handleEditWorkOrderSubmit}
+                    onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); setIdClassicError(''); }}
+                    title="Edit Work Order"
+                    billToCoOptions={billToCoOptions}
+                    getTrailerOptions={billToCo => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
+                    inventory={inventory}
+                    onAddEmptyPart={addEmptyPart}
+                    onAddPendingPart={addPendingPart}
+                    onDeletePart={deletePart}
+                    trailersWithPendingParts={trailersWithPendingParts}
+                    pendingParts={pendingParts}
+                    pendingPartsQty={pendingPartsQty}
+                    setPendingPartsQty={setPendingPartsQty}
+                    loading={loading}
+                    setLoading={setLoading}
+                    idClassicError={idClassicError}
+                  />
+                </>
+              )}
             </div>
           </div>
         )}        {/* --- BOARD ABAJO --- */}
@@ -3030,9 +3066,16 @@ const WorkOrdersTable: React.FC = () => {
           Drag and drop cards between columns to update status.
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(350px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ overflowX: 'auto', paddingBottom: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(620px, 2.35fr) minmax(170px, 0.48fr)', gap: 12, alignItems: 'start', minWidth: 1170 }}>
           {boardColumns.map(column => {
             const columnOrders = sortedBoardOrders.filter(order => getStatusForBoard(order.status) === column.key);
+            const cardMinWidth = column.key === 'APPROVED' ? 165 : column.key === 'PROCESSING' ? 182 : 145;
+            const cardGridTemplate = column.key === 'APPROVED'
+              ? (columnOrders.length >= 12
+                ? 'repeat(4, minmax(145px, 1fr))'
+                : 'repeat(3, minmax(165px, 1fr))')
+              : `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
 
             return (
               <div
@@ -3041,14 +3084,14 @@ const WorkOrdersTable: React.FC = () => {
                 onDrop={handleColumnDrop(column.key)}
                 onDragLeave={() => setDragOverStatus((prev) => (prev === column.key ? null : prev))}
                 style={{
-                  minHeight: 550,
+                  minHeight: 540,
                   background: dragOverStatus === column.key ? '#e3f2fd' : '#f8fbff',
                   border: `2px solid ${dragOverStatus === column.key ? '#1976d2' : '#d0d7e2'}`,
                   borderRadius: 12,
-                  padding: 8,
+                  padding: column.key === 'FINISHED' ? 6 : 8,
                   transition: 'all 0.2s ease',
                   overflowY: 'auto',
-                  maxHeight: '85vh'
+                  maxHeight: '84vh'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', border: `1px solid ${column.color}` }}>
@@ -3058,7 +3101,7 @@ const WorkOrdersTable: React.FC = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: cardGridTemplate, gap: 8, alignItems: 'start' }}>
                   {columnOrders.map(order => {
                     const startDateStr = getOrderStartDate(order);
                     const endDateStr = getOrderEndDate(order);
@@ -3114,7 +3157,7 @@ const WorkOrdersTable: React.FC = () => {
                           cursor: 'pointer',
                           boxShadow: '0 1px 3px rgba(25,118,210,0.08)',
                           transition: 'all 0.15s ease',
-                          minHeight: '130px',
+                          minHeight: '124px',
                           display: 'flex',
                           flexDirection: 'column'
                         }}
@@ -3181,6 +3224,7 @@ const WorkOrdersTable: React.FC = () => {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
