@@ -26,7 +26,7 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<LoginForm />} />
-          <Route path="/menu" element={<PrivateRoute><LayoutWithDashboard><MenuOptions /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/menu" element={<PrivateRoute><MenuOptions /></PrivateRoute>} />
           <Route path="/work-orders" element={<PrivateRoute><LayoutWithDashboard><WorkOrdersTable /></LayoutWithDashboard></PrivateRoute>} />
           <Route path="/finished-work-orders" element={<PrivateRoute><LayoutWithDashboard><FinishedWorkOrdersTable /></LayoutWithDashboard></PrivateRoute>} />
           <Route path="/inventory" element={<PrivateRoute><LayoutWithDashboard><InventoryList /></LayoutWithDashboard></PrivateRoute>} />

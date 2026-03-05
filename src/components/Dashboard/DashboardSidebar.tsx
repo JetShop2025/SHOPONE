@@ -28,6 +28,10 @@ const DashboardSidebar: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditPassword, setAuditPassword] = useState('');
+  const [error, setError] = useState('');
+  const username = localStorage.getItem('username') || 'USER';
 
   useEffect(() => {
     fetchDashboardStats();
@@ -111,8 +115,23 @@ const DashboardSidebar: React.FC = () => {
     const handleMenuClick = (menuId: string, path: string) => {
       if (menuItems.find(m => m.id === menuId)?.submenu) {
         setExpandedMenu(expandedMenu === menuId ? null : menuId);
+      } else if (menuId === 'audit') {
+        setShowAuditModal(true);
+        setError('');
+        setAuditPassword('');
       } else {
         navigate(path);
+      }
+    };
+
+    const handleAuditAccess = () => {
+      if (auditPassword === '6214') {
+        setShowAuditModal(false);
+        setAuditPassword('');
+        setError('');
+        navigate('/audit');
+      } else {
+        setError('wrong password, try again!');
       }
     };
 
@@ -137,13 +156,30 @@ const DashboardSidebar: React.FC = () => {
             src={logo}
             alt="JetShop Logo"
             style={{
-              width: 80,
-              height: 80,
+              width: 100,
+              height: 100,
               borderRadius: 12,
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
               border: '2px solid rgba(255,255,255,0.2)',
+              imageRendering: '-webkit-optimize-contrast',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
             }}
           />
+        </div>
+
+        {/* Username Display */}
+        <div style={{ 
+          marginBottom: 20, 
+          textAlign: 'center', 
+          background: 'rgba(255,255,255,0.15)',
+          padding: '10px 12px',
+          borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.25)'
+        }}>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>👤 Usuario Activo</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{username}</div>
         </div>
 
         {/* Main Menu */}
@@ -300,6 +336,94 @@ const DashboardSidebar: React.FC = () => {
           <div>ShopOne v1.2.24</div>
           <div style={{ marginTop: 4 }}>{new Date().toLocaleDateString('es-ES')}</div>
         </div>
+
+        {/* Audit Password Modal */}
+        {showAuditModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+            }}
+            onClick={() => setShowAuditModal(false)}
+          >
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: 12,
+                padding: 32,
+                width: 320,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ color: '#1976d2', marginBottom: 20, textAlign: 'center', fontSize: 20 }}>🔒 AUDIT ACCESS</h2>
+              <input
+                type="password"
+                placeholder="Enter password"
+                value={auditPassword}
+                onChange={(e) => setAuditPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAuditAccess()}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  marginBottom: 12,
+                  fontSize: 16,
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 8,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+                autoFocus
+              />
+              {error && (
+                <div style={{ color: '#d32f2f', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>
+                  {error}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setShowAuditModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: '#e0e0e0',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 14,
+                  }}
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleAuditAccess}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: '#1976d2',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 14,
+                  }}
+                >
+                  ACCESS
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
