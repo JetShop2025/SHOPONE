@@ -208,32 +208,17 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   }, [workOrder.id, title, isEditingMode]);
 
   // Auto-calculate total automatically:
-  // - NEW: siempre
-  // - EDIT: solo cuando haya cambios reales respecto al valor original
+  // - NEW: siempre que cambien partes/mechanics/misc/weld
+  // - EDIT: NUNCA (solo cuando el usuario presiona "Calcular Auto")
   React.useEffect(() => {
+    // En modo edición, NO recalcular automáticamente
+    if (isEditingMode) return;
+    
+    // En modo creación, no recalcular si el usuario ya puso un valor manual
     if (manualTotalOverride) return;
 
     const currentParts = Array.isArray(workOrder.parts) ? workOrder.parts : [];
     const currentMechanics = Array.isArray(workOrder.mechanics) ? workOrder.mechanics : [];
-    const originalParts = Array.isArray(workOrder.originalParts) ? workOrder.originalParts : [];
-    const originalMechanics = Array.isArray(workOrder.originalMechanics) ? workOrder.originalMechanics : [];
-
-    const partsChanged = isEditingMode
-      ? !shallowArrayEqual(currentParts, originalParts, ['sku', 'part', 'qty', 'cost'])
-      : true;
-    const mechanicsChanged = isEditingMode
-      ? !shallowArrayEqual(currentMechanics, originalMechanics, ['name', 'hrs'])
-      : true;
-
-    const currentMisc = Number(workOrder.miscellaneous ?? 0);
-    const originalMisc = Number(workOrder.originalMiscellaneous ?? workOrder.miscellaneous ?? 0);
-    const currentWeld = Number(workOrder.weldPercent ?? 0);
-    const originalWeld = Number(workOrder.originalWeldPercent ?? workOrder.weldPercent ?? 0);
-    const miscChanged = isEditingMode ? currentMisc !== originalMisc : true;
-    const weldChanged = isEditingMode ? currentWeld !== originalWeld : true;
-
-    const shouldRecalculate = !isEditingMode || partsChanged || mechanicsChanged || miscChanged || weldChanged;
-    if (!shouldRecalculate) return;
 
     const totalHours = Array.isArray(workOrder.mechanics)
       ? workOrder.mechanics.reduce((total: number, mechanic: any) => {
@@ -263,7 +248,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (currentValue !== formattedTotal) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.originalParts, workOrder.originalMechanics, workOrder.originalMiscellaneous, workOrder.originalWeldPercent, onChange, manualTotalOverride, isEditingMode]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, onChange, manualTotalOverride, isEditingMode]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
