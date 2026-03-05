@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import logo from '../../assets/logo.png';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
@@ -14,6 +16,7 @@ interface DashboardStats {
 }
 
 const DashboardSidebar: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalWorkOrders: 0,
     processingOrders: 0,
@@ -24,6 +27,7 @@ const DashboardSidebar: React.FC = () => {
     activeRentals: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -55,8 +59,64 @@ const DashboardSidebar: React.FC = () => {
       setLoading(false);
     }
   };
+  const menuItems = [
+      {
+        id: 'inventory',
+        label: 'INVENTORY',
+        icon: '📦',
+        number: '1',
+        path: '/inventory',
+        submenu: [
+          { label: 'MASTER', icon: '1.', path: '/inventory' },
+          { label: 'RECEIVE', icon: '2.', path: '/inventory' },
+        ],
+      },
+      {
+        id: 'work-orders',
+        label: 'WORK ORDERS',
+        icon: '📋',
+        number: '2',
+        path: '/work-orders',
+        submenu: [
+          { label: 'W.O ENTRY', icon: '1.', path: '/work-orders' },
+          { label: 'FINAL W.O', icon: '2.', path: '/finished-work-orders' },
+        ],
+      },
+      {
+        id: 'trailer-control',
+        label: 'TRAILER CONTROL',
+        icon: '🚚',
+        number: '3',
+        path: '/trailas',
+        submenu: null,
+      },
+      {
+        id: 'trailer-location',
+        label: 'TRAILER LOCATION',
+        icon: '🛰️',
+        number: '4',
+        path: '/trailer-location',
+        submenu: null,
+      },
+      {
+        id: 'audit',
+        label: 'AUDIT',
+        icon: '🔍',
+        number: '5',
+        path: '/audit',
+        submenu: null,
+      },
+    ];
 
-  return (
+    const handleMenuClick = (menuId: string, path: string) => {
+      if (menuItems.find(m => m.id === menuId)?.submenu) {
+        setExpandedMenu(expandedMenu === menuId ? null : menuId);
+      } else {
+        navigate(path);
+      }
+    };
+
+    return (
     <div
       style={{
         width: 280,
@@ -67,164 +127,181 @@ const DashboardSidebar: React.FC = () => {
         overflowY: 'auto',
         position: 'sticky',
         top: 0,
+          display: 'flex',
+          flexDirection: 'column',
       }}
     >
-      {/* Header */}
-      <div style={{ marginBottom: 32 }}>
+        {/* Logo */}
+        <div style={{ marginBottom: 24, textAlign: 'center' }}>
+          <img
+            src={logo}
+            alt="JetShop Logo"
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 12,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              border: '2px solid rgba(255,255,255,0.2)',
+            }}
+          />
+        </div>
+
+        {/* Main Menu */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 }}>
+            📍 Navigation
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {menuItems.map((item) => (
+              <div key={item.id}>
+                <button
+                  onClick={() => handleMenuClick(item.id, item.path)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                >
+                  <span>
+                    <span style={{ marginRight: 8 }}>{item.icon}</span>
+                    {item.number}. {item.label}
+                  </span>
+                  {item.submenu && (
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>
+                      {expandedMenu === item.id ? '▼' : '▶'}
+                    </span>
+                  )}
+                </button>
+
+                {/* Submenu */}
+                {item.submenu && expandedMenu === item.id && (
+                  <div style={{ marginTop: 6, marginLeft: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {item.submenu.map((sub, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => navigate(sub.path)}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(255,255,255,0.08)',
+                          color: 'rgba(255,255,255,0.9)',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          borderRadius: 6,
+                          padding: '8px 10px',
+                          textAlign: 'left',
+                          fontWeight: 500,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          marginLeft: 8,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                        }}
+                      >
+                        <span>{sub.icon}</span> {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats Section */}
+        <div style={{ flex: 1, marginBottom: 32 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 }}>
+            📊 Quick Stats
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Work Orders Quick Stat */}
+          <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: 10,
+                padding: 12,
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+            }}
+            >
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Work Orders</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{stats.totalWorkOrders}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 6 }}>
+                🟠 Processing: {stats.processingOrders}
+              </div>
+            </div>
+
+            {/* Inventory Quick Stat */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: 10,
+                padding: 12,
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Inventory Items</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{stats.inventoryItems}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 6 }}>
+                ⚠️ Low Stock: {stats.lowStockItems}
+              </div>
+            </div>
+
+            {/* Trailers Quick Stat */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: 10,
+                padding: 12,
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Trailers</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>{stats.trailers}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 6 }}>
+                🔴 Rented: {stats.activeRentals}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
         <div
           style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: '#fff',
-            marginBottom: 4,
-            letterSpacing: 1,
+            paddingTop: 16,
+            borderTop: '1px solid rgba(255,255,255,0.2)',
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.5)',
+            textAlign: 'center',
           }}
         >
-          📊 DASHBOARD
-        </div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-          {new Date().toLocaleDateString('es-ES')}
+          <div>ShopOne v1.2.24</div>
+          <div style={{ marginTop: 4 }}>{new Date().toLocaleDateString('es-ES')}</div>
         </div>
       </div>
+    );
+  };
 
-      {/* Stats Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Work Orders Section */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 12 }}>
-            📋 Work Orders
-          </div>
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 8,
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>Total</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginTop: 4 }}>
-              {stats.totalWorkOrders}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div
-              style={{
-                background: 'rgba(255,152,0,0.2)',
-                borderRadius: 12,
-                padding: 10,
-                border: '1px solid rgba(255,152,0,0.3)',
-              }}
-            >
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Processing</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#ffb74d', marginTop: 4 }}>
-                {stats.processingOrders}
-              </div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(76,175,80,0.2)',
-                borderRadius: 12,
-                padding: 10,
-                border: '1px solid rgba(76,175,80,0.3)',
-              }}
-            >
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Approved</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#81c784', marginTop: 4 }}>
-                {stats.approvedOrders}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Inventory Section */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 12 }}>
-            📦 Inventory
-          </div>
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 8,
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>Total Items</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginTop: 4 }}>
-              {stats.inventoryItems}
-            </div>
-          </div>
-          <div
-            style={{
-              background: 'rgba(244,67,54,0.2)',
-              borderRadius: 12,
-              padding: 10,
-              border: '1px solid rgba(244,67,54,0.3)',
-            }}
-          >
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>⚠️ Low Stock</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#ef5350', marginTop: 4 }}>
-              {stats.lowStockItems}
-            </div>
-          </div>
-        </div>
-
-        {/* Trailers Section */}
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 12 }}>
-            🚚 Trailers
-          </div>
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 8,
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>Total</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginTop: 4 }}>
-              {stats.trailers}
-            </div>
-          </div>
-          <div
-            style={{
-              background: 'rgba(156,39,176,0.2)',
-              borderRadius: 12,
-              padding: 10,
-              border: '1px solid rgba(156,39,176,0.3)',
-            }}
-          >
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Active Rentals</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#ba68c8', marginTop: 4 }}>
-              {stats.activeRentals}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          marginTop: 32,
-          paddingTop: 16,
-          borderTop: '1px solid rgba(255,255,255,0.2)',
-          fontSize: 11,
-          color: 'rgba(255,255,255,0.6)',
-          textAlign: 'center',
-        }}
-      >
-        Last update: {new Date().toLocaleTimeString('es-ES')}
-      </div>
-    </div>
-  );
-};
-
-export default DashboardSidebar;
+  export default DashboardSidebar;
