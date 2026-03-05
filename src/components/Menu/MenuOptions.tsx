@@ -87,7 +87,7 @@ const MenuOptions: React.FC = () => {
         alt="Logo"
         style={{ width: 120, marginBottom: 24, borderRadius: 12, boxShadow: '0 2px 8px rgba(25,118,210,0.10)' }}
       />
-      <h1 style={{ color: '#1976d2', fontWeight: 800, marginBottom: 32, letterSpacing: 2 }}>MAIN MENU</h1>
+      <h1 style={{ color: '#0A3854', fontWeight: 800, marginBottom: 32, letterSpacing: 2 }}>MAIN MENU</h1>
       <div style={{ fontSize: 12, color: '#666', marginBottom: 24, fontStyle: 'italic' }}>
         Press <strong>1-5</strong> to navigate
       </div>

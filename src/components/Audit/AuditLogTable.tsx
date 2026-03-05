@@ -42,7 +42,7 @@ function renderDetalles(detalles: string | null | undefined) {
 
     return (
       <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#1976d2', marginBottom: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#0A3854', marginBottom: 6 }}>
           🔄 {keys.length} campo{keys.length > 1 ? 's' : ''} modificad{keys.length > 1 ? 'o' : 'a'}
         </div>
         {renderChangesTable(parsed.changes)}
@@ -299,7 +299,7 @@ function renderDataTable(data: any, title: string = 'Información', color: strin
 // Función auxiliar para ajustar colores
 function adjustColor(color: string, amount: number): string {
   const colorMap: { [key: string]: string } = {
-    '#2196f3': amount > 0 ? '#1976d2' : '#1565c0',
+    '#2196f3': amount > 0 ? '#0A3854' : '#062838',
     '#4caf50': amount > 0 ? '#388e3c' : '#2e7d32',
     '#f44336': amount > 0 ? '#d32f2f' : '#c62828',
     '#ff9800': amount > 0 ? '#f57c00' : '#ef6c00'
@@ -406,7 +406,7 @@ const AuditLogTable: React.FC = () => {
       }}>
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+          background: 'linear-gradient(135deg, #0A3854 0%, #062838 100%)',
           color: 'white',
           padding: 32,
           textAlign: 'center'
@@ -549,7 +549,7 @@ const AuditLogTable: React.FC = () => {
                 width: 40,
                 height: 40,
                 border: '4px solid #e3f2fd',
-                borderTop: '4px solid #1976d2',
+                borderTop: '4px solid #0A3854',
                 borderRadius: '50%',
                 animation: 'spin 1s linear infinite',
                 margin: '0 auto 16px'
@@ -573,7 +573,7 @@ const AuditLogTable: React.FC = () => {
                 boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
               }}>
                 <thead>
-                  <tr style={{ background: '#1976d2', color: '#fff' }}>
+                  <tr style={{ background: '#0A3854', color: '#fff' }}>
                     <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>ID</th>
                     <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>USUARIO</th>
                     <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>ACCIÓN</th>
@@ -589,7 +589,7 @@ const AuditLogTable: React.FC = () => {
                       backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
                       borderBottom: '1px solid #e0e0e0'
                     }}>
-                      <td style={{ padding: 12, fontWeight: 600, color: '#1976d2' }}>
+                      <td style={{ padding: 12, fontWeight: 600, color: '#0A3854' }}>
                         #{log.id}
                       </td>
                       <td style={{ padding: 12, fontWeight: 600 }}>

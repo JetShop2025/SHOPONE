@@ -696,38 +696,41 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   };
   return (
     <div style={{
-      marginTop: '20px',
-      border: '1px solid #1976d2',
-      borderRadius: 8,
-      padding: '24px',
-      background: '#f5faff',
-      width: '95vw',
-      maxWidth: 1400,
-      maxHeight: '80vh',
+      marginTop: '0px',
+      border: 'none',
+      borderRadius: 0,
+      padding: '0px',
+      background: '#fff',
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+      maxHeight: '100%',
       overflowY: 'auto',
-      boxShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
+      overflowX: 'hidden',
+      boxShadow: 'none'
     }}>
-      <h2 style={{ color: '#1976d2', marginBottom: 16 }}>{title}</h2>
-      {loading && (
-        <div style={{ color: '#1976d2', fontWeight: 700, marginBottom: 12 }}>
-          Processing, please wait...
-        </div>
-      )}
-      {successMsg && (
-        <div style={{ color: 'green', fontWeight: 700, marginBottom: 12 }}>
-          {successMsg}
-        </div>
-      )}
-      
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-          gap: 16,
-          alignItems: 'start'
-        }}
-      >
+      <div style={{ padding: '24px 28px' }}>
+        <h2 style={{ color: '#0A3854', marginBottom: 20, fontSize: 24, fontWeight: 700 }}>{title}</h2>
+        {loading && (
+          <div style={{ color: '#0A3854', fontWeight: 700, marginBottom: 12 }}>
+            Processing, please wait...
+          </div>
+        )}
+        {successMsg && (
+          <div style={{ color: 'green', fontWeight: 700, marginBottom: 12 }}>
+            {successMsg}
+          </div>
+        )}
+        
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 20,
+            alignItems: 'start'
+          }}
+        >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
           <label style={{ flex: '1 1 200px' }}>
             Bill To Company<span style={{ color: 'red' }}>*</span>
@@ -994,7 +997,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
 
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 90px 2fr 36px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(115px, 140px) minmax(140px, 1fr) minmax(75px, 95px) minmax(160px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
               <input
                 type="date"
                 value={mechanic.date || getDefaultLaborDate()}
@@ -1025,7 +1028,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 placeholder="Hours"
                 value={mechanic.hrs || ''}
                 onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
-                style={{ width: 80, padding: 8 }}
+                style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
                 step="0.25"
                 min="0"
               />
@@ -1222,7 +1225,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                     placeholder="$0.00"
                   />
                 </label>
-                <div style={{ fontSize: 11, color: '#1976d2', fontWeight: 'bold', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#0A3854', fontWeight: 'bold', marginTop: 4 }}>
                   Total: ${((parseFloat(String(part.qty || '0'))) * (parseFloat(String(part.cost).replace(/[^0-9.]/g, '')) || 0)).toFixed(2)}
                 </div>
               </div>
@@ -1232,8 +1235,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         
         <div style={{ marginBottom: 0 }}>
           <strong>Miscellaneous</strong>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-            <label style={{ fontWeight: 500, color: '#1976d2', marginRight: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+            <label style={{ fontWeight: 500, color: '#0A3854', marginRight: 4, display: 'inline-flex', alignItems: 'center' }}>
               % Miscellaneous:
               <input
                 type="number"
@@ -1245,11 +1248,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 onChange={e => {
                   onChange({ target: { name: 'miscellaneous', value: e.target.value } } as any);
                 }}
-                style={{ width: 80, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
+                style={{ width: 76, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
                 placeholder="%"
               />
             </label>
-            <span style={{ color: '#1976d2', fontWeight: 700 }}>
+            <span style={{ color: '#0A3854', fontWeight: 700, whiteSpace: 'nowrap', background: '#f0f4f8', border: '1px solid #b0c4de', borderRadius: 6, padding: '6px 10px' }}>
               Extra charge: ${(() => {
                 const totalHours = calculateTotalHours();
                 const laborTotal = totalHours * 60;
@@ -1264,8 +1267,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         {/* Welding Supplies field */}
         <div style={{ marginBottom: 0 }}>
           <strong>Welding Supplies</strong>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-            <label style={{ fontWeight: 500, color: '#1976d2', marginRight: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+            <label style={{ fontWeight: 500, color: '#0A3854', marginRight: 4, display: 'inline-flex', alignItems: 'center' }}>
               % Welding Supplies:
               <input
                 type="number"
@@ -1277,11 +1280,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 onChange={e => {
                   onChange({ target: { name: 'weldPercent', value: e.target.value } } as any);
                 }}
-                style={{ width: 80, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
+                style={{ width: 76, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
                 placeholder="%"
               />
             </label>
-            <span style={{ color: '#1976d2', fontWeight: 700 }}>
+            <span style={{ color: '#0A3854', fontWeight: 700, whiteSpace: 'nowrap', background: '#f0f4f8', border: '1px solid #b0c4de', borderRadius: 6, padding: '6px 10px' }}>
               Cargo extra: ${(() => {
                 const totalHours = calculateTotalHours();
                 const laborTotal = totalHours * 60;
@@ -1295,8 +1298,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <label style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+            <label style={{ display: 'inline-flex', flexDirection: 'column' }}>
               Total LAB & PARTS
               <input
                 type="text"
@@ -1312,14 +1315,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                   onChange(e as any);
                 }}
                 style={{ 
-                  width: '100%', 
+                  width: 220,
                   marginTop: 4, 
-                  padding: 8, 
+                  padding: '8px 10px', 
                   fontWeight: 'bold',
                   backgroundColor: '#ffffff',
                   border: '2px solid #1976d2',
                   color: '#1976d2',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  borderRadius: 6
                 }}
                 placeholder="$0.00"
               />
@@ -1338,7 +1342,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 border: 'none',
                 borderRadius: 4,
                 fontSize: '12px',
-                marginTop: 20,
+                marginTop: 0,
                 fontWeight: 700,
                 cursor: 'pointer'
               }}
@@ -1346,7 +1350,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               Calcular Auto
             </button>
           </div>
-          <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: 4, maxWidth: 620 }}>
             Cálculo sugerido: Labor (${(calculateTotalHours() * 60).toFixed(2)}) + Partes (${calculatePartsTotal().toFixed(2)}) + Miscellaneous (${(() => {
               const totalHours = calculateTotalHours();
               const laborTotal = totalHours * 60;
@@ -1379,7 +1383,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             disabled={loading}
             style={{
               padding: '12px 24px',
-              background: loading ? '#ccc' : '#1976d2',
+              background: loading ? '#ccc' : '#0A3854',
               color: '#fff',
               border: 'none',
               borderRadius: 6,
@@ -1396,8 +1400,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             style={{
               padding: '12px 24px',
               background: '#fff',
-              color: '#1976d2',
-              border: '1px solid #1976d2',
+              color: '#0A3854',
+              border: '1px solid #0A3854',
               borderRadius: 6,
               fontWeight: 600,
               fontSize: 16,
@@ -1417,22 +1421,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             top: tooltip.y + 10,
             left: tooltip.x + 10,
             background: '#fff',
-            border: '1px solid #1976d2',
+            border: '1px solid #0A3854',
             borderRadius: 8,
-            boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+            boxShadow: '0 2px 8px rgba(10,56,84,0.15)',
             padding: 16,
             zIndex: 9999,
             minWidth: 220
           }}
           onClick={hideTooltip}
         >
-          <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Part Info</div>
+          <div style={{ fontWeight: 700, color: '#0A3854', marginBottom: 6 }}>Part Info</div>
           <div><b>Part Name:</b> {tooltip.info.part}</div>
           <div><b>Price:</b> {tooltip.info.precio ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}</div>
           <div><b>On Hand:</b> {tooltip.info.onHand}</div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
         </div>
       )}
+      </div>
     </div>
   );
 };

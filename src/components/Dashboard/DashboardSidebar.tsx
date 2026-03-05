@@ -158,9 +158,9 @@ const DashboardSidebar: React.FC = () => {
       style={{
         width: 280,
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, #1976d2 0%, #1565c0 100%)',
+        background: 'linear-gradient(180deg, #0A3854 0%, #062838 100%)',
         padding: 24,
-        boxShadow: '0 4px 24px rgba(25, 118, 210, 0.15)',
+        boxShadow: '0 4px 24px rgba(10, 56, 84, 0.25)',
         overflowY: 'auto',
         position: 'sticky',
         top: 0,
@@ -385,7 +385,7 @@ const DashboardSidebar: React.FC = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 style={{ color: '#1976d2', marginBottom: 20, textAlign: 'center', fontSize: 20 }}>🔒 AUDIT ACCESS</h2>
+              <h2 style={{ color: '#0A3854', marginBottom: 20, textAlign: 'center', fontSize: 20 }}>🔒 AUDIT ACCESS</h2>
               <input
                 type="password"
                 placeholder="Enter password"
@@ -430,7 +430,7 @@ const DashboardSidebar: React.FC = () => {
                   style={{
                     flex: 1,
                     padding: '10px',
-                    background: '#1976d2',
+                    background: '#0A3854',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 6,

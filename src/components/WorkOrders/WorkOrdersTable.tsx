@@ -152,8 +152,8 @@ const dangerBtn = {
 
 const secondaryBtn = {
   background: '#fff',
-  color: '#1976d2',
-  border: '1px solid #1976d2',
+  color: '#0A3854',
+  border: '1px solid #0A3854',
   padding: '8px 16px',
   borderRadius: '6px',
   fontWeight: '600',
@@ -1646,11 +1646,11 @@ const WorkOrdersTable: React.FC = () => {
   const modalContentStyle: React.CSSProperties = {
     background: '#fff',
     borderRadius: 16,
-    padding: 32,
-    minWidth: 400,
-    maxWidth: 520,
-    maxHeight: '80vh',
-    overflowY: 'auto',
+    padding: 20,
+    width: '96vw',
+    maxWidth: 1480,
+    maxHeight: '92vh',
+    overflow: 'hidden',
     boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
   };
 
