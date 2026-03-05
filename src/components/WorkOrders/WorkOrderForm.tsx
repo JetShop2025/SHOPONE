@@ -701,7 +701,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       borderRadius: 8,
       padding: '24px',
       background: '#f5faff',
-      maxWidth: 900,
+      width: '95vw',
+      maxWidth: 1400,
       maxHeight: '80vh',
       overflowY: 'auto',
       boxShadow: '0 2px 8px rgba(25, 118, 210, 0.08)'
@@ -718,8 +719,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </div>
       )}
       
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+          gap: 16,
+          alignItems: 'start'
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
           <label style={{ flex: '1 1 200px' }}>
             Bill To Company<span style={{ color: 'red' }}>*</span>
             <select
@@ -787,11 +796,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         {/* Previsualizador de Partes Pendientes */}
         {pendingParts && pendingParts.length > 0 && (
           <div style={{
-            marginBottom: 16,
+            marginBottom: 0,
             padding: 16,
             border: '2px solid #4caf50',
             borderRadius: 8,
-            backgroundColor: '#f1f8e9'
+            backgroundColor: '#f1f8e9',
+            gridColumn: '1 / -1'
           }}>
             <h3 style={{ 
               color: '#388e3c', 
@@ -907,7 +917,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         )}
 
         {/* Segunda fila - Status, ID Classic (solo en edición) */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 0 }}>
           <label style={{ flex: '1 1 150px' }}>
             Status
             <select
@@ -964,7 +974,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </label>
         </div>
         
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <strong>Labor Log (Date, Mechanic, Hours, Work Done)</strong>
             <button
@@ -1054,7 +1064,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           )}
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <label style={{ width: '100%' }}>
               Descripción / Invoice Notes<span style={{ color: 'red' }}>*</span>
@@ -1085,7 +1095,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <strong>Parts</strong>
             {onAddEmptyPart && (
@@ -1220,7 +1230,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
         
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 0 }}>
           <strong>Miscellaneous</strong>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
             <label style={{ fontWeight: 500, color: '#1976d2', marginRight: 8 }}>
@@ -1252,7 +1262,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
         {/* Welding Supplies field */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 0 }}>
           <strong>Welding Supplies</strong>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
             <label style={{ fontWeight: 500, color: '#1976d2', marginRight: 8 }}>
@@ -1363,7 +1373,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 16, marginTop: 24 }}>
+        <div style={{ display: 'flex', gap: 16, marginTop: 8, gridColumn: '1 / -1' }}>
           <button
             type="submit"
             disabled={loading}
