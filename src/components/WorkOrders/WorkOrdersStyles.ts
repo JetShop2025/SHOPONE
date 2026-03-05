@@ -74,7 +74,7 @@ export const BlinkingTableCellBlue = styled.td<ThemeProps>`
   padding: 8px;
   animation: ${blinkBlue} 1.5s ease-in-out infinite;
   font-weight: bold;
-  color: #1565c0;
+  color: #0A3854;
 `;
 
 // Celda parpadeante para APPROVED (VERDE)

@@ -303,7 +303,7 @@ const HourmeterModal: React.FC<{
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ 
-                  background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                  background: 'linear-gradient(135deg, #0A3854 0%, #062838 100%)',
                   color: '#fff'
                 }}>
                   <th style={{ 

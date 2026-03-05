@@ -548,7 +548,7 @@ const TrailasTable: React.FC = () => {
               fontWeight: '600',
               transition: 'all 0.2s'
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#1565c0'}
+            onMouseOver={(e) => e.currentTarget.style.background = '#062838'}
             onMouseOut={(e) => e.currentTarget.style.background = '#1976d2'}
           >
             🔄 Actualizar

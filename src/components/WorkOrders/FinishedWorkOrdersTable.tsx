@@ -90,7 +90,7 @@ const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
 
 // PROFESSIONAL COLOR SCHEME: Blue Dark + Grays + Accents
 const colors = {
-  primary: '#1565C0',      // Dark Blue
+  primary: '#0A3854',      // Professional Dark Navy
   primaryDark: '#0D47A1',  // Darker Blue
   accent: '#E3F2FD',       // Light Blue (accent)
   success: '#388E3C',      // Green

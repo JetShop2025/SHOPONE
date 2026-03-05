@@ -79,7 +79,7 @@ const Inventory: React.FC = () => {
             boxShadow: '0 2px 8px rgba(25,118,210,0.10)',
             transition: 'background 0.2s'
           }}
-          onMouseOver={e => (e.currentTarget.style.background = '#1565c0')}
+          onMouseOver={e => (e.currentTarget.style.background = '#062838')}
           onMouseOut={e => (e.currentTarget.style.background = '#1976d2')}
         >
           <span style={{ marginRight: 8 }}>1.</span> MASTER
