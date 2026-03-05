@@ -226,7 +226,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (currentValue !== formattedTotal) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.totalLabAndParts, workOrder.originalParts, workOrder.originalMechanics, workOrder.originalMiscellaneous, workOrder.originalWeldPercent, onChange, manualTotalOverride, isEditingMode]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.originalParts, workOrder.originalMechanics, workOrder.originalMiscellaneous, workOrder.originalWeldPercent, onChange, manualTotalOverride, isEditingMode]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
