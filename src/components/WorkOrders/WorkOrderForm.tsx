@@ -722,9 +722,25 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  // Handler for date inputs (now using type="date" for native calendar picker)
+  // Format date from YYYY-MM-DD to MM/DD/YYYY for display
+  const formatDateForDisplay = (dateValue: string) => {
+    if (!dateValue || String(dateValue).trim() === '') return '';
+    const trimmed = String(dateValue).trim();
+    // If already in MM/DD/YYYY format, return as is
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return trimmed;
+    // If in YYYY-MM-DD format, convert to MM/DD/YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [yyyy, mm, dd] = trimmed.split('-');
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    return '';
+  };
+
+  // Handler for date inputs (now accepting MM/DD/YYYY format from text input)
   const handleDateFieldChange = (fieldName: 'startDate' | 'endDate') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value; // type="date" returns YYYY-MM-DD format
+    let value = e.target.value; // User enters in MM/DD/YYYY format
+    // Convert MM/DD/YYYY to YYYY-MM-DD for internal storage
+    value = normalizeDateForSubmit(value);
     onChange({ target: { name: fieldName, value } } as any);
     if (fieldName === 'startDate') {
       onChange({ target: { name: 'date', value } } as any);
@@ -787,10 +803,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 140px' }}>
             Start Date<span style={{ color: 'red' }}>*</span>
             <input
-              type="date"
+              type="text"
               name="startDate"
-              value={workOrder.startDate || workOrder.date || ''}
+              value={formatDateForDisplay(workOrder.startDate || workOrder.date || '')}
               onChange={handleDateFieldChange('startDate')}
+              placeholder="MM/DD/YYYY"
               required
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               autoComplete="off"
@@ -799,10 +816,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <label style={{ flex: '1 1 140px' }}>
             End Date
             <input
-              type="date"
+              type="text"
               name="endDate"
-              value={workOrder.endDate || ''}
+              value={formatDateForDisplay(workOrder.endDate || '')}
               onChange={handleDateFieldChange('endDate')}
+              placeholder="MM/DD/YYYY"
               style={{ width: '100%', marginTop: 4, padding: 8 }}
               autoComplete="off"
             />
@@ -1036,9 +1054,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
             <div key={index} style={{ display: 'grid', gridTemplateColumns: '130px minmax(150px, 1fr) 90px minmax(240px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 660 }}>
               <input
-                type="date"
-                value={mechanic.date || getDefaultLaborDate()}
-                onChange={e => handleMechanicChange(index, 'date', e.target.value)}
+                type="text"
+                value={formatDateForDisplay(mechanic.date || getDefaultLaborDate())}
+                onChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
+                placeholder="MM/DD/YYYY"
                 style={{ padding: 8 }}
               />
               <select

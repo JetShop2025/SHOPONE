@@ -696,12 +696,12 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   const modalContentStyle: React.CSSProperties = {
     background: colors.white,
-    borderRadius: 12,
-    padding: 32,
-    minWidth: 400,
-    maxWidth: 520,
-    maxHeight: '80vh',
-    overflowY: 'auto',
+    borderRadius: 16,
+    padding: 20,
+    width: '96vw',
+    maxWidth: 1480,
+    maxHeight: '92vh',
+    overflow: 'auto',
     boxShadow: `0 4px 24px rgba(21,101,192,0.15)`
   };
 

@@ -287,11 +287,11 @@ const DashboardSidebar: React.FC = () => {
         </div>
 
         {/* Recent Activity Section */}
-        <div style={{ flex: 1, marginBottom: 32 }}>
+        <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 }}>
             📝 Recent Activity
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto', paddingRight: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {recentChanges.length > 0 ? (
               recentChanges.map((change) => (
                 <div
@@ -299,13 +299,13 @@ const DashboardSidebar: React.FC = () => {
                   style={{
                     background: 'rgba(255,255,255,0.08)',
                     borderRadius: 8,
-                    padding: '10px 12px',
+                    padding: '12px',
                     border: '1px solid rgba(255,255,255,0.15)',
                     fontSize: 11,
-                    lineHeight: 1.4,
+                    lineHeight: 1.5,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 14, minWidth: 20 }}>{getModuleIcon(change.module)}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ color: '#fff', fontWeight: 600, wordBreak: 'break-word' }}>
@@ -314,6 +314,11 @@ const DashboardSidebar: React.FC = () => {
                       <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 }}>
                         {change.module}
                       </div>
+                      {change.description && (
+                        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                          {change.description}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0 0 0', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6 }}>
