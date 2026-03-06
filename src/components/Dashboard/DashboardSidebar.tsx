@@ -12,6 +12,7 @@ interface RecentChange {
   user: string;
   timestamp: string;
   details?: string;
+  description?: string;
 }
 
 const DashboardSidebar: React.FC = () => {
@@ -41,6 +42,7 @@ const DashboardSidebar: React.FC = () => {
           user: item.username || item.user || 'Unknown',
           timestamp: item.timestamp || new Date().toISOString(),
           details: item.details || item.description,
+          description: item.description || item.details,
         }))
       );
     } catch (error) {
