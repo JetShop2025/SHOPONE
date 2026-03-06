@@ -378,6 +378,36 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     return true;
   }
 
+  const sanitizeMechanicsForStorage = (entries: LaborEntry[]) => {
+    return (Array.isArray(entries) ? entries : [])
+      .map((entry) => {
+        const name = String(entry?.name || '').trim();
+        const task = String(entry?.task || '').trim();
+        const date = normalizeDateForSubmit(entry?.date || '');
+        const hrsNum = Number(entry?.hrs);
+        const deadHrsNum = Number(entry?.deadHrs);
+        const hrs = !isNaN(hrsNum) && hrsNum > 0 ? Number(hrsNum.toFixed(2)) : 0;
+        const deadHrs = !isNaN(deadHrsNum) && deadHrsNum > 0 ? Number(deadHrsNum.toFixed(2)) : 0;
+
+        return {
+          name,
+          hrs,
+          date,
+          task,
+          deadHrs,
+        };
+      })
+      .filter((entry) => {
+        return (
+          entry.name !== '' ||
+          entry.task !== '' ||
+          entry.date !== '' ||
+          entry.hrs > 0 ||
+          entry.deadHrs > 0
+        );
+      });
+  };
+
   const aggregateMechanicsForSubmit = (entries: LaborEntry[]) => {
     const grouped = new Map<string, { name: string; hrs: number; deadHrs: number }>();
 
@@ -436,13 +466,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const originalMechanics = workOrder.originalMechanics || [];
       const currentParts = Array.isArray(workOrder.parts) ? workOrder.parts : [];
       const currentMechanics = Array.isArray(workOrder.mechanics) ? workOrder.mechanics : [];
+      const normalizedCurrentMechanics = sanitizeMechanicsForStorage(currentMechanics);
+      const normalizedOriginalMechanics = sanitizeMechanicsForStorage(originalMechanics);
       const partsChanged = !shallowArrayEqual(currentParts, originalParts, ['sku', 'part', 'qty', 'cost']);
-      const mechanicsChanged = !shallowArrayEqual(currentMechanics, originalMechanics, ['name', 'hrs']);
+      const mechanicsChanged = !shallowArrayEqual(
+        normalizedCurrentMechanics,
+        normalizedOriginalMechanics,
+        ['name', 'hrs', 'date', 'task', 'deadHrs']
+      );
       const originalTotalHrs = workOrder.originalTotalHrs !== undefined ? Number(workOrder.originalTotalHrs) : undefined;
       const currentTotalHrs = calculateTotalHours();
       const hoursChanged = originalTotalHrs !== undefined ? (Number(originalTotalHrs) !== Number(currentTotalHrs)) : false;
-      const generatedDescription = buildDescriptionFromEntries(currentMechanics);
-      const aggregatedMechanics = aggregateMechanicsForSubmit(currentMechanics);
+      const generatedDescription = buildDescriptionFromEntries(normalizedCurrentMechanics);
 
       // Detectar si el totalLabAndParts cambió del valor original
       const originalTotal = workOrder.originalTotalLabAndParts !== undefined 
@@ -453,21 +488,21 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
       // Si NO cambió nada, usar los valores originales
       let cleanParts = currentParts;
-      let cleanMechanics = aggregatedMechanics;
+      let cleanMechanics = normalizedCurrentMechanics;
       let totalHrs = currentTotalHrs;
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
       let descriptionToSend = (autoDescription && generatedDescription) ? generatedDescription : (workOrder.description || '');
       if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged && !totalChanged) {
         // Nada cambió - usar valores originales
         cleanParts = originalParts;
-        cleanMechanics = originalMechanics;
+        cleanMechanics = normalizedOriginalMechanics;
         totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
         totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
       } else if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged && totalChanged) {
         // Solo cambió el total - preservar el valor manual
         totalLabAndPartsValue = workOrder.totalLabAndParts;
         cleanParts = originalParts;
-        cleanMechanics = originalMechanics;
+        cleanMechanics = normalizedOriginalMechanics;
         totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
       } else {
         // Si cambió algo, limpiar partes y recalcular subtotales
@@ -764,7 +799,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       if (typeof picker.showPicker === 'function') {
         picker.showPicker();
       } else {
-        picker.focus();
+        picker.click();
       }
     };
 
@@ -789,12 +824,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           aria-label="Open calendar"
           style={{
             position: 'absolute',
-            right: 0,
+            right: 8,
             top: 0,
-            width: 34,
-            height: '100%',
+            width: 1,
+            height: 1,
             opacity: 0,
-            cursor: 'pointer'
+            pointerEvents: 'none'
           }}
         />
 
@@ -859,8 +894,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             alignItems: 'start'
           }}
         >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
-          <label style={{ flex: '1 1 200px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
+          <label style={{ width: '100%' }}>
             Bill To Company<span style={{ color: 'red' }}>*</span>
             <select
               name="billToCo"
@@ -876,7 +911,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             </select>
           </label>
           
-          <label style={{ flex: '1 1 140px' }}>
+          <label style={{ width: '100%' }}>
             Start Date<span style={{ color: 'red' }}>*</span>
             <DateInputWithCalendar
               value={workOrder.startDate || workOrder.date || ''}
@@ -890,7 +925,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               inputName="startDate"
             />
           </label>
-          <label style={{ flex: '1 1 140px' }}>
+          <label style={{ width: '100%' }}>
             End Date
             <DateInputWithCalendar
               value={workOrder.endDate || ''}
@@ -900,7 +935,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               inputName="endDate"
             />
           </label>
-          <label style={{ flex: '1 1 120px' }}>
+          <label style={{ width: '100%' }}>
             Trailer
             <input
               name="trailer"
@@ -1127,7 +1162,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
           <div style={{ overflowX: 'auto' }}>
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '130px minmax(150px, 1fr) 90px minmax(240px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 660 }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '160px minmax(180px, 1fr) 90px minmax(260px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 760 }}>
               <DateInputWithCalendar
                 value={mechanic.date || getDefaultLaborDate()}
                 onTextChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
