@@ -235,7 +235,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [editPassword, setEditPassword] = useState('');
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
-  const [selectedWeek, setSelectedWeek] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState(dayjs().format('YYYY-[W]WW'));
   const [selectedDay, setSelectedDay] = useState('');
   const [inventory, setInventory] = useState<any[]>([]);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
@@ -252,9 +252,10 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
+  const [detailOrder, setDetailOrder] = useState<any | null>(null);
   
   // NEW: Admin filters
-  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedClient, setSelectedClient] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchId, setSearchId] = useState('');
@@ -1172,18 +1173,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
               />
             </label>
           </div>
-          
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button style={{ ...primaryBtn, padding: '10px 18px' }} onClick={handleEdit} disabled={selectedRow === null}>
-              ✏️ Edit
-            </button>
-            <button style={{ ...dangerBtn, padding: '10px 18px' }} onClick={() => selectedRow !== null && handleDelete(selectedRow)} disabled={selectedRow === null}>
-              🗑️ Delete
-            </button>
-            <button style={{ ...secondaryBtn, padding: '10px 18px' }} disabled={selectedRow === null} onClick={() => selectedRow !== null && handleViewPDF(selectedRow)}>
-              📄 View PDF
-            </button>
-          </div>
         </div>
 
         {showEditForm && (
@@ -1224,104 +1213,334 @@ const FinishedWorkOrdersTable: React.FC = () => {
           </div>
         )}
 
-        {/* Table Container */}
-        <div style={{ 
-          background: colors.white,
-          borderRadius: 8,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          border: `1px solid ${colors.gray300}`,
-          overflowX: 'auto'
-        }}>
-          <table className="wo-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>ID CLASSIC</th>
-                <th>Bill To Co</th>
-                <th>Trailer</th>
-                <th>Mechanic</th>
-                <th>Date</th>
-                <th>Description</th>
-                {[1,2,3,4,5].map(i => (
-                  <React.Fragment key={i}>
-                    <th>{`PRT${i}`}</th>
-                    <th>{`Qty${i}`}</th>
-                    <th>{`Costo${i}`}</th>
-                  </React.Fragment>
-                ))}
-                <th>Total HRS</th>
-                <th>Total Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders
-                .slice()
-                .sort((a, b) => (new Date(b.date).getTime()) - (new Date(a.date).getTime()))
-                .map((order, idx) => {
-                  const dateStr = (order.date || '').slice(0, 10);
-                  const [yyyy, mm, dd] = dateStr.split('-');
-                  const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
+        {/* Work Orders Cards View */}
+        {selectedClient && selectedClient !== '' && filteredOrders.length > 0 &&
+          (<div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: 16,
+            marginBottom: 24
+          }}>
+            {filteredOrders
+              .slice()
+              .sort((a, b) => (new Date(b.date).getTime()) - (new Date(a.date).getTime()))
+              .map((order) => {
+                const dateStr = (order.date || '').slice(0, 10);
+                const [yyyy, mm, dd] = dateStr.split('-');
+                const displayDate = mm && dd && yyyy ? `${mm}/${dd}/${yyyy}` : '';
+                const isSelected = selectedRow === order.id;
 
-                  return (
-                    <tr
-                      key={order.id}
-                      className={'wo-row-finished' + (selectedRow === order.id ? ' selected' : '')}
-                      style={{ cursor: 'pointer', fontWeight: '600' }}
-                      onClick={() => setSelectedRow(order.id)}
-                      onContextMenu={e => {
-                        e.preventDefault();
-                        setSelectedRow(order.id);
-                        setContextMenu({ visible: true, x: e.clientX, y: e.clientY, order });
-                      }}
-                    >
-                      <td style={{ color: colors.primary, fontWeight: 700 }}>{order.id}</td>
-                      <td style={{ color: colors.gray600 }}>{order.idClassic || '-'}</td>
-                      <td style={{ color: colors.gray600, fontWeight: 600 }}>{order.billToCo}</td>
-                      <td style={{ color: colors.gray600, fontWeight: 600 }}>{order.trailer}</td>
-                      <td style={{ color: colors.gray600 }}>
-                        {Array.isArray(order.mechanics) && order.mechanics.length > 0
-                          ? order.mechanics.map((m: any) => m.name).join(', ')
-                          : order.mechanic}
-                      </td>
-                      <td style={{ color: colors.primary, fontWeight: 600 }}>{displayDate}</td>
-                      <td style={{ color: colors.gray600 }}>{order.description}</td>
-                      {[0,1,2,3,4].map(i => (
-                        <React.Fragment key={i}>
-                          <td style={{ color: colors.primary, fontWeight: 600 }}
-                            onMouseEnter={order.parts && order.parts[i] && order.parts[i].sku
-                              ? (e) => handlePartHover(e, order.parts[i])
-                              : undefined
-                            }
-                            onMouseLeave={hideTooltip}
-                          >
-                            {order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].sku : ''}
-                          </td>
-                          <td style={{ color: colors.gray600 }}>{order.parts && order.parts[i] && order.parts[i].sku ? order.parts[i].qty : ''}</td>
-                          <td style={{ color: colors.gray600 }}>
-                            {order.parts && order.parts[i] && order.parts[i].sku
-                              ? (
-                                  order.parts[i].cost !== undefined && order.parts[i].cost !== null && order.parts[i].cost !== ''
-                                    ? Number(order.parts[i].cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                                    : '$0.00'
-                                )
-                              : ''
-                            }
-                          </td>
-                        </React.Fragment>
-                      ))}
-                      <td style={{ color: colors.gray600, fontWeight: 600 }}>{order.totalHrs}</td>
-                      <td style={{ color: colors.success, fontWeight: 700 }}>
-                        {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null
-                          ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                          : '$0.00'}
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => {
+                      setSelectedRow(order.id);
+                      setDetailOrder(order);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setSelectedRow(order.id);
+                      setContextMenu({ visible: true, x: e.clientX, y: e.clientY, order });
+                    }}
+                    style={{
+                      background: isSelected ? colors.accent : colors.white,
+                      borderRadius: 12,
+                      padding: 16,
+                      border: `2px solid ${isSelected ? colors.primary : colors.gray300}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isSelected ? '0 4px 12px rgba(10,56,84,0.15)' : '0 2px 8px rgba(0,0,0,0.08)',
+                      position: 'relative'
+                    }}
+                  >
+                    {/* Header con ID */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${colors.gray300}` }}>
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: colors.primary }}>W.O #{order.id}</div>
+                        <div style={{ fontSize: 12, color: colors.gray600, marginTop: 2 }}>ID: {order.idClassic || 'N/A'}</div>
+                      </div>
+                      <div style={{ 
+                        background: colors.success, 
+                        color: colors.white, 
+                        padding: '4px 10px', 
+                        borderRadius: 6, 
+                        fontSize: 11, 
+                        fontWeight: 700 
+                      }}>
+                        FINISHED
+                      </div>
+                    </div>
+
+                    {/* Info Principal */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: colors.gray600, fontWeight: 600, width: 60 }}>Client:</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: colors.gray700 }}>{order.billToCo || 'N/A'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: colors.gray600, fontWeight: 600, width: 60 }}>Trailer:</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: colors.gray700 }}>{order.trailer || 'N/A'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: colors.gray600, fontWeight: 600, width: 60 }}>Date:</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>{displayDate}</span>
+                      </div>
+                    </div>
+
+                    {/*Description Preview */}
+                    <div style={{ 
+                      fontSize: 11, 
+                      color: colors.gray600, 
+                      background: colors.gray100, 
+                      padding: '8px 10px', 
+                      borderRadius: 6, 
+                      marginBottom: 12,
+                      minHeight: 40,
+                      maxHeight: 60,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {(order.description || 'No description').slice(0, 100)}{(order.description || '').length > 100 ? '...' : ''}
+                    </div>
+
+                    {/* Footer con Total */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      paddingTop: 12,
+                      borderTop: `1px solid ${colors.gray300}`
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: colors.gray600, fontWeight: 600 }}>Total HRS</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: colors.gray700 }}>{order.totalHrs || 0} h</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 10, color: colors.gray600, fontWeight: 600 }}>Total Amount</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: colors.success }}>
+                          {order.totalLabAndParts !== undefined && order.totalLabAndParts !== null
+                            ? Number(order.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                            : '$0.00'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mechanic Info */}
+                    <div style={{ marginTop: 8, fontSize: 10, color: colors.gray600, textAlign: 'center' }}>
+                      👤 {Array.isArray(order.mechanics) && order.mechanics.length > 0
+                        ? order.mechanics.map((m: any) => m.name).join(', ')
+                        : order.mechanic || 'N/A'}
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>)
+        }
       </div>
+
+      {/* Detail Modal */}
+      {detailOrder && (() => {
+        const detailMechanics = Array.isArray(detailOrder.mechanics) ? detailOrder.mechanics : [];
+        const validParts = Array.isArray(detailOrder.parts)
+          ? detailOrder.parts.filter((part: any) => part && part.sku)
+          : [];
+        const totalHrsValue = detailMechanics.length > 0
+          ? detailMechanics.reduce((sum: number, mechanic: any) => sum + (Number(mechanic?.hrs) || 0), 0)
+          : (Number(detailOrder.totalHrs) || 0);
+        const laborRate = 60;
+        const laborSubtotal = totalHrsValue * laborRate;
+        const partsSubtotal = validParts.reduce((sum: number, part: any) => {
+          const qty = Number(part.qty) || 0;
+          const unitCost = Number(String(part.cost ?? '').replace(/[^0-9.-]/g, '')) || 0;
+          return sum + (qty * unitCost);
+        }, 0);
+        const miscPercentRaw = detailOrder.miscellaneous ?? detailOrder.miscellaneousPercent;
+        const miscPercent = Number(miscPercentRaw);
+        const miscPercentValue = Number.isFinite(miscPercent) && miscPercent > 0 ? miscPercent : 0;
+        const weldPercent = Number(detailOrder.weldPercent);
+        const weldPercentValue = Number.isFinite(weldPercent) && weldPercent > 0 ? weldPercent : 0;
+        const miscAmount = (laborSubtotal + partsSubtotal) * (miscPercentValue / 100);
+        const weldAmount = (laborSubtotal + partsSubtotal) * (weldPercentValue / 100);
+        const calculatedTotal = laborSubtotal + partsSubtotal + miscAmount + weldAmount;
+        const rawStoredTotal = detailOrder.totalLabAndParts;
+        const storedTotal = Number(String(rawStoredTotal ?? '').replace(/[^0-9.-]/g, ''));
+        const hasStoredTotal =
+          rawStoredTotal !== undefined &&
+          rawStoredTotal !== null &&
+          String(rawStoredTotal).trim() !== '' &&
+          Number.isFinite(storedTotal);
+        const finalTotal = hasStoredTotal ? storedTotal : calculatedTotal;
+
+        return (
+        <div style={modalStyle} onClick={() => setDetailOrder(null)}>
+          <div style={{ ...modalContentStyle, maxWidth: 750, width: '90vw' }} onClick={event => event.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ margin: 0, color: colors.primary }}>
+                W.O #{detailOrder.id} {detailOrder.idClassic ? `• ${detailOrder.idClassic}` : ''}
+              </h2>
+              <button
+                onClick={() => setDetailOrder(null)}
+                style={{ border: 'none', background: colors.gray200, color: colors.gray700, borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: 12, marginBottom: 8 }}>
+              <div>
+                <strong style={{ fontSize: 14 }}>Status:</strong>{' '}
+                <span style={{ 
+                  color: colors.success, 
+                  fontWeight: 700,
+                  fontSize: 16,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                }}>
+                  FINISHED
+                </span>
+              </div>
+              <div><strong>Bill To:</strong> {detailOrder.billToCo || 'N/A'}</div>
+              <div><strong>Trailer:</strong> {detailOrder.trailer || 'N/A'}</div>
+              <div><strong>Start Date:</strong> {formatDateSafely(detailOrder.date || '')}</div>
+              <div><strong>End Date:</strong> {detailOrder.endDate ? formatDateSafely(detailOrder.endDate) : 'N/A'}</div>
+              <div><strong>Mechanic:</strong> {detailMechanics.length > 0
+                ? detailMechanics.map((mechanic: any) => mechanic.name).join(', ')
+                : (detailOrder.mechanic || 'N/A')}</div>
+              <div><strong style={{ fontSize: 14 }}>Total HRS:</strong> {totalHrsValue.toFixed(2)}</div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <strong>Description:</strong>
+              <div style={{ marginTop: 6, background: colors.gray100, border: `1px solid ${colors.gray300}`, borderRadius: 8, padding: 10, whiteSpace: 'pre-line' }}>
+                {detailOrder.description || 'No description'}
+              </div>
+            </div>
+
+            <div>
+              <strong>Parts:</strong>
+              <div style={{ marginTop: 8, overflowX: 'auto' }}>
+                <table className="wo-table" style={{ minWidth: 720 }}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>SKU</th>
+                      <th>Part</th>
+                      <th>Qty</th>
+                      <th>Cost</th>
+                      <th>Purchase Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validParts.length > 0 ? (
+                      validParts
+                        .map((part: any, index: number) => (
+                          <tr key={`${detailOrder.id}-${index}`}>
+                            <td>{index + 1}</td>
+                            <td>{part.sku}</td>
+                            <td>{part.part || part.description || '-'}</td>
+                            <td>{part.qty || 0}</td>
+                            <td>
+                              {part.cost !== undefined && part.cost !== null && part.cost !== ''
+                                ? Number(part.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                                : '$0.00'}
+                            </td>
+                            <td>
+                              {part.invoiceLink || part.invoice_link ? (
+                                <a 
+                                  href={part.invoiceLink || part.invoice_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ 
+                                    color: colors.primary, 
+                                    textDecoration: 'none',
+                                    fontWeight: 600,
+                                    fontSize: 11
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  🔗 View
+                                </a>
+                              ) : (
+                                <span style={{ color: '#999', fontSize: 11 }}>N/A</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6}>No parts registered</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <strong>Hours Logged:</strong>
+              <div style={{ marginTop: 6, background: colors.gray100, border: `1px solid ${colors.gray300}`, borderRadius: 8, padding: 10 }}>
+                {detailMechanics.length > 0 ? (
+                  detailMechanics.map((mechanic: any, index: number) => (
+                    <div key={`hrs-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: index < detailMechanics.length - 1 ? `1px solid ${colors.gray300}` : 'none' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: colors.gray700 }}>
+                          {mechanic?.name || `Mechanic ${index + 1}`}
+                        </div>
+                        {mechanic?.date && (
+                          <div style={{ fontSize: 11, color: colors.gray600, marginTop: 2 }}>
+                            📅 {formatDateSafely(mechanic.date)}
+                          </div>
+                        )}
+                      </div>
+                      <strong style={{ fontSize: 14, color: colors.primary }}>{(Number(mechanic?.hrs) || 0).toFixed(2)} h</strong>
+                    </div>
+                  ))
+                ) : (
+                  <div>No individual mechanic hours recorded.</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <strong>Totals Breakdown:</strong>
+              <div style={{ marginTop: 6, background: colors.gray100, border: `1px solid ${colors.gray300}`, borderRadius: 8, padding: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Labor ({totalHrsValue.toFixed(2)}h × ${laborRate}/h)</span>
+                  <strong>{laborSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Parts Subtotal</span>
+                  <strong>{partsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Miscellaneous ({miscPercentValue.toFixed(2)}%)</span>
+                  <strong>{miscAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Welding Supplies ({weldPercentValue.toFixed(2)}%)</span>
+                  <strong>{weldAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${colors.gray300}`, paddingTop: 6, marginTop: 6 }}>
+                  <span><strong>Total Calculated</strong></span>
+                  <strong>{calculatedTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ color: colors.success, fontSize: 18 }}>
+                Total W.O: {finalTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              </strong>
+              <button
+                style={secondaryBtn}
+                onClick={() => handleViewPDF(detailOrder.id)}
+              >
+                📄 Ver PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )})()}
 
       {contextMenu.visible && contextMenu.order && (
         <div

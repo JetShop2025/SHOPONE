@@ -776,6 +776,14 @@ const WorkOrdersTable: React.FC = () => {
     return 'PROCESSING';
   };
 
+  const getStatusColor = (status: unknown) => {
+    if (isMissingPartsStatus(status)) return '#f57c00'; // Orange for missing parts
+    const normalized = String(status || '').trim().toUpperCase();
+    if (normalized === 'APPROVED') return '#43a047'; // Green
+    if (normalized === 'FINISHED') return '#fb8c00'; // Orange
+    return '#1976d2'; // Blue for PROCESSING
+  };
+
   const sortedBoardOrders = filteredOrders
     .slice()
     .sort((a, b) => {
@@ -3268,7 +3276,7 @@ const WorkOrdersTable: React.FC = () => {
 
         return (
         <div style={modalStyle} onClick={() => setDetailOrder(null)}>
-          <div style={{ ...modalContentStyle, maxWidth: 980, width: '90vw' }} onClick={event => event.stopPropagation()}>
+          <div style={{ ...modalContentStyle, maxWidth: 750, width: '90vw' }} onClick={event => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ margin: 0, color: '#1976d2' }}>
                 W.O #{detailOrder.id} {detailOrder.idClassic ? `• ${detailOrder.idClassic}` : ''}
@@ -3281,8 +3289,18 @@ const WorkOrdersTable: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
-              <div><strong>Status:</strong> {formatStatusLabel(detailOrder.status)}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: 12, marginBottom: 8 }}>
+              <div>
+                <strong style={{ fontSize: 14 }}>Status:</strong>{' '}
+                <span style={{ 
+                  color: getStatusColor(detailOrder.status), 
+                  fontWeight: 700,
+                  fontSize: 16,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                }}>
+                  {formatStatusLabel(detailOrder.status)}
+                </span>
+              </div>
               <div><strong>Bill To:</strong> {detailOrder.billToCo || 'N/A'}</div>
               <div><strong>Trailer:</strong> {detailOrder.trailer || 'N/A'}</div>
               <div><strong>Start Date:</strong> {formatDateSafely(getOrderStartDate(detailOrder) || '')}</div>
@@ -3290,7 +3308,7 @@ const WorkOrdersTable: React.FC = () => {
               <div><strong>Mechanic:</strong> {detailMechanics.length > 0
                 ? detailMechanics.map((mechanic: any) => mechanic.name).join(', ')
                 : (detailOrder.mechanic || 'N/A')}</div>
-              <div><strong>Total HRS:</strong> {totalHrsValue.toFixed(2)}</div>
+              <div><strong style={{ fontSize: 14 }}>Total HRS:</strong> {totalHrsValue.toFixed(2)}</div>
             </div>
 
             <div style={{ marginBottom: 12 }}>
@@ -3311,6 +3329,7 @@ const WorkOrdersTable: React.FC = () => {
                       <th>Part</th>
                       <th>Qty</th>
                       <th>Cost</th>
+                      <th>Purchase Link</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3327,11 +3346,31 @@ const WorkOrdersTable: React.FC = () => {
                                 ? Number(part.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                                 : '$0.00'}
                             </td>
+                            <td>
+                              {part.invoiceLink || part.invoice_link ? (
+                                <a 
+                                  href={part.invoiceLink || part.invoice_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ 
+                                    color: '#1976d2', 
+                                    textDecoration: 'none',
+                                    fontWeight: 600,
+                                    fontSize: 11
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  🔗 View
+                                </a>
+                              ) : (
+                                <span style={{ color: '#999', fontSize: 11 }}>N/A</span>
+                              )}
+                            </td>
                           </tr>
                         ))
                     ) : (
                       <tr>
-                        <td colSpan={5}>No parts registered</td>
+                        <td colSpan={6}>No parts registered</td>
                       </tr>
                     )}
                   </tbody>
@@ -3344,9 +3383,18 @@ const WorkOrdersTable: React.FC = () => {
               <div style={{ marginTop: 6, background: '#f8f9fb', border: '1px solid #d0d7e2', borderRadius: 8, padding: 10 }}>
                 {detailMechanics.length > 0 ? (
                   detailMechanics.map((mechanic: any, index: number) => (
-                    <div key={`hrs-${index}`} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span>{mechanic?.name || `Mechanic ${index + 1}`}</span>
-                      <strong>{(Number(mechanic?.hrs) || 0).toFixed(2)} h</strong>
+                    <div key={`hrs-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: index < detailMechanics.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#37474f' }}>
+                          {mechanic?.name || `Mechanic ${index + 1}`}
+                        </div>
+                        {mechanic?.date && (
+                          <div style={{ fontSize: 11, color: '#78909c', marginTop: 2 }}>
+                            📅 {formatDateSafely(mechanic.date)}
+                          </div>
+                        )}
+                      </div>
+                      <strong style={{ fontSize: 14, color: '#1976d2' }}>{(Number(mechanic?.hrs) || 0).toFixed(2)} h</strong>
                     </div>
                   ))
                 ) : (
