@@ -29,7 +29,7 @@ const LayoutWithDashboard: React.FC<LayoutWithDashboardProps> = ({ children }) =
   }, [navigate, location.pathname]);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <DashboardSidebar />
       <div
         style={{

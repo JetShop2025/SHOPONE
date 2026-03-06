@@ -32,8 +32,19 @@ const DashboardSidebar: React.FC = () => {
 
   useEffect(() => {
     fetchRecentChanges();
-    const interval = setInterval(fetchRecentChanges, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchRecentChanges, 5000); // Refresh every 5 seconds for real-time updates
+    
+    // Listen for custom events from other components
+    const handleWorkOrderUpdate = () => {
+      fetchRecentChanges();
+    };
+    
+    window.addEventListener('workOrderUpdated', handleWorkOrderUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('workOrderUpdated', handleWorkOrderUpdate);
+    };
   }, []);
 
   const fetchRecentChanges = async () => {

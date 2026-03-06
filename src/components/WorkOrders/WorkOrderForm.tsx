@@ -625,6 +625,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       };
 
       await onSubmit(dataToSend);
+      
+      // Notify dashboard to refresh immediately
+      window.dispatchEvent(new Event('workOrderUpdated'));
+      
       setSuccessMsg('¡Orden creada exitosamente!');
       setLoading(false);
     } catch (err: any) {
@@ -894,71 +898,73 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             alignItems: 'start'
           }}
         >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
-          <label style={{ width: '100%' }}>
-            Bill To Company<span style={{ color: 'red' }}>*</span>
-            <select
-              name="billToCo"
-              value={workOrder.billToCo || ''}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-              required
-            >
-              <option value="">Select...</option>
-              {billToCoOptions.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          </label>
-          
-          <label style={{ width: '100%' }}>
-            Start Date<span style={{ color: 'red' }}>*</span>
-            <DateInputWithCalendar
-              value={workOrder.startDate || workOrder.date || ''}
-              onTextChange={handleDateFieldChange('startDate')}
-              onCalendarChange={(value) => {
-                onChange({ target: { name: 'startDate', value } } as any);
-                onChange({ target: { name: 'date', value } } as any);
-              }}
-              placeholder="MM/DD/YYYY"
-              required
-              inputName="startDate"
-            />
-          </label>
-          <label style={{ width: '100%' }}>
-            End Date
-            <DateInputWithCalendar
-              value={workOrder.endDate || ''}
-              onTextChange={handleDateFieldChange('endDate')}
-              onCalendarChange={(value) => onChange({ target: { name: 'endDate', value } } as any)}
-              placeholder="MM/DD/YYYY"
-              inputName="endDate"
-            />
-          </label>
-          <label style={{ width: '100%' }}>
-            Trailer
-            <input
-              name="trailer"
-              value={workOrder.trailer || ''}
-              onChange={e => {
-                // Permitir cualquier texto y quitar solo el emoji si existe
-                const cleanValue = e.target.value.replace(' 🔔', '');
-                onChange({ target: { name: 'trailer', value: cleanValue } } as any);
-              }}
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-              placeholder="Select or type trailer..."
-              autoComplete="off"
-              list="trailer-options"
-            />
-            <datalist id="trailer-options">
-              {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
-                <option key={opt} value={opt}>
-                  {opt}{showBell(opt) ? ' 🔔' : ''}
-                </option>
-              ))}
-            </datalist>
-          </label>
-        </div>
+        {/* Primera fila: Bill To Company y Start Date */}
+        <label style={{ gridColumn: 'span 6' }}>
+          Bill To Company<span style={{ color: 'red' }}>*</span>
+          <select
+            name="billToCo"
+            value={workOrder.billToCo || ''}
+            onChange={onChange}
+            style={{ width: '100%', marginTop: 4, padding: 8 }}
+            required
+          >
+            <option value="">Select...</option>
+            {billToCoOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </label>
+        
+        <label style={{ gridColumn: 'span 6' }}>
+          Start Date<span style={{ color: 'red' }}>*</span>
+          <DateInputWithCalendar
+            value={workOrder.startDate || workOrder.date || ''}
+            onTextChange={handleDateFieldChange('startDate')}
+            onCalendarChange={(value) => {
+              onChange({ target: { name: 'startDate', value } } as any);
+              onChange({ target: { name: 'date', value } } as any);
+            }}
+            placeholder="MM/DD/YYYY"
+            required
+            inputName="startDate"
+          />
+        </label>
+        
+        {/* Segunda fila: End Date y Trailer */}
+        <label style={{ gridColumn: 'span 6' }}>
+          End Date
+          <DateInputWithCalendar
+            value={workOrder.endDate || ''}
+            onTextChange={handleDateFieldChange('endDate')}
+            onCalendarChange={(value) => onChange({ target: { name: 'endDate', value } } as any)}
+            placeholder="MM/DD/YYYY"
+            inputName="endDate"
+          />
+        </label>
+        
+        <label style={{ gridColumn: 'span 6' }}>
+          Trailer
+          <input
+            name="trailer"
+            value={workOrder.trailer || ''}
+            onChange={e => {
+              // Permitir cualquier texto y quitar solo el emoji si existe
+              const cleanValue = e.target.value.replace(' 🔔', '');
+              onChange({ target: { name: 'trailer', value: cleanValue } } as any);
+            }}
+            style={{ width: '100%', marginTop: 4, padding: 8 }}
+            placeholder="Select or type trailer..."
+            autoComplete="off"
+            list="trailer-options"
+          />
+          <datalist id="trailer-options">
+            {getTrailerOptionsForBill(workOrder.billToCo).map(opt => (
+              <option key={opt} value={opt}>
+                {opt}{showBell(opt) ? ' 🔔' : ''}
+              </option>
+            ))}
+          </datalist>
+        </label>
 
         {/* Previsualizador de Partes Pendientes */}
         {pendingParts && pendingParts.length > 0 && (
