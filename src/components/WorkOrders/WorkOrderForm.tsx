@@ -876,15 +876,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       overflowX: 'hidden',
       boxShadow: 'none'
     }}>
-      <div style={{ padding: '24px 28px' }}>
-        <h2 style={{ color: '#0A3854', marginBottom: 20, fontSize: 24, fontWeight: 700 }}>{title}</h2>
+      <div style={{ padding: '16px 20px' }}>
+        <h2 style={{ color: '#0A3854', marginBottom: 12, fontSize: 20, fontWeight: 700 }}>{title}</h2>
         {loading && (
-          <div style={{ color: '#0A3854', fontWeight: 700, marginBottom: 12 }}>
+          <div style={{ color: '#0A3854', fontWeight: 700, marginBottom: 8 }}>
             Processing, please wait...
           </div>
         )}
         {successMsg && (
-          <div style={{ color: 'green', fontWeight: 700, marginBottom: 12 }}>
+          <div style={{ color: 'green', fontWeight: 700, marginBottom: 8 }}>
             {successMsg}
           </div>
         )}
@@ -893,19 +893,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           onSubmit={handleSubmit}
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '12px',
             alignItems: 'start'
           }}
         >
-        {/* Fila 1: Bill To Company (span completo) */}
-        <label style={{ gridColumn: '1 / -1' }}>
+        {/* Fila 1: Bill To Company (2 cols) | Start Date (1 col) */}
+        <label style={{ gridColumn: 'span 2' }}>
           Bill To Company<span style={{ color: 'red' }}>*</span>
           <select
             name="billToCo"
             value={workOrder.billToCo || ''}
             onChange={onChange}
-            style={{ width: '100%', marginTop: 8, padding: 10, boxSizing: 'border-box' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px 8px', boxSizing: 'border-box', fontSize: '14px' }}
             required
           >
             <option value="">Select...</option>
@@ -915,10 +915,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </select>
         </label>
         
-        {/* Fila 2: Start Date y End Date (lado a lado) */}
-        <label style={{ gridColumn: '1' }}>
+        <label style={{ gridColumn: 'span 1' }}>
           Start Date<span style={{ color: 'red' }}>*</span>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 4 }}>
             <DateInputWithCalendar
               value={workOrder.startDate || workOrder.date || ''}
               onTextChange={handleDateFieldChange('startDate')}
@@ -933,9 +932,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </label>
         
-        <label style={{ gridColumn: '2' }}>
+        {/* Fila 2: End Date (1 col) | Trailer (2 cols) */}
+        <label style={{ gridColumn: 'span 1' }}>
           End Date
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 4 }}>
             <DateInputWithCalendar
               value={workOrder.endDate || ''}
               onTextChange={handleDateFieldChange('endDate')}
@@ -946,8 +946,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         </label>
         
-        {/* Fila 3: Trailer (span completo) */}
-        <label style={{ gridColumn: '1 / -1' }}>
+        <label style={{ gridColumn: 'span 2' }}>
           Trailer
           <input
             name="trailer"
@@ -956,7 +955,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               const cleanValue = e.target.value.replace(' 🔔', '');
               onChange({ target: { name: 'trailer', value: cleanValue } } as any);
             }}
-            style={{ width: '100%', marginTop: 8, padding: 10, boxSizing: 'border-box' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px 8px', boxSizing: 'border-box', fontSize: '14px' }}
             placeholder="Select or type trailer..."
             autoComplete="off"
             list="trailer-options"
@@ -1093,14 +1092,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         )}
 
-        {/* Fila 4: Status y ID Classic (lado a lado) */}
-        <label style={{ gridColumn: '1' }}>
+        {/* Fila 3: Status (1 col) | ID Classic (2 cols) */}
+        <label style={{ gridColumn: 'span 1' }}>
           Status
           <select
             name="status"
             value={workOrder.status || 'PROCESSING'}
             onChange={onChange}
-            style={{ width: '100%', marginTop: 8, padding: 10, boxSizing: 'border-box' }}
+            style={{ width: '100%', marginTop: 4, padding: '6px 8px', boxSizing: 'border-box', fontSize: '14px' }}
           >
             <option value="PROCESSING">PROCESSING</option>
             <option value="APPROVED">APPROVED</option>
@@ -1108,7 +1107,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             <option value="MISSING_PARTS">MISSING PARTS</option>
           </select>
         </label>
-        <label style={{ gridColumn: '2' }}>
+        <label style={{ gridColumn: 'span 2' }}>
           ID CLASSIC {workOrder.status === 'FINISHED' && <span style={{ color: 'red' }}>*</span>}
           <input
             type="text"
@@ -1120,9 +1119,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
             required={workOrder.status === 'FINISHED'}
             style={{ 
               width: '100%', 
-              marginTop: 8, 
-              padding: 10,
+              marginTop: 4, 
+              padding: '6px 8px',
               boxSizing: 'border-box',
+              fontSize: '14px',
               borderColor: idClassicError ? '#f44336' : undefined,
               backgroundColor: workOrder.status !== 'FINISHED' ? '#f5f5f5' : '#fff',
               cursor: workOrder.status !== 'FINISHED' ? 'not-allowed' : 'text'
@@ -1131,8 +1131,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           {workOrder.status !== 'FINISHED' && (
             <div style={{
               color: '#666',
-              fontSize: '11px',
-              marginTop: '4px',
+              fontSize: '10px',
+              marginTop: '2px',
               fontStyle: 'italic'
             }}>
               Campo habilitado solo cuando status es FINISHED
@@ -1141,8 +1141,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           {idClassicError && workOrder.status === 'FINISHED' && (
             <div style={{
               color: '#f44336',
-              fontSize: '12px',
-              marginTop: '4px',
+              fontSize: '11px',
+              marginTop: '2px',
               fontWeight: '500'
             }}>
               {idClassicError}
@@ -1151,18 +1151,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         </label>
         
         <div style={{ marginBottom: 0, gridColumn: '1 / -1', minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <strong>Labor Log (Date, Mechanic, Hours, Work Done)</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <strong style={{ fontSize: '14px' }}>Labor Log (Date, Mechanic, Hours, Work Done)</strong>
             <button
               type="button"
               onClick={addMechanic}
               style={{
-                padding: '4px 8px',
+                padding: '3px 6px',
                 background: '#0A3854',
                 color: 'white',
                 border: 'none',
                 borderRadius: 4,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: '12px'
               }}
             >
               + Add Row
@@ -1171,7 +1172,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
           <div style={{ overflowX: 'auto' }}>
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '140px 180px 70px 1fr 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 650 }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '155px 165px 65px 1fr 32px', gap: 6, marginBottom: 6, alignItems: 'center', minWidth: 600 }}>
               <DateInputWithCalendar
                 value={mechanic.date || getDefaultLaborDate()}
                 onTextChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
@@ -1182,15 +1183,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 value={mechanic.name || ''}
                 onChange={e => handleMechanicChange(index, 'name', e.target.value)}
                 style={{ 
-                  flex: 1, 
-                  padding: 8, 
+                  width: '100%',
+                  padding: '6px', 
                   borderRadius: 4, 
                   border: '1px solid #ccc',
-                  fontSize: 14,
-                  backgroundColor: '#fff'
+                  fontSize: 13,
+                  backgroundColor: '#fff',
+                  boxSizing: 'border-box'
                 }}
               >
-                <option value="">Seleccionar mecánico...</option>
+                <option value="">Mechanic...</option>
                 {MECHANICS_LIST.map(mechanicName => (
                   <option key={mechanicName} value={mechanicName}>
                     {mechanicName}
@@ -1199,30 +1201,32 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </select>
               <input
                 type="number"
-                placeholder="Hours"
+                placeholder="Hrs"
                 value={mechanic.hrs || ''}
                 onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
-                style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '13px' }}
                 step="0.25"
                 min="0"
               />
               <input
                 type="text"
-                placeholder="Work done on this date..."
+                placeholder="Work done..."
                 value={mechanic.task || ''}
                 onChange={e => handleMechanicChange(index, 'task', e.target.value)}
-                style={{ width: '100%', padding: 8 }}
+                style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '13px' }}
               />
               <button
                 type="button"
                 onClick={() => removeMechanic(index)}
                 style={{
-                  padding: '4px 8px',
+                  padding: '4px 6px',
                   background: '#d32f2f',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  lineHeight: '1'
                 }}
               >
                 ×
@@ -1231,23 +1235,23 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           ))}
           </div>
 
-          <div style={{ marginTop: 10, padding: '8px 10px', background: '#eef5ff', borderRadius: 6, border: '1px solid #d6e6ff', fontSize: 12 }}>
+          <div style={{ marginTop: 6, padding: '6px 8px', background: '#eef5ff', borderRadius: 4, border: '1px solid #d6e6ff', fontSize: 11 }}>
             <strong>Hours by mechanic:</strong> {getMechanicHoursSummary(workOrder.mechanics || []) || 'No hours logged yet'}
           </div>
 
           {(!workOrder.mechanics || workOrder.mechanics.length === 0) && (
-            <div style={{ color: '#666', fontStyle: 'italic' }}>
+            <div style={{ color: '#666', fontStyle: 'italic', fontSize: '12px' }}>
               No labor rows yet. Click "Add Row" to start logging by date.
             </div>
           )}
         </div>
 
         <div style={{ marginBottom: 0, gridColumn: '1 / -1', minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <label style={{ width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <label style={{ width: '100%', fontSize: '14px', fontWeight: '600' }}>
               Descripción / Invoice Notes<span style={{ color: 'red' }}>*</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, whiteSpace: 'nowrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
                 checked={autoDescription}
@@ -1264,11 +1268,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               if (autoDescription) setAutoDescription(false);
               onChange(e);
             }}
-            rows={10}
-            style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 10, minHeight: 220, fontSize: 14, lineHeight: 1.45 }}
+            rows={6}
+            style={{ width: '100%', marginTop: 4, resize: 'vertical', padding: 8, minHeight: 120, fontSize: 13, lineHeight: 1.4, boxSizing: 'border-box' }}
             required
           />
-          <div style={{ marginTop: 6, fontSize: 11, color: '#546e7a' }}>
+          <div style={{ marginTop: 4, fontSize: 10, color: '#546e7a' }}>
             Tip: Use labor rows to generate clear lines by date/mecanic/hours automatically.
           </div>
         </div>
