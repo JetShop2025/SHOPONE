@@ -49,18 +49,32 @@ const DashboardSidebar: React.FC = () => {
 
   const fetchRecentChanges = async () => {
     try {
-      const response = await axios.get(`${API_URL}/audit?limit=8`);
+      const response = await axios.get(
+        `${API_URL}/audit?limit=3&table=work_orders&actions=CREATE,UPDATE,DELETE&userOnly=true`
+      );
       const changes = response.data?.data || response.data || [];
       setRecentChanges(
-        changes.map((item: any) => ({
-          id: item._id || item.id,
-          action: item.action || 'Updated',
-          module: item.module || 'System',
-          user: item.username || item.user || 'Unknown',
-          timestamp: item.timestamp || new Date().toISOString(),
-          details: item.details || item.description,
-          description: item.description || item.details,
-        }))
+        changes
+          .filter((item: any) => {
+            const action = String(item.action || '').toUpperCase();
+            const module = String(item.module || '').toLowerCase();
+            const user = String(item.username || item.user || '').toUpperCase();
+            return (
+              module === 'work_orders' &&
+              ['CREATE', 'UPDATE', 'DELETE'].includes(action) &&
+              user !== 'SYSTEM'
+            );
+          })
+          .slice(0, 3)
+          .map((item: any) => ({
+            id: item._id || item.id,
+            action: toEnglishAction(item.action || 'UPDATE'),
+            module: toEnglishModule(item.module || 'work_orders'),
+            user: item.username || item.user || 'Unknown',
+            timestamp: item.timestamp || new Date().toISOString(),
+            details: item.details || item.description,
+            description: item.description || item.details,
+          }))
       );
     } catch (error) {
       console.error('Error fetching recent changes:', error);
@@ -78,14 +92,14 @@ const DashboardSidebar: React.FC = () => {
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMins < 1) return 'Ahora';
+      if (diffMins < 1) return 'Now';
       if (diffMins < 60) return `${diffMins}m`;
       if (diffHours < 24) return `${diffHours}h`;
       if (diffDays < 7) return `${diffDays}d`;
       
-      return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
-      return 'Hace poco';
+      return 'Recently';
     }
   };
 
@@ -112,6 +126,35 @@ const DashboardSidebar: React.FC = () => {
     return value.length > max ? `${value.slice(0, max - 3)}...` : value;
   };
 
+  const toEnglishAction = (action: string) => {
+    const normalized = String(action || '').toUpperCase();
+    if (normalized === 'CREATE') return 'CREATE';
+    if (normalized === 'UPDATE') return 'UPDATE';
+    if (normalized === 'DELETE') return 'DELETE';
+    return action || 'UPDATE';
+  };
+
+  const toEnglishModule = (module: string) => {
+    const normalized = String(module || '').toLowerCase();
+    if (normalized === 'work_orders') return 'Work Orders';
+    return module || 'Work Orders';
+  };
+
+  const translateActivityText = (value: string) => String(value || '')
+    .replace(/Actualizaci[o\u00f3]n de Work Order/gi, 'Work Order update')
+    .replace(/Creaci[o\u00f3]n de Work Order/gi, 'Work Order creation')
+    .replace(/Eliminaci[o\u00f3]n de Work Order/gi, 'Work Order deletion')
+    .replace(/actualizada por/gi, 'updated by')
+    .replace(/creada por/gi, 'created by')
+    .replace(/eliminada por/gi, 'deleted by')
+    .replace(/Cliente/gi, 'Client')
+    .replace(/Estado/gi, 'Status')
+    .replace(/costoTotal/gi, 'Total cost')
+    .replace(/descripcion/gi, 'Description')
+    .replace(/antes/gi, 'before')
+    .replace(/despues/gi, 'after')
+    .replace(/Sin definir/gi, 'Undefined');
+
   const formatRecentActivity = (change: RecentChange): FormattedActivity => {
     const raw = String(change.description || change.details || '').trim();
     if (!raw) {
@@ -130,15 +173,15 @@ const DashboardSidebar: React.FC = () => {
     }
 
     const summary = truncateText(
-      parsed.summary || parsed.operation || `${change.action} en ${change.module}`,
+      translateActivityText(parsed.summary || parsed.operation || `${change.action} in ${change.module}`),
       120
     );
 
     const badges: string[] = [];
     if (parsed.workOrderId) badges.push(`WO #${parsed.workOrderId}`);
-    if (parsed.cliente) badges.push(`Cliente: ${truncateText(String(parsed.cliente), 28)}`);
+    if (parsed.cliente) badges.push(`Client: ${truncateText(String(parsed.cliente), 28)}`);
     if (parsed.trailer) badges.push(`Trailer: ${truncateText(String(parsed.trailer), 20)}`);
-    if (parsed.estado) badges.push(`Estado: ${parsed.estado}`);
+    if (parsed.estado) badges.push(`Status: ${parsed.estado}`);
     if (parsed.detalles?.costoTotal) badges.push(`Total: ${parsed.detalles.costoTotal}`);
 
     const lines: string[] = [];
@@ -159,7 +202,11 @@ const DashboardSidebar: React.FC = () => {
       });
     }
 
-    return { summary, badges, lines };
+    return {
+      summary,
+      badges: badges.map((badge) => translateActivityText(badge)),
+      lines: lines.map((line) => translateActivityText(line)),
+    };
   };
 
   const menuItems = [
@@ -242,7 +289,7 @@ const DashboardSidebar: React.FC = () => {
         background: 'linear-gradient(180deg, #0A3854 0%, #062838 100%)',
         padding: 24,
         boxShadow: '0 4px 24px rgba(10, 56, 84, 0.25)',
-        overflowY: 'auto',
+        overflow: 'hidden',
         position: 'sticky',
         top: 0,
           display: 'flex',

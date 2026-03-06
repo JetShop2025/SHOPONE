@@ -7,20 +7,47 @@ router.get('/', async (req, res) => {
   try {
     const limitParam = req.query.limit ? parseInt(req.query.limit, 10) : 8;
     const limit = !isNaN(limitParam) && limitParam > 0 && limitParam <= 1000 ? limitParam : 8;
+    const table = req.query.table ? String(req.query.table).trim() : '';
+    const userOnly = String(req.query.userOnly || '').toLowerCase() === 'true';
+    const actionsParam = req.query.actions ? String(req.query.actions) : '';
+    const actions = actionsParam
+      .split(',')
+      .map((item) => item.trim().toUpperCase())
+      .filter(Boolean);
     
     console.log('[AUDIT] Fetching recent logs with limit:', limit);
-    
-    // Use a simple query without parameters to avoid mysql2 parameter issues with LIMIT
+
+    const conditions = [];
+    const params = [];
+
+    if (table) {
+      conditions.push('tabla = ?');
+      params.push(table);
+    }
+
+    if (actions.length > 0) {
+      conditions.push(`accion IN (${actions.map(() => '?').join(',')})`);
+      params.push(...actions);
+    }
+
+    if (userOnly) {
+      conditions.push("COALESCE(usuario, '') <> ''");
+      conditions.push("UPPER(usuario) <> 'SYSTEM'");
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const query = `
       SELECT id, usuario, accion, tabla, registro_id, detalles, fecha 
       FROM audit_log 
+      ${whereClause}
       ORDER BY fecha DESC 
       LIMIT ${Math.floor(limit)}
     `;
-    
+
     console.log('[AUDIT] Query:', query);
-    
-    const [logs] = await db.connection.execute(query);
+
+    const [logs] = await db.connection.execute(query, params);
     
     res.json({
       data: logs.map(log => ({
