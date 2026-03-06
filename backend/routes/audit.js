@@ -5,17 +5,22 @@ const router = express.Router();
 // GET / - Obtener registros recientes de auditoría (para el dashboard)
 router.get('/', async (req, res) => {
   try {
-    const limitParam = parseInt(req.query.limit, 10);
+    const limitParam = req.query.limit ? parseInt(req.query.limit, 10) : 8;
     const limit = !isNaN(limitParam) && limitParam > 0 && limitParam <= 1000 ? limitParam : 8;
     
-    console.log('[AUDIT] Fetching recent logs with limit:', limit, 'type:', typeof limit);
+    console.log('[AUDIT] Fetching recent logs with limit:', limit);
     
-    const [logs] = await db.connection.execute(`
+    // Use a simple query without parameters to avoid mysql2 parameter issues with LIMIT
+    const query = `
       SELECT id, usuario, accion, tabla, registro_id, detalles, fecha 
       FROM audit_log 
       ORDER BY fecha DESC 
-      LIMIT ?
-    `, [limit]);
+      LIMIT ${Math.floor(limit)}
+    `;
+    
+    console.log('[AUDIT] Query:', query);
+    
+    const [logs] = await db.connection.execute(query);
     
     res.json({
       data: logs.map(log => ({

@@ -444,17 +444,31 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const generatedDescription = buildDescriptionFromEntries(currentMechanics);
       const aggregatedMechanics = aggregateMechanicsForSubmit(currentMechanics);
 
+      // Detectar si el totalLabAndParts cambió del valor original
+      const originalTotal = workOrder.originalTotalLabAndParts !== undefined 
+        ? Number(String(workOrder.originalTotalLabAndParts ?? '').replace(/[^0-9.]/g, ''))
+        : Number(String(workOrder.totalLabAndParts ?? '').replace(/[^0-9.]/g, ''));
+      const currentTotal = Number(String(workOrder.totalLabAndParts ?? '').replace(/[^0-9.]/g, ''));
+      const totalChanged = !isNaN(originalTotal) && !isNaN(currentTotal) && Math.abs(originalTotal - currentTotal) > 0.01;
+
       // Si NO cambió nada, usar los valores originales
       let cleanParts = currentParts;
       let cleanMechanics = aggregatedMechanics;
       let totalHrs = currentTotalHrs;
       let totalLabAndPartsValue = workOrder.totalLabAndParts;
       let descriptionToSend = (autoDescription && generatedDescription) ? generatedDescription : (workOrder.description || '');
-      if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged) {
+      if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged && !totalChanged) {
+        // Nada cambió - usar valores originales
         cleanParts = originalParts;
         cleanMechanics = originalMechanics;
         totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
         totalLabAndPartsValue = workOrder.originalTotalLabAndParts !== undefined ? workOrder.originalTotalLabAndParts : workOrder.totalLabAndParts;
+      } else if (workOrder.id && !partsChanged && !mechanicsChanged && !hoursChanged && totalChanged) {
+        // Solo cambió el total - preservar el valor manual
+        totalLabAndPartsValue = workOrder.totalLabAndParts;
+        cleanParts = originalParts;
+        cleanMechanics = originalMechanics;
+        totalHrs = workOrder.originalTotalHrs !== undefined ? workOrder.originalTotalHrs : currentTotalHrs;
       } else {
         // Si cambió algo, limpiar partes y recalcular subtotales
         if (Array.isArray(cleanParts)) {
