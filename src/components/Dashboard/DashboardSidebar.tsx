@@ -15,6 +15,12 @@ interface RecentChange {
   description?: string;
 }
 
+interface FormattedActivity {
+  summary: string;
+  badges: string[];
+  lines: string[];
+}
+
 const DashboardSidebar: React.FC = () => {
   const navigate = useNavigate();
   const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
@@ -83,6 +89,68 @@ const DashboardSidebar: React.FC = () => {
     };
     return icons[module] || icons['default'];
   };
+
+  const toReadableLabel = (value: string) => String(value || '')
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const truncateText = (value: string, max = 140) => {
+    if (!value) return '';
+    return value.length > max ? `${value.slice(0, max - 3)}...` : value;
+  };
+
+  const formatRecentActivity = (change: RecentChange): FormattedActivity => {
+    const raw = String(change.description || change.details || '').trim();
+    if (!raw) {
+      return { summary: '', badges: [], lines: [] };
+    }
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return { summary: truncateText(raw), badges: [], lines: [] };
+    }
+
+    const summary = truncateText(
+      parsed.summary || parsed.operation || `${change.action} en ${change.module}`,
+      120
+    );
+
+    const badges: string[] = [];
+    if (parsed.workOrderId) badges.push(`WO #${parsed.workOrderId}`);
+    if (parsed.cliente) badges.push(`Cliente: ${truncateText(String(parsed.cliente), 28)}`);
+    if (parsed.trailer) badges.push(`Trailer: ${truncateText(String(parsed.trailer), 20)}`);
+    if (parsed.estado) badges.push(`Estado: ${parsed.estado}`);
+    if (parsed.detalles?.costoTotal) badges.push(`Total: ${parsed.detalles.costoTotal}`);
+
+    const lines: string[] = [];
+    const changesObj = parsed.cambios || parsed.changes;
+    if (changesObj && typeof changesObj === 'object' && !Array.isArray(changesObj)) {
+      Object.entries(changesObj).slice(0, 4).forEach(([field, values]: [string, any]) => {
+        if (values && typeof values === 'object' && ('antes' in values || 'despues' in values)) {
+          lines.push(`${toReadableLabel(field)}: ${values.antes ?? '-'} -> ${values.despues ?? '-'}`);
+        } else {
+          lines.push(`${toReadableLabel(field)}: ${truncateText(String(values), 40)}`);
+        }
+      });
+    }
+
+    if (lines.length === 0 && parsed.detalles && typeof parsed.detalles === 'object') {
+      Object.entries(parsed.detalles).slice(0, 3).forEach(([field, value]) => {
+        lines.push(`${toReadableLabel(field)}: ${truncateText(String(value), 42)}`);
+      });
+    }
+
+    return { summary, badges, lines };
+  };
+
   const menuItems = [
       {
         id: 'inventory',
@@ -295,44 +363,78 @@ const DashboardSidebar: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {recentChanges.length > 0 ? (
-              recentChanges.map((change) => (
-                <div
-                  key={change.id}
-                  style={{
-                    background: 'rgba(255,255,255,0.08)',
-                    borderRadius: 8,
-                    padding: '12px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    fontSize: 11,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, minWidth: 20 }}>{getModuleIcon(change.module)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: '#fff', fontWeight: 600, wordBreak: 'break-word' }}>
-                        {change.action}
-                      </div>
-                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 }}>
-                        {change.module}
-                      </div>
-                      {change.description && (
-                        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                          {change.description}
+              recentChanges.map((change) => {
+                const formatted = formatRecentActivity(change);
+                return (
+                  <div
+                    key={change.id}
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      borderRadius: 8,
+                      padding: '12px',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      fontSize: 11,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 14, minWidth: 20 }}>{getModuleIcon(change.module)}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: '#fff', fontWeight: 700, wordBreak: 'break-word' }}>
+                          {change.action}
                         </div>
-                      )}
+                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 }}>
+                          {change.module}
+                        </div>
+
+                        {formatted.summary && (
+                          <div style={{ color: 'rgba(255,255,255,0.88)', fontSize: 10, marginTop: 6, fontWeight: 600 }}>
+                            {formatted.summary}
+                          </div>
+                        )}
+
+                        {formatted.badges.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                            {formatted.badges.slice(0, 3).map((badge, idx) => (
+                              <span
+                                key={`${change.id}-badge-${idx}`}
+                                style={{
+                                  fontSize: 9,
+                                  padding: '2px 6px',
+                                  borderRadius: 10,
+                                  background: 'rgba(255,255,255,0.15)',
+                                  color: 'rgba(255,255,255,0.9)',
+                                  border: '1px solid rgba(255,255,255,0.2)'
+                                }}
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {formatted.lines.length > 0 && (
+                          <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            {formatted.lines.slice(0, 3).map((line, idx) => (
+                              <div key={`${change.id}-line-${idx}`} style={{ color: 'rgba(255,255,255,0.62)', fontSize: 9, marginBottom: 2, wordBreak: 'break-word' }}>
+                                • {truncateText(line, 90)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9 }}>
+                        👤 {change.user}
+                      </span>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 500 }}>
+                        {formatTime(change.timestamp)}
+                      </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0 0 0', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9 }}>
-                      👤 {change.user}
-                    </span>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 500 }}>
-                      {formatTime(change.timestamp)}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div
                 style={{

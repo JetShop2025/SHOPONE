@@ -746,6 +746,82 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       onChange({ target: { name: 'date', value } } as any);
     }
   };
+
+  const DateInputWithCalendar: React.FC<{
+    value: string;
+    onTextChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onCalendarChange: (isoDate: string) => void;
+    placeholder?: string;
+    required?: boolean;
+    inputName?: string;
+    inputStyle?: React.CSSProperties;
+  }> = ({ value, onTextChange, onCalendarChange, placeholder = 'MM/DD/YYYY', required = false, inputName, inputStyle }) => {
+    const calendarRef = React.useRef<HTMLInputElement>(null);
+
+    const openPicker = () => {
+      const picker = calendarRef.current;
+      if (!picker) return;
+      if (typeof picker.showPicker === 'function') {
+        picker.showPicker();
+      } else {
+        picker.focus();
+      }
+    };
+
+    return (
+      <div style={{ position: 'relative', marginTop: 4 }}>
+        <input
+          type="text"
+          name={inputName}
+          value={formatDateForDisplay(value)}
+          onChange={onTextChange}
+          placeholder={placeholder}
+          required={required}
+          style={{ width: '100%', padding: '8px 36px 8px 8px', ...(inputStyle || {}) }}
+          autoComplete="off"
+        />
+
+        <input
+          ref={calendarRef}
+          type="date"
+          value={normalizeDateForSubmit(value)}
+          onChange={(e) => onCalendarChange(e.target.value)}
+          aria-label="Open calendar"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            width: 34,
+            height: '100%',
+            opacity: 0,
+            cursor: 'pointer'
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={openPicker}
+          aria-label="Open calendar picker"
+          style={{
+            position: 'absolute',
+            right: 4,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 14,
+            lineHeight: 1,
+            color: '#0A3854',
+            padding: 2
+          }}
+        >
+          📅
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div style={{
       marginTop: '0px',
@@ -802,27 +878,26 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           
           <label style={{ flex: '1 1 140px' }}>
             Start Date<span style={{ color: 'red' }}>*</span>
-            <input
-              type="text"
-              name="startDate"
-              value={formatDateForDisplay(workOrder.startDate || workOrder.date || '')}
-              onChange={handleDateFieldChange('startDate')}
+            <DateInputWithCalendar
+              value={workOrder.startDate || workOrder.date || ''}
+              onTextChange={handleDateFieldChange('startDate')}
+              onCalendarChange={(value) => {
+                onChange({ target: { name: 'startDate', value } } as any);
+                onChange({ target: { name: 'date', value } } as any);
+              }}
               placeholder="MM/DD/YYYY"
               required
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-              autoComplete="off"
+              inputName="startDate"
             />
           </label>
           <label style={{ flex: '1 1 140px' }}>
             End Date
-            <input
-              type="text"
-              name="endDate"
-              value={formatDateForDisplay(workOrder.endDate || '')}
-              onChange={handleDateFieldChange('endDate')}
+            <DateInputWithCalendar
+              value={workOrder.endDate || ''}
+              onTextChange={handleDateFieldChange('endDate')}
+              onCalendarChange={(value) => onChange({ target: { name: 'endDate', value } } as any)}
               placeholder="MM/DD/YYYY"
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-              autoComplete="off"
+              inputName="endDate"
             />
           </label>
           <label style={{ flex: '1 1 120px' }}>
@@ -1053,12 +1128,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <div style={{ overflowX: 'auto' }}>
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
             <div key={index} style={{ display: 'grid', gridTemplateColumns: '130px minmax(150px, 1fr) 90px minmax(240px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 660 }}>
-              <input
-                type="text"
-                value={formatDateForDisplay(mechanic.date || getDefaultLaborDate())}
-                onChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
+              <DateInputWithCalendar
+                value={mechanic.date || getDefaultLaborDate()}
+                onTextChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
+                onCalendarChange={(value) => handleMechanicChange(index, 'date', value)}
                 placeholder="MM/DD/YYYY"
-                style={{ padding: 8 }}
               />
               <select
                 value={mechanic.name || ''}
