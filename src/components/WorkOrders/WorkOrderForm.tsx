@@ -893,19 +893,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           onSubmit={handleSubmit}
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-            gap: 16,
+            gridTemplateColumns: '1fr 1fr',
+            gap: 20,
             alignItems: 'start'
           }}
         >
-        {/* Primera fila: Bill To Company y Start Date */}
-        <label style={{ gridColumn: 'span 6' }}>
+        {/* Fila 1: Bill To Company (span completo) */}
+        <label style={{ gridColumn: '1 / -1' }}>
           Bill To Company<span style={{ color: 'red' }}>*</span>
           <select
             name="billToCo"
             value={workOrder.billToCo || ''}
             onChange={onChange}
-            style={{ width: '100%', marginTop: 4, padding: 8 }}
+            style={{ width: '100%', marginTop: 8, padding: 10, boxSizing: 'border-box' }}
             required
           >
             <option value="">Select...</option>
@@ -915,44 +915,48 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </select>
         </label>
         
-        <label style={{ gridColumn: 'span 6' }}>
+        {/* Fila 2: Start Date y End Date (lado a lado) */}
+        <label style={{ gridColumn: '1' }}>
           Start Date<span style={{ color: 'red' }}>*</span>
-          <DateInputWithCalendar
-            value={workOrder.startDate || workOrder.date || ''}
-            onTextChange={handleDateFieldChange('startDate')}
-            onCalendarChange={(value) => {
-              onChange({ target: { name: 'startDate', value } } as any);
-              onChange({ target: { name: 'date', value } } as any);
-            }}
-            placeholder="MM/DD/YYYY"
-            required
-            inputName="startDate"
-          />
+          <div style={{ marginTop: 8 }}>
+            <DateInputWithCalendar
+              value={workOrder.startDate || workOrder.date || ''}
+              onTextChange={handleDateFieldChange('startDate')}
+              onCalendarChange={(value) => {
+                onChange({ target: { name: 'startDate', value } } as any);
+                onChange({ target: { name: 'date', value } } as any);
+              }}
+              placeholder="MM/DD/YYYY"
+              required
+              inputName="startDate"
+            />
+          </div>
         </label>
         
-        {/* Segunda fila: End Date y Trailer */}
-        <label style={{ gridColumn: 'span 6' }}>
+        <label style={{ gridColumn: '2' }}>
           End Date
-          <DateInputWithCalendar
-            value={workOrder.endDate || ''}
-            onTextChange={handleDateFieldChange('endDate')}
-            onCalendarChange={(value) => onChange({ target: { name: 'endDate', value } } as any)}
-            placeholder="MM/DD/YYYY"
-            inputName="endDate"
-          />
+          <div style={{ marginTop: 8 }}>
+            <DateInputWithCalendar
+              value={workOrder.endDate || ''}
+              onTextChange={handleDateFieldChange('endDate')}
+              onCalendarChange={(value) => onChange({ target: { name: 'endDate', value } } as any)}
+              placeholder="MM/DD/YYYY"
+              inputName="endDate"
+            />
+          </div>
         </label>
         
-        <label style={{ gridColumn: 'span 6' }}>
+        {/* Fila 3: Trailer (span completo) */}
+        <label style={{ gridColumn: '1 / -1' }}>
           Trailer
           <input
             name="trailer"
             value={workOrder.trailer || ''}
             onChange={e => {
-              // Permitir cualquier texto y quitar solo el emoji si existe
               const cleanValue = e.target.value.replace(' 🔔', '');
               onChange({ target: { name: 'trailer', value: cleanValue } } as any);
             }}
-            style={{ width: '100%', marginTop: 4, padding: 8 }}
+            style={{ width: '100%', marginTop: 8, padding: 10, boxSizing: 'border-box' }}
             placeholder="Select or type trailer..."
             autoComplete="off"
             list="trailer-options"
@@ -1089,65 +1093,64 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           </div>
         )}
 
-        {/* Segunda fila - Status, ID Classic (solo en edición) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 0, gridColumn: '1 / -1' }}>
-          <label style={{ flex: '1 1 150px' }}>
-            Status
-            <select
-              name="status"
-              value={workOrder.status || 'PROCESSING'}
-              onChange={onChange}
-              style={{ width: '100%', marginTop: 4, padding: 8 }}
-            >
-              <option value="PROCESSING">PROCESSING</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="FINISHED">FINISHED</option>
-              <option value="MISSING_PARTS">MISSING PARTS</option>
-            </select>
-          </label>
-          <label style={{ flex: '1 1 150px' }}>
-            ID CLASSIC {workOrder.status === 'FINISHED' && <span style={{ color: 'red' }}>*</span>}
-            <input
-              type="text"
-              name="idClassic"
-              placeholder={workOrder.status === 'FINISHED' ? "ID Classic (required)" : "ID Classic (only available when status is FINISHED)"}
-              value={workOrder.idClassic || ''}
-              onChange={onChange}
-              disabled={workOrder.status !== 'FINISHED'}
-              required={workOrder.status === 'FINISHED'}
-              style={{ 
-                width: '100%', 
-                marginTop: 4, 
-                padding: 8,
-                borderColor: idClassicError ? '#f44336' : undefined,
-                backgroundColor: workOrder.status !== 'FINISHED' ? '#f5f5f5' : '#fff',
-                cursor: workOrder.status !== 'FINISHED' ? 'not-allowed' : 'text'
-              }}
-            />
-            {workOrder.status !== 'FINISHED' && (
-              <div style={{
-                color: '#666',
-                fontSize: '11px',
-                marginTop: '2px',
-                fontStyle: 'italic'
-              }}>
-                Campo habilitado solo cuando status es FINISHED
-              </div>
-            )}
-            {idClassicError && workOrder.status === 'FINISHED' && (
-              <div style={{
-                color: '#f44336',
-                fontSize: '12px',
-                marginTop: '4px',
-                fontWeight: '500'
-              }}>
-                {idClassicError}
-              </div>
-            )}
-          </label>
-        </div>
+        {/* Fila 4: Status y ID Classic (lado a lado) */}
+        <label style={{ gridColumn: '1' }}>
+          Status
+          <select
+            name="status"
+            value={workOrder.status || 'PROCESSING'}
+            onChange={onChange}
+            style={{ width: '100%', marginTop: 8, padding: 10, boxSizing: 'border-box' }}
+          >
+            <option value="PROCESSING">PROCESSING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="FINISHED">FINISHED</option>
+            <option value="MISSING_PARTS">MISSING PARTS</option>
+          </select>
+        </label>
+        <label style={{ gridColumn: '2' }}>
+          ID CLASSIC {workOrder.status === 'FINISHED' && <span style={{ color: 'red' }}>*</span>}
+          <input
+            type="text"
+            name="idClassic"
+            placeholder={workOrder.status === 'FINISHED' ? "ID Classic (required)" : "ID Classic (only available when status is FINISHED)"}
+            value={workOrder.idClassic || ''}
+            onChange={onChange}
+            disabled={workOrder.status !== 'FINISHED'}
+            required={workOrder.status === 'FINISHED'}
+            style={{ 
+              width: '100%', 
+              marginTop: 8, 
+              padding: 10,
+              boxSizing: 'border-box',
+              borderColor: idClassicError ? '#f44336' : undefined,
+              backgroundColor: workOrder.status !== 'FINISHED' ? '#f5f5f5' : '#fff',
+              cursor: workOrder.status !== 'FINISHED' ? 'not-allowed' : 'text'
+            }}
+          />
+          {workOrder.status !== 'FINISHED' && (
+            <div style={{
+              color: '#666',
+              fontSize: '11px',
+              marginTop: '4px',
+              fontStyle: 'italic'
+            }}>
+              Campo habilitado solo cuando status es FINISHED
+            </div>
+          )}
+          {idClassicError && workOrder.status === 'FINISHED' && (
+            <div style={{
+              color: '#f44336',
+              fontSize: '12px',
+              marginTop: '4px',
+              fontWeight: '500'
+            }}>
+              {idClassicError}
+            </div>
+          )}
+        </label>
         
-        <div style={{ marginBottom: 0, gridColumn: 'span 6', minWidth: 0 }}>
+        <div style={{ marginBottom: 0, gridColumn: '1 / -1', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <strong>Labor Log (Date, Mechanic, Hours, Work Done)</strong>
             <button
@@ -1168,7 +1171,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
 
           <div style={{ overflowX: 'auto' }}>
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '160px minmax(180px, 1fr) 90px minmax(260px, 2fr) 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 760 }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '140px 180px 70px 1fr 34px', gap: 8, marginBottom: 8, alignItems: 'center', minWidth: 650 }}>
               <DateInputWithCalendar
                 value={mechanic.date || getDefaultLaborDate()}
                 onTextChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
@@ -1239,7 +1242,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           )}
         </div>
 
-        <div style={{ marginBottom: 0, gridColumn: 'span 6', minWidth: 0 }}>
+        <div style={{ marginBottom: 0, gridColumn: '1 / -1', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <label style={{ width: '100%' }}>
               Descripción / Invoice Notes<span style={{ color: 'red' }}>*</span>
