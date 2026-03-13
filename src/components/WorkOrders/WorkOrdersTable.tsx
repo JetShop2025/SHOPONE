@@ -127,7 +127,7 @@ const buttonBase = {
 };
 
 const primaryBtn = {
-  background: '#1976d2',
+  background: '#0A3854',
   color: '#fff',
   border: 'none',
   padding: '8px 16px',
@@ -2409,105 +2409,105 @@ const WorkOrdersTable: React.FC = () => {
           
           /* Animación para cards de Kanban en MISSING PARTS */
           .kanban-card-missing {
-            animation: kanbanMissingBlink 2s ease-in-out infinite !important;
-            box-shadow: 0 0 12px rgba(244, 67, 54, 0.4) !important;
+            animation: kanbanMissingBlink 1.2s ease-in-out infinite !important;
+            box-shadow: 0 0 14px rgba(244, 67, 54, 0.75) !important;
           }
           
           /* Animación para cards de Kanban en PROCESSING (AZUL) */
           .kanban-card-processing {
-            animation: kanbanProcessingBlink 2s ease-in-out infinite !important;
-            box-shadow: 0 0 12px rgba(25, 118, 210, 0.4) !important;
+            animation: kanbanProcessingBlink 1.6s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(25, 118, 210, 0.65) !important;
           }
           
           /* Animación para cards de Kanban en APPROVED (VERDE) */
           .kanban-card-approved {
-            animation: kanbanApprovedBlink 2s ease-in-out infinite !important;
-            box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
+            animation: kanbanApprovedBlink 1.6s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(56, 142, 60, 0.65) !important;
           }
           
           /* Animación para cards de Kanban en CONTINUE (NARANJA) - PROCESSING sin fecha de fin */
           .kanban-card-continue {
-            animation: kanbanContinueBlink 2s ease-in-out infinite !important;
-            box-shadow: 0 0 12px rgba(255, 152, 0, 0.4) !important;
+            animation: kanbanContinueBlink 1.4s ease-in-out infinite !important;
+            box-shadow: 0 0 14px rgba(230, 81, 0, 0.70) !important;
           }
           
           /* Animación para cards de Kanban en FINISHED (AMARILLO/DORADO) */
           .kanban-card-finished {
-            animation: kanbanFinishedBlink 2s ease-in-out infinite !important;
-            box-shadow: 0 0 12px rgba(251, 140, 0, 0.4) !important;
+            animation: kanbanFinishedBlink 1.6s ease-in-out infinite !important;
+            box-shadow: 0 0 12px rgba(230, 120, 0, 0.65) !important;
           }
           
           @keyframes kanbanMissingBlink {
             0% { 
-              border-left-color: #f44336;
+              border-left-color: #c62828;
               background-color: #ffffff;
             }
             50% { 
-              border-left-color: #ff5722;
-              background-color: #ffebee;
+              border-left-color: #f44336;
+              background-color: #ffcdd2;
             }
             100% { 
-              border-left-color: #f44336;
+              border-left-color: #c62828;
               background-color: #ffffff;
             }
           }
           
           @keyframes kanbanProcessingBlink {
             0% { 
-              border-left-color: #1976d2;
+              border-left-color: #0d47a1;
               background-color: #ffffff;
             }
             50% { 
-              border-left-color: #42a5f5;
-              background-color: #e3f2fd;
+              border-left-color: #1976d2;
+              background-color: #bbdefb;
             }
             100% { 
-              border-left-color: #1976d2;
+              border-left-color: #0d47a1;
               background-color: #ffffff;
             }
           }
           
           @keyframes kanbanApprovedBlink {
             0% { 
-              border-left-color: #4caf50;
+              border-left-color: #1b5e20;
               background-color: #ffffff;
             }
             50% { 
-              border-left-color: #66bb6a;
-              background-color: #e8f5e9;
+              border-left-color: #388e3c;
+              background-color: #c8e6c9;
             }
             100% { 
-              border-left-color: #4caf50;
+              border-left-color: #1b5e20;
               background-color: #ffffff;
             }
           }
           
           @keyframes kanbanFinishedBlink {
             0% { 
-              border-left-color: #fb8c00;
+              border-left-color: #e65100;
               background-color: #ffffff;
             }
             50% { 
-              border-left-color: #ffa726;
-              background-color: #fff3e0;
+              border-left-color: #fb8c00;
+              background-color: #ffe0b2;
             }
             100% { 
-              border-left-color: #fb8c00;
+              border-left-color: #e65100;
               background-color: #ffffff;
             }
           }
           
           @keyframes kanbanContinueBlink {
             0% { 
-              border-left-color: #ff9800;
+              border-left-color: #bf360c;
               background-color: #ffffff;
             }
             50% { 
-              border-left-color: #ffa726;
-              background-color: #fff3e0;
+              border-left-color: #e64a19;
+              background-color: #ffccbc;
             }
             100% { 
-              border-left-color: #ff9800;
+              border-left-color: #bf360c;
               background-color: #ffffff;
             }
           }
@@ -2573,12 +2573,12 @@ const WorkOrdersTable: React.FC = () => {
       
       <div
         style={{
-          padding: '32px',
+          padding: '8px 16px 12px 16px',
           background: 'linear-gradient(135deg, #f5f7fa 0%, #e8eef7 100%)',
           borderRadius: 16,
           boxShadow: '0 4px 24px rgba(25, 118, 210, 0.08)',
           maxWidth: 1800,
-          margin: '32px auto'
+          margin: '4px auto'
         }}
       ><div className="wo-header">
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
@@ -2598,12 +2598,12 @@ const WorkOrdersTable: React.FC = () => {
   </div>
   <span
     style={{
-      fontSize: 32,
+      fontSize: 28,
       fontWeight: 700,
-      color: '#1976d2',
+      color: '#0A3854',
       fontFamily: 'Courier New, Courier, monospace',
       letterSpacing: 2,
-      textShadow: '1px 1px 2px rgba(25,118,210,0.1)',
+      textShadow: '1px 1px 2px rgba(10,56,84,0.15)',
     }}
   >
     W.O ENTRY
@@ -2625,10 +2625,10 @@ const WorkOrdersTable: React.FC = () => {
   
   {/* Contador de W.O. pequeño debajo del título */}
   <div style={{ 
-    marginTop: '8px', 
-    fontSize: '14px', 
-    color: '#666',
-    fontWeight: '500'
+    marginTop: '4px', 
+    fontSize: '13px', 
+    color: '#0A3854',
+    fontWeight: '600'
   }}>
     📋 Total: {filteredOrders.length} Work Orders
   </div>
@@ -2694,7 +2694,7 @@ const WorkOrdersTable: React.FC = () => {
 </div>
         </div>
         {/* FILTRO: ID Classic (sin consulta al servidor) */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 16, marginTop: -16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 8, marginTop: -8 }}>
           <label className="wo-filter-label">
             <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
             <input
@@ -2897,7 +2897,7 @@ const WorkOrdersTable: React.FC = () => {
             </div>
           </div>
         )}{/* --- BOTONES ARRIBA --- */}
-        <div style={{ margin: '24px 0 16px 0' }}>
+        <div style={{ margin: '8px 0 8px 0' }}>
           <button
             className="wo-btn"
             style={primaryBtn}            onClick={() => {
@@ -3101,11 +3101,11 @@ const WorkOrdersTable: React.FC = () => {
             </span>
           </div>
         )}
-        <div style={{ marginBottom: 12, color: '#455a64', fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginBottom: 6, color: '#455a64', fontSize: 12, fontWeight: 600 }}>
           Drag and drop cards between columns to update status. Cards are ordered by mechanic.
         </div>
 
-        <div style={{ overflowX: 'auto', paddingBottom: 6 }}>
+        <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr)', gap: 10, alignItems: 'start', minWidth: 940 }}>
           {boardColumns.map(column => {
             const columnOrders = sortedBoardOrders
@@ -3142,7 +3142,7 @@ const WorkOrdersTable: React.FC = () => {
                   padding: 6,
                   transition: 'all 0.2s ease',
                   overflowY: 'auto',
-                  maxHeight: '82vh'
+                  maxHeight: 'calc(100vh - 200px)'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', border: `1px solid ${column.color}` }}>
