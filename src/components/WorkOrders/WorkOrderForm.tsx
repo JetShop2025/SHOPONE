@@ -16,6 +16,7 @@ const MECHANICS_LIST = [
 
 interface WorkOrderFormProps {
   workOrder: any;
+  workOrderNumber?: string | number;
   onChange: (e: React.ChangeEvent<any>, index?: number, field?: string) => void;
   onPartChange: (index: number, field: string, value: string) => void;
   onSubmit: (data?: any) => Promise<void> | void;
@@ -55,6 +56,7 @@ interface LaborEntry {
 
 const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   workOrder, 
+  workOrderNumber,
   onChange, 
   onPartChange, 
   onSubmit, 
@@ -877,7 +879,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       boxShadow: 'none'
     }}>
       <div style={{ padding: '16px 20px' }}>
-        <h2 style={{ color: '#0A3854', marginBottom: 12, fontSize: 20, fontWeight: 700 }}>{title}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h2 style={{ color: '#0A3854', margin: 0, fontSize: 20, fontWeight: 700 }}>{title}</h2>
+          <div style={{
+            fontSize: 14,
+            fontWeight: 800,
+            color: '#0A3854',
+            background: '#e3f2fd',
+            border: '1px solid #90caf9',
+            borderRadius: 999,
+            padding: '4px 10px'
+          }}>
+            W.O #{workOrderNumber ?? workOrder?.id ?? 'N/A'}
+          </div>
+        </div>
         {loading && (
           <div style={{ color: '#0A3854', fontWeight: 700, marginBottom: 8 }}>
             Processing, please wait...
