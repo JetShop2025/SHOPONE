@@ -185,6 +185,39 @@ function calcularTotalWO(order: any) {
 
 const WorkOrdersTable: React.FC = () => {
   const navigate = useNavigate();
+
+  const openWorkOrderDetail = async (order: any) => {
+    const orderId = Number(order?.id);
+    if (!orderId) {
+      setDetailOrder(order);
+      return;
+    }
+
+    setDetailOrder(order);
+    try {
+      const [workOrderRes, partsRes] = await Promise.all([
+        axios.get(`${API_URL}/work-orders/${orderId}`),
+        axios.get(`${API_URL}/work-order-parts/${orderId}`),
+      ]);
+
+      const latestOrder = workOrderRes?.data || order;
+      const partRows = Array.isArray(partsRes?.data) ? partsRes.data : [];
+      const normalizedParts = partRows.map((part: any) => ({
+        sku: part.sku || '',
+        part: part.part || part.part_name || part.description || '',
+        qty: part.qty_used ?? part.qty ?? 0,
+        cost: part.cost ?? 0,
+        invoiceLink: part.invoiceLink || part.invoice_link || null,
+      }));
+
+      setDetailOrder({
+        ...latestOrder,
+        parts: normalizedParts.length > 0 ? normalizedParts : (Array.isArray(latestOrder?.parts) ? latestOrder.parts : []),
+      });
+    } catch (error) {
+      console.warn('Error loading detailed parts for W.O:', error);
+    }
+  };
   
   // Handler for Edit Work Order submit
   const handleEditWorkOrderSubmit = async (data: any) => {
@@ -435,6 +468,9 @@ const WorkOrdersTable: React.FC = () => {
   const [draggingOrderId, setDraggingOrderId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | 'FINISHED' | null>(null);
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
+  const nextWorkOrderNumber = (Array.isArray(workOrders) && workOrders.length > 0
+    ? Math.max(...workOrders.map((wo: any) => Number(wo?.id) || 0)) + 1
+    : 1);
   // Function to check if ID Classic already exists
   const checkIdClassicExists = (idClassic: string): boolean => {
     if (!idClassic || idClassic.trim() === '') return false;
@@ -584,22 +620,13 @@ const WorkOrdersTable: React.FC = () => {
     // Polling inteligente - ajusta frecuencia según estado del servidor (OPTIMIZADO para plan gratuito)
   useEffect(() => {
     fetchWorkOrders();
-    
-    let interval: NodeJS.Timeout;
-    
-    if (serverStatus === 'online') {
-      // Servidor online: polling MUY reducido cada 5 minutos para plan gratuito
-      interval = setInterval(() => fetchWorkOrders(), 300000); // 5 minutos
-    } else if (serverStatus === 'waking') {
-      // Servidor despertando: polling cada 2 minutos
-      interval = setInterval(() => fetchWorkOrders(), 120000); // 2 minutos
-    }
-    // Si está offline, no hacer polling automático para no sobrecargar
-    
+    const handleSystemChange = () => fetchWorkOrders();
+    window.addEventListener('systemDataChanged', handleSystemChange);
+
     return () => {
-      if (interval) clearInterval(interval);
+      window.removeEventListener('systemDataChanged', handleSystemChange);
     };
-  }, [fetchWorkOrders, serverStatus]);
+  }, [fetchWorkOrders]);
   
   // Función de búsqueda inteligente por ID Classic
   const searchWorkOrderByIdClassic = useCallback(async (searchTerm: string) => {
@@ -2951,6 +2978,7 @@ const WorkOrdersTable: React.FC = () => {
             <div style={modalContentStyle}>
               <WorkOrderForm
                 workOrder={newWorkOrder}
+                workOrderNumber={nextWorkOrderNumber}
                 onChange={handleWorkOrderChange}
                 onPartChange={handlePartChange}
                 onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}
@@ -3057,6 +3085,7 @@ const WorkOrdersTable: React.FC = () => {
                   )}
                   <WorkOrderForm
                     workOrder={editWorkOrder}
+                    workOrderNumber={editWorkOrder?.id}
                     onChange={handleWorkOrderChange}
                     onPartChange={handlePartChange}
                     onSubmit={handleEditWorkOrderSubmit}
@@ -3229,7 +3258,7 @@ const WorkOrdersTable: React.FC = () => {
                         onDragEnd={handleCardDragEnd}
                         onClick={() => {
                           setSelectedRow(order.id);
-                          setDetailOrder(order);
+                          openWorkOrderDetail(order);
                         }}
                         onContextMenu={event => {
                           event.preventDefault();

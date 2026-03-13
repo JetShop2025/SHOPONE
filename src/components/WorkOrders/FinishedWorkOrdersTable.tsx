@@ -242,7 +242,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
+  const [, setServerStatus] = useState<'online' | 'waking' | 'offline'>('online');
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
   const [searchIdClassic, setSearchIdClassic] = useState('');
@@ -335,16 +335,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   useEffect(() => {
     fetchWorkOrders();
-    let interval: NodeJS.Timeout;
-    if (serverStatus === 'online') {
-      interval = setInterval(() => fetchWorkOrders(), 300000);
-    } else if (serverStatus === 'waking') {
-      interval = setInterval(() => fetchWorkOrders(), 120000);
-    }
+    const handleSystemChange = () => fetchWorkOrders();
+    window.addEventListener('systemDataChanged', handleSystemChange);
+
     return () => {
-      if (interval) clearInterval(interval);
+      window.removeEventListener('systemDataChanged', handleSystemChange);
     };
-  }, [fetchWorkOrders, serverStatus]);
+  }, [fetchWorkOrders]);
 
   const fetchInventory = useCallback(async () => {
     try {

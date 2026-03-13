@@ -33,6 +33,93 @@ const connection = mysql.createPool({
   timeout: 60000
 });
 
+// Realtime SSE state
+const realtimeClients = new Set();
+let latestAuditId = 0;
+
+function sendSseEvent(res, eventName, payload) {
+  res.write(`event: ${eventName}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function publishRealtimeChange(payload) {
+  if (realtimeClients.size === 0) return;
+
+  realtimeClients.forEach((clientRes) => {
+    try {
+      sendSseEvent(clientRes, 'system-change', payload);
+    } catch (error) {
+      console.error('[REALTIME] Failed sending event to client:', error.message);
+    }
+  });
+}
+
+async function initializeLatestAuditId() {
+  try {
+    const [rows] = await connection.execute('SELECT COALESCE(MAX(id), 0) AS latestId FROM audit_log');
+    latestAuditId = Number(rows?.[0]?.latestId || 0);
+    console.log(`[REALTIME] Initial latest audit id: ${latestAuditId}`);
+  } catch (error) {
+    console.error('[REALTIME] Could not initialize latest audit id:', error.message);
+  }
+}
+
+async function broadcastNewAuditEntries() {
+  if (realtimeClients.size === 0) return;
+
+  try {
+    const [rows] = await connection.execute(
+      `SELECT id, usuario, accion, tabla, registro_id, detalles, fecha
+       FROM audit_log
+       WHERE id > ?
+       ORDER BY id ASC
+       LIMIT 50`,
+      [latestAuditId]
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) return;
+
+    rows.forEach((row) => {
+      latestAuditId = Math.max(latestAuditId, Number(row.id) || latestAuditId);
+      const payload = {
+        id: row.id,
+        action: row.accion,
+        module: row.tabla,
+        user: row.usuario,
+        recordId: row.registro_id,
+        details: row.detalles,
+        timestamp: row.fecha,
+        source: 'audit_log',
+      };
+
+      realtimeClients.forEach((clientRes) => {
+        try {
+          sendSseEvent(clientRes, 'audit-change', payload);
+          sendSseEvent(clientRes, 'system-change', payload);
+        } catch (error) {
+          console.error('[REALTIME] Error broadcasting audit event:', error.message);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('[REALTIME] Error polling audit changes:', error.message);
+  }
+}
+
+initializeLatestAuditId();
+setInterval(broadcastNewAuditEntries, 1000).unref();
+setInterval(() => {
+  if (realtimeClients.size === 0) return;
+  const heartbeat = { type: 'heartbeat', timestamp: new Date().toISOString() };
+  realtimeClients.forEach((clientRes) => {
+    try {
+      sendSseEvent(clientRes, 'ping', heartbeat);
+    } catch (error) {
+      console.error('[REALTIME] Error sending heartbeat:', error.message);
+    }
+  });
+}, 25000).unref();
+
 // Import route modules
 const auditRoutes = require('./routes/audit');
 const { sendHTMLMail } = require('./emailSender');
@@ -243,6 +330,31 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// REALTIME SSE ENDPOINT
+app.get('/api/realtime/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  res.flushHeaders?.();
+
+  const connectedPayload = {
+    type: 'connected',
+    timestamp: new Date().toISOString(),
+    clientsOnline: realtimeClients.size + 1,
+  };
+  sendSseEvent(res, 'connected', connectedPayload);
+
+  realtimeClients.add(res);
+  console.log(`[REALTIME] Client connected. Active clients: ${realtimeClients.size}`);
+
+  req.on('close', () => {
+    realtimeClients.delete(res);
+    console.log(`[REALTIME] Client disconnected. Active clients: ${realtimeClients.size}`);
+  });
+});
+
 // LOGIN ENDPOINT - USANDO BASE DE DATOS
 app.post('/api/login', async (req, res) => {
   console.log('[LOGIN] Login attempt:', req.body);
@@ -257,6 +369,14 @@ app.post('/api/login', async (req, res) => {
     
     if (user) {
       console.log('[LOGIN] User authenticated:', user.username);
+      publishRealtimeChange({
+        action: 'LOGIN',
+        module: 'login',
+        user: user.username,
+        timestamp: new Date().toISOString(),
+        details: `User ${user.username} logged in`,
+        source: 'auth',
+      });
       res.json({ 
         success: true, 
         token: `token-${user.id}-${Date.now()}`,

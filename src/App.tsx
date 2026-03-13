@@ -12,6 +12,7 @@ import TrailerLocation from './components/TrailerLocation/TrailerLocation';
 import LayoutWithDashboard from './components/Layout/LayoutWithDashboard';
 import './env-test';
 import './services/keepAlive'; // Importar el servicio keep-alive
+import './services/realtimeEvents'; // Realtime events across connected users
 
 const App: React.FC = () => {
   return (

@@ -135,10 +135,16 @@ const InventoryTable: React.FC = () => {
           console.error('Error fetching inventory:', error);
           if (isMounted) setInventory([]); 
         });
-    };    fetchData();
-    // Optimizado: polling cada 60 segundos en lugar de 4 segundos para reducir memoria
-    const interval = setInterval(fetchData, 60000);
-    return () => { isMounted = false; clearInterval(interval); };
+    };
+
+    fetchData();
+    const handleSystemChange = () => fetchData();
+    window.addEventListener('systemDataChanged', handleSystemChange);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('systemDataChanged', handleSystemChange);
+    };
   }, []);
 
   // Barcode auto

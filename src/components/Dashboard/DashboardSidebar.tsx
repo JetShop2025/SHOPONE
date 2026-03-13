@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
+const CURRENT_VERSION = process.env.REACT_APP_VERSION || 'v1.2.24';
 
 interface RecentChange {
   id: string;
@@ -30,46 +31,58 @@ const DashboardSidebar: React.FC = () => {
   const [error, setError] = useState('');
   const username = localStorage.getItem('username') || 'USER';
 
-  useEffect(() => {
-    fetchRecentChanges();
-    const interval = setInterval(fetchRecentChanges, 5000); // Refresh every 5 seconds for real-time updates
-    
-    // Listen for custom events from other components
-    const handleWorkOrderUpdate = () => {
-      fetchRecentChanges();
-    };
-    
-    window.addEventListener('workOrderUpdated', handleWorkOrderUpdate);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('workOrderUpdated', handleWorkOrderUpdate);
-    };
-  }, []);
-
-  const fetchRecentChanges = async () => {
+  const fetchRecentChanges = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${API_URL}/audit?limit=3&table=work_orders&actions=CREATE,UPDATE,DELETE&userOnly=true`
-      );
+      const response = await axios.get(`${API_URL}/audit?limit=20&userOnly=true`);
       const changes = response.data?.data || response.data || [];
+
+      const trackedModules = new Set([
+        'work_orders',
+        'inventory',
+        'receives',
+        'login',
+        'auth',
+      ]);
+
       setRecentChanges(
         changes
           .filter((item: any) => {
-            const action = String(item.action || '').toUpperCase();
             const module = String(item.module || '').toLowerCase();
             const user = String(item.username || item.user || '').toUpperCase();
+            const details = String(item.details || item.description || '').toLowerCase();
+            const isTracked =
+              trackedModules.has(module) ||
+              details.includes('work order') ||
+              details.includes('inventory') ||
+              details.includes('receive') ||
+              details.includes('login') ||
+              details.includes('auth');
+
             return (
-              module === 'work_orders' &&
-              ['CREATE', 'UPDATE', 'DELETE'].includes(action) &&
+              isTracked &&
               user !== 'SYSTEM'
             );
           })
-          .slice(0, 3)
+          .slice(0, 4)
           .map((item: any) => ({
             id: item._id || item.id,
-            action: toEnglishAction(item.action || 'UPDATE'),
-            module: toEnglishModule(item.module || 'work_orders'),
+            action: (() => {
+              const normalized = String(item.action || 'UPDATE').toUpperCase();
+              if (normalized === 'CREATE') return 'Created';
+              if (normalized === 'UPDATE') return 'Updated';
+              if (normalized === 'DELETE') return 'Deleted';
+              if (normalized === 'LOGIN') return 'Login';
+              if (normalized === 'LOGOUT') return 'Logout';
+              return item.action || 'Updated';
+            })(),
+            module: (() => {
+              const normalized = String(item.module || 'work_orders').toLowerCase();
+              if (normalized === 'work_orders') return 'Work Orders';
+              if (normalized === 'inventory') return 'Inventory';
+              if (normalized === 'receives' || normalized === 'receive') return 'Receives';
+              if (normalized === 'login' || normalized === 'auth') return 'Login';
+              return item.module || 'Work Orders';
+            })(),
             user: item.username || item.user || 'Unknown',
             timestamp: item.timestamp || new Date().toISOString(),
             details: item.details || item.description,
@@ -81,7 +94,21 @@ const DashboardSidebar: React.FC = () => {
       // Fallback con datos de demostración si la API falla
       setRecentChanges([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchRecentChanges();
+    
+    const handleSystemChange = () => {
+      fetchRecentChanges();
+    };
+    
+    window.addEventListener('systemDataChanged', handleSystemChange);
+    
+    return () => {
+      window.removeEventListener('systemDataChanged', handleSystemChange);
+    };
+  }, [fetchRecentChanges]);
 
   const formatTime = (timestamp: string) => {
     try {
@@ -107,6 +134,8 @@ const DashboardSidebar: React.FC = () => {
     const icons: { [key: string]: string } = {
       'Work Orders': '📋',
       'Inventory': '📦',
+      'Receives': '📥',
+      'Login': '🔐',
       'Trailers': '🚚',
       'Audit': '🔍',
       'Users': '👤',
@@ -124,20 +153,6 @@ const DashboardSidebar: React.FC = () => {
   const truncateText = (value: string, max = 140) => {
     if (!value) return '';
     return value.length > max ? `${value.slice(0, max - 3)}...` : value;
-  };
-
-  const toEnglishAction = (action: string) => {
-    const normalized = String(action || '').toUpperCase();
-    if (normalized === 'CREATE') return 'CREATE';
-    if (normalized === 'UPDATE') return 'UPDATE';
-    if (normalized === 'DELETE') return 'DELETE';
-    return action || 'UPDATE';
-  };
-
-  const toEnglishModule = (module: string) => {
-    const normalized = String(module || '').toLowerCase();
-    if (normalized === 'work_orders') return 'Work Orders';
-    return module || 'Work Orders';
   };
 
   const translateActivityText = (value: string) => String(value || '')
@@ -174,7 +189,7 @@ const DashboardSidebar: React.FC = () => {
 
     const summary = truncateText(
       translateActivityText(parsed.summary || parsed.operation || `${change.action} in ${change.module}`),
-      120
+      90
     );
 
     const badges: string[] = [];
@@ -185,11 +200,19 @@ const DashboardSidebar: React.FC = () => {
     if (parsed.detalles?.costoTotal) badges.push(`Total: ${parsed.detalles.costoTotal}`);
 
     const lines: string[] = [];
+    const relevantOrder = ['status', 'billToCo', 'trailer', 'totalLabAndParts', 'onHand', 'qty_remaining', 'precio', 'cost', 'action'];
     const changesObj = parsed.cambios || parsed.changes;
     if (changesObj && typeof changesObj === 'object' && !Array.isArray(changesObj)) {
-      Object.entries(changesObj).slice(0, 4).forEach(([field, values]: [string, any]) => {
+      const sorted = Object.entries(changesObj).sort(([a], [b]) => {
+        const ia = relevantOrder.indexOf(a);
+        const ib = relevantOrder.indexOf(b);
+        const va = ia === -1 ? 999 : ia;
+        const vb = ib === -1 ? 999 : ib;
+        return va - vb;
+      });
+      sorted.slice(0, 4).forEach(([field, values]: [string, any]) => {
         if (values && typeof values === 'object' && ('antes' in values || 'despues' in values)) {
-          lines.push(`${toReadableLabel(field)}: ${values.antes ?? '-'} -> ${values.despues ?? '-'}`);
+          lines.push(`${toReadableLabel(field)}: before ${values.antes ?? '-'} | after ${values.despues ?? '-'}`);
         } else {
           lines.push(`${toReadableLabel(field)}: ${truncateText(String(values), 40)}`);
         }
@@ -205,7 +228,7 @@ const DashboardSidebar: React.FC = () => {
     return {
       summary,
       badges: badges.map((badge) => translateActivityText(badge)),
-      lines: lines.map((line) => translateActivityText(line)),
+      lines: lines.map((line) => translateActivityText(line)).slice(0, 3),
     };
   };
 
@@ -285,7 +308,7 @@ const DashboardSidebar: React.FC = () => {
     <div
       style={{
         width: 280,
-        minHeight: '100vh',
+        height: '100vh',
         background: 'linear-gradient(180deg, #0A3854 0%, #062838 100%)',
         padding: 24,
         boxShadow: '0 4px 24px rgba(10, 56, 84, 0.25)',
@@ -415,11 +438,11 @@ const DashboardSidebar: React.FC = () => {
         </div>
 
         {/* Recent Activity Section */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 16, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 }}>
-            📝 Recent Activity
+            📝 Update Area (Mini Audit)
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentChanges.length > 0 ? (
               recentChanges.map((change) => {
                 const formatted = formatRecentActivity(change);
@@ -428,37 +451,37 @@ const DashboardSidebar: React.FC = () => {
                     key={change.id}
                     style={{
                       background: 'rgba(255,255,255,0.08)',
-                      borderRadius: 8,
-                      padding: '12px',
+                      borderRadius: 7,
+                      padding: '8px 9px',
                       border: '1px solid rgba(255,255,255,0.15)',
-                      fontSize: 11,
-                      lineHeight: 1.5,
+                      fontSize: 10,
+                      lineHeight: 1.35,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, minWidth: 20 }}>{getModuleIcon(change.module)}</span>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, minWidth: 16 }}>{getModuleIcon(change.module)}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#fff', fontWeight: 700, wordBreak: 'break-word' }}>
+                        <div style={{ color: '#fff', fontWeight: 700, fontSize: 10, wordBreak: 'break-word' }}>
                           {change.action}
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 }}>
+                        <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 9, marginTop: 1 }}>
                           {change.module}
                         </div>
 
                         {formatted.summary && (
-                          <div style={{ color: 'rgba(255,255,255,0.88)', fontSize: 10, marginTop: 6, fontWeight: 600 }}>
+                          <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, marginTop: 4, fontWeight: 600 }}>
                             {formatted.summary}
                           </div>
                         )}
 
                         {formatted.badges.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
                             {formatted.badges.slice(0, 3).map((badge, idx) => (
                               <span
                                 key={`${change.id}-badge-${idx}`}
                                 style={{
-                                  fontSize: 9,
-                                  padding: '2px 6px',
+                                  fontSize: 8,
+                                  padding: '1px 5px',
                                   borderRadius: 10,
                                   background: 'rgba(255,255,255,0.15)',
                                   color: 'rgba(255,255,255,0.9)',
@@ -472,9 +495,9 @@ const DashboardSidebar: React.FC = () => {
                         )}
 
                         {formatted.lines.length > 0 && (
-                          <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                          <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                             {formatted.lines.slice(0, 3).map((line, idx) => (
-                              <div key={`${change.id}-line-${idx}`} style={{ color: 'rgba(255,255,255,0.62)', fontSize: 9, marginBottom: 2, wordBreak: 'break-word' }}>
+                              <div key={`${change.id}-line-${idx}`} style={{ color: 'rgba(255,255,255,0.68)', fontSize: 8, marginBottom: 1, wordBreak: 'break-word' }}>
                                 • {truncateText(line, 90)}
                               </div>
                             ))}
@@ -482,11 +505,11 @@ const DashboardSidebar: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 4 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.64)', fontSize: 8 }}>
                         👤 {change.user}
                       </span>
-                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 500 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.52)', fontSize: 8, fontWeight: 500 }}>
                         {formatTime(change.timestamp)}
                       </span>
                     </div>
@@ -514,15 +537,16 @@ const DashboardSidebar: React.FC = () => {
         {/* Footer */}
         <div
           style={{
-            paddingTop: 16,
+            marginTop: 'auto',
+            paddingTop: 14,
             borderTop: '1px solid rgba(255,255,255,0.2)',
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.5)',
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.88)',
             textAlign: 'center',
           }}
         >
-          <div>ShopOne v1.2.24</div>
-          <div style={{ marginTop: 4 }}>{new Date().toLocaleDateString('es-ES')}</div>
+          <div style={{ fontWeight: 700 }}>Current Version: ShopOne {CURRENT_VERSION}</div>
+          <div style={{ marginTop: 4, color: 'rgba(255,255,255,0.65)', fontSize: 10 }}>{new Date().toLocaleDateString('es-ES')}</div>
         </div>
 
         {/* Audit Password Modal */}
