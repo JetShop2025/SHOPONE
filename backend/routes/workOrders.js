@@ -151,6 +151,17 @@ function formatDateForPdf(date) {
   return `${mm}-${dd}-${yyyy}`;
 }
 
+function hasZeroValueParts(parts) {
+  if (!Array.isArray(parts)) return false;
+
+  return parts.some((part) => {
+    const hasSku = part && part.sku && String(part.sku).trim() !== '';
+    const qty = Number(part?.qty) || 0;
+    const cost = Number(part?.cost);
+    return hasSku && qty > 0 && (!Number.isFinite(cost) || cost <= 0);
+  });
+}
+
 // Función para generar PDF profesional - ULTRA OPTIMIZADA PARA MEMORIA
 async function generateProfessionalPDF(order, id) {
   const PDFDocument = require('pdfkit');
@@ -1123,7 +1134,7 @@ router.post('/', async (req, res) => {
       date = `${yyyy}-${mm}-${dd}`;
     }
     const description = fields.description || '';
-    const status = fields.status || 'PENDING';
+    let status = fields.status || 'PENDING';
     const idClassic = fields.idClassic || null;
 
     // VALIDACIÓN: No permitir crear W.O. si ya existe una para la misma traila en PROCESSING o APPROVED
@@ -1150,6 +1161,11 @@ router.post('/', async (req, res) => {
             qty: Number(part.qty) || 0
           }))
       : [];
+
+    if (hasZeroValueParts(partsArr)) {
+      status = 'MISSING_PARTS';
+      console.log(`⚠️ [${requestId}] Status forzado a MISSING_PARTS (parte con costo 0 o inválido)`);
+    }
 
     // Calcula totales
     let totalHrsPut = 0;
@@ -1524,6 +1540,12 @@ router.put('/:id', async (req, res) => {
             qty: Number(part.qty) || 0
           }))
       : [];
+
+    let statusToSave = status || oldResults[0].status || 'PROCESSING';
+    if (hasZeroValueParts(partsArr)) {
+      statusToSave = 'MISSING_PARTS';
+      console.log(`⚠️ [${requestId}] Status forzado a MISSING_PARTS (parte con costo 0 o inválido)`);
+    }
       
     console.log(`🔧 [${requestId}] Partes procesadas: ${partsArr.length} válidas de ${parts?.length || 0} recibidas`);
 
@@ -1580,10 +1602,10 @@ router.put('/:id', async (req, res) => {
     `;
     const updateFields = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
-      JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status,
+      JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, statusToSave,
       JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal, employeeWrittenHours || null
     ];
-    if (status === 'FINISHED') {
+    if (statusToSave === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
       updateFields.push(idClassic || null);
     }
@@ -1607,14 +1629,14 @@ router.put('/:id', async (req, res) => {
           parts: partsArr,
           totalHrs: totalHrsPut,
           totalLabAndParts: totalLabAndPartsFinal,
-          status,
+          status: statusToSave,
           extraOptions: extraOptions || [],
           miscellaneousPercent: miscPercent,
           weldPercent: weldPercentFinal,
           employeeWrittenHours: employeeWrittenHours || null
         };
         
-        if (status === 'FINISHED') {
+        if (statusToSave === 'FINISHED') {
           newData.idClassic = idClassic || null;
         }
         

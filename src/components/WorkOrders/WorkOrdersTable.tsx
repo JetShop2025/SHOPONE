@@ -801,14 +801,6 @@ const WorkOrdersTable: React.FC = () => {
     { key: 'FINISHED' as const, title: 'TRANSFER TO FINAL W.O', color: '#fb8c00' }
   ];
 
-  const getCardPriority = (order: any): number => {
-    // Lower number = higher priority in board display.
-    if (isMissingPartsStatus(order?.status)) return 0;
-    const endDate = getOrderEndDate(order);
-    if (!endDate) return 1;
-    return 2;
-  };
-
   const getPrimaryMechanicName = (order: any): string => {
     if (Array.isArray(order?.mechanics) && order.mechanics.length > 0) {
       const firstMechanic = order.mechanics.find((mechanic: any) => mechanic?.name && String(mechanic.name).trim());
@@ -820,13 +812,6 @@ const WorkOrdersTable: React.FC = () => {
     }
 
     return 'ZZZ_SIN_MECANICO';
-  };
-
-  const getSortableDateValue = (value: any): number => {
-    const normalized = normalizeOrderDate(value);
-    if (!normalized) return 0;
-    const parsed = dayjs(normalized, ['YYYY-MM-DD', 'MM/DD/YYYY'], true);
-    return parsed.isValid() ? parsed.valueOf() : 0;
   };
 
   const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'FINISHED') => {
@@ -3102,7 +3087,7 @@ const WorkOrdersTable: React.FC = () => {
           </div>
         )}
         <div style={{ marginBottom: 6, color: '#455a64', fontSize: 12, fontWeight: 600 }}>
-          Drag and drop cards between columns to update status. Cards are ordered by mechanic.
+          Drag and drop cards between columns to update status. Cards are ordered by mechanic and W.O number.
         </div>
 
         <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
@@ -3116,14 +3101,7 @@ const WorkOrdersTable: React.FC = () => {
                 });
                 if (mechanicDiff !== 0) return mechanicDiff;
 
-                const priorityDiff = getCardPriority(a) - getCardPriority(b);
-                if (priorityDiff !== 0) return priorityDiff;
-
-                const aStart = getSortableDateValue(getOrderStartDate(a));
-                const bStart = getSortableDateValue(getOrderStartDate(b));
-                if (aStart !== bStart) return bStart - aStart;
-
-                return Number(b.id) - Number(a.id);
+                return Number(a.id) - Number(b.id);
               });
             const cardMinWidth = column.key === 'FINISHED' ? 132 : 148;
             const cardGridTemplate = `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
@@ -3166,21 +3144,27 @@ const WorkOrdersTable: React.FC = () => {
                     
                     // Determinar clase de animación según STATUS REAL (no según columna)
                     let cardClassName = '';
+                    let cardAccentColor = '#1976d2';
                     if (order.status === 'FINISHED' || order.status?.toUpperCase() === 'FINISHED') {
                       // Status FINISHED → amarillo/dorado parpadeando (en columna TRANSFER TO FINAL)
                       cardClassName = 'kanban-card-finished';
+                      cardAccentColor = '#e65100';
                     } else if (isMissing) {
                       // Status MISSING_PARTS → rojo parpadeando (en columna PROCESSING)
                       cardClassName = 'kanban-card-missing';
+                      cardAccentColor = '#c62828';
                     } else if (order.status === 'APPROVED' || order.status?.toUpperCase() === 'APPROVED') {
                       // Status APPROVED → verde parpadeando (en columna APPROVED)
                       cardClassName = 'kanban-card-approved';
+                      cardAccentColor = '#2e7d32';
                     } else if (order.status === 'PROCESSING' && !hasEndDate) {
                       // Status PROCESSING sin fecha de fin → naranja parpadeando (CONTINUE)
                       cardClassName = 'kanban-card-continue';
+                      cardAccentColor = '#ef6c00';
                     } else {
                       // Status PROCESSING con fecha de fin → azul parpadeando
                       cardClassName = 'kanban-card-processing';
+                      cardAccentColor = '#1565c0';
                     }
 
                     return (
@@ -3202,7 +3186,7 @@ const WorkOrdersTable: React.FC = () => {
                         style={{
                           background: '#fff',
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
-                          borderLeft: `4px solid ${column.color}`,
+                          borderLeft: `6px solid ${cardAccentColor}`,
                           borderRadius: 6,
                           padding: 6,
                           cursor: 'pointer',

@@ -130,7 +130,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Debug: verificar inventario
   // Remove excessive inventory debug logging
   React.useEffect(() => {}, [inventory]);
-  // Set default miscellaneous and weldPercent to 0 for new Work Orders and never allow empty
+  // Set default miscellaneous (5%) and weldPercent (0%) for new Work Orders
   React.useEffect(() => {
     if (!workOrder.id) {
       if (
@@ -139,7 +139,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         workOrder.miscellaneous === '' ||
         isNaN(Number(workOrder.miscellaneous))
       ) {
-        onChange({ target: { name: 'miscellaneous', value: '0' } } as any);
+        onChange({ target: { name: 'miscellaneous', value: '5' } } as any);
       }
       if (
         workOrder.weldPercent === undefined ||
