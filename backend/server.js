@@ -1208,6 +1208,27 @@ app.get('/api/assets/logo.png', (req, res) => {
   });
 });
 
+// ENHANCED KEEP-ALIVE ENDPOINTS
+app.get('/api/ping', (req, res) => {
+  console.log('[PING] Keep-alive ping received');
+  res.json({ 
+    status: 'pong',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+app.get('/api/wake', (req, res) => {
+  console.log('[WAKE] Wake-up call received');
+  res.json({ 
+    status: 'awake',
+    message: 'Server is awake and running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // ROOT ROUTE - Quick response for deployment platform health checks
 app.get('/', (req, res) => {
   // If it's a browser request (accepts HTML), serve the React app
@@ -1243,27 +1264,6 @@ app.get('*', (req, res) => {
 app.use((error, req, res, next) => {
   console.error('[ERROR HANDLER]:', error);
   res.status(500).json({ error: 'Internal server error' });
-});
-
-// ENHANCED KEEP-ALIVE ENDPOINTS
-app.get('/api/ping', (req, res) => {
-  console.log('[PING] Keep-alive ping received');
-  res.json({ 
-    status: 'pong',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  });
-});
-
-app.get('/api/wake', (req, res) => {
-  console.log('[WAKE] Wake-up call received');
-  res.json({ 
-    status: 'awake',
-    message: 'Server is awake and running',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
 });
 
 // START SERVER

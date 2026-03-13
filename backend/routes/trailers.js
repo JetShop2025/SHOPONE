@@ -125,8 +125,8 @@ router.put('/:nombre/estatus', async (req, res) => {
     const { estatus, password, cliente, fechaRenta, fechaEntrega, usuario, observaciones } = body;
     const { nombre } = req.params;
 
-    // Cambia '6214' por tu password real o valida contra usuarios
-    if (password !== '6214') {
+    // Valida contra TRAILER_STATUS_PASSWORD en .env (fallback al valor por defecto)
+    if (password !== (process.env.TRAILER_STATUS_PASSWORD || '6214')) {
       return res.status(403).send('INCORRECT PASSWORD');
     }
 

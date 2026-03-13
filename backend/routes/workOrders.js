@@ -74,7 +74,7 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
       // Registra en work_order_parts
       await db.query(
         'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, um, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, part.um || 'EA', usuario]
+        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, 'EA', usuario]
       );
       console.log(`✓ [${fifoId}] Parte registrada en work_order_parts`);
 
@@ -102,7 +102,7 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
         // Registrar en work_order_parts (sin invoice/invoiceLink)
         await db.query(
           'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, um, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, part.um || 'EA', usuario]
+          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, 'EA', usuario]
         );
         // (Opcional) Registrar en log/auditoría
         if (db.logAuditEvent) {
@@ -164,7 +164,6 @@ async function generateProfessionalPDF(order, id) {
     let doc;
     const chunks = [];
     try {
-      throw new Error('PRUEBA EJECUCIÓN PDF - SI VES ESTE ERROR, ESTA ES LA FUNCIÓN QUE SE EJECUTA');
       console.error(`[PDF] INICIO generateProfessionalPDF para orden ${id}`);
       doc = new PDFDocument({
         margin: 40,

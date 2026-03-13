@@ -7,7 +7,7 @@ interface WorkOrderData {
   customer: string;
   trailer: string;
   date: string;
-  mechanics: string;
+  mechanics: string | Array<{ name: string; hrs?: number | string }>;
   description: string;
   status?: string;
   totalHrs?: number;
@@ -28,6 +28,32 @@ interface WorkOrderData {
   miscellaneousPercent?: number;
   weldPercent?: number;
 }
+
+type PDFWithAutoTable = jsPDF & {
+  lastAutoTable?: {
+    finalY: number;
+  };
+};
+
+const toSafeHttpUrl = (raw?: string): string | null => {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('/')) {
+    return `${window.location.origin}${trimmed}`;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 // First implementation removed - keeping the improved second implementation
 
@@ -160,10 +186,10 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   // Handle both array and string formats for mechanics
   let mechanicsText = '';
-  if (Array.isArray((workOrderData as any).mechanics)) {
+  if (Array.isArray(workOrderData.mechanics)) {
     // If it's an array of mechanic objects, extract names and hours
-    mechanicsText = (workOrderData as any).mechanics
-      .map((m: any) => {
+    mechanicsText = workOrderData.mechanics
+      .map((m) => {
         const hrs = Number(m.hrs) || 0;
         return `${m.name} (${hrs}h)`;
       })
@@ -285,7 +311,10 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
         const part = workOrderData.parts[data.row.index];
         if (part.invoiceLink) {
           // Agregar solo el link clickeable
-          pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: part.invoiceLink });
+          const safeLink = toSafeHttpUrl(part.invoiceLink);
+          if (safeLink) {
+            pdf.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: safeLink });
+          }
         }
       }
     },
@@ -309,7 +338,13 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     }
   });
   // TOTALES Y EXTRAS - ALINEADOS A LA DERECHA SIN DESBORDAMIENTO
-  const finalY = (pdf as any).lastAutoTable?.finalY || tableStartY + 50;
+  let finalY = (pdf as PDFWithAutoTable).lastAutoTable?.finalY || tableStartY + 50;
+
+  // Ensure totals and signature block stay within printable area.
+  if (finalY > 210) {
+    pdf.addPage();
+    finalY = 20;
+  }
   const totalsStartX = pageWidth - rightMargin - 70; // 70mm para los totales y extras
   let currentY = finalY + 8;
   
@@ -457,8 +492,9 @@ export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: 
   const uniqueLinks = new Set<string>();
   
   parts.forEach(part => {
-    if (part.invoiceLink && part.invoiceLink.trim()) {
-      uniqueLinks.add(part.invoiceLink.trim());
+    const safeLink = toSafeHttpUrl(part.invoiceLink);
+    if (safeLink) {
+      uniqueLinks.add(safeLink);
     }
   });
   

@@ -5,14 +5,6 @@ const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 segundos (MÁXIMO AGRESIVO para evi
 const PING_TIMEOUT = 10000; // 10 segundos timeout
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
-// Múltiples endpoints para despertar el servidor
-const WAKE_UP_ENDPOINTS = [
-  `${API_URL}/ping`,
-  `${API_URL}/health`,
-  `${API_URL}/wake`,
-  `${API_URL}/status`
-];
-
 class KeepAliveService {
   private intervalId: NodeJS.Timeout | null = null;
   private consecutiveFailures = 0;
@@ -39,9 +31,11 @@ class KeepAliveService {
       this.consecutiveFailures = 0;
       console.log('🔴 Keep-alive service detenido');
     }
-  }  // Método público para ping manual - REACTIVADO PARA DESPERTAR SERVIDOR
+  }
+
+  // Método público para ping manual - REACTIVADO PARA DESPERTAR SERVIDOR
   async manualPing(): Promise<boolean> {
-    console.log('� Intentando despertar servidor manualmente...');
+    console.log('Intentando despertar servidor manualmente...');
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT);
@@ -99,12 +93,6 @@ class KeepAliveService {
       
       return false;
     }
-  }
-
-  // Método deshabilitado pero mantenido para compatibilidad
-  private increasePingFrequency() {
-    console.log('⚠️ increasePingFrequency deshabilitado para optimizar memoria');
-    return;
   }
 }
 
