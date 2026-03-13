@@ -1448,14 +1448,29 @@ const WorkOrdersTable: React.FC = () => {
     const normalizedStartDate = getOrderStartDate(workOrder);
     const normalizedEndDate = getOrderEndDate(workOrder);
 
+    const normalizedParts = Array.isArray(workOrder?.parts)
+      ? workOrder.parts
+          .filter((part: any) => part && (part.sku || part.part || part.part_name || part.description))
+          .map((part: any) => ({
+            part: part.part || part.part_name || part.description || '',
+            sku: part.sku || '',
+            qty: part.qty ?? part.qty_used ?? '',
+            cost: part.cost ?? part.unitCost ?? part.unit_cost ?? ''
+          }))
+      : [];
+
+    while (normalizedParts.length < 5) {
+      normalizedParts.push({ part: '', sku: '', qty: '', cost: '' });
+    }
+
     return {
       ...workOrder,
       date: normalizedStartDate,
       startDate: normalizedStartDate,
       endDate: normalizedEndDate,
-      parts: Array.isArray(workOrder?.parts) ? workOrder.parts : [],
+      parts: normalizedParts,
       mechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics : [],
-      originalParts: Array.isArray(workOrder?.parts) ? workOrder.parts.map((part: any) => ({ ...part })) : [],
+      originalParts: normalizedParts.map((part: any) => ({ ...part })),
       originalMechanics: Array.isArray(workOrder?.mechanics) ? workOrder.mechanics.map((mechanic: any) => ({ ...mechanic })) : [],
       originalMiscellaneous: (normalizedMisc !== undefined && normalizedMisc !== null) ? String(normalizedMisc) : '',
       originalWeldPercent: (normalizedWeld !== undefined && normalizedWeld !== null) ? String(normalizedWeld) : '',
