@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 function getWeekRange(weekStr: string) {
   const [year, week] = weekStr.split('-W');
@@ -7,6 +9,93 @@ function getWeekRange(weekStr: string) {
   const end = dayjs().year(Number(year)).week(Number(week)).endOf('week');
   return { start, end };
 }
+
+type PDFWithAutoTable = jsPDF & {
+  lastAutoTable?: {
+    finalY: number;
+  };
+};
+
+type MechanicEntry = {
+  name: string;
+  hrs: number;
+  deadHrs: number;
+};
+
+type DetailedRow = {
+  mechanicName: string;
+  orderId: string;
+  date: string;
+  billToCo: string;
+  trailer: string;
+  status: string;
+  totalHrs: number;
+  deadHrs: number;
+  labAmount: number;
+  partsAmount: number;
+  totalCombined: number;
+};
+
+const toNumber = (value: any): number => {
+  const parsed = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeMechanic = (value: any): string => String(value || '').trim().toUpperCase();
+
+const parseMechanicEntries = (order: any): MechanicEntry[] => {
+  if (Array.isArray(order?.mechanics) && order.mechanics.length > 0) {
+    const entries = order.mechanics
+      .map((m: any) => ({
+        name: normalizeMechanic(m?.name),
+        hrs: Math.max(0, toNumber(m?.hrs)),
+        deadHrs: Math.max(0, toNumber(m?.deadHrs)),
+      }))
+      .filter((m: MechanicEntry) => m.name);
+    if (entries.length > 0) return entries;
+  }
+
+  const raw = order?.mechanic;
+  const names = Array.isArray(raw)
+    ? raw.map((m: any) => normalizeMechanic(m)).filter(Boolean)
+    : String(raw || '')
+        .split(',')
+        .map((m: string) => normalizeMechanic(m))
+        .filter(Boolean);
+
+  if (names.length === 0) return [];
+
+  const totalHrs = Math.max(0, toNumber(order?.totalHrs));
+  const sharedHrs = names.length > 0 ? totalHrs / names.length : 0;
+
+  return names.map((name: string) => ({ name, hrs: sharedHrs, deadHrs: 0 }));
+};
+
+const getPartsTotalFromOrder = (order: any): number => {
+  let partsArray: any[] = [];
+  if (Array.isArray(order?.parts)) {
+    partsArray = order.parts;
+  } else if (typeof order?.parts === 'string') {
+    try {
+      const parsed = JSON.parse(order.parts);
+      if (Array.isArray(parsed)) partsArray = parsed;
+    } catch {
+      partsArray = [];
+    }
+  }
+
+  const explicitPartsTotal = partsArray.reduce((sum: number, part: any) => {
+    const qty = Math.max(0, toNumber(part?.qty));
+    const unitCost = Math.max(0, toNumber(part?.cost));
+    return sum + qty * unitCost;
+  }, 0);
+
+  if (explicitPartsTotal > 0) return explicitPartsTotal;
+
+  const orderTotal = Math.max(0, toNumber(order?.totalLabAndParts));
+  const laborTotal = Math.max(0, toNumber(order?.totalHrs)) * 60;
+  return Math.max(0, orderTotal - laborTotal);
+};
 
 const HourmeterModal: React.FC<{
   show: boolean;
@@ -19,6 +108,8 @@ const HourmeterModal: React.FC<{
   const [mechanic, setMechanic] = useState('');
   const [selectedDate, setSelectedDate] = useState(''); // Nuevo filtro por día
   const { start, end } = getWeekRange(week);
+  const selectedMechanicNormalized = normalizeMechanic(mechanic);
+
   const filtered = workOrders.filter(order => {
     if (!order.date) return false;
     const orderDate = dayjs(order.date.slice(0, 10));
@@ -28,11 +119,57 @@ const HourmeterModal: React.FC<{
     
     // Filtro por día específico (si se selecciona)
     const matchesDate = !selectedDate || orderDate.format('YYYY-MM-DD') === selectedDate;
-    
-    // Filtro por mecánico
-    const matchesMechanic = !mechanic || order.mechanic === mechanic;
+
+    // Filtro por mecánico (soporta mechanics[] y mechanic string)
+    const entries = parseMechanicEntries(order);
+    const matchesMechanic =
+      !selectedMechanicNormalized ||
+      entries.some((entry: MechanicEntry) => entry.name === selectedMechanicNormalized);
     
     return inWeek && matchesDate && matchesMechanic;
+  });
+
+  const detailedRows: DetailedRow[] = [];
+  filtered.forEach(order => {
+    const orderId = order.id ? String(order.id) : 'N/A';
+    const dateValue = order.date ? String(order.date).slice(0, 10) : '';
+    const entries = parseMechanicEntries(order).filter((entry: MechanicEntry) => {
+      if (!selectedMechanicNormalized) return true;
+      return entry.name === selectedMechanicNormalized;
+    });
+
+    if (entries.length === 0) return;
+
+    const totalOrderHrs = entries.reduce((sum: number, entry: MechanicEntry) => sum + entry.hrs, 0);
+    const orderPartsTotal = getPartsTotalFromOrder(order);
+    const orderTotal = Math.max(0, toNumber(order?.totalLabAndParts));
+
+    entries.forEach((entry: MechanicEntry) => {
+      const ratio = totalOrderHrs > 0 ? entry.hrs / totalOrderHrs : 1 / entries.length;
+      const labAmount = entry.hrs * 60;
+      const partsAmount = orderPartsTotal * ratio;
+      const deadHrs = entry.deadHrs > 0 ? entry.deadHrs : (orderTotal === 0 && entry.hrs > 0 ? entry.hrs : 0);
+
+      detailedRows.push({
+        mechanicName: entry.name,
+        orderId,
+        date: dateValue,
+        billToCo: String(order.billToCo || ''),
+        trailer: String(order.trailer || ''),
+        status: String(order.status || ''),
+        totalHrs: entry.hrs,
+        deadHrs,
+        labAmount,
+        partsAmount,
+        totalCombined: labAmount + partsAmount,
+      });
+    });
+  });
+
+  detailedRows.sort((a, b) => {
+    const mechanicDiff = a.mechanicName.localeCompare(b.mechanicName, 'es', { sensitivity: 'base' });
+    if (mechanicDiff !== 0) return mechanicDiff;
+    return Number(a.orderId) - Number(b.orderId);
   });
 
   // 1. Construye un objeto para acumular por mecánico
@@ -46,56 +183,101 @@ const HourmeterModal: React.FC<{
     }
   } = {};
 
-  // 2. Recorre las órdenes filtradas
-  filtered.forEach(order => {
-    const orderId = order.id ? String(order.id) : JSON.stringify(order);
+  // 2. Recorre los renglones detallados y acumula por mecánico
+  detailedRows.forEach((row) => {
+    if (!mechanicStats[row.mechanicName]) {
+      mechanicStats[row.mechanicName] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
+    }
 
-    if (Array.isArray(order.mechanics) && order.mechanics.length > 0) {
-      const numMech = order.mechanics.length;
-      order.mechanics.forEach((m: { name: string, hrs: number, deadHrs?: number }) => {
-        const mechanicName = (m.name || '').trim().toUpperCase();
-        if (!mechanicStats[mechanicName]) {
-          mechanicStats[mechanicName] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
-        }
-        mechanicStats[mechanicName].totalHrs += Number(m.hrs) || 0;
-        mechanicStats[mechanicName].totalLabAndParts += (Number(order.totalLabAndParts) || 0) / numMech;
-        // Dead hours: solo suma si es un número finito y mayor o igual a 0
-        if (typeof m.deadHrs === 'number' && isFinite(m.deadHrs) && m.deadHrs >= 0 && m.deadHrs < 1000) {
-          mechanicStats[mechanicName].deadHours += m.deadHrs;
-        } else if ((Number(order.totalLabAndParts) || 0) === 0 && (m.hrs || 0) > 0) {
-          mechanicStats[mechanicName].deadHours += Number(m.hrs) || 0;
-        }
-        if (!mechanicStats[mechanicName].orders.has(orderId)) {
-          mechanicStats[mechanicName].orders.add(orderId);
-          mechanicStats[mechanicName].workOrders += 1;
-        }
-      });
-    } else {
-      let mechanics: string[] = [];
-      if (Array.isArray(order.mechanic)) {
-        mechanics = order.mechanic;
-      } else if (typeof order.mechanic === 'string') {
-        mechanics = order.mechanic.split(',').map((m: string) => m.trim()).filter(Boolean);
-      }
-      const hrs = parseFloat(order.totalHrs) || 0;
-      const labAndParts = Number(order.totalLabAndParts) || 0;
-      const numMech = mechanics.length || 1;
-      mechanics.forEach((mec: string) => {
-        const mechanicName = (mec || '').trim().toUpperCase();
-        if (!mechanicStats[mechanicName]) {
-          mechanicStats[mechanicName] = { totalHrs: 0, workOrders: 0, totalLabAndParts: 0, deadHours: 0, orders: new Set() };
-        }
-        mechanicStats[mechanicName].totalHrs += hrs;
-        mechanicStats[mechanicName].totalLabAndParts += labAndParts / numMech;
-        // Dead hours: solo suma si es un número finito y razonable
-        if (labAndParts === 0 && hrs > 0 && hrs < 1000) mechanicStats[mechanicName].deadHours += hrs;
-        if (!mechanicStats[mechanicName].orders.has(orderId)) {
-          mechanicStats[mechanicName].orders.add(orderId);
-          mechanicStats[mechanicName].workOrders += 1;
-        }
-      });
+    mechanicStats[row.mechanicName].totalHrs += row.totalHrs;
+    mechanicStats[row.mechanicName].totalLabAndParts += row.totalCombined;
+    mechanicStats[row.mechanicName].deadHours += row.deadHrs;
+
+    if (!mechanicStats[row.mechanicName].orders.has(row.orderId)) {
+      mechanicStats[row.mechanicName].orders.add(row.orderId);
+      mechanicStats[row.mechanicName].workOrders += 1;
     }
   });
+
+  const exportDetailedPdf = () => {
+    if (detailedRows.length === 0) {
+      window.alert('No hay datos para exportar con los filtros seleccionados.');
+      return;
+    }
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfDoc = pdf as PDFWithAutoTable;
+
+    const title = 'Hourmeter Detailed Work Order Report';
+    const filterWeekText = `Semana: ${week || 'N/A'}`;
+    const filterMechanicText = `Mecánico: ${mechanic || 'Todos'}`;
+    const filterDateText = `Día: ${selectedDate || 'Todos'}`;
+
+    pdf.setFontSize(16);
+    pdf.setTextColor(10, 56, 84);
+    pdf.text(title, 14, 16);
+
+    pdf.setFontSize(10);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text(filterWeekText, 14, 23);
+    pdf.text(filterMechanicText, 14, 28);
+    pdf.text(filterDateText, 14, 33);
+
+    const summaryRows = Object.entries(mechanicStats)
+      .sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }))
+      .map(([mec, stats]) => [
+        mec,
+        String(stats.workOrders),
+        Number(stats.totalHrs).toFixed(2),
+        Number(stats.deadHours).toFixed(2),
+        Number(stats.totalLabAndParts).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+      ]);
+
+    autoTable(pdf, {
+      startY: 38,
+      head: [['MECÁNICO', '# W.O', 'TOTAL HRS', 'DEAD HRS', 'TOTAL LAB + PARTS']],
+      body: summaryRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [10, 56, 84], textColor: 255 },
+    });
+
+    const detailsStartY = (pdfDoc.lastAutoTable?.finalY || 45) + 8;
+    autoTable(pdf, {
+      startY: detailsStartY,
+      head: [[
+        'MECÁNICO',
+        '# W.O',
+        'FECHA',
+        'COMPAÑÍA',
+        'TRAILER',
+        'STATUS',
+        'HRS',
+        'DEAD HRS',
+        '$ LAB',
+        '$ PARTS',
+        'TOTAL'
+      ]],
+      body: detailedRows.map((row) => [
+        row.mechanicName,
+        row.orderId,
+        row.date || 'N/A',
+        row.billToCo || 'N/A',
+        row.trailer || 'N/A',
+        row.status || 'N/A',
+        row.totalHrs.toFixed(2),
+        row.deadHrs.toFixed(2),
+        row.labAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+        row.partsAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+        row.totalCombined.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+      ]),
+      styles: { fontSize: 7, cellPadding: 1.8 },
+      headStyles: { fillColor: [25, 118, 210], textColor: 255 },
+      alternateRowStyles: { fillColor: [247, 250, 255] },
+    });
+
+    const fileSuffix = selectedDate || week || dayjs().format('YYYY-MM-DD');
+    pdf.save(`hourmeter_detailed_${fileSuffix}.pdf`);
+  };
 
   if (!show) return null;
   return (
@@ -262,6 +444,35 @@ const HourmeterModal: React.FC<{
             )}
           </div>
           
+          <button
+            onClick={exportDetailedPdf}
+            style={{
+              padding: '12px 20px',
+              background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: '0 4px 12px rgba(46,125,50,0.25)',
+              marginTop: 'auto'
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(46,125,50,0.35)';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(46,125,50,0.25)';
+            }}
+          >
+            📄 Export PDF
+          </button>
+
           <button
             onClick={onClose}
             style={{
