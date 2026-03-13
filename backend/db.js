@@ -162,6 +162,21 @@ async function ensureWorkOrdersTableHasStartEndDates() {
   }
 }
 
+async function ensureWorkOrdersTableHasPreWoLink() {
+  try {
+    const [columns] = await connection.execute("SHOW COLUMNS FROM work_orders LIKE 'preWoLink'");
+    if (!columns || columns.length === 0) {
+      console.log('[DB] Adding preWoLink column to work_orders table...');
+      await connection.execute('ALTER TABLE work_orders ADD COLUMN preWoLink VARCHAR(1000) NULL');
+      console.log('[DB] Column preWoLink added to work_orders table.');
+    } else {
+      console.log('[DB] work_orders table already has preWoLink column.');
+    }
+  } catch (err) {
+    console.error('[DB] Error ensuring preWoLink column:', err.message);
+  }
+}
+
 async function ensureWorkOrderPartsTableHasUmColumn() {
   try {
     const [umColumns] = await connection.execute("SHOW COLUMNS FROM work_order_parts LIKE 'um'");
@@ -249,6 +264,7 @@ testConnection().then(() => {
   ensureWorkOrdersTableHasEmployeeWrittenHours();
   ensureWorkOrdersTableHasMiscellaneousFields();
   ensureWorkOrdersTableHasStartEndDates();
+  ensureWorkOrdersTableHasPreWoLink();
   ensureWorkOrderPartsTableHasUmColumn();
 });
 

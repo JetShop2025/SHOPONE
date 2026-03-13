@@ -13,6 +13,7 @@ export interface WorkOrder {
   totalLabAndParts: string;
   status: string;
   idClassic?: string;
+  preWoLink?: string;
   mechanics?: any[];
   extraOptions?: string[];
 }
@@ -35,6 +36,7 @@ const EMPTY_WORK_ORDER: WorkOrder = {
   totalLabAndParts: '',
   status: '',
   idClassic: '',
+  preWoLink: '',
 };
 
 export function useNewWorkOrder(): [
@@ -65,6 +67,7 @@ export function useNewWorkOrder(): [
       totalLabAndParts: '',
       status: '',
       idClassic: '',
+      preWoLink: '',
       mechanics: [],
       extraOptions: []
     };

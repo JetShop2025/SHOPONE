@@ -3087,7 +3087,7 @@ const WorkOrdersTable: React.FC = () => {
           </div>
         )}
         <div style={{ marginBottom: 6, color: '#455a64', fontSize: 12, fontWeight: 600 }}>
-          Drag and drop cards between columns to update status. Cards are ordered by mechanic and W.O number.
+          Drag and drop cards between columns to update status. Cards are ordered by W.O number and mechanic.
         </div>
 
         <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
@@ -3096,12 +3096,13 @@ const WorkOrdersTable: React.FC = () => {
             const columnOrders = sortedBoardOrders
               .filter(order => getStatusForBoard(order.status) === column.key)
               .sort((a, b) => {
+                const idDiff = Number(a.id) - Number(b.id);
+                if (idDiff !== 0) return idDiff;
+
                 const mechanicDiff = getPrimaryMechanicName(a).localeCompare(getPrimaryMechanicName(b), 'es', {
                   sensitivity: 'base'
                 });
-                if (mechanicDiff !== 0) return mechanicDiff;
-
-                return Number(a.id) - Number(b.id);
+                return mechanicDiff;
               });
             const cardMinWidth = column.key === 'FINISHED' ? 132 : 148;
             const cardGridTemplate = `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
@@ -3145,26 +3146,50 @@ const WorkOrdersTable: React.FC = () => {
                     // Determinar clase de animación según STATUS REAL (no según columna)
                     let cardClassName = '';
                     let cardAccentColor = '#1976d2';
+                    let cardBaseBackground = '#f7fbff';
+                    let statusBadgeLabel = formatStatusLabel(order.status);
+                    let statusBadgeBackground = '#dbeafe';
+                    let statusBadgeColor = '#1565c0';
                     if (order.status === 'FINISHED' || order.status?.toUpperCase() === 'FINISHED') {
                       // Status FINISHED → amarillo/dorado parpadeando (en columna TRANSFER TO FINAL)
                       cardClassName = 'kanban-card-finished';
                       cardAccentColor = '#e65100';
+                      cardBaseBackground = '#fff5e8';
+                      statusBadgeLabel = 'FINISHED';
+                      statusBadgeBackground = '#ffe0b2';
+                      statusBadgeColor = '#e65100';
                     } else if (isMissing) {
                       // Status MISSING_PARTS → rojo parpadeando (en columna PROCESSING)
                       cardClassName = 'kanban-card-missing';
                       cardAccentColor = '#c62828';
+                      cardBaseBackground = '#fff1f1';
+                      statusBadgeLabel = 'MISSING PARTS';
+                      statusBadgeBackground = '#ffcdd2';
+                      statusBadgeColor = '#b71c1c';
                     } else if (order.status === 'APPROVED' || order.status?.toUpperCase() === 'APPROVED') {
                       // Status APPROVED → verde parpadeando (en columna APPROVED)
                       cardClassName = 'kanban-card-approved';
                       cardAccentColor = '#2e7d32';
+                      cardBaseBackground = '#f1f8f2';
+                      statusBadgeLabel = 'APPROVED';
+                      statusBadgeBackground = '#c8e6c9';
+                      statusBadgeColor = '#1b5e20';
                     } else if (order.status === 'PROCESSING' && !hasEndDate) {
                       // Status PROCESSING sin fecha de fin → naranja parpadeando (CONTINUE)
                       cardClassName = 'kanban-card-continue';
                       cardAccentColor = '#ef6c00';
+                      cardBaseBackground = '#fff4ea';
+                      statusBadgeLabel = 'CONTINUE';
+                      statusBadgeBackground = '#ffccbc';
+                      statusBadgeColor = '#bf360c';
                     } else {
                       // Status PROCESSING con fecha de fin → azul parpadeando
                       cardClassName = 'kanban-card-processing';
                       cardAccentColor = '#1565c0';
+                      cardBaseBackground = '#f2f8ff';
+                      statusBadgeLabel = 'PROCESSING';
+                      statusBadgeBackground = '#bbdefb';
+                      statusBadgeColor = '#0d47a1';
                     }
 
                     return (
@@ -3184,7 +3209,7 @@ const WorkOrdersTable: React.FC = () => {
                         }}
                         className={cardClassName}
                         style={{
-                          background: '#fff',
+                          background: cardBaseBackground,
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
                           borderLeft: `6px solid ${cardAccentColor}`,
                           borderRadius: 6,
@@ -3198,6 +3223,21 @@ const WorkOrdersTable: React.FC = () => {
                         }}
                         aria-label={`Work Order ${order.id} ${formatStatusLabel(order.status)}`}
                       >
+                        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 4 }}>
+                          <span style={{
+                            fontSize: 8,
+                            fontWeight: 900,
+                            letterSpacing: 0.5,
+                            textTransform: 'uppercase',
+                            color: statusBadgeColor,
+                            background: statusBadgeBackground,
+                            border: `1px solid ${statusBadgeColor}`,
+                            borderRadius: 999,
+                            padding: '1px 6px'
+                          }}>
+                            {statusBadgeLabel}
+                          </span>
+                        </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 3 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 800, color: '#0d47a1', lineHeight: 1.1 }}>
@@ -3208,7 +3248,7 @@ const WorkOrdersTable: React.FC = () => {
                             <div>INI: {displayStartDate}</div>
                             <div>
                               {!hasEndDate ? (
-                                <span className="continue-text">CONTINUE</span>
+                                <span className="continue-text">NO END</span>
                               ) : (
                                 <>FIN: {displayEndDate}</>
                               )}

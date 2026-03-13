@@ -1136,6 +1136,7 @@ router.post('/', async (req, res) => {
     const description = fields.description || '';
     let status = fields.status || 'PENDING';
     const idClassic = fields.idClassic || null;
+    const preWoLink = fields.preWoLink ? String(fields.preWoLink).trim() : null;
 
     // VALIDACIÓN: No permitir crear W.O. si ya existe una para la misma traila en PROCESSING o APPROVED
     if (trailer) {
@@ -1220,13 +1221,13 @@ router.post('/', async (req, res) => {
     
     // INSERTAR EN DB SIMPLE
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent, employeeWrittenHours)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent, employeeWrittenHours, preWoLink)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, idClassic,
-      JSON.stringify(extraOptions || []), miscPercent, weldPercent, fields.employeeWrittenHours || null
+      JSON.stringify(extraOptions || []), miscPercent, weldPercent, fields.employeeWrittenHours || null, preWoLink
     ];
     
     console.log(`🗄️ [${requestId}] Ejecutando query de inserción...`);
@@ -1255,6 +1256,7 @@ router.post('/', async (req, res) => {
             miscellaneousPercent: miscPercent,
             weldPercent,
             employeeWrittenHours: fields.employeeWrittenHours || null,
+            preWoLink,
             idClassic
           };
           
@@ -1465,7 +1467,8 @@ router.put('/:id', async (req, res) => {
     totalLabAndParts,
     miscellaneousPercent,
     weldPercent,
-    employeeWrittenHours
+    employeeWrittenHours,
+    preWoLink
   } = fields;
 
   // Obtener datos actuales de la orden
@@ -1598,12 +1601,12 @@ router.put('/:id', async (req, res) => {
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
   let updateQuery = `
       UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?, employeeWrittenHours = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?, employeeWrittenHours = ?, preWoLink = ?
     `;
     const updateFields = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, statusToSave,
-      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal, employeeWrittenHours || null
+      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal, employeeWrittenHours || null, preWoLink ? String(preWoLink).trim() : null
     ];
     if (statusToSave === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
@@ -1633,7 +1636,8 @@ router.put('/:id', async (req, res) => {
           extraOptions: extraOptions || [],
           miscellaneousPercent: miscPercent,
           weldPercent: weldPercentFinal,
-          employeeWrittenHours: employeeWrittenHours || null
+          employeeWrittenHours: employeeWrittenHours || null,
+          preWoLink: preWoLink ? String(preWoLink).trim() : null
         };
         
         if (statusToSave === 'FINISHED') {

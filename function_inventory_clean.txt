@@ -1,0 +1,288 @@
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\audit.js:6: router.get('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\audit.js:72: router.get('/audit-log', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\audit.js:100: router.get('/stats', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:10: async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:22: router.post('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:43: router.post('/deduct', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:95: router.get('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:105: router.delete('/:sku', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:139: router.put('/:sku', upload.single('imagen'), async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:175: router.post('/recalculate/onhand', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\inventory.js:186: router.post('/maintenance/fix-onhand', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\login.js:7: router.post('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:10: async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:22: router.post('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:50: router.get('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:76: router.put('/:id/use', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:88: router.get('/pending/:trailer', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:125: router.get('/trailers/with-pending', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:158: router.put('/:id', upload.single('invoice'), async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\receive.js:262: router.delete('/:id', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:26: const hasMomentumCredentials = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:41: const authenticateMomentum = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:90: const ensureValidToken = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:98: const momentumApiCall = async (endpoint, method = 'GET', data = null) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:154: async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:166: router.get('/momentum/assets', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:235: router.get('/momentum/diagnostics', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:310: function generateRecommendations(diagnostics) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:356: router.get('/momentum/test-endpoints', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:471: function generateEndpointRecommendations(successfulTests) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:499: router.get('/momentum/location/:assetId', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:566: router.get('/momentum/statistics/:assetId', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:625: router.get('/momentum/history/:assetId', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:686: router.get('/gps-data', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:784: router.get('/recipients', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:812: router.post('/recipients', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:841: router.post('/send-report', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:962: function generateLocationReport(trailerData) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1051: router.get('/momentum/location/:assetId', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1089: router.get('/momentum/statistics/:assetId', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1123: router.get('/momentum/history/:assetId', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1148: function generateLocationReportHTML(trailerData, reportType, recipientName = '') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1230: function getStatusColor(status) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1322: router.get('/trailers', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1373: router.post('/trailers', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1430: router.put('/trailers/:id/location', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailerLocation.js:1481: router.delete('/trailers/:id', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailers.js:8: router.get('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailers.js:17: router.get('/:nombre/work-orders', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailers.js:27: router.get('/:nombre/historial-rentas', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailers.js:42: router.get('/:nombre/work-orders-historial', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\trailers.js:121: router.put('/:nombre/estatus', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrderParts.js:8: router.post('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrderParts.js:53: router.get('/:work_order_id', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:9: async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario, pendingPartId = null) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:143: function formatDateForPdf(date) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:155: async function generateProfessionalPDF(order, id) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1009: async function logAccion(usuario, accion, tabla, registro_id, detalles = '') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1021: router.get('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1093: router.post('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1225: const auditPromise = (async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1370: router.delete('/:id', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1428: router.put('/:id', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1754: router.delete('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1797: router.get('/audit-log', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1807: router.get('/:id/pdf', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders.js:1844: router.post('/:id/generate-pdf', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\routes\workOrders_optimized.js:2: router.post('/', async (req, res) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:2: async function cleanReceivesAlerts() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:61: async function runKeepAlive() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:82: async function forcePing() { return runKeepAlive(); }
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:85: async function testConnection() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:99: async function ensureWorkOrdersTableHasEmployeeWrittenHours() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:115: async function ensureWorkOrdersTableHasMiscellaneousFields() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:141: async function ensureWorkOrdersTableHasStartEndDates() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:165: async function ensureWorkOrderPartsTableHasUmColumn() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:180: async function ensureAuditTableExists() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:256: async function getTrailers() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:266: async function createTrailer(trailer, usuario = 'SYSTEM') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:285: async function updateTrailer(id, trailer, usuario = 'SYSTEM') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:308: async function deleteTrailer(id, usuario = 'SYSTEM') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:325: async function getTrailerLocations() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:335: async function createTrailerLocation(location) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:348: async function updateTrailerLocation(id, location) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:361: async function deleteTrailerLocation(id) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:371: async function getOrders(limit = 100, offset = 0) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:421: async function getOrdersByTrailer(trailerId, opts = {}) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:524: async function createOrder(order) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:531: const normalizeDateValue = (value) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:593: async function updateOrder(id, order) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:605: function groupParts(partsArr) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:650: const normalizeDateValue = (value) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:760: async function getRentalHistory(trailerName) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:774: async function deleteOrder(id, usuario = 'system') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:820: async function getOrderById(id) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:830: const normalizeDateForResponse = (value) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:860: async function getWorkOrderParts(workOrderId) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:874: async function createWorkOrderPart(workOrderPart, fifoInfo = null) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:938: async function updateWorkOrderPart(id, updates, fifoInfo = null) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1015: async function deductInventoryFIFO(partsToDeduct, usuario = 'system') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1270: async function getPartes(limit = 200, offset = 0) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1301: async function createParte(parte, usuario = 'SYSTEM') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1338: async function updateParte(id, parte, usuario = 'SYSTEM') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1380: async function deleteParte(id, usuario = 'SYSTEM') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1397: async function getReceivesParts() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1410: async function createPendingPart(pendingPart) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1449: async function updatePendingPart(id, pendingPart) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1512: async function deletePendingPart(id) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1524: async function getUsers() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1549: async function generatePDF(data) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1561: async function savePDFToWorkOrder(workOrderId, pdfBuffer) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1577: async function logAuditEvent(usuario, accion, tabla, registroId, detalles) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1604: function getChangesForAudit(oldData, newData, excludeFields = ['updated_at', 'created_at']) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1627: function formatChangesForDisplay(changes) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1665: function formatValue(value) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1678: async function auditWorkOrderOperation(usuario, accion, workOrderId, details, oldData = null, newData = null) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1725: async function auditInventoryOperation(usuario, accion, sku, details, oldData = null, newData = null) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1778: async function auditTrailerOperation(usuario, accion, trailerId, details, oldData = null, newData = null) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1839: async function getAuditLogs(limit = 100, offset = 0, filters = {}) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1903: async function getAllWorkOrderParts() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1924: async function ensureReceivesTableStructure() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\db.js:1961: async function recalculateInventoryOnHand() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\emailSender.js:58: async function sendInvoiceEmail({ to, subject, text, pdfPath, from }) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\emailSender.js:75: async function sendHTMLMail({ to, subject, html, text, from, attachments }) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\momentumClient.js:14: function buildHeaders() {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\momentumClient.js:24: function normalizeAsset(raw) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\momentumClient.js:37: function normalizeAssets(list) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\momentumClient.js:42: async function fetchAssets(force = false) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:156: function buildDigestHTML(data) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:162: function normalizeKey(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:163: function filterAssetsByTrailerList(all, trailers){
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:171: function buildOptionalCSVAttachment(data){
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:184: function formatLatLng(d){ if(d.lat&&d.lng) return `${d.lat},${d.lng}`; return '-'; }
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:185: function escapeHtml(str){ return String(str).replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\backend\server.js:214: function shouldSend(now, sub) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:8: function renderDetalles(detalles: string | null | undefined) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:72: function renderContextInfo(parsed: any) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:127: function renderChangesTable(changes: any) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:217: function renderDataTable(data: any, title: string = 'Información', color: string = '#2196f3') {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:300: function adjustColor(color: string, amount: number): string {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:311: function getActionIcon(action: string) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:321: function getActionColor(action: string) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Audit\AuditLogTable.tsx:341: const fetchData = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Auditoria\Auditoria.tsx:40: const fetchAudits = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:38: const handleWorkOrderUpdate = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:50: const fetchRecentChanges = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:86: const formatTime = (timestamp: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:106: const getModuleIcon = (module: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:118: const toReadableLabel = (value: string) => String(value || '')
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:124: const truncateText = (value: string, max = 140) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:129: const toEnglishAction = (action: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:137: const toEnglishModule = (module: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:143: const translateActivityText = (value: string) => String(value || '')
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:261: const handleMenuClick = (menuId: string, path: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Dashboard\DashboardSidebar.tsx:273: const handleAuditAccess = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\index.tsx:10: const handleKeyPress = (event: KeyboardEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryList.tsx:11: const InventoryList = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryList.tsx:17: const loadInventoryItems = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:126: const fetchData = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:155: const handleAddPart = async (e: React.FormEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:191: const handleDeletePart = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:211: const handleEditPart = async (e: React.FormEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:243: const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:246: const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:251: const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\InventoryTable.tsx:254: const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\ReceiveInventory.tsx:6: const getLocalDate = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\ReceiveInventory.tsx:20: function getTrailerOptions(billToCo: string): string[] {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\ReceiveInventory.tsx:134: const handleSubmit = async (e: React.FormEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\ReceiveInventory.tsx:226: const handleEditIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\ReceiveInventory.tsx:237: const handleEdit = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Inventory\ReceiveInventory.tsx:265: const handleDelete = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Layout\LayoutWithDashboard.tsx:14: const handleEscToBack = (event: KeyboardEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Login\LoginForm.tsx:19: const handleSubmit = async (e: React.FormEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Menu\MenuOptions.tsx:12: const handleAuditAccess = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Menu\MenuOptions.tsx:25: const handleKeyPress = (event: KeyboardEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:126: const loadAllMomentumAssets = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:172: const loadTrailerLocations = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:236: const sendLocationReport = async (recipients?: EmailRecipient[], trailers?: string[]) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:278: const addEmailRecipient = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:317: const toggleAssetSelection = (assetId: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:327: const selectAllAssets = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:333: const deselectAllAssets = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:340: const getSelectedTrailerLocations = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:415: const sendSelectedTrailerReport = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:435: const toggleTrailerSelection = (trailer: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:443: const getStatusColor = (status: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:453: const getTrailerDetail = async (trailerName: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:489: const getTrailerStatistics = async (trailerName: string, startDate: string, endDate: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:519: const getTrailerHistory = async (trailerName: string, startDate: string, endDate: string, limit: number = 100) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\TrailerLocation\TrailerLocation.tsx:549: const refreshAllData = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:84: const formatDateSafely = (dateString: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:114: const fetchData = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:141: const getUniqueClients = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:150: const getClientTrailersInRange = (clientName: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:184: const toggleClientExpansion = (clientName: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:203: const getCurrentUser = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:207: const handleRental = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:254: const handleReturn = async (traila: Traila) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:298: const handleMarkAsAvailable = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:335: const getStatusColor = (status: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:345: const StatusBadge = ({ status }: { status: string }) => (
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:360: const handleViewWorkOrderPDF = async (workOrder: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\Trailers\TrailasTable.tsx:645: const getFirstDigitForClient = (clientName: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:48: function getTrailerOptions(billToCo: string): string[] {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:74: function getTrailerOptionsWithPendingIndicator(billToCo: string, trailersWithPending: string[]): string[] {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:82: function getWeekRange(weekStr: string) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:143: function calcularTotalWO(order: any) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:160: const handleEditWorkOrderSubmit = async (data: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:265: const formatDateSafely = (dateString: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:461: const handlePartChange = (index: number, field: string, value: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:469: const handleEdit = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:488: const handleDelete = async (id: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:510: const handleViewPDF = async (workOrderId: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:588: const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:590: const handlePartHover = (e: React.MouseEvent, partFromOrder: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:611: const exportToExcel = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:631: const handleResetFilters = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:640: const handleSendEmailReport = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:667: const addEmptyPart = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\FinishedWorkOrdersTable.tsx:679: const deletePart = (index: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\HourmeterModal.tsx:4: function getWeekRange(weekStr: string) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\useNewWorkOrder.ts:47: const resetNewWorkOrder = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:83: const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:85: const showTooltipForPart = (event: React.MouseEvent | React.FocusEvent, sku: string, partIndex?: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:254: const findPartBySku = (sku: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:274: const handlePartChange = (index: number, field: string, value: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:325: const calculateTotalHours = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:335: const calculatePartsTotal = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:351: const calculateTotalLabAndParts = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:370: function shallowArrayEqual(arr1: any[], arr2: any[], keys: string[]) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:381: const sanitizeMechanicsForStorage = (entries: LaborEntry[]) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:411: const aggregateMechanicsForSubmit = (entries: LaborEntry[]) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:436: const buildDescriptionFromEntries = (entries: LaborEntry[]) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:453: const getMechanicHoursSummary = (entries: LaborEntry[]) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:459: const handleSubmit = async (e: React.FormEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:644: const handleMechanicChange = (index: number, field: string, value: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:650: const getDefaultLaborDate = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:654: const addMechanic = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:659: const removeMechanic = (index: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:696: const showBell = (trailerNumber: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:715: const getTrailerOptionsForBill = (billToCo: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:765: const formatDateForDisplay = (dateValue: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:779: const handleDateFieldChange = (fieldName: 'startDate' | 'endDate') => (e: React.ChangeEvent<HTMLInputElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrderForm.tsx:800: const openPicker = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersButtons.tsx:4: const handleNewWorkOrder = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersButtons.tsx:8: const handleDelete = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersButtons.tsx:12: const handleModify = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersButtons.tsx:16: const handleTransfer = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersButtons.tsx:20: const handleGeneralReport = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:45: function getTrailerOptions(billToCo: string): string[] {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:72: function getTrailerOptionsWithPendingIndicator(billToCo: string, trailersWithPending: string[]): string[] {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:80: function getWeekRange(weekStr: string) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:167: function calcularTotalWO(order: any) {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:190: const handleEditWorkOrderSubmit = async (data: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:447: const validateIdClassic = (idClassic: string, status?: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:484: const formatDateSafely = (dateString: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:710: const handleEscKey = (event: KeyboardEvent) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:772: const formatStatusLabel = (status: unknown) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:779: const getStatusColor = (status: unknown) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:790: const getTime = (value: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:804: const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'FINISHED') => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:850: const handleCardDragStart = (orderId: number) => (event: React.DragEvent<HTMLDivElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:856: const handleCardDragEnd = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:861: const handleColumnDragOver = (status: 'PROCESSING' | 'APPROVED' | 'FINISHED') => (event: React.DragEvent<HTMLDivElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:867: const handleColumnDrop = (status: 'PROCESSING' | 'APPROVED' | 'FINISHED') => async (event: React.DragEvent<HTMLDivElement>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1033: const handlePartChange = (index: number, field: string, value: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1035: const findPartBySku = (sku: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1183: const handleAddWorkOrder = async (datosOrden: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1415: const normalizeWorkOrderForEdit = (workOrder: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1456: const handleEdit = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1485: const handleDelete = async (id: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1538: const exportToExcel = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1567: const exportFinishedPDFsToZip = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1704: const addEmptyPart = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1726: const addPendingPart = (pendingPart: any, qtyToUse: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1824: const hideTooltip = () => setTooltip({ visible: false, x: 0, y: 0, info: null });
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1826: const handlePartHover = (e: React.MouseEvent, partFromOrder: any) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1848: const fetchTrailersWithPendingParts = async () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:1862: const handleViewPDF = async (workOrderId: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\WorkOrders\WorkOrdersTable.tsx:2059: const deletePart = (index: number) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\components\PrivateRoute.tsx:4: const PrivateRoute = ({ children }: { children: ReactNode }) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\services\authService.ts:20: export const logout = () => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\utils\pdfGenerator.ts:60: export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\utils\pdfGenerator.ts:467: export const savePDFToDatabase = async (workOrderId: number, pdfBlob: Blob) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\utils\pdfGenerator.ts:490: export const openInvoiceLinks = (parts: Array<{ invoiceLink?: string; invoice?: string }>) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\utils\pdfGenerator.ts:511: export const downloadPDF = (pdf: jsPDF, filename: string) => {
+C:\Users\jetsh\OneDrive\Desktop\ShopOne\graphical-system\src\utils\pdfGenerator.ts:516: export const openPDFInNewTab = (pdf: jsPDF, filename: string = 'work_order.pdf') => {

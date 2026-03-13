@@ -1015,6 +1015,18 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           )}
         </label>
 
+        <label style={{ gridColumn: '1 / -1' }}>
+          Pre W.O Link (manual mechanic sheet)
+          <input
+            type="url"
+            name="preWoLink"
+            value={workOrder.preWoLink || ''}
+            onChange={onChange}
+            placeholder="https://..."
+            style={{ width: '100%', marginTop: 4, padding: '6px 8px', boxSizing: 'border-box', fontSize: '14px' }}
+          />
+        </label>
+
         {/* Previsualizador de Partes Pendientes */}
         {pendingParts && pendingParts.length > 0 && (
           <div style={{
