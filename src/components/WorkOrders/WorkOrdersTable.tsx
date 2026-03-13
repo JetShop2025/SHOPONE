@@ -2413,7 +2413,7 @@ const WorkOrdersTable: React.FC = () => {
           /* Animación para cards de Kanban en CONTINUE (NARANJA) - PROCESSING sin fecha de fin */
           .kanban-card-continue {
             animation: kanbanContinueBlink 1.4s ease-in-out infinite !important;
-            box-shadow: 0 0 14px rgba(230, 81, 0, 0.70) !important;
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.75) !important;
           }
           
           /* Animación para cards de Kanban en FINISHED (AMARILLO/DORADO) */
@@ -2484,15 +2484,15 @@ const WorkOrdersTable: React.FC = () => {
           
           @keyframes kanbanContinueBlink {
             0% { 
-              border-left-color: #bf360c;
+              border-left-color: #b45309;
               background-color: #ffffff;
             }
             50% { 
-              border-left-color: #e64a19;
-              background-color: #ffccbc;
+              border-left-color: #f59e0b;
+              background-color: #fde68a;
             }
             100% { 
-              border-left-color: #bf360c;
+              border-left-color: #b45309;
               background-color: #ffffff;
             }
           }
@@ -3132,7 +3132,7 @@ const WorkOrdersTable: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: cardGridTemplate, gap: 8, alignItems: 'start' }}>
-                  {columnOrders.map(order => {
+                  {columnOrders.map((order, index) => {
                     const startDateStr = getOrderStartDate(order);
                     const endDateStr = getOrderEndDate(order);
                     const [startYYYY, startMM, startDD] = startDateStr.split('-');
@@ -3141,7 +3141,12 @@ const WorkOrdersTable: React.FC = () => {
                     const displayEndDate = endMM && endDD && endYYYY ? `${endMM}/${endDD}/${endYYYY}` : (endDateStr ? formatDateSafely(endDateStr) : '--/--/----');
                     const hasEndDate = displayEndDate !== '--/--/----' && displayEndDate !== '';
                     const isMissing = isMissingPartsStatus(order.status);
-                    const boardStatus = getStatusForBoard(order.status);
+                    const previousOrder = index > 0 ? columnOrders[index - 1] : null;
+                    const previousStartDateStr = previousOrder ? getOrderStartDate(previousOrder) : '';
+                    const shouldRenderDateSeparator =
+                      index > 0 &&
+                      column.key !== 'FINISHED' &&
+                      startDateStr !== previousStartDateStr;
                     
                     // Determinar clase de animación según STATUS REAL (no según columna)
                     let cardClassName = '';
@@ -3177,11 +3182,11 @@ const WorkOrdersTable: React.FC = () => {
                     } else if (order.status === 'PROCESSING' && !hasEndDate) {
                       // Status PROCESSING sin fecha de fin → naranja parpadeando (CONTINUE)
                       cardClassName = 'kanban-card-continue';
-                      cardAccentColor = '#ef6c00';
-                      cardBaseBackground = '#fff4ea';
+                      cardAccentColor = '#d97706';
+                      cardBaseBackground = '#fff8db';
                       statusBadgeLabel = 'CONTINUE';
-                      statusBadgeBackground = '#ffccbc';
-                      statusBadgeColor = '#bf360c';
+                      statusBadgeBackground = '#fde68a';
+                      statusBadgeColor = '#92400e';
                     } else {
                       // Status PROCESSING con fecha de fin → azul parpadeando
                       cardClassName = 'kanban-card-processing';
@@ -3193,8 +3198,17 @@ const WorkOrdersTable: React.FC = () => {
                     }
 
                     return (
+                      <React.Fragment key={order.id}>
+                        {shouldRenderDateSeparator && (
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 2px 0' }}>
+                            <div style={{ flex: 1, height: 2, background: '#b0bec5', borderRadius: 999 }} />
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#455a64', background: '#eef3f7', border: '1px solid #c7d3dd', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                              {displayStartDate}
+                            </span>
+                            <div style={{ flex: 1, height: 2, background: '#b0bec5', borderRadius: 999 }} />
+                          </div>
+                        )}
                       <div
-                        key={order.id}
                         draggable
                         onDragStart={handleCardDragStart(Number(order.id))}
                         onDragEnd={handleCardDragEnd}
@@ -3287,6 +3301,7 @@ const WorkOrdersTable: React.FC = () => {
                           </span>
                         </div>
                       </div>
+                      </React.Fragment>
                     );
                   })}
 
