@@ -801,6 +801,34 @@ const WorkOrdersTable: React.FC = () => {
     { key: 'FINISHED' as const, title: 'TRANSFER TO FINAL W.O', color: '#fb8c00' }
   ];
 
+  const getCardPriority = (order: any): number => {
+    // Lower number = higher priority in board display.
+    if (isMissingPartsStatus(order?.status)) return 0;
+    const endDate = getOrderEndDate(order);
+    if (!endDate) return 1;
+    return 2;
+  };
+
+  const getPrimaryMechanicName = (order: any): string => {
+    if (Array.isArray(order?.mechanics) && order.mechanics.length > 0) {
+      const firstMechanic = order.mechanics.find((mechanic: any) => mechanic?.name && String(mechanic.name).trim());
+      if (firstMechanic) return String(firstMechanic.name).trim().toUpperCase();
+    }
+
+    if (order?.mechanic && String(order.mechanic).trim()) {
+      return String(order.mechanic).trim().toUpperCase();
+    }
+
+    return 'ZZZ_SIN_MECANICO';
+  };
+
+  const getSortableDateValue = (value: any): number => {
+    const normalized = normalizeOrderDate(value);
+    if (!normalized) return 0;
+    const parsed = dayjs(normalized, ['YYYY-MM-DD', 'MM/DD/YYYY'], true);
+    return parsed.isValid() ? parsed.valueOf() : 0;
+  };
+
   const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'FINISHED') => {
     const currentStatus = getStatusForBoard(order?.status);
     if (currentStatus === targetStatus) return;
@@ -3074,21 +3102,31 @@ const WorkOrdersTable: React.FC = () => {
           </div>
         )}
         <div style={{ marginBottom: 12, color: '#455a64', fontSize: 13, fontWeight: 600 }}>
-          Drag and drop cards between columns to update status.
+          Drag and drop cards between columns to update status. Cards are ordered by mechanic.
         </div>
 
         <div style={{ overflowX: 'auto', paddingBottom: 6 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(620px, 2.35fr) minmax(170px, 0.48fr)', gap: 12, alignItems: 'start', minWidth: 1170 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr)', gap: 10, alignItems: 'start', minWidth: 940 }}>
           {boardColumns.map(column => {
             const columnOrders = sortedBoardOrders
               .filter(order => getStatusForBoard(order.status) === column.key)
-              .sort((a, b) => Number(a.id) - Number(b.id));
-            const cardMinWidth = column.key === 'APPROVED' ? 165 : column.key === 'PROCESSING' ? 182 : 145;
-            const cardGridTemplate = column.key === 'APPROVED'
-              ? (columnOrders.length >= 12
-                ? 'repeat(4, minmax(145px, 1fr))'
-                : 'repeat(3, minmax(165px, 1fr))')
-              : `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
+              .sort((a, b) => {
+                const mechanicDiff = getPrimaryMechanicName(a).localeCompare(getPrimaryMechanicName(b), 'es', {
+                  sensitivity: 'base'
+                });
+                if (mechanicDiff !== 0) return mechanicDiff;
+
+                const priorityDiff = getCardPriority(a) - getCardPriority(b);
+                if (priorityDiff !== 0) return priorityDiff;
+
+                const aStart = getSortableDateValue(getOrderStartDate(a));
+                const bStart = getSortableDateValue(getOrderStartDate(b));
+                if (aStart !== bStart) return bStart - aStart;
+
+                return Number(b.id) - Number(a.id);
+              });
+            const cardMinWidth = column.key === 'FINISHED' ? 132 : 148;
+            const cardGridTemplate = `repeat(auto-fill, minmax(${cardMinWidth}px, 1fr))`;
 
             return (
               <div
@@ -3097,14 +3135,14 @@ const WorkOrdersTable: React.FC = () => {
                 onDrop={handleColumnDrop(column.key)}
                 onDragLeave={() => setDragOverStatus((prev) => (prev === column.key ? null : prev))}
                 style={{
-                  minHeight: 540,
+                  minHeight: 500,
                   background: dragOverStatus === column.key ? '#e3f2fd' : '#f8fbff',
                   border: `2px solid ${dragOverStatus === column.key ? '#1976d2' : '#d0d7e2'}`,
                   borderRadius: 12,
-                  padding: column.key === 'FINISHED' ? 6 : 8,
+                  padding: 6,
                   transition: 'all 0.2s ease',
                   overflowY: 'auto',
-                  maxHeight: '84vh'
+                  maxHeight: '82vh'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '6px 8px', borderRadius: 6, background: '#fff', border: `1px solid ${column.color}` }}>
@@ -3166,11 +3204,11 @@ const WorkOrdersTable: React.FC = () => {
                           border: selectedRow === order.id ? '2px solid #1976d2' : '1px solid #d0d7e2',
                           borderLeft: `4px solid ${column.color}`,
                           borderRadius: 6,
-                          padding: 8,
+                          padding: 6,
                           cursor: 'pointer',
                           boxShadow: '0 1px 3px rgba(25,118,210,0.08)',
                           transition: 'all 0.15s ease',
-                          minHeight: '124px',
+                          minHeight: '102px',
                           display: 'flex',
                           flexDirection: 'column'
                         }}
@@ -3198,7 +3236,7 @@ const WorkOrdersTable: React.FC = () => {
                           {(order.billToCo || 'N/C').slice(0, 18)}
                         </div>
 
-                        <div style={{ marginTop: 2, fontSize: 10, color: '#455a64', lineHeight: 1.2, fontWeight: 600 }}>
+                        <div style={{ marginTop: 2, fontSize: 9, color: '#455a64', lineHeight: 1.2, fontWeight: 600 }}>
                           {(order.trailer || 'N/T').slice(0, 12)}
                         </div>
 
@@ -3211,9 +3249,9 @@ const WorkOrdersTable: React.FC = () => {
                             : (order.mechanic || 'N/A')).length > 20 ? '...' : ''}
                         </div>
 
-                        <div style={{ marginTop: 3, fontSize: 9, color: '#546e7a', background: '#f4f8ff', borderRadius: 3, padding: '4px 5px', lineHeight: 1.3, maxHeight: 36, overflow: 'hidden', flex: 1 }}>
-                          {(order.description || 'S/D').slice(0, 60)}
-                          {(order.description || '').length > 60 ? '...' : ''}
+                        <div style={{ marginTop: 3, fontSize: 9, color: '#546e7a', background: '#f4f8ff', borderRadius: 3, padding: '3px 5px', lineHeight: 1.25, maxHeight: 30, overflow: 'hidden', flex: 1 }}>
+                          {(order.description || 'S/D').slice(0, 42)}
+                          {(order.description || '').length > 42 ? '...' : ''}
                         </div>
 
                         <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, marginBottom: 'auto' }}>
