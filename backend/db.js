@@ -541,6 +541,35 @@ async function createOrder(order) {
   try {
     console.log('[DB] Creating order with data:', order);
     const usuario = order.usuario || 'system';
+    const normalizedStatus = String(order?.status || 'PROCESSING').trim().toUpperCase();
+    const normalizedIdClassic = String(order?.idClassic ?? '').trim();
+
+    if (normalizedStatus === 'FINISHED') {
+      if (!normalizedIdClassic) {
+        const missingIdClassicError = new Error('ID CLASSIC is required when status is FINISHED.');
+        missingIdClassicError.code = 'IDCLASSIC_REQUIRED_FOR_FINISHED';
+        missingIdClassicError.statusCode = 400;
+        throw missingIdClassicError;
+      }
+
+      const [duplicateRows] = await connection.execute(
+        `SELECT id FROM work_orders
+         WHERE UPPER(TRIM(COALESCE(status, ''))) = 'FINISHED'
+           AND TRIM(COALESCE(idClassic, '')) = ?
+         LIMIT 1`,
+        [normalizedIdClassic]
+      );
+
+      if (Array.isArray(duplicateRows) && duplicateRows.length > 0) {
+        const duplicateError = new Error(`ID CLASSIC ${normalizedIdClassic} already exists in FINISHED W.O. Use a different ID CLASSIC.`);
+        duplicateError.code = 'DUPLICATE_IDCLASSIC_FINISHED';
+        duplicateError.statusCode = 409;
+        throw duplicateError;
+      }
+
+      order.idClassic = normalizedIdClassic;
+      order.status = 'FINISHED';
+    }
     
     // Convert undefined values to null for MySQL compatibility
 
@@ -614,6 +643,35 @@ async function updateOrder(id, order) {
     // Obtener datos actuales para comparación
     const [currentRows] = await connection.execute('SELECT * FROM work_orders WHERE id = ?', [id]);
     const currentData = currentRows[0];
+    const normalizedStatus = String(order?.status ?? currentData?.status ?? '').trim().toUpperCase();
+    const normalizedIdClassic = String(order?.idClassic ?? '').trim();
+
+    if (normalizedStatus === 'FINISHED') {
+      if (!normalizedIdClassic) {
+        const missingIdClassicError = new Error('ID CLASSIC is required when status is FINISHED.');
+        missingIdClassicError.code = 'IDCLASSIC_REQUIRED_FOR_FINISHED';
+        missingIdClassicError.statusCode = 400;
+        throw missingIdClassicError;
+      }
+
+      const [duplicateRows] = await connection.execute(
+        `SELECT id FROM work_orders
+         WHERE UPPER(TRIM(COALESCE(status, ''))) = 'FINISHED'
+           AND TRIM(COALESCE(idClassic, '')) = ?
+           AND id <> ?
+         LIMIT 1`,
+        [normalizedIdClassic, id]
+      );
+
+      if (Array.isArray(duplicateRows) && duplicateRows.length > 0) {
+        const duplicateError = new Error(`ID CLASSIC ${normalizedIdClassic} already exists in FINISHED W.O. Use a different ID CLASSIC.`);
+        duplicateError.code = 'DUPLICATE_IDCLASSIC_FINISHED';
+        duplicateError.statusCode = 409;
+        throw duplicateError;
+      }
+
+      order.idClassic = normalizedIdClassic;
+    }
     // LOG: Valor crudo de la fecha antes de cualquier transformación
     console.log('[DEBUG][W.O. DATE] Valor crudo de currentData.date desde DB:', currentData.date, 'Tipo:', typeof currentData.date);
 

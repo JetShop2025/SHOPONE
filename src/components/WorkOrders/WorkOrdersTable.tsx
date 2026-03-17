@@ -476,6 +476,7 @@ const WorkOrdersTable: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
   const [draggingOrderId, setDraggingOrderId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | 'FINISHED' | null>(null);
+  const [recentlyFinished, setRecentlyFinished] = useState<Array<{ order: any, timestamp: number }>>([]);
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
   const nextWorkOrderNumber = (Array.isArray(workOrders) && workOrders.length > 0
     ? Math.max(...workOrders.map((wo: any) => Number(wo?.id) || 0)) + 1
@@ -853,6 +854,17 @@ const WorkOrdersTable: React.FC = () => {
   const updateWorkOrderStatus = async (order: any, targetStatus: 'PROCESSING' | 'APPROVED' | 'FINISHED') => {
     const currentStatus = getStatusForBoard(order?.status);
     if (currentStatus === targetStatus) return;
+
+    // Track recently finished W.O (keep last 4, discard after 5 min)
+    if (targetStatus === 'FINISHED') {
+      const newFinished = [...recentlyFinished, { order, timestamp: Date.now() }].slice(-4);
+      setRecentlyFinished(newFinished);
+      
+      // Auto-remove after 5 minutes
+      setTimeout(() => {
+        setRecentlyFinished(prev => prev.filter(item => item.order.id !== order.id));
+      }, 5 * 60 * 1000);
+    }
 
     // 🚀 OPTIMISTIC UPDATE: Actualizar estado localmente INMEDIATAMENTE (sin esperar API)
     setWorkOrders(prev =>
@@ -3139,6 +3151,53 @@ const WorkOrdersTable: React.FC = () => {
             </span>
           </div>
         )}
+        
+        {/* Recently Finished W.O Preview (Last 4, Read-Only, 5 min timeout) */}
+        {recentlyFinished.length > 0 && (
+          <div style={{ 
+            marginBottom: 16, 
+            padding: 12, 
+            background: 'linear-gradient(135deg, #fff5e8 0%, #fffbf0 100%)',
+            border: '2px solid #fb8c00',
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(251, 140, 0, 0.15)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #ffe0b2' }}>
+              <span style={{ fontSize: 16 }}>✅</span>
+              <strong style={{ color: '#e65100', fontSize: 14 }}>Recently Transferred to FINAL W.O (Expires in 5 min)</strong>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+              {recentlyFinished.map((item: any) => {
+                const timeLeft = Math.max(0, Math.ceil((5 * 60 * 1000 - (Date.now() - item.timestamp)) / 1000));
+                return (
+                  <div 
+                    key={item.order.id}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid #ffe0b2',
+                      borderRadius: 6,
+                      padding: 10,
+                      cursor: 'default',
+                      opacity: timeLeft > 30 ? 1 : 0.5,
+                      transition: 'opacity 0.3s'
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#e65100', marginBottom: 4 }}>
+                      W.O #{item.order.id}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>
+                      {item.order.billToCo || 'N/C'}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#fb8c00', fontWeight: 600 }}>
+                      ⏱ {timeLeft}s
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
         <div style={{ marginBottom: 6, color: '#455a64', fontSize: 12, fontWeight: 600 }}>
           Drag and drop cards between columns to update status. Cards are ordered by W.O number and mechanic.
         </div>
@@ -3333,10 +3392,10 @@ const WorkOrdersTable: React.FC = () => {
 
                         <div style={{ marginTop: 2, fontSize: 9, color: '#546e7a', lineHeight: 1.2 }}>
                           👨‍🔧 {Array.isArray(order.mechanics) && order.mechanics.length > 0
-                            ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ').slice(0, 20)
+                            ? Array.from(new Set(order.mechanics.map((mechanic: any) => mechanic.name))).join(', ').slice(0, 20)
                             : (order.mechanic || 'N/A').slice(0, 20)}
                           {(Array.isArray(order.mechanics) && order.mechanics.length > 0
-                            ? order.mechanics.map((mechanic: any) => mechanic.name).join(', ')
+                            ? Array.from(new Set(order.mechanics.map((mechanic: any) => mechanic.name))).join(', ')
                             : (order.mechanic || 'N/A')).length > 20 ? '...' : ''}
                         </div>
 
@@ -3512,21 +3571,23 @@ const WorkOrdersTable: React.FC = () => {
               <strong>Hours Logged:</strong>
               <div style={{ marginTop: 6, background: '#f8f9fb', border: '1px solid #d0d7e2', borderRadius: 8, padding: 10 }}>
                 {detailMechanics.length > 0 ? (
-                  detailMechanics.map((mechanic: any, index: number) => (
-                    <div key={`hrs-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: index < detailMechanics.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#37474f' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    {detailMechanics.map((mechanic: any, index: number) => (
+                      <div key={`hrs-${index}`} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 6, padding: 10 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#37474f', marginBottom: 6 }}>
                           {mechanic?.name || `Mechanic ${index + 1}`}
                         </div>
                         {mechanic?.date && (
-                          <div style={{ fontSize: 11, color: '#78909c', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: '#78909c', marginBottom: 8 }}>
                             📅 {formatDateSafely(mechanic.date)}
                           </div>
                         )}
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#1976d2' }}>
+                          {(Number(mechanic?.hrs) || 0).toFixed(2)} <span style={{ fontSize: 11, color: '#546e7a' }}>h</span>
+                        </div>
                       </div>
-                      <strong style={{ fontSize: 14, color: '#1976d2' }}>{(Number(mechanic?.hrs) || 0).toFixed(2)} h</strong>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
                   <div>No individual mechanic hours recorded.</div>
                 )}

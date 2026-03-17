@@ -102,7 +102,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   // TÍTULO "INVOICE" perfectamente centrado
   pdf.setFontSize(28);
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('INVOICE', pageWidth / 2, 30, { align: 'center' });
   
   // INFORMACIÓN DE LA EMPRESA alineada a la derecha
@@ -124,31 +124,31 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const boxesStartX = (pageWidth - totalBoxesWidth) / 2;
   
   // CAJA IZQUIERDA - Customer y Trailer
-  pdf.setDrawColor(0, 150, 255);
+  pdf.setDrawColor(10, 56, 84);
   pdf.setLineWidth(0.8);
   pdf.rect(boxesStartX, firstRowY, leftBoxWidth, boxHeight);
   
   // Contenido caja izquierda
   pdf.setFontSize(10);
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('Customer:', boxesStartX + 3, firstRowY + 8);
   pdf.setTextColor(0, 0, 0);
   const customerText = String(workOrderData.customer || '');
   pdf.text(customerText.length > 15 ? customerText.substring(0, 15) + '...' : customerText, 
            boxesStartX + 3, firstRowY + 15);
   
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('Trailer:', boxesStartX + 3, firstRowY + 22);
   pdf.setTextColor(0, 0, 0);
   pdf.text(String(workOrderData.trailer || ''), boxesStartX + 3, firstRowY + 28);
     // CAJA DERECHA - Date, Invoice #, ID Classic, Mechanics, Status
   const rightBoxX = boxesStartX + leftBoxWidth + gapBetweenBoxes;
-  pdf.setDrawColor(0, 150, 255);
+  pdf.setDrawColor(10, 56, 84);
   pdf.rect(rightBoxX, firstRowY, rightBoxWidth, boxHeight);
   
   // Contenido caja derecha
   pdf.setFontSize(10);
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('Date:', rightBoxX + 3, firstRowY + 6);
   pdf.setTextColor(0, 0, 0);
   // Format date to MM/DD/YYYY before rendering
@@ -170,17 +170,17 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   };
   pdf.text(formatDateMMDDYYYY(workOrderData.date), rightBoxX + 25, firstRowY + 6);
   
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('Invoice #:', rightBoxX + 3, firstRowY + 12);
   pdf.setTextColor(0, 0, 0);
   pdf.text(String(workOrderData.id || ''), rightBoxX + 25, firstRowY + 12);
   
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('ID Classic:', rightBoxX + 3, firstRowY + 18);
   pdf.setTextColor(0, 0, 0);
   pdf.text(String(workOrderData.idClassic || ''), rightBoxX + 25, firstRowY + 18);
   
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('Mechanics:', rightBoxX + 3, firstRowY + 24);
   pdf.setTextColor(0, 0, 0);
   
@@ -207,7 +207,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // STATUS - Agregar después de las cajas principales
   const statusY = firstRowY + boxHeight + 6;
   pdf.setFontSize(10);
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('STATUS:', rightBoxX + 3, statusY);
   pdf.setTextColor(0, 0, 0);
   
@@ -234,7 +234,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // DESCRIPCIÓN
   const descY = firstRowY + boxHeight + 18; // Aumentar espacio para el status
   pdf.setFontSize(10);
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.text('Description:', leftMargin, descY);
   
   // Descripción del trabajo - con control de ancho y altura dinámica
@@ -268,7 +268,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     body: tableData,
     theme: 'grid',
     headStyles: {
-      fillColor: [66, 139, 202],
+      fillColor: [10, 56, 84],
       textColor: [255, 255, 255],
       fontSize: 7.5,
       fontStyle: 'bold',
@@ -458,7 +458,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const footerY = sigY + 15;
   
   pdf.setFontSize(11);
-  pdf.setTextColor(0, 150, 255);
+  pdf.setTextColor(10, 56, 84);
   pdf.setFont('helvetica', 'italic');
   pdf.text('Thanks for your business!', pageWidth / 2, footerY, { align: 'center' });
   

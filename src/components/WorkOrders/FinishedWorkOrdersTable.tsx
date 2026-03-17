@@ -432,9 +432,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
     // SOLO mostrar W.O con status FINISHED
     if (order.status !== 'FINISHED') return false;
 
-    // CRITICAL: Don't show any orders until a client is selected
-    if (!selectedClient || selectedClient === '') return false;
-
+    // Filter by week (default: current week)
     let inWeek = true;
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
@@ -442,26 +440,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
       inWeek = orderDate.isBetween(start, end, 'day', '[]');
     }
 
-    const matchesDay = !selectedDay || order.date.slice(0, 10) === selectedDay;
-
-    // Client filter (required)
-    if (selectedClient !== 'all') {
+    // Client filter (optional, default: all)
+    if (selectedClient && selectedClient !== '' && selectedClient !== 'all') {
       const client = order.billToCo || 'No Client';
       if (client !== selectedClient) return false;
     }
 
-    if (dateFrom) {
-      const woDate = dayjs(order.date.slice(0, 10));
-      const fromDate = dayjs(dateFrom);
-      if (!woDate.isAfter(fromDate) && !woDate.isSame(fromDate)) return false;
-    }
-
-    if (dateTo) {
-      const woDate = dayjs(order.date.slice(0, 10));
-      const toDate = dayjs(dateTo);
-      if (!woDate.isBefore(toDate) && !woDate.isSame(toDate)) return false;
-    }
-
+    // Search filter
     if (searchId) {
       const searchLower = searchId.toLowerCase();
       const matches = String(order.id).toLowerCase().includes(searchLower) ||
@@ -471,7 +456,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
       if (!matches) return false;
     }
 
-    return inWeek && matchesDay;
+    return inWeek;
   });
 
   // NEW: Calculate statistics
@@ -704,13 +689,85 @@ const FinishedWorkOrdersTable: React.FC = () => {
     saveAs(new Blob([excelBuffer], { type: 'application/octet-stream' }), `finished_wo_report_${dayjs().format('YYYY-MM-DD')}.xlsx`);
   };
 
+  const exportToPDF = async () => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+      
+      const pdf = new jsPDF('l', 'mm', 'a4'); // landscape mode
+      pdf.setFont('courier');
+      
+      // Header
+      pdf.setFontSize(16);
+      pdf.setTextColor(10, 56, 84);
+      pdf.text('FINISHED WORK ORDERS REPORT', 15, 15);
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm:ss')}`, 15, 22);
+      pdf.text(`Client: ${selectedClient}`, 15, 28);
+      if (selectedWeek) {
+        pdf.text(`Week: ${selectedWeek}`, 15, 34);
+      }
+      
+      // Table data
+      const tableData = filteredOrders.map(order => [
+        String(order.id),
+        String(order.idClassic || 'N/A'),
+        String(order.billToCo || 'No Client'),
+        String(order.trailer || 'N/A'),
+        dayjs(order.date).format('MM/DD/YYYY'),
+        String(order.description || 'N/A').substring(0, 30) || 'N/A',
+        String(Number(order.totalHrs || 0).toFixed(1)),
+        `$${Number(order.totalLabAndParts).toFixed(2)}`
+      ]);
+      
+      autoTable(pdf, {
+        startY: 42,
+        head: [['ID', 'ID Classic', 'Client', 'Trailer', 'Date', 'Description', 'Hours', 'Total']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 3
+        },
+        headStyles: {
+          fillColor: [10, 56, 84],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 15 },
+          1: { halign: 'center', cellWidth: 20 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 20 },
+          4: { halign: 'center', cellWidth: 20 },
+          5: { cellWidth: 35 },
+          6: { halign: 'center', cellWidth: 15 },
+          7: { halign: 'right', cellWidth: 18 }
+        }
+      });
+      
+      // Footer with totals
+      const finalY = (pdf as any).lastAutoTable?.finalY || 150;
+      pdf.setFontSize(11);
+      pdf.setTextColor(10, 56, 84);
+      pdf.setFont('courier', 'bold');
+      pdf.text(`Total W.O: ${stats.totalWOs}`, 15, finalY + 10);
+      pdf.text(`Total Revenue: $${stats.totalRevenue.toFixed(2)}`, 15, finalY + 16);
+      pdf.text(`Average per W.O: $${stats.averagePerWO.toFixed(2)}`, 15, finalY + 22);
+      
+      pdf.save(`finished_wo_report_${dayjs().format('YYYY-MM-DD')}.pdf`);
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      alert('❌ Error generating PDF. Try exporting to Excel instead.');
+    }
+  };
+
   const handleResetFilters = () => {
     setSelectedClient('');
-    setDateFrom('');
-    setDateTo('');
     setSearchId('');
     setSelectedWeek('');
-    setSelectedDay('');
   };
 
   const handleSendEmailReport = async () => {
@@ -984,7 +1041,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                 </select>
               </div>
 
-              {/* Date From */}
+              {/* Week Filter */}
               <div>
                 <label style={{ 
                   fontSize: 11, 
@@ -995,42 +1052,12 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  📅 From Date
+                  📅 Week
                 </label>
                 <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => { setDateFrom(e.target.value); setCurrentPageData(1); }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.gray300}`,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    background: colors.white,
-                    color: colors.gray600
-                  }}
-                />
-              </div>
-
-              {/* Date To */}
-              <div>
-                <label style={{ 
-                  fontSize: 11, 
-                  fontWeight: 700, 
-                  color: colors.gray600, 
-                  display: 'block', 
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  📅 To Date
-                </label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); setCurrentPageData(1); }}
+                  type="week"
+                  value={selectedWeek}
+                  onChange={(e) => { setSelectedWeek(e.target.value); setCurrentPageData(1); }}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -1109,13 +1136,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   background: colors.success,
                   color: colors.white,
                   border: 'none',
-                  cursor: !selectedClient || selectedClient === '' ? 'not-allowed' : 'pointer',
-                  opacity: !selectedClient || selectedClient === '' ? 0.5 : 1
+                  cursor: filteredOrders.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: filteredOrders.length === 0 ? 0.5 : 1
                 }} 
-                onClick={exportToExcel}
-                disabled={!selectedClient || selectedClient === ''}
+                onClick={exportToPDF}
+                disabled={filteredOrders.length === 0}
               >
-                <span>📥</span> Export Excel
+                <span>📄</span> Export PDF
               </button>
               <button 
                 style={{
@@ -1129,11 +1156,11 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   background: colors.warning,
                   color: colors.white,
                   border: 'none',
-                  cursor: !selectedClient || selectedClient === '' ? 'not-allowed' : 'pointer',
-                  opacity: !selectedClient || selectedClient === '' ? 0.5 : 1
+                  cursor: filteredOrders.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: filteredOrders.length === 0 ? 0.5 : 1
                 }} 
                 onClick={handleSendEmailReport}
-                disabled={!selectedClient || selectedClient === ''}
+                disabled={filteredOrders.length === 0}
               >
                 <span>📧</span> Send Email Report
               </button>
@@ -1141,7 +1168,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           </div>
 
           {/* Stats Cards */}
-          {selectedClient && selectedClient !== '' && (
+          {filteredOrders.length > 0 && (
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', 

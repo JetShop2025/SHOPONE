@@ -666,10 +666,12 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   React.useEffect(() => {
     if (!Array.isArray(workOrder.mechanics)) return;
     if (workOrder.mechanics.length > 0) return;
+    // Initialize with one row, date preset to START DATE
+    const defaultDate = normalizeDateForSubmit(workOrder.startDate || workOrder.date || new Date().toISOString().slice(0, 10));
     onChange({
       target: {
         name: 'mechanics',
-        value: [{ name: '', hrs: '', date: getDefaultLaborDate(), task: '' }],
+        value: [{ name: '', hrs: '', date: defaultDate, task: '' }],
       },
     } as any);
   }, [workOrder.id]);
@@ -1432,6 +1434,30 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               </div>
             ))}
           </div>
+          {/* TOTAL PARTS FOOTER */}
+          {workOrder.parts && workOrder.parts.length > 0 && (
+            <div style={{
+              marginTop: 12,
+              padding: 12,
+              background: '#0A3854',
+              color: 'white',
+              borderRadius: 6,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontWeight: 700,
+              fontSize: 14
+            }}>
+              <span>PARTS TOTAL:</span>
+              <span style={{ fontSize: 16 }}>
+                ${workOrder.parts.reduce((total: number, part: any) => {
+                  const qty = parseFloat(String(part?.qty || '0'));
+                  const cost = parseFloat(String(part?.cost ?? '0').replace(/[^0-9.]/g, ''));
+                  return total + ((!isNaN(qty) && qty > 0 ? qty : 0) * (!isNaN(cost) && cost >= 0 ? cost : 0));
+                }, 0).toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
         
         <div style={{ marginBottom: 0, gridColumn: 'span 4', minWidth: 0 }}>

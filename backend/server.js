@@ -772,6 +772,18 @@ app.post('/api/work-orders', async (req, res) => {
     res.json(newOrder);
   } catch (error) {
     console.error('[ERROR] POST /api/work-orders:', error);
+    if (error?.code === 'DUPLICATE_IDCLASSIC_FINISHED') {
+      return res.status(409).json({
+        error: 'DUPLICATE_IDCLASSIC_FINISHED',
+        message: error.message,
+      });
+    }
+    if (error?.code === 'IDCLASSIC_REQUIRED_FOR_FINISHED') {
+      return res.status(400).json({
+        error: 'IDCLASSIC_REQUIRED_FOR_FINISHED',
+        message: error.message,
+      });
+    }
     res.status(500).json({ error: 'Failed to create work order in database' });
   }
 });
@@ -784,6 +796,18 @@ app.put('/api/work-orders/:id', async (req, res) => {
     res.json(updatedOrder);
   } catch (error) {
     console.error('[ERROR] PUT /api/work-orders/:id:', error);
+    if (error?.code === 'DUPLICATE_IDCLASSIC_FINISHED') {
+      return res.status(409).json({
+        error: 'DUPLICATE_IDCLASSIC_FINISHED',
+        message: error.message,
+      });
+    }
+    if (error?.code === 'IDCLASSIC_REQUIRED_FOR_FINISHED') {
+      return res.status(400).json({
+        error: 'IDCLASSIC_REQUIRED_FOR_FINISHED',
+        message: error.message,
+      });
+    }
     res.status(500).json({ error: 'Failed to update work order in database' });
   }
 });
