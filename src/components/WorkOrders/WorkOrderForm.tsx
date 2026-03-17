@@ -650,11 +650,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   };
 
   const getDefaultLaborDate = () => {
-    return normalizeDateForSubmit(workOrder.endDate || workOrder.startDate || workOrder.date || new Date().toISOString().slice(0, 10));
+    return normalizeDateForSubmit(workOrder.startDate || workOrder.date || new Date().toISOString().slice(0, 10));
   };
 
   const addMechanic = () => {
-    const newMechanics = [...(workOrder.mechanics || []), { name: '', hrs: '', date: getDefaultLaborDate(), task: '' }];
+    const newMechanics = [...(workOrder.mechanics || []), { name: '', hrs: '', date: '', task: '' }];
     onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
   };
 
@@ -675,6 +675,26 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       },
     } as any);
   }, [workOrder.id]);
+
+  React.useEffect(() => {
+    if (!Array.isArray(workOrder.mechanics)) return;
+    if (workOrder.mechanics.length !== 1) return;
+
+    const first = workOrder.mechanics[0] || {};
+    const shouldSyncFirstDate =
+      !String(first.name || '').trim() &&
+      !String(first.hrs || '').trim() &&
+      !String(first.task || '').trim();
+
+    if (!shouldSyncFirstDate) return;
+
+    const startDateDefault = normalizeDateForSubmit(workOrder.startDate || workOrder.date || new Date().toISOString().slice(0, 10));
+    if ((first.date || '') === startDateDefault) return;
+
+    const newMechanics = [...workOrder.mechanics];
+    newMechanics[0] = { ...first, date: startDateDefault };
+    onChange({ target: { name: 'mechanics', value: newMechanics } } as any);
+  }, [workOrder.startDate, workOrder.id]);
 
   React.useEffect(() => {
     const hasStructuredRows = Array.isArray(workOrder.mechanics)
@@ -1191,7 +1211,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           {(workOrder.mechanics || []).map((mechanic: any, index: number) => (
             <div key={index} style={{ display: 'grid', gridTemplateColumns: '165px 155px 60px 1fr 32px', gap: 8, marginBottom: 6, alignItems: 'center', minWidth: 600 }}>
               <DateInputWithCalendar
-                value={mechanic.date || getDefaultLaborDate()}
+                value={mechanic.date || (index === 0 ? getDefaultLaborDate() : '')}
                 onTextChange={e => handleMechanicChange(index, 'date', normalizeDateForSubmit(e.target.value))}
                 onCalendarChange={(value) => handleMechanicChange(index, 'date', value)}
                 placeholder="MM/DD/YYYY"

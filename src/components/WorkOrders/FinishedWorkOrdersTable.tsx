@@ -1000,7 +1000,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           <div style={{ padding: '24px', borderBottom: `1px solid ${colors.gray300}` }}>
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gridTemplateColumns: '1fr 1fr 1fr', 
               gap: 20,
               marginBottom: 0
             }}>
@@ -1254,29 +1254,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           )}
         </div>
 
-        {/* Additional Filters */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 20 }}>
-            <label style={{ fontWeight: 600, fontSize: 13, color: colors.gray600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              📅 Filter by week:
-              <input
-                type="week"
-                value={selectedWeek}
-                onChange={e => setSelectedWeek(e.target.value)}
-                style={{ padding: '8px 12px', border: `1px solid ${colors.gray300}`, borderRadius: 6, fontSize: 13 }}
-              />
-            </label>
-            <label style={{ fontWeight: 600, fontSize: 13, color: colors.gray600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              📆 Filter by day:
-              <input
-                type="date"
-                value={selectedDay}
-                onChange={e => setSelectedDay(e.target.value)}
-                style={{ padding: '8px 12px', border: `1px solid ${colors.gray300}`, borderRadius: 6, fontSize: 13 }}
-              />
-            </label>
-          </div>
-        </div>
+
 
         {showEditForm && (
           <div style={modalStyle} onClick={() => { setShowEditForm(false); }}>

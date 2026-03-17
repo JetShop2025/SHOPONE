@@ -971,24 +971,27 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       try {
-        // Update with FINISHED status and ID Classic
+        // Call updateWorkOrderStatus to handle recently finished tracking and state updates
+        await updateWorkOrderStatus(draggedOrder, 'FINISHED');
+        
+        // Update with ID Classic
         setWorkOrders(prev =>
           prev.map(item =>
-            item.id === draggedOrder.id ? { ...item, status: 'FINISHED', idClassic: idClassic } : item
+            item.id === draggedOrder.id ? { ...item, idClassic: idClassic } : item
           )
         );
 
         setDetailOrder((prev: any) =>
-          prev && prev.id === draggedOrder.id ? { ...prev, status: 'FINISHED', idClassic: idClassic } : prev
+          prev && prev.id === draggedOrder.id ? { ...prev, idClassic: idClassic } : prev
         );
 
         setContextMenu(prev =>
           prev.order && prev.order.id === draggedOrder.id
-            ? { ...prev, order: { ...prev.order, status: 'FINISHED', idClassic: idClassic } }
+            ? { ...prev, order: { ...prev.order, idClassic: idClassic } }
             : prev
         );
 
-        // Send to backend
+        // Send idClassic update to backend
         await axios.put(`${API_URL}/work-orders/${draggedOrder.id}`, {
           ...draggedOrder,
           status: 'FINISHED',
@@ -1000,12 +1003,6 @@ const WorkOrdersTable: React.FC = () => {
         alert(`✅ Work Order #${draggedOrder.id} has been transferred to FINAL W.O`);
       } catch (error) {
         console.error('Error transferring Work Order:', error);
-        // Revert on error
-        setWorkOrders(prev =>
-          prev.map(item =>
-            item.id === draggedOrder.id ? { ...item, status: draggedOrder.status } : item
-          )
-        );
         alert('⚠️ Error transferring Work Order. Please try again.');
       }
       setDraggingOrderId(null);
@@ -3510,56 +3507,61 @@ const WorkOrdersTable: React.FC = () => {
             <div>
               <strong>Parts:</strong>
               <div style={{ marginTop: 8, overflowX: 'auto' }}>
-                <table className="wo-table" style={{ minWidth: 720 }}>
+                <table className="wo-table" style={{ minWidth: 900 }}>
                   <thead>
                     <tr>
                       <th>#</th>
                       <th>SKU</th>
-                      <th>Part</th>
+                      <th>Description</th>
+                      <th>U/M</th>
                       <th>Qty</th>
-                      <th>Cost</th>
-                      <th>Purchase Link</th>
+                      <th>Unit $</th>
+                      <th>Total</th>
+                      <th>Link</th>
                     </tr>
                   </thead>
                   <tbody>
                     {validParts.length > 0 ? (
                       validParts
-                        .map((part: any, index: number) => (
-                          <tr key={`${detailOrder.id}-${index}`}>
-                            <td>{index + 1}</td>
-                            <td>{part.sku}</td>
-                            <td>{part.part || part.description || '-'}</td>
-                            <td>{part.qty || 0}</td>
-                            <td>
-                              {part.cost !== undefined && part.cost !== null && part.cost !== ''
-                                ? Number(part.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                                : '$0.00'}
-                            </td>
-                            <td>
-                              {part.invoiceLink || part.invoice_link ? (
-                                <a 
-                                  href={part.invoiceLink || part.invoice_link} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  style={{ 
-                                    color: '#1976d2', 
-                                    textDecoration: 'none',
-                                    fontWeight: 600,
-                                    fontSize: 11
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  🔗 View
-                                </a>
-                              ) : (
-                                <span style={{ color: '#999', fontSize: 11 }}>N/A</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                        .map((part: any, index: number) => {
+                          const unitCost = Number(part.unitCost || part.unit_cost || part.cost || 0);
+                          const qty = Number(part.qty || 0);
+                          const totalCost = unitCost * qty;
+                          return (
+                            <tr key={`${detailOrder.id}-${index}`}>
+                              <td>{index + 1}</td>
+                              <td>{part.sku || '-'}</td>
+                              <td>{part.description || part.part || '-'}</td>
+                              <td>{part.um || part.uom || 'EA'}</td>
+                              <td>{qty}</td>
+                              <td>${unitCost.toFixed(2)}</td>
+                              <td>${totalCost.toFixed(2)}</td>
+                              <td>
+                                {part.invoiceLink || part.invoice_link ? (
+                                  <a 
+                                    href={part.invoiceLink || part.invoice_link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ 
+                                      color: '#1976d2', 
+                                      textDecoration: 'none',
+                                      fontWeight: 600,
+                                      fontSize: 11
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    🔗 View
+                                  </a>
+                                ) : (
+                                  <span style={{ color: '#999', fontSize: 11 }}>N/A</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                     ) : (
                       <tr>
-                        <td colSpan={6}>No parts registered</td>
+                        <td colSpan={8}>No parts registered</td>
                       </tr>
                     )}
                   </tbody>
@@ -3572,18 +3574,20 @@ const WorkOrdersTable: React.FC = () => {
               <div style={{ marginTop: 6, background: '#f8f9fb', border: '1px solid #d0d7e2', borderRadius: 8, padding: 10 }}>
                 {detailMechanics.length > 0 ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                    {detailMechanics.map((mechanic: any, index: number) => (
-                      <div key={`hrs-${index}`} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 6, padding: 10 }}>
+                    {Array.from(
+                      detailMechanics.reduce((acc: Map<string, { name: string; totalHrs: number }>, mechanic: any) => {
+                        const mechanicName = mechanic?.name || 'Unknown';
+                        const existing = acc.get(mechanicName) || { name: mechanicName, totalHrs: 0 };
+                        existing.totalHrs += Number(mechanic?.hrs) || 0;
+                        return acc.set(mechanicName, existing);
+                      }, new Map()).values()
+                    ).map((mechanic: any) => (
+                      <div key={`hrs-${mechanic.name}`} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 6, padding: 10 }}>
                         <div style={{ fontWeight: 600, fontSize: 13, color: '#37474f', marginBottom: 6 }}>
-                          {mechanic?.name || `Mechanic ${index + 1}`}
+                          {mechanic.name}
                         </div>
-                        {mechanic?.date && (
-                          <div style={{ fontSize: 11, color: '#78909c', marginBottom: 8 }}>
-                            📅 {formatDateSafely(mechanic.date)}
-                          </div>
-                        )}
                         <div style={{ fontSize: 16, fontWeight: 700, color: '#1976d2' }}>
-                          {(Number(mechanic?.hrs) || 0).toFixed(2)} <span style={{ fontSize: 11, color: '#546e7a' }}>h</span>
+                          {mechanic.totalHrs.toFixed(2)} <span style={{ fontSize: 11, color: '#546e7a' }}>h</span>
                         </div>
                       </div>
                     ))}
