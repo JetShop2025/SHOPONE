@@ -190,8 +190,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const subtotal = laborTotal + partsTotal;
       const miscPercent = Number(workOrder.miscellaneous ?? 0);
       const weldPercent = Number(workOrder.weldPercent ?? 0);
-      const miscAmount = subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100);
-      const weldAmount = subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100);
+      const miscAmount = Math.round(subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100) * 100) / 100;
+      const weldAmount = Math.round(subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100) * 100) / 100;
       const calculatedTotal = subtotal + miscAmount + weldAmount;
       
       // Obtener el valor actual del total
@@ -242,8 +242,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const subtotal = laborTotal + partsTotal;
     const miscPercent = Number(workOrder.miscellaneous);
     const weldPercent = Number(workOrder.weldPercent);
-    const miscAmount = subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100);
-    const weldAmount = subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100);
+    const miscAmount = Math.round(subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100) * 100) / 100;
+    const weldAmount = Math.round(subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100) * 100) / 100;
     const calculatedTotal = subtotal + miscAmount + weldAmount;
     const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
     const currentValue = String(workOrder.totalLabAndParts ?? '').trim();
@@ -358,11 +358,11 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     // Miscellaneous: porcentaje extra definido por el usuario
     let miscPercent = Number(workOrder.miscellaneous);
     miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
-    const miscAmount = subtotal * (miscPercent / 100);
+    const miscAmount = Math.round(subtotal * (miscPercent / 100) * 100) / 100;
     // Welding Supplies: porcentaje extra definido por el usuario
     let weldPercent = Number(workOrder.weldPercent);
     weldPercent = !isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0;
-    const weldAmount = subtotal * (weldPercent / 100);
+    const weldAmount = Math.round(subtotal * (weldPercent / 100) * 100) / 100;
     const total = subtotal + miscAmount + weldAmount;
     return !isNaN(total) && total >= 0 ? total : 0;
   };

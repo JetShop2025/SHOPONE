@@ -1549,6 +1549,31 @@ router.put('/:id', async (req, res) => {
       statusToSave = 'MISSING_PARTS';
       console.log(`⚠️ [${requestId}] Status forzado a MISSING_PARTS (parte con costo 0 o inválido)`);
     }
+    const normalizedIdClassic =
+      idClassic === undefined || idClassic === null
+        ? ''
+        : String(idClassic).trim();
+
+    if (statusToSave === 'FINISHED') {
+      if (!normalizedIdClassic) {
+        return res.status(400).json({
+          error: 'IDCLASSIC_REQUIRED_FOR_FINISHED',
+          message: 'ID CLASSIC is required when status is FINISHED.'
+        });
+      }
+
+      const [duplicateFinishedRows] = await db.query(
+        `SELECT id FROM work_orders WHERE status = 'FINISHED' AND idClassic = ? AND id <> ? LIMIT 1`,
+        [normalizedIdClassic, id]
+      );
+
+      if (Array.isArray(duplicateFinishedRows) && duplicateFinishedRows.length > 0) {
+        return res.status(409).json({
+          error: 'DUPLICATE_IDCLASSIC_FINISHED',
+          message: `ID CLASSIC ${normalizedIdClassic} already exists in FINISHED W.O. Use a different ID CLASSIC.`
+        });
+      }
+    }
       
     console.log(`🔧 [${requestId}] Partes procesadas: ${partsArr.length} válidas de ${parts?.length || 0} recibidas`);
 
@@ -1610,7 +1635,7 @@ router.put('/:id', async (req, res) => {
     ];
     if (statusToSave === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
-      updateFields.push(idClassic || null);
+      updateFields.push(normalizedIdClassic || null);
     }
     updateQuery += ` WHERE id = ?`;
     updateFields.push(id);
@@ -1641,7 +1666,7 @@ router.put('/:id', async (req, res) => {
         };
         
         if (statusToSave === 'FINISHED') {
-          newData.idClassic = idClassic || null;
+          newData.idClassic = normalizedIdClassic || null;
         }
         
         // Usar la función específica para auditar Work Orders

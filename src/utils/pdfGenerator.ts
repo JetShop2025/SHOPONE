@@ -385,8 +385,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     }
   }
 
-  const miscAmount = subtotal * ((miscPercent > 0 ? miscPercent : 0) / 100);
-  const weldAmount = subtotal * ((weldPercent > 0 ? weldPercent : 0) / 100);
+  const miscAmount = Math.round(subtotal * ((miscPercent > 0 ? miscPercent : 0) / 100) * 100) / 100;
+  const weldAmount = Math.round(subtotal * ((weldPercent > 0 ? weldPercent : 0) / 100) * 100) / 100;
   
   // Mostrar SHOPMISC
   if (miscAmount > 0) {
@@ -415,7 +415,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(220, 20, 60);
   pdf.setFont('courier', 'bold');
   pdf.text('TOTAL LAB & PARTS:', totalsStartX, currentY);
-  pdf.text(`$${(workOrderData.totalCost || 0).toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
+  const pdfTotal = parseFloat((subtotal + miscAmount + weldAmount).toFixed(2));
+  pdf.text(`$${pdfTotal.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     // Resetear fuente
   pdf.setFont('courier', 'normal');
   

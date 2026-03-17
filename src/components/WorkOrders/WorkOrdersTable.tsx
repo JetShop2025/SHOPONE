@@ -422,7 +422,16 @@ const WorkOrdersTable: React.FC = () => {
       setLoading(false);
     } catch (err: any) {
       setLoading(false);
-      alert(`Error updating Work Order: ${err.message}`);
+      const backendMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+      if (err?.response?.status === 409 && err?.response?.data?.error === 'DUPLICATE_IDCLASSIC_FINISHED') {
+        alert(`Cannot save Work Order: ${backendMessage}`);
+        return;
+      }
+      if (err?.response?.status === 400 && err?.response?.data?.error === 'IDCLASSIC_REQUIRED_FOR_FINISHED') {
+        alert(`Cannot save Work Order: ${backendMessage}`);
+        return;
+      }
+      alert(`Error updating Work Order: ${backendMessage || 'Unknown error'}`);
     }
   };
   const [selectedRow, setSelectedRow] = useState<number | null>(null);

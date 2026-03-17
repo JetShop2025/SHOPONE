@@ -220,8 +220,17 @@ const FinishedWorkOrdersTable: React.FC = () => {
       setEditError('');
 
       alert(`✅ Work Order updated successfully!`);
-    } catch (err) {
-      alert('❌ Error updating Work Order.');
+    } catch (err: any) {
+      const backendMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+      if (err?.response?.status === 409 && err?.response?.data?.error === 'DUPLICATE_IDCLASSIC_FINISHED') {
+        alert(`❌ Cannot update Work Order: ${backendMessage}`);
+        return;
+      }
+      if (err?.response?.status === 400 && err?.response?.data?.error === 'IDCLASSIC_REQUIRED_FOR_FINISHED') {
+        alert(`❌ Cannot update Work Order: ${backendMessage}`);
+        return;
+      }
+      alert(`❌ Error updating Work Order: ${backendMessage || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -276,6 +285,65 @@ const FinishedWorkOrdersTable: React.FC = () => {
       return dateString;
     }
   };
+
+  const loadWorkOrderWithDetailedParts = useCallback(async (orderOrId: any) => {
+    const orderId = typeof orderOrId === 'number' ? orderOrId : Number(orderOrId?.id);
+    const baseOrder = typeof orderOrId === 'object' ? orderOrId : null;
+
+    if (!orderId) return baseOrder;
+
+    try {
+      const [workOrderRes, partsRes] = await Promise.all([
+        axios.get(`${API_URL}/work-orders/${orderId}`),
+        axios.get(`${API_URL}/work-order-parts/${orderId}`).catch(() => ({ data: [] })),
+      ]);
+
+      const latestOrder = workOrderRes?.data || baseOrder || {};
+      const partRows = Array.isArray(partsRes?.data) ? partsRes.data : [];
+
+      const normalizedParts = partRows.map((part: any) => {
+        const sku = String(part.sku || '').trim();
+        const inventoryItem = inventory.find((item: any) => String(item.sku || '').trim().toLowerCase() === sku.toLowerCase());
+        const resolvedInvoiceLink =
+          part.invoiceLink ||
+          part.invoice_link ||
+          inventoryItem?.invoiceLink ||
+          inventoryItem?.invoice_link ||
+          null;
+
+        return {
+          sku,
+          part: part.part || part.part_name || part.description || '',
+          part_name: part.part_name || part.part || part.description || '',
+          qty: part.qty_used ?? part.qty ?? 0,
+          qty_used: part.qty_used ?? part.qty ?? 0,
+          cost: part.cost ?? 0,
+          invoiceLink: resolvedInvoiceLink,
+          invoice_link: resolvedInvoiceLink,
+        };
+      });
+
+      return {
+        ...latestOrder,
+        parts: normalizedParts.length > 0
+          ? normalizedParts
+          : (Array.isArray(latestOrder?.parts) ? latestOrder.parts : []),
+      };
+    } catch (error) {
+      console.warn('Error loading detailed parts for finished W.O:', error);
+      return baseOrder;
+    }
+  }, [inventory]);
+
+  const openFinishedWorkOrderDetail = useCallback(async (order: any) => {
+    if (!order) return;
+
+    setDetailOrder(order);
+    const detailedOrder = await loadWorkOrderWithDetailedParts(order);
+    if (detailedOrder) {
+      setDetailOrder(detailedOrder);
+    }
+  }, [loadWorkOrderWithDetailedParts]);
 
   const fetchWorkOrders = useCallback(async (isRetry = false, pageToLoad?: number) => {
     try {
@@ -506,9 +574,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   const handleViewPDF = async (workOrderId: number) => {
     try {
-      // Fetch fresh data from API to ensure we have the latest information
-      const woResponse = await axios.get(`${API_URL}/work-orders/${workOrderId}`);
-      const workOrderFromTable = woResponse.data;
+      const workOrderFromTable = await loadWorkOrderWithDetailedParts(workOrderId);
       
       if (!workOrderFromTable) {
         alert('Work Order no encontrada');
@@ -522,7 +588,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
           sku: part.sku || '',
           part_name: part.part || part.description || '',
           qty_used: Number(part.qty) || 0,
-          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0
+          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
+          invoiceLink: part.invoiceLink || part.invoice_link || null,
         }));
       }
 
@@ -549,6 +616,15 @@ const FinishedWorkOrdersTable: React.FC = () => {
         }
       }
 
+      const miscPercentRaw = workOrderFromTable.miscellaneous ?? workOrderFromTable.miscellaneousPercent;
+      const miscPercent = Number(miscPercentRaw);
+      const weldPercent = Number(workOrderFromTable.weldPercent);
+      const normalizedMiscPercent = Number.isFinite(miscPercent) && miscPercent > 0 ? miscPercent : 0;
+      const normalizedWeldPercent = Number.isFinite(weldPercent) && weldPercent > 0 ? weldPercent : 0;
+      const normalizedExtraOptions = Array.isArray(workOrderFromTable.extraOptions)
+        ? workOrderFromTable.extraOptions
+        : [];
+
       const pdfData = {
         id: workOrderFromTable.id,
         idClassic: workOrderFromTable.idClassic || workOrderFromTable.id.toString(),
@@ -564,14 +640,17 @@ const FinishedWorkOrdersTable: React.FC = () => {
           um: 'EA',
           qty: part.qty_used,
           unitCost: part.cost,
-          total: part.qty_used * part.cost
+          total: part.qty_used * part.cost,
+          invoiceLink: part.invoiceLink || null,
         })),
         totalHrs: totalHrs,
         laborRate: 60,
         laborCost: totalHrs * 60,
         subtotalParts: workOrderParts.reduce((sum, part) => sum + (part.qty_used * part.cost), 0),
         totalCost: Number(workOrderFromTable.totalLabAndParts) || 0,
-        extraOptions: []
+        extraOptions: normalizedExtraOptions,
+        miscellaneousPercent: normalizedMiscPercent,
+        weldPercent: normalizedWeldPercent,
       };
 
       const pdf = await generateWorkOrderPDF(pdfData);
@@ -1232,7 +1311,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                     key={order.id}
                     onClick={() => {
                       setSelectedRow(order.id);
-                      setDetailOrder(order);
+                      openFinishedWorkOrderDetail(order);
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
