@@ -401,7 +401,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Mostrar SHOPMISC
   if (miscAmount > 0) {
     pdf.setTextColor(0, 100, 200); // Color azul para SHOPMISC
-    pdf.text(miscFixed > 0 ? 'SHOPMISC $ CLOSED:' : `SHOPMISC ${miscPercent}%:`, totalsStartX, currentY);
+    pdf.text(miscFixed > 0 ? 'SHOPMISC:' : `SHOPMISC ${miscPercent}%:`, totalsStartX, currentY);
     pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 6;
   }
@@ -409,7 +409,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Mostrar WELD SUPP si existe
   if (weldAmount > 0) {
     pdf.setTextColor(0, 100, 200); // Color azul para WELD SUPP
-    pdf.text(weldFixed > 0 ? 'WELD SUPP $ CLOSED:' : `WELD SUPP ${weldPercent}%:`, totalsStartX, currentY);
+    pdf.text(weldFixed > 0 ? 'WELD SUPP:' : `WELD SUPP ${weldPercent}%:`, totalsStartX, currentY);
     pdf.text(`$${weldAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 6;
   }

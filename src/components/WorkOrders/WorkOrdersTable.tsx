@@ -366,7 +366,7 @@ const WorkOrdersTable: React.FC = () => {
             return {
               ...part,
               part: part.part || part.part_name || part.description || '',
-              um: part.um || inventoryItem?.um || inventoryItem?.uom || inventoryItem?.unit || 'EA',
+              um: inventoryItem?.um || inventoryItem?.uom || inventoryItem?.unit || part.um || part.uom || part.unit || 'EA',
               invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
             };
           });
@@ -385,7 +385,7 @@ const WorkOrdersTable: React.FC = () => {
             parts: partsWithInvoices.map((part: any) => ({
               sku: part.sku,
               description: part.part || part.part_name || part.sku,
-              um: part.um || part.uom || part.unit || 'EA',
+              um: part.um || part.uom || part.unit || inventory.find((item: any) => item.sku === part.sku)?.um || inventory.find((item: any) => item.sku === part.sku)?.uom || inventory.find((item: any) => item.sku === part.sku)?.unit || 'EA',
               qty: part.qty_used,
               unitCost: part.cost || 0,
               total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
@@ -1334,6 +1334,7 @@ const WorkOrdersTable: React.FC = () => {
           part_name: part.part || inventory.find(i => i.sku === part.sku)?.part || '',
           qty_used: part.qty,
           cost: Number(String(part.cost).replace(/[^0-9.]/g, '')),
+          um: part.um || part.uom || part.unit || inventory.find(i => i.sku === part.sku)?.um || inventory.find(i => i.sku === part.sku)?.uom || inventory.find(i => i.sku === part.sku)?.unit || 'EA',
           fifo_info: fifoInfoForPart,
           usuario: localStorage.getItem('username') || ''
         }).catch(error => {
@@ -1690,7 +1691,7 @@ const WorkOrdersTable: React.FC = () => {
             return {
               ...part,
               part: part.part || part.part_name || part.description || '',
-              um: part.um || inventoryItem?.um || inventoryItem?.uom || inventoryItem?.unit || 'EA',
+              um: inventoryItem?.um || inventoryItem?.uom || inventoryItem?.unit || part.um || part.uom || part.unit || 'EA',
               invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
             };
           }) : [];
@@ -1711,7 +1712,7 @@ const WorkOrdersTable: React.FC = () => {
             parts: enrichedParts.map((part: any) => ({
               sku: part.sku || '',
               description: part.part || part.part_name || part.sku || 'N/A',
-              um: part.um || part.uom || part.unit || 'EA',
+              um: part.um || part.uom || part.unit || inventory.find((item: any) => item.sku === part.sku)?.um || inventory.find((item: any) => item.sku === part.sku)?.uom || inventory.find((item: any) => item.sku === part.sku)?.unit || 'EA',
               qty: Number(part.qty_used) || 0,
               unitCost: Number(part.cost) || 0,
               total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
@@ -2098,7 +2099,7 @@ const WorkOrdersTable: React.FC = () => {
         parts: enrichedParts.map((part: any) => ({
           sku: part.sku || '',
           description: part.part || part.part_name || part.sku || 'N/A',
-          um: part.um || part.uom || part.unit || 'EA',
+          um: part.um || part.uom || part.unit || inventory.find((item: any) => item.sku === part.sku)?.um || inventory.find((item: any) => item.sku === part.sku)?.uom || inventory.find((item: any) => item.sku === part.sku)?.unit || 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
           total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
@@ -3480,7 +3481,7 @@ const WorkOrdersTable: React.FC = () => {
 
         return (
         <div style={modalStyle} onClick={() => setDetailOrder(null)}>
-          <div style={{ ...modalContentStyle, maxWidth: 750, width: '90vw' }} onClick={event => event.stopPropagation()}>
+          <div style={{ ...modalContentStyle, maxWidth: 1120, width: '96vw' }} onClick={event => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ margin: 0, color: '#1976d2' }}>
                 W.O #{detailOrder.id} {detailOrder.idClassic ? `• ${detailOrder.idClassic}` : ''}

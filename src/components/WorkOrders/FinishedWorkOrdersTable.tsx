@@ -623,7 +623,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
         parts: workOrderParts.map((part: any) => ({
           sku: part.sku,
           description: part.part_name,
-          um: part.um || part.uom || part.unit || 'EA',
+          um: inventory.find((item: any) => item.sku === part.sku)?.um || inventory.find((item: any) => item.sku === part.sku)?.uom || inventory.find((item: any) => item.sku === part.sku)?.unit || part.um || part.uom || part.unit || 'EA',
           qty: part.qty_used,
           unitCost: part.cost,
           total: part.qty_used * part.cost,
@@ -1464,7 +1464,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
         return (
         <div style={modalStyle} onClick={() => setDetailOrder(null)}>
-          <div style={{ ...modalContentStyle, maxWidth: 750, width: '90vw' }} onClick={event => event.stopPropagation()}>
+          <div style={{ ...modalContentStyle, maxWidth: 1120, width: '96vw' }} onClick={event => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ margin: 0, color: colors.primary }}>
                 W.O #{detailOrder.id} {detailOrder.idClassic ? `• ${detailOrder.idClassic}` : ''}
