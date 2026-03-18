@@ -262,8 +262,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
-  const [editingTotalId, setEditingTotalId] = useState<number | null>(null);
-  const [editingTotalValue, setEditingTotalValue] = useState('');
   
   // NEW: Admin filters
   const [selectedClient, setSelectedClient] = useState('all');
@@ -341,11 +339,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const openFinishedWorkOrderDetail = useCallback(async (order: any) => {
     if (!order) return;
 
-    setDetailOrder(order);
+     // Don't show modal yet — wait for complete parts load to avoid UI flicker
     const detailedOrder = await loadWorkOrderWithDetailedParts(order);
     if (detailedOrder) {
       setDetailOrder(detailedOrder);
-    }
+     } else {
+       setDetailOrder(order);
+     }
   }, [loadWorkOrderWithDetailedParts]);
 
   const fetchWorkOrders = useCallback(async (isRetry = false, pageToLoad?: number) => {
@@ -1621,52 +1621,9 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {editingTotalId === detailOrder.id ? (
-                  <>
-                    <span style={{ color: colors.success, fontWeight: 700, fontSize: 16 }}>Total W.O: $</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editingTotalValue}
-                      onChange={e => setEditingTotalValue(e.target.value)}
-                      style={{ width: 120, fontSize: 15, padding: '4px 6px', borderRadius: 4, border: `1px solid ${colors.primary}` }}
-                      autoFocus
-                    />
-                    <button
-                      style={{ background: colors.success, color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}
-                      onClick={async () => {
-                        const newTotal = Number(editingTotalValue);
-                        if (isNaN(newTotal) || newTotal <= 0) { alert('Invalid amount'); return; }
-                        try {
-                          await axios.put(`${API_URL}/work-orders/${detailOrder.id}`, {
-                            ...detailOrder,
-                            totalLabAndParts: newTotal,
-                            usuario: localStorage.getItem('username') || ''
-                          });
-                          setDetailOrder((prev: any) => prev ? { ...prev, totalLabAndParts: newTotal } : prev);
-                          setWorkOrders((prev: any[]) => prev.map((o: any) => o.id === detailOrder.id ? { ...o, totalLabAndParts: newTotal } : o));
-                          setEditingTotalId(null);
-                          alert('Total updated successfully.');
-                        } catch { alert('Error updating total.'); }
-                      }}
-                    >✓ Save</button>
-                    <button
-                      style={{ background: colors.gray200, color: colors.gray700, border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' }}
-                      onClick={() => setEditingTotalId(null)}
-                    >✕</button>
-                  </>
-                ) : (
-                  <>
-                    <strong style={{ color: colors.success, fontSize: 18 }}>
-                      Total W.O: {finalTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                    </strong>
-                    <button
-                      title="Correct stored total"
-                      style={{ background: 'none', border: `1px solid ${colors.gray300}`, borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11, color: colors.gray600 }}
-                      onClick={() => { setEditingTotalId(detailOrder.id); setEditingTotalValue(finalTotal.toFixed(2)); }}
-                    >✏ Edit</button>
-                  </>
-                )}
+                <strong style={{ color: colors.success, fontSize: 18 }}>
+                  Total W.O: {finalTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </strong>
               </div>
               <button
                 style={secondaryBtn}

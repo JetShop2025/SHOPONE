@@ -24,6 +24,7 @@ interface WorkOrderData {
   laborCost: number;
   subtotalParts: number;
   totalCost: number;
+  totalLabAndParts?: number;
   extraOptions?: string[];
   miscellaneousPercent?: number;
   weldPercent?: number;
@@ -425,7 +426,12 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(220, 20, 60);
   pdf.setFont('courier', 'bold');
   pdf.text('TOTAL LAB & PARTS:', totalsStartX, currentY);
-  const pdfTotal = parseFloat((subtotal + miscAmount + weldAmount).toFixed(2));
+  const storedTotalRaw = workOrderData.totalLabAndParts ?? workOrderData.totalCost;
+  const storedTotal = Number(storedTotalRaw);
+  const hasStoredTotal = Number.isFinite(storedTotal) && storedTotal > 0;
+  const pdfTotal = hasStoredTotal
+    ? parseFloat(storedTotal.toFixed(2))
+    : parseFloat((subtotal + miscAmount + weldAmount).toFixed(2));
   pdf.text(`$${pdfTotal.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     // Resetear fuente
   pdf.setFont('courier', 'normal');
