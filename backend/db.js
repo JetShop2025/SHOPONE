@@ -779,7 +779,9 @@ async function updateOrder(id, order) {
       finalEndDate || null,
       order.description || null,
       order.totalHrs || null,
-      order.totalLabAndParts !== undefined && order.totalLabAndParts !== null ? order.totalLabAndParts : null,
+      (order.totalLabAndParts !== undefined && order.totalLabAndParts !== null && order.totalLabAndParts !== '' && !isNaN(Number(order.totalLabAndParts)) && Number(order.totalLabAndParts) > 0)
+        ? order.totalLabAndParts
+        : (currentData.totalLabAndParts ?? null),
       order.status || 'PROCESSING',
       order.idClassic || null,
       JSON.stringify(order.mechanics || []),

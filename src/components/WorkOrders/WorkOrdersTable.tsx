@@ -982,27 +982,29 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       try {
-        // Call updateWorkOrderStatus to handle recently finished tracking and state updates
-        await updateWorkOrderStatus(draggedOrder, 'FINISHED');
-        
-        // Update with ID Classic
+        // Track recently finished W.O (keep last 4, discard after 5 min)
+        const newFinished = [...recentlyFinished, { order: draggedOrder, timestamp: Date.now() }].slice(-4);
+        setRecentlyFinished(newFinished);
+        setTimeout(() => {
+          setRecentlyFinished(prev => prev.filter(item => item.order.id !== draggedOrder.id));
+        }, 5 * 60 * 1000);
+
+        // Optimistic state update
         setWorkOrders(prev =>
           prev.map(item =>
-            item.id === draggedOrder.id ? { ...item, idClassic: idClassic } : item
+            item.id === draggedOrder.id ? { ...item, status: 'FINISHED', idClassic: idClassic } : item
           )
         );
-
         setDetailOrder((prev: any) =>
-          prev && prev.id === draggedOrder.id ? { ...prev, idClassic: idClassic } : prev
+          prev && prev.id === draggedOrder.id ? { ...prev, status: 'FINISHED', idClassic: idClassic } : prev
         );
-
         setContextMenu(prev =>
           prev.order && prev.order.id === draggedOrder.id
-            ? { ...prev, order: { ...prev.order, idClassic: idClassic } }
+            ? { ...prev, order: { ...prev.order, status: 'FINISHED', idClassic: idClassic } }
             : prev
         );
 
-        // Send idClassic update to backend
+        // Single PUT — preserves totalLabAndParts exactly as stored
         await axios.put(`${API_URL}/work-orders/${draggedOrder.id}`, {
           ...draggedOrder,
           status: 'FINISHED',
@@ -1012,9 +1014,25 @@ const WorkOrdersTable: React.FC = () => {
 
         console.log(`✅ Work Order transferred to FINAL W.O with ID Classic: ${idClassic}`);
         alert(`✅ Work Order #${draggedOrder.id} has been transferred to FINAL W.O`);
-      } catch (error) {
+      } catch (error: any) {
+        // Revert state on failure
+        setWorkOrders(prev =>
+          prev.map(item =>
+            item.id === draggedOrder.id ? { ...item, status: draggedOrder.status } : item
+          )
+        );
+        setDetailOrder((prev: any) =>
+          prev && prev.id === draggedOrder.id ? { ...prev, status: draggedOrder.status } : prev
+        );
         console.error('Error transferring Work Order:', error);
-        alert('⚠️ Error transferring Work Order. Please try again.');
+        const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || '';
+        if (error?.response?.status === 409) {
+          alert(`Cannot transfer: ${msg}`);
+        } else if (error?.response?.status === 400) {
+          alert(`Cannot transfer: ${msg}`);
+        } else {
+          alert('⚠️ Error transferring Work Order. Please try again.');
+        }
       }
       setDraggingOrderId(null);
       return;
