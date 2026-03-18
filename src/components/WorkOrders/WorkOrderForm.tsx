@@ -151,6 +151,22 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       ) {
         onChange({ target: { name: 'weldPercent', value: '0' } } as any);
       }
+      if (
+        workOrder.miscellaneousFixed === undefined ||
+        workOrder.miscellaneousFixed === null ||
+        workOrder.miscellaneousFixed === '' ||
+        isNaN(Number(workOrder.miscellaneousFixed))
+      ) {
+        onChange({ target: { name: 'miscellaneousFixed', value: '0' } } as any);
+      }
+      if (
+        workOrder.weldFixed === undefined ||
+        workOrder.weldFixed === null ||
+        workOrder.weldFixed === '' ||
+        isNaN(Number(workOrder.weldFixed))
+      ) {
+        onChange({ target: { name: 'weldFixed', value: '0' } } as any);
+      }
     }
   }, [workOrder.id]);
 
@@ -190,8 +206,16 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       const subtotal = laborTotal + partsTotal;
       const miscPercent = Number(workOrder.miscellaneous ?? 0);
       const weldPercent = Number(workOrder.weldPercent ?? 0);
-      const miscAmount = Math.round(subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100) * 100) / 100;
-      const weldAmount = Math.round(subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100) * 100) / 100;
+      const miscFixed = Number(workOrder.miscellaneousFixed ?? 0);
+      const weldFixed = Number(workOrder.weldFixed ?? 0);
+      const miscAmount =
+        !isNaN(miscFixed) && miscFixed > 0
+          ? miscFixed
+          : Math.round(subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100) * 100) / 100;
+      const weldAmount =
+        !isNaN(weldFixed) && weldFixed > 0
+          ? weldFixed
+          : Math.round(subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100) * 100) / 100;
       const calculatedTotal = subtotal + miscAmount + weldAmount;
       
       // Obtener el valor actual del total
@@ -208,6 +232,20 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       setManualTotalOverride(false);
     }
   }, [workOrder.id, title, isEditingMode]);
+
+  const getMiscAmount = (subtotal: number) => {
+    const miscFixed = Number(workOrder.miscellaneousFixed ?? 0);
+    if (!isNaN(miscFixed) && miscFixed > 0) return miscFixed;
+    const miscPercent = Number(workOrder.miscellaneous ?? 0);
+    return Math.round(subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100) * 100) / 100;
+  };
+
+  const getWeldAmount = (subtotal: number) => {
+    const weldFixed = Number(workOrder.weldFixed ?? 0);
+    if (!isNaN(weldFixed) && weldFixed > 0) return weldFixed;
+    const weldPercent = Number(workOrder.weldPercent ?? 0);
+    return Math.round(subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100) * 100) / 100;
+  };
 
   // Auto-calculate total automatically:
   // - NEW: siempre que cambien partes/mechanics/misc/weld
@@ -240,17 +278,15 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         }, 0)
       : 0;
     const subtotal = laborTotal + partsTotal;
-    const miscPercent = Number(workOrder.miscellaneous);
-    const weldPercent = Number(workOrder.weldPercent);
-    const miscAmount = Math.round(subtotal * ((!isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0) / 100) * 100) / 100;
-    const weldAmount = Math.round(subtotal * ((!isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0) / 100) * 100) / 100;
+    const miscAmount = getMiscAmount(subtotal);
+    const weldAmount = getWeldAmount(subtotal);
     const calculatedTotal = subtotal + miscAmount + weldAmount;
     const formattedTotal = `$${calculatedTotal.toFixed(2)}`;
     const currentValue = String(workOrder.totalLabAndParts ?? '').trim();
     if (currentValue !== formattedTotal) {
       onChange({ target: { name: 'totalLabAndParts', value: formattedTotal } } as any);
     }
-  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, onChange, manualTotalOverride, isEditingMode]);
+  }, [workOrder.parts, workOrder.mechanics, workOrder.miscellaneous, workOrder.weldPercent, workOrder.miscellaneousFixed, workOrder.weldFixed, onChange, manualTotalOverride, isEditingMode]);
   
   // Buscar parte en inventario por SKU
   const findPartBySku = (sku: string) => {
@@ -355,14 +391,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     const laborTotal = totalHours * 60; // $60 por hora
     const partsTotal = calculatePartsTotal();
     const subtotal = laborTotal + partsTotal;
-    // Miscellaneous: porcentaje extra definido por el usuario
-    let miscPercent = Number(workOrder.miscellaneous);
-    miscPercent = !isNaN(miscPercent) && miscPercent >= 0 ? miscPercent : 0;
-    const miscAmount = Math.round(subtotal * (miscPercent / 100) * 100) / 100;
-    // Welding Supplies: porcentaje extra definido por el usuario
-    let weldPercent = Number(workOrder.weldPercent);
-    weldPercent = !isNaN(weldPercent) && weldPercent >= 0 ? weldPercent : 0;
-    const weldAmount = Math.round(subtotal * (weldPercent / 100) * 100) / 100;
+    const miscAmount = getMiscAmount(subtotal);
+    const weldAmount = getWeldAmount(subtotal);
     const total = subtotal + miscAmount + weldAmount;
     return !isNaN(total) && total >= 0 ? total : 0;
   };
@@ -539,8 +569,10 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         if (weldValue === undefined || weldValue === null || weldValue === '' || isNaN(Number(weldValue))) {
           weldValue = '0';
         }
-        let miscPercentNum = parseFloat(miscValue) || 0;
-        let weldPercentNum = parseFloat(weldValue) || 0;
+        const miscPercentNum = parseFloat(miscValue) || 0;
+        const weldPercentNum = parseFloat(weldValue) || 0;
+        const miscFixedNum = Math.max(0, Number(workOrder.miscellaneousFixed || 0)) || 0;
+        const weldFixedNum = Math.max(0, Number(workOrder.weldFixed || 0)) || 0;
         const laborTotal = totalHrs * 60;
         const partsTotal = Array.isArray(cleanParts) && cleanParts.length > 0 ? cleanParts.reduce((total: number, part: any) => {
           const qty = Number(part && part.qty);
@@ -550,8 +582,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           return total + (validQty * validCost);
         }, 0) : 0;
         const subtotal = laborTotal + partsTotal;
-        const miscAmount = subtotal * (miscPercentNum / 100);
-        const weldAmount = subtotal * (weldPercentNum / 100);
+        const miscAmount = miscFixedNum > 0 ? miscFixedNum : subtotal * (miscPercentNum / 100);
+        const weldAmount = weldFixedNum > 0 ? weldFixedNum : subtotal * (weldPercentNum / 100);
         const calculatedTotal = subtotal + miscAmount + weldAmount;
 
         const manualTotalRaw = workOrder.totalLabAndParts;
@@ -619,6 +651,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         totalLabAndParts: finalTotalLabAndParts,
         miscellaneous: miscValue,
         weldPercent: weldValue,
+        miscellaneousFixed: String(Math.max(0, Number(workOrder.miscellaneousFixed || 0)) || 0),
+        weldFixed: String(Math.max(0, Number(workOrder.weldFixed || 0)) || 0),
         usuario: localStorage.getItem('username') || '',
         forceUpdate: true,
         date: startDateToSend,
@@ -1499,14 +1533,28 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 placeholder="%"
               />
             </label>
+            <label style={{ fontWeight: 500, color: '#0A3854', marginRight: 4, display: 'inline-flex', alignItems: 'center' }}>
+              $ Closed:
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="miscellaneousFixed"
+                value={workOrder.miscellaneousFixed ?? ''}
+                onChange={e => {
+                  onChange({ target: { name: 'miscellaneousFixed', value: e.target.value } } as any);
+                }}
+                style={{ width: 92, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
+                placeholder="$"
+              />
+            </label>
             <span style={{ color: '#0A3854', fontWeight: 700, whiteSpace: 'nowrap', background: '#f0f4f8', border: '1px solid #b0c4de', borderRadius: 6, padding: '6px 10px' }}>
               Extra charge: ${(() => {
                 const totalHours = calculateTotalHours();
                 const laborTotal = totalHours * 60;
                 const partsTotal = calculatePartsTotal();
                 const subtotal = laborTotal + partsTotal;
-                const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
-                return (subtotal * (miscPercent / 100)).toFixed(2);
+                return getMiscAmount(subtotal).toFixed(2);
               })()}
             </span>
           </div>
@@ -1531,14 +1579,28 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 placeholder="%"
               />
             </label>
+            <label style={{ fontWeight: 500, color: '#0A3854', marginRight: 4, display: 'inline-flex', alignItems: 'center' }}>
+              $ Closed:
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="weldFixed"
+                value={workOrder.weldFixed ?? ''}
+                onChange={e => {
+                  onChange({ target: { name: 'weldFixed', value: e.target.value } } as any);
+                }}
+                style={{ width: 92, marginLeft: 8, padding: 4, border: '1px solid #ccc', borderRadius: 4 }}
+                placeholder="$"
+              />
+            </label>
             <span style={{ color: '#0A3854', fontWeight: 700, whiteSpace: 'nowrap', background: '#f0f4f8', border: '1px solid #b0c4de', borderRadius: 6, padding: '6px 10px' }}>
               Cargo extra: ${(() => {
                 const totalHours = calculateTotalHours();
                 const laborTotal = totalHours * 60;
                 const partsTotal = calculatePartsTotal();
                 const subtotal = laborTotal + partsTotal;
-                const weldPercent = parseFloat(workOrder.weldPercent) || 0;
-                return (subtotal * (weldPercent / 100)).toFixed(2);
+                return getWeldAmount(subtotal).toFixed(2);
               })()}
             </span>
           </div>
@@ -1603,23 +1665,19 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               const laborTotal = totalHours * 60;
               const partsTotal = calculatePartsTotal();
               const subtotal = laborTotal + partsTotal;
-              const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
-              return (subtotal * (miscPercent / 100)).toFixed(2);
+              return getMiscAmount(subtotal).toFixed(2);
             })()}) + Welding Supplies (${(() => {
               const totalHours = calculateTotalHours();
               const laborTotal = totalHours * 60;
               const partsTotal = calculatePartsTotal();
               const subtotal = laborTotal + partsTotal;
-              const weldPercent = parseFloat(workOrder.weldPercent) || 0;
-              return (subtotal * (weldPercent / 100)).toFixed(2);
+              return getWeldAmount(subtotal).toFixed(2);
             })()}) = ${(() => {
               const totalHours = calculateTotalHours();
               const laborTotal = totalHours * 60;
               const partsTotal = calculatePartsTotal();
               const subtotal = laborTotal + partsTotal;
-              const miscPercent = parseFloat(workOrder.miscellaneous) || 0;
-              const weldPercent = parseFloat(workOrder.weldPercent) || 0;
-              return (subtotal + (subtotal * (miscPercent / 100)) + (subtotal * (weldPercent / 100))).toFixed(2);
+              return (subtotal + getMiscAmount(subtotal) + getWeldAmount(subtotal)).toFixed(2);
             })()}
           </div>
         </div>

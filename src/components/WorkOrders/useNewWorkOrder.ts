@@ -16,6 +16,8 @@ export interface WorkOrder {
   preWoLink?: string;
   mechanics?: any[];
   extraOptions?: string[];
+  miscellaneousFixed?: string;
+  weldFixed?: string;
 }
 
 const EMPTY_WORK_ORDER: WorkOrder = {
@@ -37,6 +39,8 @@ const EMPTY_WORK_ORDER: WorkOrder = {
   status: '',
   idClassic: '',
   preWoLink: '',
+  miscellaneousFixed: '0',
+  weldFixed: '0',
 };
 
 export function useNewWorkOrder(): [
@@ -68,6 +72,8 @@ export function useNewWorkOrder(): [
       status: '',
       idClassic: '',
       preWoLink: '',
+      miscellaneousFixed: '0',
+      weldFixed: '0',
       mechanics: [],
       extraOptions: []
     };

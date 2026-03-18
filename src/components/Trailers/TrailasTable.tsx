@@ -427,7 +427,7 @@ const TrailasTable: React.FC = () => {
         parts: workOrderParts.map((part: any) => ({
           sku: part.sku || '',
           description: part.part_name || part.sku || 'N/A',
-          um: 'EA',
+          um: part.um || part.uom || part.unit || 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
           total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
@@ -436,7 +436,11 @@ const TrailasTable: React.FC = () => {
         })),
         laborCost: laborCost,
         subtotalParts: subtotalParts,
-        totalCost: totalCost
+        totalCost: totalCost,
+        miscellaneousPercent: Number(workOrder.miscellaneous || 0),
+        weldPercent: Number(workOrder.weldPercent || 0),
+        miscellaneousFixed: Number(workOrder.miscellaneousFixed || 0),
+        weldFixed: Number(workOrder.weldFixed || 0)
       };
       
       console.log('📄 Datos preparados para PDF desde Trailer Control:', pdfData);

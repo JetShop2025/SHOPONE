@@ -1190,17 +1190,18 @@ router.post('/', async (req, res) => {
     } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
       miscPercent = Number(fields.miscellaneous);
     }
-    const shopMisc = subtotal * (miscPercent / 100);
-    extra += shopMisc;
-
     // Welding Supplies (editable %)
     let weldPercent = 0;
     if (typeof fields.weldPercent !== 'undefined' && fields.weldPercent !== null && fields.weldPercent !== '') {
       weldPercent = Number(fields.weldPercent);
     }
     if (isNaN(weldPercent)) weldPercent = 0;
-    const weldSupplies = subtotal * (weldPercent / 100);
+    const miscFixed = Math.max(0, Number(fields.miscellaneousFixed || 0)) || 0;
+    const weldFixed = Math.max(0, Number(fields.weldFixed || 0)) || 0;
+    const weldSupplies = weldFixed > 0 ? weldFixed : subtotal * (weldPercent / 100);
+    const shopMisc = miscFixed > 0 ? miscFixed : subtotal * (miscPercent / 100);
     extra += weldSupplies;
+    extra += shopMisc;
 
     // Calcula el total final
     let totalLabAndPartsFinal;
@@ -1221,13 +1222,13 @@ router.post('/', async (req, res) => {
     
     // INSERTAR EN DB SIMPLE
     const query = `
-      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent, employeeWrittenHours, preWoLink)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO work_orders (billToCo, trailer, mechanic, mechanics, date, description, parts, totalHrs, totalLabAndParts, status, idClassic, extraOptions, miscellaneousPercent, weldPercent, miscellaneousFixed, weldFixed, employeeWrittenHours, preWoLink)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, status, idClassic,
-      JSON.stringify(extraOptions || []), miscPercent, weldPercent, fields.employeeWrittenHours || null, preWoLink
+      JSON.stringify(extraOptions || []), miscPercent, weldPercent, miscFixed, weldFixed, fields.employeeWrittenHours || null, preWoLink
     ];
     
     console.log(`🗄️ [${requestId}] Ejecutando query de inserción...`);
@@ -1255,6 +1256,8 @@ router.post('/', async (req, res) => {
             extraOptions: extraOptions || [],
             miscellaneousPercent: miscPercent,
             weldPercent,
+            miscellaneousFixed: miscFixed,
+            weldFixed,
             employeeWrittenHours: fields.employeeWrittenHours || null,
             preWoLink,
             idClassic
@@ -1602,7 +1605,9 @@ router.put('/:id', async (req, res) => {
     } else if (typeof fields.miscellaneous !== 'undefined' && fields.miscellaneous !== null && fields.miscellaneous !== '') {
       miscPercent = Number(fields.miscellaneous);
     }
-    const shopMisc = subtotal * (miscPercent / 100);
+    const miscFixed = Math.max(0, Number(fields.miscellaneousFixed || 0)) || 0;
+    const weldFixed = Math.max(0, Number(fields.weldFixed || 0)) || 0;
+    const shopMisc = miscFixed > 0 ? miscFixed : subtotal * (miscPercent / 100);
     extra += shopMisc;
 
     // Welding Supplies (editable %)
@@ -1613,7 +1618,7 @@ router.put('/:id', async (req, res) => {
       weldPercentFinal = Number(fields.weldPercent);
     }
     if (isNaN(weldPercentFinal)) weldPercentFinal = 0;
-    const weldSupplies = subtotal * (weldPercentFinal / 100);
+    const weldSupplies = weldFixed > 0 ? weldFixed : subtotal * (weldPercentFinal / 100);
     extra += weldSupplies;
 
     // Calcula el total final
@@ -1626,12 +1631,12 @@ router.put('/:id', async (req, res) => {
     const mechanicsArr = Array.isArray(fields.mechanics) ? fields.mechanics : [];
   let updateQuery = `
       UPDATE work_orders SET 
-        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?, employeeWrittenHours = ?, preWoLink = ?
+        billToCo = ?, trailer = ?, mechanic = ?, mechanics = ?, date = ?, description = ?, parts = ?, totalHrs = ?, totalLabAndParts = ?, status = ?, extraOptions = ?, poClassic = ?, miscellaneousPercent = ?, weldPercent = ?, miscellaneousFixed = ?, weldFixed = ?, employeeWrittenHours = ?, preWoLink = ?
     `;
     const updateFields = [
       billToCo, trailer, mechanic, JSON.stringify(mechanicsArr), date, description,
       JSON.stringify(partsArr), totalHrsPut, totalLabAndPartsFinal, statusToSave,
-      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal, employeeWrittenHours || null, preWoLink ? String(preWoLink).trim() : null
+      JSON.stringify(extraOptions || []), fields.poClassic || null, miscPercent, weldPercentFinal, miscFixed, weldFixed, employeeWrittenHours || null, preWoLink ? String(preWoLink).trim() : null
     ];
     if (statusToSave === 'FINISHED') {
       updateQuery += `, idClassic = ?`;
@@ -1661,6 +1666,8 @@ router.put('/:id', async (req, res) => {
           extraOptions: extraOptions || [],
           miscellaneousPercent: miscPercent,
           weldPercent: weldPercentFinal,
+          miscellaneousFixed: miscFixed,
+          weldFixed: weldFixed,
           employeeWrittenHours: employeeWrittenHours || null,
           preWoLink: preWoLink ? String(preWoLink).trim() : null
         };

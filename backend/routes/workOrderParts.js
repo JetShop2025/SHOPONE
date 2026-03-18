@@ -6,7 +6,7 @@ router.use(express.json());
 
 // Registrar partes usadas
 router.post('/', async (req, res) => {
-  const { work_order_id, sku, part_name, qty_used, cost, usuario } = req.body;
+  const { work_order_id, sku, part_name, qty_used, cost, um, usuario } = req.body;
   const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
 
   console.log('Body recibido en /work-order-parts:', req.body);
@@ -36,6 +36,7 @@ router.post('/', async (req, res) => {
       part_name: part_name || '',
       qty_used: Number(qty_used) || 0,
       cost: cleanCost,
+      um: um || 'EA',
       usuario: usuario || 'system'
     }, fifoInfo);
 

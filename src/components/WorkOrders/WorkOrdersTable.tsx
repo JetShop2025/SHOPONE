@@ -366,6 +366,7 @@ const WorkOrdersTable: React.FC = () => {
             return {
               ...part,
               part: part.part || part.part_name || part.description || '',
+              um: part.um || inventoryItem?.um || inventoryItem?.uom || inventoryItem?.unit || 'EA',
               invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
             };
           });
@@ -384,7 +385,7 @@ const WorkOrdersTable: React.FC = () => {
             parts: partsWithInvoices.map((part: any) => ({
               sku: part.sku,
               description: part.part || part.part_name || part.sku,
-              um: 'EA',
+              um: part.um || part.uom || part.unit || 'EA',
               qty: part.qty_used,
               unitCost: part.cost || 0,
               total: (part.qty_used && part.cost && !isNaN(Number(part.qty_used)) && !isNaN(Number(part.cost)))
@@ -408,6 +409,16 @@ const WorkOrdersTable: React.FC = () => {
               ? Number(workOrderData.weldPercent)
               : (typeof dataToSend.weldPercent !== 'undefined' && dataToSend.weldPercent !== null && dataToSend.weldPercent !== '')
                 ? Number(dataToSend.weldPercent)
+                : 0,
+            miscellaneousFixed: (typeof workOrderData.miscellaneousFixed !== 'undefined' && workOrderData.miscellaneousFixed !== null && workOrderData.miscellaneousFixed !== '')
+              ? Number(workOrderData.miscellaneousFixed)
+              : (typeof dataToSend.miscellaneousFixed !== 'undefined' && dataToSend.miscellaneousFixed !== null && dataToSend.miscellaneousFixed !== '')
+                ? Number(dataToSend.miscellaneousFixed)
+                : 0,
+            weldFixed: (typeof workOrderData.weldFixed !== 'undefined' && workOrderData.weldFixed !== null && workOrderData.weldFixed !== '')
+              ? Number(workOrderData.weldFixed)
+              : (typeof dataToSend.weldFixed !== 'undefined' && dataToSend.weldFixed !== null && dataToSend.weldFixed !== '')
+                ? Number(dataToSend.weldFixed)
                 : 0
           };
           
@@ -1679,6 +1690,7 @@ const WorkOrdersTable: React.FC = () => {
             return {
               ...part,
               part: part.part || part.part_name || part.description || '',
+              um: part.um || inventoryItem?.um || inventoryItem?.uom || inventoryItem?.unit || 'EA',
               invoiceLink: inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null
             };
           }) : [];
@@ -1699,7 +1711,7 @@ const WorkOrdersTable: React.FC = () => {
             parts: enrichedParts.map((part: any) => ({
               sku: part.sku || '',
               description: part.part || part.part_name || part.sku || 'N/A',
-              um: 'EA',
+              um: part.um || part.uom || part.unit || 'EA',
               qty: Number(part.qty_used) || 0,
               unitCost: Number(part.cost) || 0,
               total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
@@ -1713,7 +1725,9 @@ const WorkOrdersTable: React.FC = () => {
             totalCost: Number(workOrderData.totalLabAndParts) || 0,
             extraOptions: order.extraOptions || [],
             miscellaneousPercent: Number(workOrderData.miscellaneous) || 0,
-            weldPercent: Number(workOrderData.weldPercent) || 0
+            weldPercent: Number(workOrderData.weldPercent) || 0,
+            miscellaneousFixed: Number(workOrderData.miscellaneousFixed) || 0,
+            weldFixed: Number(workOrderData.weldFixed) || 0
           };
           
           const pdf = await generateWorkOrderPDF(pdfData);
@@ -2084,7 +2098,7 @@ const WorkOrdersTable: React.FC = () => {
         parts: enrichedParts.map((part: any) => ({
           sku: part.sku || '',
           description: part.part || part.part_name || part.sku || 'N/A',
-          um: 'EA',
+          um: part.um || part.uom || part.unit || 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
           total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
@@ -2100,7 +2114,9 @@ const WorkOrdersTable: React.FC = () => {
           : 0,
         weldPercent: (typeof finalWorkOrderData.weldPercent !== 'undefined' && finalWorkOrderData.weldPercent !== null && finalWorkOrderData.weldPercent !== '')
           ? Number(finalWorkOrderData.weldPercent)
-          : 0
+          : 0,
+        miscellaneousFixed: Number(finalWorkOrderData.miscellaneousFixed) || 0,
+        weldFixed: Number(finalWorkOrderData.weldFixed) || 0
       };
       
       console.log('📄 Datos finales preparados para PDF:', pdfData);
@@ -3448,8 +3464,10 @@ const WorkOrdersTable: React.FC = () => {
         const miscPercentValue = Number.isFinite(miscPercent) && miscPercent > 0 ? miscPercent : 0;
         const weldPercent = Number(detailOrder.weldPercent);
         const weldPercentValue = Number.isFinite(weldPercent) && weldPercent > 0 ? weldPercent : 0;
-        const miscAmount = baseSubtotal * (miscPercentValue / 100);
-        const weldAmount = baseSubtotal * (weldPercentValue / 100);
+        const miscFixedValue = Math.max(0, Number(detailOrder.miscellaneousFixed || 0)) || 0;
+        const weldFixedValue = Math.max(0, Number(detailOrder.weldFixed || 0)) || 0;
+        const miscAmount = miscFixedValue > 0 ? miscFixedValue : baseSubtotal * (miscPercentValue / 100);
+        const weldAmount = weldFixedValue > 0 ? weldFixedValue : baseSubtotal * (weldPercentValue / 100);
         const calculatedTotal = baseSubtotal + miscAmount + weldAmount;
         const rawStoredTotal = detailOrder.totalLabAndParts;
         const storedTotal = Number(String(rawStoredTotal ?? '').replace(/[^0-9.-]/g, ''));
@@ -3610,11 +3628,11 @@ const WorkOrdersTable: React.FC = () => {
                   <strong>{partsSubtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span>Miscellaneous ({miscPercentValue.toFixed(2)}%)</span>
+                  <span>{miscFixedValue > 0 ? 'Miscellaneous ($ Closed)' : `Miscellaneous (${miscPercentValue.toFixed(2)}%)`}</span>
                   <strong>{miscAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span>Welding Supplies ({weldPercentValue.toFixed(2)}%)</span>
+                  <span>{weldFixedValue > 0 ? 'Welding Supplies ($ Closed)' : `Welding Supplies (${weldPercentValue.toFixed(2)}%)`}</span>
                   <strong>{weldAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #d0d7e2', paddingTop: 6, marginTop: 6 }}>

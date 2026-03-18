@@ -27,6 +27,8 @@ interface WorkOrderData {
   extraOptions?: string[];
   miscellaneousPercent?: number;
   weldPercent?: number;
+  miscellaneousFixed?: number;
+  weldFixed?: number;
 }
 
 type PDFWithAutoTable = jsPDF & {
@@ -65,6 +67,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   
   // Márgenes de página (A4: 210mm ancho)
   const pageWidth = 210;
+  const pageHeight = 297;
   const leftMargin = 15;
   const rightMargin = 15;
   const contentWidth = pageWidth - leftMargin - rightMargin; // 180mm
@@ -232,7 +235,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setFont('courier', 'normal');
   pdf.setTextColor(0, 0, 0);
   // DESCRIPCIÓN
-  const descY = firstRowY + boxHeight + 18; // Aumentar espacio para el status
+  const descY = firstRowY + boxHeight + 12;
   pdf.setFontSize(10);
   pdf.setTextColor(10, 56, 84);
   pdf.text('Description:', leftMargin, descY);
@@ -244,19 +247,19 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   const splitDescription = pdf.splitTextToSize(description, contentWidth - 10);
   
   // Calcular la altura necesaria para la descripción
-  const lineHeight = 4; // Altura de línea en mm
+  const lineHeight = 3.5;
   const descriptionHeight = splitDescription.length * lineHeight;
   
   // Renderizar la descripción completa
-  pdf.text(splitDescription, leftMargin, descY + 6);
+  pdf.text(splitDescription, leftMargin, descY + 4.5);
     // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
   // Ajustar posición de tabla según altura de la descripción
-  const tableStartY = descY + 20 + descriptionHeight;
+  const tableStartY = descY + 7 + descriptionHeight;
   const tableData = workOrderData.parts.map((part, index) => [
     String(index + 1),
     String(part.sku || '').replace(/\s+/g, '').substring(0, 20), // SKU limpio (sin saltos)
     String(part.description || '').replace(/\s+/g, ' ').trim(), // Descripción limpia
-    String(part.um || 'EA'),
+    String((part as any).um || (part as any).uom || (part as any).unit || 'EA'),
     String(part.qty || 0),
     `$${(part.unitCost || 0).toFixed(2)}`,
     `$${(part.total || 0).toFixed(2)}`,
@@ -275,13 +278,13 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       halign: 'center',
       valign: 'middle',
       overflow: 'hidden',
-      cellPadding: { top: 1, right: 1, bottom: 1, left: 1 },
+      cellPadding: { top: 0.8, right: 1, bottom: 0.8, left: 1 },
       font: 'courier'
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 7,
       textColor: [0, 0, 0],
-      cellPadding: { top: 1, right: 1, bottom: 1, left: 1 },
+      cellPadding: { top: 0.7, right: 1, bottom: 0.7, left: 1 },
       overflow: 'ellipsize',
       font: 'courier'
     },
@@ -289,11 +292,11 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
       0: { halign: 'center', cellWidth: 6 },      // #
       1: { halign: 'center', cellWidth: 22 },     // SKU
       2: { halign: 'left', cellWidth: 80, overflow: 'linebreak' }, // DESCRIPTION (1 línea normalmente, 2 si requiere)
-      3: { halign: 'center', cellWidth: 10 },     // U/M
+      3: { halign: 'center', cellWidth: 11 },     // U/M
       4: { halign: 'center', cellWidth: 10 },     // QTY
       5: { halign: 'right', cellWidth: 19 },      // UNIT $
       6: { halign: 'right', cellWidth: 19 },      // TOTAL
-      7: { halign: 'center', cellWidth: 14 }      // LINK
+      7: { halign: 'center', cellWidth: 13 }      // LINK
     },
     margin: { left: leftMargin, right: rightMargin },
     tableWidth: contentWidth,
@@ -341,12 +344,13 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   let finalY = (pdf as PDFWithAutoTable).lastAutoTable?.finalY || tableStartY + 50;
 
   // Ensure totals and signature block stay within printable area.
-  if (finalY > 210) {
+  const reservedBottomBlock = 75;
+  if (finalY > pageHeight - reservedBottomBlock) {
     pdf.addPage();
     finalY = 20;
   }
   const totalsStartX = pageWidth - rightMargin - 70; // 70mm para los totales y extras
-  let currentY = finalY + 8;
+  let currentY = finalY + 5;
   
   const extraOptions = workOrderData.extraOptions || [];
   const subtotal = (workOrderData.subtotalParts || 0) + (workOrderData.laborCost || 0);
@@ -370,6 +374,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Prioridad: percentages explícitos enviados desde formulario -> fallback a extraOptions
   let miscPercent = Number(workOrderData.miscellaneousPercent ?? 0);
   let weldPercent = Number(workOrderData.weldPercent ?? 0);
+  const miscFixed = Number(workOrderData.miscellaneousFixed ?? 0);
+  const weldFixed = Number(workOrderData.weldFixed ?? 0);
 
   if ((!miscPercent || miscPercent < 0) && extraOptions && extraOptions.length > 0) {
     if (extraOptions.includes('15shop')) {
@@ -385,13 +391,17 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     }
   }
 
-  const miscAmount = Math.round(subtotal * ((miscPercent > 0 ? miscPercent : 0) / 100) * 100) / 100;
-  const weldAmount = Math.round(subtotal * ((weldPercent > 0 ? weldPercent : 0) / 100) * 100) / 100;
+  const miscAmount = miscFixed > 0
+    ? Math.round(miscFixed * 100) / 100
+    : Math.round(subtotal * ((miscPercent > 0 ? miscPercent : 0) / 100) * 100) / 100;
+  const weldAmount = weldFixed > 0
+    ? Math.round(weldFixed * 100) / 100
+    : Math.round(subtotal * ((weldPercent > 0 ? weldPercent : 0) / 100) * 100) / 100;
   
   // Mostrar SHOPMISC
   if (miscAmount > 0) {
     pdf.setTextColor(0, 100, 200); // Color azul para SHOPMISC
-    pdf.text(`SHOPMISC ${miscPercent}%:`, totalsStartX, currentY);
+    pdf.text(miscFixed > 0 ? 'SHOPMISC $ CLOSED:' : `SHOPMISC ${miscPercent}%:`, totalsStartX, currentY);
     pdf.text(`$${miscAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 6;
   }
@@ -399,7 +409,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   // Mostrar WELD SUPP si existe
   if (weldAmount > 0) {
     pdf.setTextColor(0, 100, 200); // Color azul para WELD SUPP
-    pdf.text(`WELD SUPP ${weldPercent}%:`, totalsStartX, currentY);
+    pdf.text(weldFixed > 0 ? 'WELD SUPP $ CLOSED:' : `WELD SUPP ${weldPercent}%:`, totalsStartX, currentY);
     pdf.text(`$${weldAmount.toFixed(2)}`, pageWidth - rightMargin, currentY, { align: 'right' });
     currentY += 6;
   }
@@ -421,7 +431,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setFont('courier', 'normal');
   
   // CUSTOMER AUTHORIZATION
-  const authY = currentY + 15;
+  const authY = currentY + 10;
   
   pdf.setFontSize(8);
   pdf.setTextColor(0, 0, 0);
@@ -429,14 +439,14 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('[ ] I accept this estimate with the handwritten changes noted below', leftMargin, authY + 6);
   
   // TÉRMINOS Y CONDICIONES (Terms and Conditions)
-  const termsY = authY + 14;
+  const termsY = authY + 11;
   pdf.setFontSize(7);
   pdf.setTextColor(100, 100, 100);
   pdf.text('Terms and Conditions: Payment due upon receipt. All parts and labor are subject to inspection.', leftMargin, termsY);
   pdf.text('Work warranty: 30 days on all workmanship. Any warranty claims must be made within 30 days of completion.', leftMargin, termsY + 4);
   
   // LÍNEAS PARA FIRMAS - CENTRADAS
-  const sigY = termsY + 12;
+  const sigY = termsY + 10;
   const lineWidth = 70;
   const gapBetweenLines = 20;
   const linesStartX = (pageWidth - (lineWidth * 2 + gapBetweenLines)) / 2;
@@ -455,7 +465,7 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('SIGNATURE:', secondLineX, sigY + 5);
   
   // FOOTER CENTRADO
-  const footerY = sigY + 15;
+  const footerY = sigY + 12;
   
   pdf.setFontSize(11);
   pdf.setTextColor(10, 56, 84);
