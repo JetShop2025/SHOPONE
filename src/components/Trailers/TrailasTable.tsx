@@ -427,7 +427,7 @@ const TrailasTable: React.FC = () => {
         parts: workOrderParts.map((part: any) => ({
           sku: part.sku || '',
           description: part.part_name || part.sku || 'N/A',
-          um: inventory.find((item: any) => item.sku === part.sku)?.um || inventory.find((item: any) => item.sku === part.sku)?.uom || inventory.find((item: any) => item.sku === part.sku)?.unit || part.um || part.uom || part.unit || 'EA',
+          um: part.um || part.uom || part.unit || 'EA',
           qty: Number(part.qty_used) || 0,
           unitCost: Number(part.cost) || 0,
           total: (Number(part.qty_used) || 0) * (Number(part.cost) || 0),
