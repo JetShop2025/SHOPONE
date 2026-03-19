@@ -2044,7 +2044,7 @@ async function ensureReceivesTableStructure() {
         );
         console.log('[DB] Successfully added total column to receives table');
       } else {
-        console.log('[DB] Column total already exists in receives table');
+        console.log('[DB][INFO] receives.total column already present');
       }
     } else {
       console.log('[DB] receives table does not exist');
@@ -2091,8 +2091,7 @@ async function recalculateInventoryOnHand() {
   }
 }
 
-// Llamar a la función para asegurar la estructura de la tabla receives al iniciar
-ensureReceivesTableStructure();
+// Schema checks are already triggered during startup testConnection flow.
 
 module.exports = {
   connection,
