@@ -267,7 +267,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [editPassword, setEditPassword] = useState('');
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
-  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekInputValue());
+  const [selectedWeek, setSelectedWeek] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [inventory, setInventory] = useState<any[]>([]);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
@@ -286,11 +286,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, order: any | null }>({ visible: false, x: 0, y: 0, order: null });
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
   
-  // NEW: Admin filters
-  const [selectedClient, setSelectedClient] = useState('all');
+  // NEW: Search-first filters
+  const [selectedClient, setSelectedClient] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchId, setSearchId] = useState('');
+  const [searchCustomer, setSearchCustomer] = useState('');
+  const [searchUnitVeh, setSearchUnitVeh] = useState('');
   
   const pageSize = 100;
 
@@ -459,12 +461,20 @@ const FinishedWorkOrdersTable: React.FC = () => {
     }
   }, [selectedWeek]);
 
+  const hasSearchCriteria =
+    String(searchId || '').trim().length > 0 ||
+    String(searchCustomer || '').trim().length > 0 ||
+    String(searchUnitVeh || '').trim().length > 0;
+
   const filteredOrders = workOrders.filter(order => {
     const orderDateForFilters = order.endDate || order.date;
     if (!orderDateForFilters) return false;
 
     // SOLO mostrar W.O con status FINISHED (normalizado)
     if (String(order.status || '').trim().toUpperCase() !== 'FINISHED') return false;
+
+    // Search-first mode: don't show all W.O by default
+    if (!hasSearchCriteria) return false;
 
     // Filter by week (default: current week)
     let inWeek = true;
@@ -476,20 +486,32 @@ const FinishedWorkOrdersTable: React.FC = () => {
       }
     }
 
-    // Client filter (optional, default: all)
-    if (selectedClient && selectedClient !== '' && selectedClient !== 'all') {
-      const client = order.billToCo || 'No Client';
-      if (client !== selectedClient) return false;
-    }
-
-    // Search filter
+    // Search by W.O number / ID Classic
     if (searchId) {
       const searchLower = searchId.toLowerCase();
       const matches = String(order.id).toLowerCase().includes(searchLower) ||
-        (order.idClassic && String(order.idClassic).toLowerCase().includes(searchLower)) ||
-        (order.billToCo && order.billToCo.toLowerCase().includes(searchLower)) ||
-        (order.trailer && String(order.trailer).toLowerCase().includes(searchLower));
+        (order.idClassic && String(order.idClassic).toLowerCase().includes(searchLower));
       if (!matches) return false;
+    }
+
+    // Search by Customer
+    if (searchCustomer) {
+      const customerLower = searchCustomer.toLowerCase();
+      const customer = String(order.billToCo || '').toLowerCase();
+      if (!customer.includes(customerLower)) return false;
+    }
+
+    // Search by Unit / VEH (trailer)
+    if (searchUnitVeh) {
+      const vehLower = searchUnitVeh.toLowerCase();
+      const trailer = String(order.trailer || '').toLowerCase();
+      if (!trailer.includes(vehLower)) return false;
+    }
+
+    // Legacy exact client dropdown kept as optional extra narrowing
+    if (selectedClient && selectedClient !== 'all') {
+      const client = order.billToCo || 'No Client';
+      if (client !== selectedClient) return false;
     }
 
     return inWeek;
@@ -805,6 +827,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const handleResetFilters = () => {
     setSelectedClient('');
     setSearchId('');
+    setSearchCustomer('');
+    setSearchUnitVeh('');
     setSelectedWeek('');
   };
 
@@ -1071,8 +1095,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                     color: colors.gray600
                   }}
                 >
-                  <option value="">Select Client...</option>
-                  <option value="all">🌎 All Clients</option>
+                  <option value="">All Clients</option>
                   {uniqueClients.map(client => (
                     <option key={client} value={client}>{client}</option>
                   ))}
@@ -1090,7 +1113,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  📅 Week
+                  📅 Week (Optional)
                 </label>
                 <input
                   type="week"
@@ -1120,11 +1143,11 @@ const FinishedWorkOrdersTable: React.FC = () => {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  🔍 Search
+                  🔍 W.O / ID Classic
                 </label>
                 <input
                   type="text"
-                  placeholder="ID / Client / Trailer"
+                  placeholder="W.O # or ID Classic"
                   value={searchId}
                   onChange={(e) => { setSearchId(e.target.value); setCurrentPageData(1); }}
                   style={{
@@ -1140,6 +1163,79 @@ const FinishedWorkOrdersTable: React.FC = () => {
                 />
               </div>
             </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: 20,
+              marginTop: 16
+            }}>
+              <div>
+                <label style={{ 
+                  fontSize: 11, 
+                  fontWeight: 700, 
+                  color: colors.gray600, 
+                  display: 'block', 
+                  marginBottom: 8,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  🏢 Customer
+                </label>
+                <input
+                  type="text"
+                  placeholder="Customer name/code"
+                  value={searchCustomer}
+                  onChange={(e) => { setSearchCustomer(e.target.value); setCurrentPageData(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${colors.gray300}`,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    background: colors.white,
+                    color: colors.gray600
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ 
+                  fontSize: 11, 
+                  fontWeight: 700, 
+                  color: colors.gray600, 
+                  display: 'block', 
+                  marginBottom: 8,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  🚚 Unit / VEH
+                </label>
+                <input
+                  type="text"
+                  placeholder="Unit / Trailer / VEH"
+                  value={searchUnitVeh}
+                  onChange={(e) => { setSearchUnitVeh(e.target.value); setCurrentPageData(1); }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${colors.gray300}`,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    background: colors.white,
+                    color: colors.gray600
+                  }}
+                />
+              </div>
+            </div>
+
+            {!hasSearchCriteria && (
+              <div style={{ marginTop: 14, fontSize: 12, color: colors.gray600 }}>
+                Enter at least one search field (W.O/ID Classic, Customer, or Unit/VEH) to display finished work orders.
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 20 }}>
