@@ -6,6 +6,7 @@ import isBetween from 'dayjs/plugin/isBetween';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
+import isoWeek from 'dayjs/plugin/isoWeek';
 import 'dayjs/locale/es';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -19,6 +20,7 @@ dayjs.extend(isBetween);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(weekOfYear);
+dayjs.extend(isoWeek);
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 
@@ -91,14 +93,20 @@ function getWeekRange(weekStr: string) {
     return { start: null, end: null };
   }
 
-  const start = dayjs().year(year).week(week).startOf('week');
-  const end = dayjs().year(year).week(week).endOf('week');
+  const januaryFourth = dayjs(`${year}-01-04`);
+  const start = januaryFourth.startOf('isoWeek').add(week - 1, 'week');
+  const end = start.endOf('isoWeek');
   return { start, end };
 }
 
 function getCurrentWeekInputValue() {
-  const now = dayjs();
-  return `${now.year()}-W${String(now.week()).padStart(2, '0')}`;
+  const now = new Date();
+  const utcDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${utcDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
 const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
@@ -455,8 +463,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
     const orderDateForFilters = order.endDate || order.date;
     if (!orderDateForFilters) return false;
 
-    // SOLO mostrar W.O con status FINISHED
-    if (order.status !== 'FINISHED') return false;
+    // SOLO mostrar W.O con status FINISHED (normalizado)
+    if (String(order.status || '').trim().toUpperCase() !== 'FINISHED') return false;
 
     // Filter by week (default: current week)
     let inWeek = true;
