@@ -452,7 +452,8 @@ const FinishedWorkOrdersTable: React.FC = () => {
   }, [selectedWeek]);
 
   const filteredOrders = workOrders.filter(order => {
-    if (!order.date) return false;
+    const orderDateForFilters = order.endDate || order.date;
+    if (!orderDateForFilters) return false;
 
     // SOLO mostrar W.O con status FINISHED
     if (order.status !== 'FINISHED') return false;
@@ -462,7 +463,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
       if (start && end) {
-        const orderDate = dayjs(order.date.slice(0, 10));
+        const orderDate = dayjs(String(orderDateForFilters).slice(0, 10));
         inWeek = orderDate.isBetween(start, end, 'day', '[]');
       }
     }
