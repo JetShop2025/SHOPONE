@@ -461,11 +461,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
     }
   }, [selectedWeek]);
 
-  const hasSearchCriteria =
-    String(searchId || '').trim().length > 0 ||
-    String(searchCustomer || '').trim().length > 0 ||
-    String(searchUnitVeh || '').trim().length > 0;
-
   const filteredOrders = workOrders.filter(order => {
     const orderDateForFilters = order.endDate || order.date;
     if (!orderDateForFilters) return false;
@@ -473,48 +468,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
     // SOLO mostrar W.O con status FINISHED (normalizado)
     if (String(order.status || '').trim().toUpperCase() !== 'FINISHED') return false;
 
-    // Search-first mode: don't show all W.O by default
-    if (!hasSearchCriteria) return false;
-
-    // Filter by week (default: current week)
-    let inWeek = true;
-    if (selectedWeek) {
-      const { start, end } = getWeekRange(selectedWeek);
-      if (start && end) {
-        const orderDate = dayjs(String(orderDateForFilters).slice(0, 10));
-        inWeek = orderDate.isBetween(start, end, 'day', '[]');
-      }
-    }
-
-    // Search by W.O number / ID Classic
-    if (searchId) {
-      const searchLower = searchId.toLowerCase();
-      const matches = String(order.id).toLowerCase().includes(searchLower) ||
-        (order.idClassic && String(order.idClassic).toLowerCase().includes(searchLower));
-      if (!matches) return false;
-    }
-
-    // Search by Customer
-    if (searchCustomer) {
-      const customerLower = searchCustomer.toLowerCase();
-      const customer = String(order.billToCo || '').toLowerCase();
-      if (!customer.includes(customerLower)) return false;
-    }
-
-    // Search by Unit / VEH (trailer)
-    if (searchUnitVeh) {
-      const vehLower = searchUnitVeh.toLowerCase();
-      const trailer = String(order.trailer || '').toLowerCase();
-      if (!trailer.includes(vehLower)) return false;
-    }
-
-    // Legacy exact client dropdown kept as optional extra narrowing
-    if (selectedClient && selectedClient !== 'all') {
-      const client = order.billToCo || 'No Client';
-      if (client !== selectedClient) return false;
-    }
-
-    return inWeek;
+    return true;
   });
 
   // NEW: Calculate statistics
@@ -1037,7 +991,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Section - Professional */}
+        {/* Analytics and Actions */}
         <div style={{
           background: colors.white,
           borderRadius: 8,
@@ -1046,7 +1000,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
           border: `1px solid ${colors.gray300}`,
           overflow: 'hidden'
         }}>
-          {/* Filter Header */}
           <div style={{
             background: colors.primary,
             padding: '16px 24px',
@@ -1054,210 +1007,12 @@ const FinishedWorkOrdersTable: React.FC = () => {
             alignItems: 'center',
             gap: 12
           }}>
-            <span style={{ fontSize: 20 }}>🔍</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: colors.white, letterSpacing: 0.5 }}>FILTERS & ANALYTICS</span>
+            <span style={{ fontSize: 20 }}>📊</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: colors.white, letterSpacing: 0.5 }}>ANALYTICS</span>
           </div>
 
-          {/* Filters Grid */}
           <div style={{ padding: '24px', borderBottom: `1px solid ${colors.gray300}` }}>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr 1fr', 
-              gap: 20,
-              marginBottom: 0
-            }}>
-              {/* Client Filter */}
-              <div>
-                <label style={{ 
-                  fontSize: 11, 
-                  fontWeight: 700, 
-                  color: colors.gray600, 
-                  display: 'block', 
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  📋 Client *
-                </label>
-                <select
-                  value={selectedClient}
-                  onChange={(e) => { setSelectedClient(e.target.value); setCurrentPageData(1); }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.gray300}`,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: 500,
-                    fontFamily: 'inherit',
-                    background: colors.white,
-                    cursor: 'pointer',
-                    color: colors.gray600
-                  }}
-                >
-                  <option value="">All Clients</option>
-                  {uniqueClients.map(client => (
-                    <option key={client} value={client}>{client}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Week Filter */}
-              <div>
-                <label style={{ 
-                  fontSize: 11, 
-                  fontWeight: 700, 
-                  color: colors.gray600, 
-                  display: 'block', 
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  📅 Week (Optional)
-                </label>
-                <input
-                  type="week"
-                  value={selectedWeek}
-                  onChange={(e) => { setSelectedWeek(e.target.value); setCurrentPageData(1); }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.gray300}`,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    background: colors.white,
-                    color: colors.gray600
-                  }}
-                />
-              </div>
-
-              {/* Search */}
-              <div>
-                <label style={{ 
-                  fontSize: 11, 
-                  fontWeight: 700, 
-                  color: colors.gray600, 
-                  display: 'block', 
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  🔍 W.O / ID Classic
-                </label>
-                <input
-                  type="text"
-                  placeholder="W.O # or ID Classic"
-                  value={searchId}
-                  onChange={(e) => { setSearchId(e.target.value); setCurrentPageData(1); }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.gray300}`,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    background: colors.white,
-                    color: colors.gray600
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
-              gap: 20,
-              marginTop: 16
-            }}>
-              <div>
-                <label style={{ 
-                  fontSize: 11, 
-                  fontWeight: 700, 
-                  color: colors.gray600, 
-                  display: 'block', 
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  🏢 Customer
-                </label>
-                <input
-                  type="text"
-                  placeholder="Customer name/code"
-                  value={searchCustomer}
-                  onChange={(e) => { setSearchCustomer(e.target.value); setCurrentPageData(1); }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.gray300}`,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    background: colors.white,
-                    color: colors.gray600
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ 
-                  fontSize: 11, 
-                  fontWeight: 700, 
-                  color: colors.gray600, 
-                  display: 'block', 
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  🚚 Unit / VEH
-                </label>
-                <input
-                  type="text"
-                  placeholder="Unit / Trailer / VEH"
-                  value={searchUnitVeh}
-                  onChange={(e) => { setSearchUnitVeh(e.target.value); setCurrentPageData(1); }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1px solid ${colors.gray300}`,
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    background: colors.white,
-                    color: colors.gray600
-                  }}
-                />
-              </div>
-            </div>
-
-            {!hasSearchCriteria && (
-              <div style={{ marginTop: 14, fontSize: 12, color: colors.gray600 }}>
-                Enter at least one search field (W.O/ID Classic, Customer, or Unit/VEH) to display finished work orders.
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button 
-                style={{
-                  padding: '10px 18px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: colors.gray200,
-                  color: colors.gray600,
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }} 
-                onClick={handleResetFilters}
-              >
-                <span>🔄</span> Reset
-              </button>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <button 
                 style={{
                   padding: '10px 18px',
@@ -1301,7 +1056,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
             </div>
           </div>
 
-          {/* Stats Cards */}
           {filteredOrders.length > 0 && (
             <div style={{ 
               display: 'grid', 
@@ -1372,20 +1126,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
               )}
             </div>
           )}
-
-          {/* No client selected message */}
-          {(!selectedClient || selectedClient === '') && (
-            <div style={{
-              padding: '32px 24px',
-              textAlign: 'center',
-              background: colors.gray100,
-              borderTop: `1px solid ${colors.gray300}`
-            }}>
-              <div style={{ fontSize: 16, color: '#90A4AE', fontWeight: 600 }}>
-                ⚠️ Select a client to view orders and analytics
-              </div>
-            </div>
-          )}
         </div>
 
 
@@ -1429,7 +1169,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
         )}
 
         {/* Work Orders Cards View */}
-        {selectedClient && selectedClient !== '' && filteredOrders.length > 0 &&
+        {filteredOrders.length > 0 &&
           (<div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
