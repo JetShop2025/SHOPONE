@@ -80,10 +80,25 @@ function getTrailerOptionsWithPendingIndicator(billToCo: string, trailersWithPen
 }
 
 function getWeekRange(weekStr: string) {
-  const [year, week] = weekStr.split('-W');
-  const start = dayjs().year(Number(year)).week(Number(week)).startOf('week');
-  const end = dayjs().year(Number(year)).week(Number(week)).endOf('week');
+  const match = /^([0-9]{4,})-W([0-9]{2})$/.exec(String(weekStr || '').trim());
+  if (!match) {
+    return { start: null, end: null };
+  }
+
+  const year = Number(match[1]);
+  const week = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(week) || week < 1 || week > 53) {
+    return { start: null, end: null };
+  }
+
+  const start = dayjs().year(year).week(week).startOf('week');
+  const end = dayjs().year(year).week(week).endOf('week');
   return { start, end };
+}
+
+function getCurrentWeekInputValue() {
+  const now = dayjs();
+  return `${now.year()}-W${String(now.week()).padStart(2, '0')}`;
 }
 
 const STATUS_OPTIONS = ['PROCESSING', 'APPROVED', 'FINISHED'];
@@ -244,7 +259,7 @@ const FinishedWorkOrdersTable: React.FC = () => {
   const [editPassword, setEditPassword] = useState('');
   const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [newWorkOrder, setNewWorkOrder, resetNewWorkOrder] = useNewWorkOrder();
-  const [selectedWeek, setSelectedWeek] = useState(dayjs().format('YYYY-[W]WW'));
+  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekInputValue());
   const [selectedDay, setSelectedDay] = useState('');
   const [inventory, setInventory] = useState<any[]>([]);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
@@ -429,6 +444,13 @@ const FinishedWorkOrdersTable: React.FC = () => {
     fetchInventory();
   }, [fetchInventory]);
 
+  useEffect(() => {
+    if (!selectedWeek) return;
+    if (!/^([0-9]{4,})-W([0-9]{2})$/.test(selectedWeek)) {
+      setSelectedWeek('');
+    }
+  }, [selectedWeek]);
+
   const filteredOrders = workOrders.filter(order => {
     if (!order.date) return false;
 
@@ -439,8 +461,10 @@ const FinishedWorkOrdersTable: React.FC = () => {
     let inWeek = true;
     if (selectedWeek) {
       const { start, end } = getWeekRange(selectedWeek);
-      const orderDate = dayjs(order.date.slice(0, 10));
-      inWeek = orderDate.isBetween(start, end, 'day', '[]');
+      if (start && end) {
+        const orderDate = dayjs(order.date.slice(0, 10));
+        inWeek = orderDate.isBetween(start, end, 'day', '[]');
+      }
     }
 
     // Client filter (optional, default: all)
