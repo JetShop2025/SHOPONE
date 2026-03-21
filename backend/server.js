@@ -639,6 +639,7 @@ app.get('/api/work-orders', async (req, res) => {
     const pageSize = parseInt(req.query.pageSize) || 1000; // 1000 registros por página por defecto
     const searchIdClassic = req.query.searchIdClassic || '';
     const includeArchived = req.query.includeArchived === 'true';
+    const statusFilter = String(req.query.status || '').trim().toUpperCase();
     
     // Si hay búsqueda específica por ID Classic, buscar en toda la base de datos
     if (searchIdClassic) {
@@ -665,24 +666,34 @@ app.get('/api/work-orders', async (req, res) => {
     
     // Carga normal con paginación
     const offset = (page - 1) * pageSize;
-    let query = `SELECT * FROM work_orders`;
-    let whereClause = '';
-    
+    const conditions = [];
+    const queryParams = [];
+
     // Si no incluir archivadas, filtrar por fecha (últimos 2 años por defecto)
     if (!includeArchived) {
       const twoYearsAgo = new Date();
       twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-      whereClause = ` WHERE date >= '${twoYearsAgo.toISOString().split('T')[0]}'`;
+      conditions.push('date >= ?');
+      queryParams.push(twoYearsAgo.toISOString().split('T')[0]);
     }
-    
-    query += whereClause + ` ORDER BY id DESC LIMIT ${pageSize} OFFSET ${offset}`;
-    
+
+    // Filtro opcional de status (ej: FINISHED)
+    if (statusFilter) {
+      conditions.push("UPPER(TRIM(COALESCE(status, ''))) = ?");
+      queryParams.push(statusFilter);
+    }
+
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+    const query = `SELECT * FROM work_orders${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`;
+    const queryValues = [...queryParams, pageSize, offset];
+
     console.log(`[GET] /api/work-orders - Executing query: ${query}`);
-    const [results] = await db.connection.execute(query);
-    
+    console.log('[GET] /api/work-orders - Query params:', queryValues);
+    const [results] = await db.connection.execute(query, queryValues);
+
     // Contar total de registros para paginación
     const countQuery = `SELECT COUNT(*) as total FROM work_orders${whereClause}`;
-    const [countResult] = await db.connection.execute(countQuery);
+    const [countResult] = await db.connection.execute(countQuery, queryParams);
     const totalRecords = countResult[0].total;
     const totalPages = Math.ceil(totalRecords / pageSize);
     

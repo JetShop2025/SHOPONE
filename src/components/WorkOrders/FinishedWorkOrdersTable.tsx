@@ -462,9 +462,6 @@ const FinishedWorkOrdersTable: React.FC = () => {
   }, [selectedWeek]);
 
   const filteredOrders = workOrders.filter(order => {
-    const orderDateForFilters = order.endDate || order.date;
-    if (!orderDateForFilters) return false;
-
     // SOLO mostrar W.O con status FINISHED (normalizado)
     if (String(order.status || '').trim().toUpperCase() !== 'FINISHED') return false;
 
