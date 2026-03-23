@@ -431,7 +431,18 @@ const FinishedWorkOrdersTable: React.FC = () => {
 
   useEffect(() => {
     fetchWorkOrders();
-    const handleSystemChange = () => fetchWorkOrders();
+    const activeUser = String(localStorage.getItem('username') || '').toUpperCase();
+    const handleSystemChange = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const sourceUser = String(customEvent.detail?.user || '').toUpperCase();
+
+      // Avoid refresh loops from self-triggered or anonymous events.
+      if (!sourceUser || (activeUser && sourceUser === activeUser)) {
+        return;
+      }
+
+      fetchWorkOrders();
+    };
     window.addEventListener('systemDataChanged', handleSystemChange);
 
     return () => {

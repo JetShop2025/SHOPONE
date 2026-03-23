@@ -98,8 +98,17 @@ const DashboardSidebar: React.FC = () => {
 
   useEffect(() => {
     fetchRecentChanges();
+    const activeUser = String(localStorage.getItem('username') || '').toUpperCase();
     
-    const handleSystemChange = () => {
+    const handleSystemChange = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const sourceUser = String(customEvent.detail?.user || '').toUpperCase();
+
+      // Avoid refresh loops from self-triggered or anonymous events.
+      if (!sourceUser || (activeUser && sourceUser === activeUser)) {
+        return;
+      }
+
       fetchRecentChanges();
     };
     

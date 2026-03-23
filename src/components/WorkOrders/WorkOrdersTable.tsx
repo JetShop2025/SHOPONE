@@ -488,6 +488,7 @@ const WorkOrdersTable: React.FC = () => {
   const [draggingOrderId, setDraggingOrderId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<'PROCESSING' | 'APPROVED' | 'FINISHED' | null>(null);
   const [recentlyFinished, setRecentlyFinished] = useState<Array<{ order: any, timestamp: number }>>([]);
+  const RECENTLY_FINISHED_TIMEOUT_MS = 60 * 1000;
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
   const nextWorkOrderNumber = (Array.isArray(workOrders) && workOrders.length > 0
     ? Math.max(...workOrders.map((wo: any) => Number(wo?.id) || 0)) + 1
@@ -641,7 +642,18 @@ const WorkOrdersTable: React.FC = () => {
     // Polling inteligente - ajusta frecuencia según estado del servidor (OPTIMIZADO para plan gratuito)
   useEffect(() => {
     fetchWorkOrders();
-    const handleSystemChange = () => fetchWorkOrders();
+    const activeUser = String(localStorage.getItem('username') || '').toUpperCase();
+    const handleSystemChange = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const sourceUser = String(customEvent.detail?.user || '').toUpperCase();
+
+      // Avoid refresh loops from self-triggered or anonymous events.
+      if (!sourceUser || (activeUser && sourceUser === activeUser)) {
+        return;
+      }
+
+      fetchWorkOrders();
+    };
     window.addEventListener('systemDataChanged', handleSystemChange);
 
     return () => {
@@ -866,15 +878,15 @@ const WorkOrdersTable: React.FC = () => {
     const currentStatus = getStatusForBoard(order?.status);
     if (currentStatus === targetStatus) return;
 
-    // Track recently finished W.O (keep last 4, discard after 5 min)
+    // Track recently finished W.O (keep last 4, discard after 1 min)
     if (targetStatus === 'FINISHED') {
       const newFinished = [...recentlyFinished, { order, timestamp: Date.now() }].slice(-4);
       setRecentlyFinished(newFinished);
       
-      // Auto-remove after 5 minutes
+      // Auto-remove after 1 minute
       setTimeout(() => {
         setRecentlyFinished(prev => prev.filter(item => item.order.id !== order.id));
-      }, 5 * 60 * 1000);
+      }, RECENTLY_FINISHED_TIMEOUT_MS);
     }
 
     // 🚀 OPTIMISTIC UPDATE: Actualizar estado localmente INMEDIATAMENTE (sin esperar API)
@@ -982,12 +994,12 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       try {
-        // Track recently finished W.O (keep last 4, discard after 5 min)
+        // Track recently finished W.O (keep last 4, discard after 1 min)
         const newFinished = [...recentlyFinished, { order: draggedOrder, timestamp: Date.now() }].slice(-4);
         setRecentlyFinished(newFinished);
         setTimeout(() => {
           setRecentlyFinished(prev => prev.filter(item => item.order.id !== draggedOrder.id));
-        }, 5 * 60 * 1000);
+        }, RECENTLY_FINISHED_TIMEOUT_MS);
 
         // Optimistic state update
         setWorkOrders(prev =>
@@ -3184,29 +3196,29 @@ const WorkOrdersTable: React.FC = () => {
           </div>
         )}
         
-        {/* Recently Finished W.O Preview (Last 4, Read-Only, 5 min timeout) */}
+        {/* Recently Finished W.O Preview (Last 4, Read-Only, 1 min timeout) */}
         {recentlyFinished.length > 0 && (
           <div style={{ 
             marginBottom: 16, 
             padding: 12, 
-            background: 'linear-gradient(135deg, #fff5e8 0%, #fffbf0 100%)',
-            border: '2px solid #fb8c00',
+            background: 'linear-gradient(135deg, #eaf2f8 0%, #f5f9fc 100%)',
+            border: '2px solid #0A3854',
             borderRadius: 8,
-            boxShadow: '0 2px 8px rgba(251, 140, 0, 0.15)'
+            boxShadow: '0 2px 8px rgba(10, 56, 84, 0.15)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #ffe0b2' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #c8d9e6' }}>
               <span style={{ fontSize: 16 }}>✅</span>
-              <strong style={{ color: '#e65100', fontSize: 14 }}>Recently Transferred to FINAL W.O (Expires in 5 min)</strong>
+              <strong style={{ color: '#0A3854', fontSize: 14 }}>Recently Transferred to FINAL W.O</strong>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
               {recentlyFinished.map((item: any) => {
-                const timeLeft = Math.max(0, Math.ceil((5 * 60 * 1000 - (Date.now() - item.timestamp)) / 1000));
+                const timeLeft = Math.max(0, Math.ceil((RECENTLY_FINISHED_TIMEOUT_MS - (Date.now() - item.timestamp)) / 1000));
                 return (
                   <div 
                     key={item.order.id}
                     style={{
                       background: '#fff',
-                      border: '1px solid #ffe0b2',
+                      border: '1px solid #c8d9e6',
                       borderRadius: 6,
                       padding: 10,
                       cursor: 'default',
@@ -3214,13 +3226,13 @@ const WorkOrdersTable: React.FC = () => {
                       transition: 'opacity 0.3s'
                     }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#e65100', marginBottom: 4 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0A3854', marginBottom: 4 }}>
                       W.O #{item.order.id}
                     </div>
                     <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>
                       {item.order.billToCo || 'N/C'}
                     </div>
-                    <div style={{ fontSize: 9, color: '#fb8c00', fontWeight: 600 }}>
+                    <div style={{ fontSize: 9, color: '#0A3854', fontWeight: 600 }}>
                       ⏱ {timeLeft}s
                     </div>
                   </div>
