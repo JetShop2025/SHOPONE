@@ -684,12 +684,11 @@ app.get('/api/work-orders', async (req, res) => {
     }
 
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
-    const query = `SELECT * FROM work_orders${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`;
-    const queryValues = [...queryParams, pageSize, offset];
+    const query = `SELECT * FROM work_orders${whereClause} ORDER BY id DESC LIMIT ${pageSize} OFFSET ${offset}`;
 
     console.log(`[GET] /api/work-orders - Executing query: ${query}`);
-    console.log('[GET] /api/work-orders - Query params:', queryValues);
-    const [results] = await db.connection.execute(query, queryValues);
+    console.log('[GET] /api/work-orders - Query params:', queryParams);
+    const [results] = await db.connection.execute(query, queryParams);
 
     // Contar total de registros para paginación
     const countQuery = `SELECT COUNT(*) as total FROM work_orders${whereClause}`;
