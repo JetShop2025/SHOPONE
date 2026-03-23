@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LoginForm from './components/Login/LoginForm';
 import MenuOptions from './components/Menu/MenuOptions';
 import WorkOrdersTable from './components/WorkOrders/WorkOrdersTable';
-import FinishedWorkOrdersTable from './components/WorkOrders/FinishedWorkOrdersTable';
+import FinishedWorkOrdersSearch from './components/WorkOrders/FinishedWorkOrdersSearch';
 import InventoryList from './components/Inventory/index';
 import AuditLogTable from './components/Audit/AuditLogTable';
 import PrivateRoute from './components/PrivateRoute';
@@ -29,7 +29,7 @@ const App: React.FC = () => {
           <Route path="/" element={<LoginForm />} />
           <Route path="/menu" element={<PrivateRoute><MenuOptions /></PrivateRoute>} />
           <Route path="/work-orders" element={<PrivateRoute><LayoutWithDashboard><WorkOrdersTable /></LayoutWithDashboard></PrivateRoute>} />
-          <Route path="/finished-work-orders" element={<PrivateRoute><LayoutWithDashboard><FinishedWorkOrdersTable /></LayoutWithDashboard></PrivateRoute>} />
+          <Route path="/finished-work-orders" element={<PrivateRoute><LayoutWithDashboard><FinishedWorkOrdersSearch /></LayoutWithDashboard></PrivateRoute>} />
           <Route path="/inventory" element={<PrivateRoute><LayoutWithDashboard><InventoryList /></LayoutWithDashboard></PrivateRoute>} />
           <Route path="/audit" element={<PrivateRoute><LayoutWithDashboard><AuditLogTable /></LayoutWithDashboard></PrivateRoute>} />
           <Route path="/trailas" element={<PrivateRoute><LayoutWithDashboard><TrailasTable /></LayoutWithDashboard></PrivateRoute>} />
