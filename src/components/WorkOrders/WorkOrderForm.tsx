@@ -1276,7 +1276,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
                 value={mechanic.hrs || ''}
                 onChange={e => handleMechanicChange(index, 'hrs', e.target.value)}
                 style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '13px' }}
-                step="0.25"
+                step="0.01"
                 min="0"
               />
               <input
