@@ -6,7 +6,6 @@ import { generateWorkOrderPDF, openPDFInNewTab } from '../../utils/pdfGenerator'
 import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
-const FINISHED_WO_CACHE_KEY = 'finished_wo_search_cache_v1';
 const FINISHED_WO_CACHE_TTL_MS = 5 * 60 * 1000;
 
 // Styled Components
@@ -341,6 +340,9 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   // Inventory — loaded once at mount to resolve PDF invoice links
   const [inventory, setInventory] = useState<any[]>([]);
 
+  // In-memory cache for finished WOs (avoids sessionStorage quota errors)
+  const finishedWOCache = React.useRef<{ ts: number; data: WorkOrder[] } | null>(null);
+
   // Hourmeter state
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [hourmeterWOs, setHourmeterWOs] = useState<WorkOrder[]>([]);
@@ -383,19 +385,11 @@ const FinishedWorkOrdersSearch: React.FC = () => {
 
   const loadFinishedReferenceData = useCallback(async (forceRefresh = false): Promise<WorkOrder[]> => {
     if (!forceRefresh) {
-      try {
-        const rawCache = sessionStorage.getItem(FINISHED_WO_CACHE_KEY);
-        if (rawCache) {
-          const parsed = JSON.parse(rawCache) as { ts: number; data: WorkOrder[] };
-          const cacheIsFresh = Date.now() - Number(parsed?.ts || 0) < FINISHED_WO_CACHE_TTL_MS;
-          if (cacheIsFresh && Array.isArray(parsed?.data)) {
-            setAllFinishedWOs(parsed.data);
-            setUnitReferenceError('');
-            return parsed.data;
-          }
-        }
-      } catch {
-        // Ignore cache parsing errors and fetch from API.
+      const cached = finishedWOCache.current;
+      if (cached && Array.isArray(cached.data) && (Date.now() - cached.ts) < FINISHED_WO_CACHE_TTL_MS) {
+        setAllFinishedWOs(cached.data);
+        setUnitReferenceError('');
+        return cached.data;
       }
     }
 
@@ -410,11 +404,8 @@ const FinishedWorkOrdersSearch: React.FC = () => {
 
       const allWOs = (res.data?.data || res.data || []) as WorkOrder[];
       setAllFinishedWOs(allWOs);
-
-      sessionStorage.setItem(
-        FINISHED_WO_CACHE_KEY,
-        JSON.stringify({ ts: Date.now(), data: allWOs })
-      );
+      // Store in memory only — avoids sessionStorage quota errors with large datasets
+      finishedWOCache.current = { ts: Date.now(), data: allWOs };
 
       return allWOs;
     } catch (err) {
@@ -445,11 +436,39 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       ]);
       
       const wo = woRes.data || {};
-      const parts = Array.isArray(partsRes.data) ? partsRes.data : [];
-      
+      // Prefer relational work_order_parts rows; fall back to embedded JSON parts on the WO
+      const rawParts = Array.isArray(partsRes.data) ? partsRes.data : [];
+      const embeddedParts = (() => {
+        if (Array.isArray(wo.parts)) return wo.parts;
+        if (typeof wo.parts === 'string') { try { return JSON.parse(wo.parts); } catch { return []; } }
+        return [];
+      })();
+      const sourceParts = rawParts.length > 0 ? rawParts : embeddedParts;
+      // Normalize: unify qty/qty_used and part/part_name field variants
+      const normalizedParts = sourceParts.map((part: any) => {
+        const sku = String(part.sku || '').trim();
+        const inventoryItem = inventory.find((item: any) =>
+          String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
+        );
+        const invoiceLink =
+          part.invoiceLink || part.invoice_link ||
+          inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null;
+        const qty = Number(part.qty_used ?? part.qty) || 0;
+        return {
+          ...part,
+          sku,
+          part: part.part || part.part_name || part.description || '',
+          part_name: part.part_name || part.part || part.description || '',
+          qty,
+          qty_used: qty,
+          cost: Number(String(part.cost ?? 0).replace(/[^0-9.]/g, '')) || 0,
+          invoiceLink,
+          invoice_link: invoiceLink,
+        };
+      });
       setSelectedWO({
         ...wo,
-        parts: parts.length > 0 ? parts : (wo.parts || []),
+        parts: normalizedParts,
         _partsLoaded: true
       });
     } catch (err) {
@@ -546,58 +565,68 @@ const FinishedWorkOrdersSearch: React.FC = () => {
     void loadFinishedReferenceData(true);
   };
   
-  // View PDF
+  // Normalize parts from any source (work_order_parts rows or embedded JSON)
+  const normalizeParts = useCallback((rawParts: any[]) => {
+    return rawParts.map((part: any) => {
+      const sku = String(part.sku || '').trim();
+      const inventoryItem = inventory.find((item: any) =>
+        String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
+      );
+      const invoiceLink =
+        part.invoiceLink || part.invoice_link ||
+        inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null;
+      // Unify qty field: work_order_parts uses qty_used; embedded JSON uses qty
+      const qty = Number(part.qty_used ?? part.qty) || 0;
+      const cost = Number(String(part.cost ?? 0).replace(/[^0-9.]/g, '')) || 0;
+      return {
+        sku,
+        part: part.part || part.part_name || part.description || '',
+        um: part.um || inventoryItem?.um || inventoryItem?.uom || 'EA',
+        qty,
+        cost,
+        invoiceLink,
+      };
+    });
+  }, [inventory]);
+
+  // View PDF — uses ONLY stored values from DB; NEVER recalculates the final total
   const handleViewPDF = async (wo: WorkOrder) => {
     try {
-      // For PDF links we need the full parts from the work-order-parts table.
-      // If the WO was loaded without detailed parts (e.g. from the unit report list),
-      // fetch them now so invoice links are available.
-      let resolvedParts: any[] = wo.parts || [];
-      if (!wo._partsLoaded) {
-        try {
-          const partsRes = await axios.get(`${API_URL}/work-order-parts/${wo.id}`).catch(() => ({ data: [] }));
-          if (Array.isArray(partsRes.data) && partsRes.data.length > 0) {
-            resolvedParts = partsRes.data;
-          }
-        } catch { /* keep existing parts */ }
+      // Always fetch fresh from work_order_parts (authoritative relational data)
+      // for accurate invoice links and quantities as originally saved.
+      let partsForPDF: any[] = [];
+      try {
+        const partsRes = await axios.get(`${API_URL}/work-order-parts/${wo.id}`, { timeout: 10000 });
+        if (Array.isArray(partsRes.data) && partsRes.data.length > 0) {
+          partsForPDF = normalizeParts(partsRes.data);
+        }
+      } catch { /* 404 or network — fallback below */ }
+
+      // Fallback: use parts already in state (normalized at load time)
+      if (partsForPDF.length === 0) {
+        const embedded = (() => {
+          if (Array.isArray(wo.parts)) return wo.parts;
+          if (typeof wo.parts === 'string') { try { return JSON.parse(wo.parts as any); } catch { return []; } }
+          return [];
+        })();
+        partsForPDF = normalizeParts(embedded);
       }
 
-      let workOrderParts: any[] = [];
-      if (resolvedParts.length > 0) {
-        workOrderParts = resolvedParts.map((part: any) => {
-          const sku = String(part.sku || '').trim();
-          const inventoryItem = inventory.find((item: any) =>
-            String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
-          );
-          // Prefer invoiceLink from work_order_parts row; fall back to inventory
-          const invoiceLink =
-            part.invoiceLink ||
-            part.invoice_link ||
-            inventoryItem?.invoiceLink ||
-            inventoryItem?.invoice_link ||
-            null;
-          return {
-            sku,
-            part_name: part.part || part.part_name || part.description || '',
-            um: part.um || inventoryItem?.um || inventoryItem?.uom || 'EA',
-            qty_used: Number(part.qty_used ?? part.qty) || 0,
-            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
-            invoiceLink
-          };
-        });
-      }
-      
+      // Build mechanics string from stored data
       let mechanicsString = '';
-      let totalHrs = Number(wo.totalHrs) || 0;
+      const totalHrs = Number(wo.totalHrs) || 0;
       if (wo.mechanic) {
         mechanicsString = wo.mechanic;
       } else if (wo.mechanics && Array.isArray(wo.mechanics)) {
         mechanicsString = wo.mechanics
           .map((m: any) => `${m.name} (${m.hrs || 0}h)`)
           .join(', ');
-        totalHrs = wo.mechanics.reduce((sum: number, m: any) => sum + (Number(m.hrs) || 0), 0);
       }
-      
+
+      // RULE: FINISHED W.O. total is ALWAYS the stored value — never recalculated
+      const storedTotal = Number(wo.totalLabAndParts) || 0;
+      const subtotalParts = partsForPDF.reduce((sum, p) => sum + p.qty * p.cost, 0);
+
       const pdfData = {
         id: wo.id,
         idClassic: wo.idClassic || wo.id.toString(),
@@ -607,22 +636,28 @@ const FinishedWorkOrdersSearch: React.FC = () => {
         mechanics: mechanicsString,
         description: wo.description || '',
         status: 'FINISHED',
-        parts: workOrderParts.map((part: any) => ({
+        parts: partsForPDF.map((part: any) => ({
           sku: part.sku,
-          description: part.part_name,
+          description: part.part,
           um: part.um,
-          qty: part.qty_used,
+          qty: part.qty,
           unitCost: part.cost,
-          total: part.qty_used * part.cost,
-          invoiceLink: part.invoiceLink
+          total: part.qty * part.cost,
+          invoiceLink: part.invoiceLink,
         })) as { sku: string; description: string; um: string; qty: number; unitCost: number; total: number; invoiceLink?: string }[],
         totalHrs,
         laborRate: 60,
         laborCost: totalHrs * 60,
-        subtotalParts: workOrderParts.reduce((sum, part) => sum + (part.qty_used * part.cost), 0),
-        totalCost: Number(wo.totalLabAndParts) || 0
+        subtotalParts,
+        totalCost: storedTotal,
+        // Pass through stored adjustments so the PDF generator can show them correctly
+        miscellaneousPercent: Number(wo.miscellaneous ?? wo.miscellaneousPercent) || 0,
+        weldPercent: Number(wo.weldPercent) || 0,
+        miscellaneousFixed: Number(wo.miscellaneousFixed) || 0,
+        weldFixed: Number(wo.weldFixed) || 0,
+        extraOptions: Array.isArray(wo.extraOptions) ? wo.extraOptions : [],
       };
-      
+
       const pdf = await generateWorkOrderPDF(pdfData as any);
       openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_finished.pdf`);
     } catch (error) {
