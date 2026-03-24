@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import WorkOrderForm from './WorkOrderForm';
 import WorkOrdersHeaderBar from './WorkOrdersHeaderBar';
 import WorkOrdersPaginationControls from './WorkOrdersPaginationControls';
 import WorkOrdersActionButtons from './WorkOrdersActionButtons';
 import WorkOrdersCreateModal from './WorkOrdersCreateModal';
+import WorkOrdersEditModal from './WorkOrdersEditModal';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -2807,107 +2807,43 @@ const WorkOrdersTable: React.FC = () => {
           idClassicError={idClassicError}
         />
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
-        {showEditForm && (
-          <div style={modalStyle}>
-            <div style={modalContentStyle}>
-              {!editWorkOrder ? (
-                <div style={{
-                  marginBottom: 24,
-                  border: '1px solid orange',
-                  background: '#fffbe6',
-                  borderRadius: 8,
-                  padding: 24,
-                  maxWidth: 700,
-                  marginLeft: 'auto',
-                  marginRight: 'auto',
-                  boxShadow: '0 2px 8px rgba(255,152,0,0.10)'
-                }}>
-                  <h2 style={{ color: '#ff9800', marginBottom: 12 }}>Edit Work Order</h2>
-                    <label style={{ fontWeight: 600 }}>
-                      ID:
-                      <input
-                        type="number"
-                        placeholder="ID to edit"
-                        value={editId}
-                        onChange={e => setEditId(e.target.value)}
-                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
-                      />
-                    </label>
-                    <label style={{ fontWeight: 600, marginLeft: 16 }}>
-                      Password:
-                      <input
-                        type="password"
-                        placeholder="Password"
-                        value={editPassword}
-                        onChange={e => setEditPassword(e.target.value)}
-                        style={{ width: 100, marginLeft: 8, marginRight: 8, borderRadius: 4, border: '1px solid #ff9800', padding: 4 }}
-                      />
-                    </label>
-                    <button
-                      className="wo-btn secondary"
-                      style={{ marginLeft: 8 }}
-                      onClick={() => {
-                        if (editPassword !== '6214') {
-                          setEditError('Incorrect password');
-                          return;
-                        }
-                        const found = workOrders.find(wo => wo.id === Number(editId));
-                        if (found) {
-                          const normalizedOrder = normalizeWorkOrderForEdit(found);
-                          setEditWorkOrder(normalizedOrder);
-                          setExtraOptions(normalizedOrder.extraOptions || []);
-                          setEditError('');
-                        } else {
-                          setEditError('No order found with that ID.');
-                        }
-                      }}
-                    >
-                      Load
-                    </button>
-                    <button
-                      className="wo-btn secondary"
-                      style={{ marginLeft: 8 }}
-                      onClick={() => { setShowEditForm(false); setEditId(''); setEditWorkOrder(null); setEditError(''); setEditPassword(''); setIdClassicError(''); }}
-                    >
-                      Cancel
-                    </button>
-                    {editError && <div style={{ color: 'red', marginTop: 8 }}>{editError}</div>}
-                </div>
-              ) : (
-                <>
-                  <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#0A3854' }}>
-                    Order ID: {editWorkOrder.id}
-                  </div>
-                  {showEditForm && (!editWorkOrder || !Array.isArray(editWorkOrder.parts)) && (
-                    <div style={{ color: 'red', padding: 32 }}>No data to edit.</div>
-                  )}
-                  <WorkOrderForm
-                    workOrder={editWorkOrder}
-                    workOrderNumber={editWorkOrder?.id}
-                    onChange={handleWorkOrderChange}
-                    onPartChange={handlePartChange}
-                    onSubmit={handleEditWorkOrderSubmit}
-                    onCancel={() => { setShowEditForm(false); setEditWorkOrder(null); setEditId(''); setEditError(''); setIdClassicError(''); }}
-                    title="Edit Work Order"
-                    billToCoOptions={billToCoOptions}
-                    getTrailerOptions={billToCo => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
-                    inventory={inventory}
-                    onAddEmptyPart={addEmptyPart}
-                    onAddPendingPart={addPendingPart}
-                    onDeletePart={deletePart}
-                    trailersWithPendingParts={trailersWithPendingParts}
-                    pendingParts={pendingParts}
-                    pendingPartsQty={pendingPartsQty}
-                    setPendingPartsQty={setPendingPartsQty}
-                    loading={loading}
-                    setLoading={setLoading}
-                    idClassicError={idClassicError}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        )}        {/* --- BOARD ABAJO --- */}
+        <WorkOrdersEditModal
+          showEditForm={showEditForm}
+          modalStyle={modalStyle}
+          modalContentStyle={modalContentStyle}
+          editWorkOrder={editWorkOrder}
+          editId={editId}
+          setEditId={setEditId}
+          editPassword={editPassword}
+          setEditPassword={setEditPassword}
+          editError={editError}
+          setEditError={setEditError}
+          workOrders={workOrders}
+          normalizeWorkOrderForEdit={normalizeWorkOrderForEdit}
+          setEditWorkOrder={setEditWorkOrder}
+          setExtraOptions={setExtraOptions}
+          setShowEditForm={setShowEditForm}
+          setIdClassicError={setIdClassicError}
+          handleWorkOrderChange={handleWorkOrderChange}
+          handlePartChange={handlePartChange}
+          handleEditWorkOrderSubmit={handleEditWorkOrderSubmit}
+          billToCoOptions={billToCoOptions}
+          getTrailerOptionsWithPendingIndicator={(billToCo) =>
+            getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)
+          }
+          trailersWithPendingParts={trailersWithPendingParts}
+          inventory={inventory}
+          addEmptyPart={addEmptyPart}
+          addPendingPart={addPendingPart}
+          deletePart={deletePart}
+          pendingParts={pendingParts}
+          pendingPartsQty={pendingPartsQty}
+          setPendingPartsQty={setPendingPartsQty}
+          loading={loading}
+          setLoading={setLoading}
+          idClassicError={idClassicError}
+        />
+        {/* --- BOARD ABAJO --- */}
           {/* Información de resultados */}
         {searchIdClassic && (
           <div style={{ 
