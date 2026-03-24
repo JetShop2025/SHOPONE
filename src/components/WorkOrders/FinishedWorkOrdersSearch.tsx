@@ -6,6 +6,8 @@ import { generateWorkOrderPDF, openPDFInNewTab } from '../../utils/pdfGenerator'
 import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
+const FINISHED_WO_CACHE_KEY = 'finished_wo_search_cache_v1';
+const FINISHED_WO_CACHE_TTL_MS = 5 * 60 * 1000;
 
 // Styled Components
 const Container = styled.div`
@@ -327,43 +329,109 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   const [woError, setWoError] = useState('');
   
   // Search by Unit/Trailer
+  const [clientSearchInput, setClientSearchInput] = useState('');
   const [unitSearchInput, setUnitSearchInput] = useState('');
-  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
-  const [unitsLoading, setUnitsLoading] = useState(true);
+  const [allFinishedWOs, setAllFinishedWOs] = useState<WorkOrder[]>([]);
+  const [unitsLoading, setUnitsLoading] = useState(false);
+  const [unitReferenceError, setUnitReferenceError] = useState('');
   const [unitWOs, setUnitWOs] = useState<WorkOrder[]>([]);
   const [unitStats, setUnitStats] = useState<UnitStats | null>(null);
   const [unitError, setUnitError] = useState('');
   
+  // Inventory — loaded once at mount to resolve PDF invoice links
+  const [inventory, setInventory] = useState<any[]>([]);
+
   // Hourmeter state
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [hourmeterWOs, setHourmeterWOs] = useState<WorkOrder[]>([]);
-  
-  // Fetch all finished W.O to extract units
+
+  // Load inventory once for invoice-link resolution in PDFs
   useEffect(() => {
-    const fetchAllUnits = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/work-orders`, {
-          params: { status: 'FINISHED', pageSize: 10000 },
-          timeout: 30000
-        });
-        
-        const allWOs = res.data?.data || res.data || [];
-        const uniqueUnits = Array.from(new Set(
-          allWOs
-            .filter((wo: WorkOrder) => wo.trailer)
-            .map((wo: WorkOrder) => wo.trailer)
-        )) as string[];
-        
-        setAvailableUnits(uniqueUnits.sort());
-        setUnitsLoading(false);
-      } catch (err) {
-        console.error('Error cargando unidades:', err);
-        setUnitsLoading(false);
-      }
-    };
-    
-    fetchAllUnits();
+    axios.get(`${API_URL}/inventory`, { timeout: 15000 })
+      .then(res => setInventory(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setInventory([]));
   }, []);
+  
+  const availableClients = React.useMemo(() => {
+    const uniqueClients = Array.from(
+      new Set(
+        allFinishedWOs
+          .map((wo: WorkOrder) => String(wo.billToCo || '').trim())
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    return uniqueClients.sort();
+  }, [allFinishedWOs]);
+
+  const availableUnits = React.useMemo(() => {
+    const filteredByClient = allFinishedWOs.filter((wo: WorkOrder) => {
+      if (!clientSearchInput) return true;
+      return String(wo.billToCo || '').trim() === clientSearchInput;
+    });
+
+    const uniqueUnits = Array.from(
+      new Set(
+        filteredByClient
+          .map((wo: WorkOrder) => String(wo.trailer || '').trim())
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    return uniqueUnits.sort();
+  }, [allFinishedWOs, clientSearchInput]);
+
+  const loadFinishedReferenceData = useCallback(async (forceRefresh = false): Promise<WorkOrder[]> => {
+    if (!forceRefresh) {
+      try {
+        const rawCache = sessionStorage.getItem(FINISHED_WO_CACHE_KEY);
+        if (rawCache) {
+          const parsed = JSON.parse(rawCache) as { ts: number; data: WorkOrder[] };
+          const cacheIsFresh = Date.now() - Number(parsed?.ts || 0) < FINISHED_WO_CACHE_TTL_MS;
+          if (cacheIsFresh && Array.isArray(parsed?.data)) {
+            setAllFinishedWOs(parsed.data);
+            setUnitReferenceError('');
+            return parsed.data;
+          }
+        }
+      } catch {
+        // Ignore cache parsing errors and fetch from API.
+      }
+    }
+
+    try {
+      setUnitsLoading(true);
+      setUnitReferenceError('');
+
+      const res = await axios.get(`${API_URL}/work-orders`, {
+        params: { status: 'FINISHED', pageSize: 10000 },
+        timeout: 30000,
+      });
+
+      const allWOs = (res.data?.data || res.data || []) as WorkOrder[];
+      setAllFinishedWOs(allWOs);
+
+      sessionStorage.setItem(
+        FINISHED_WO_CACHE_KEY,
+        JSON.stringify({ ts: Date.now(), data: allWOs })
+      );
+
+      return allWOs;
+    } catch (err) {
+      console.error('Error loading finished work orders:', err);
+      setUnitReferenceError('Could not load client/unit list. Please retry.');
+      return [];
+    } finally {
+      setUnitsLoading(false);
+    }
+  }, []);
+
+  // Load reference data only when user opens the Unit search mode.
+  useEffect(() => {
+    if (searchMode !== 'by-unit') return;
+    if (allFinishedWOs.length > 0) return;
+    void loadFinishedReferenceData();
+  }, [searchMode, allFinishedWOs.length, loadFinishedReferenceData]);
   
   // Load W.O details
   const loadWorkOrderDetails = useCallback(async (orderId: number) => {
@@ -381,10 +449,11 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       
       setSelectedWO({
         ...wo,
-        parts: parts.length > 0 ? parts : (wo.parts || [])
+        parts: parts.length > 0 ? parts : (wo.parts || []),
+        _partsLoaded: true
       });
     } catch (err) {
-      setWoError('No se encontró la orden de trabajo');
+      setWoError('Work order not found');
       setSelectedWO(null);
     } finally {
       setWoLoading(false);
@@ -395,7 +464,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   const handleSearchWO = () => {
     const searchId = woSearchInput.trim();
     if (!searchId) {
-      setWoError('Ingresa un ID de W.O');
+      setWoError('Enter a work order ID');
       return;
     }
     
@@ -404,25 +473,43 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   
   // Search by Unit/Trailer
   const handleSearchUnit = async () => {
+    if (!clientSearchInput.trim()) {
+      setUnitError('Select a client first');
+      return;
+    }
+
     if (!unitSearchInput.trim()) {
-      setUnitError('Selecciona una unidad');
+      setUnitError('Select a unit');
       return;
     }
     
     try {
       setUnitError('');
-      const res = await axios.get(`${API_URL}/work-orders`, {
-        params: { status: 'FINISHED', pageSize: 10000 },
-        timeout: 30000
+
+      const sourceWOs = allFinishedWOs.length > 0
+        ? allFinishedWOs
+        : await loadFinishedReferenceData();
+
+      if (sourceWOs.length === 0) {
+        setUnitError('Unable to build report because client/unit data is unavailable');
+        setUnitWOs([]);
+        setUnitStats(null);
+        return;
+      }
+
+      const filtered = sourceWOs.filter((wo: WorkOrder) => {
+        const client = String(wo.billToCo || '').trim();
+        const unit = String(wo.trailer || '').trim();
+        return client === clientSearchInput && unit === unitSearchInput;
+      }).sort((a, b) => {
+        const dateA = new Date(String(a.date || '')).getTime() || 0;
+        const dateB = new Date(String(b.date || '')).getTime() || 0;
+        if (dateA !== dateB) return dateB - dateA;
+        return Number(b.id || 0) - Number(a.id || 0);
       });
       
-      const allWOs: WorkOrder[] = res.data?.data || res.data || [];
-      const filtered = allWOs.filter(
-        (wo: WorkOrder) => wo.trailer === unitSearchInput
-      );
-      
       if (filtered.length === 0) {
-        setUnitError('No se encontraron W.O para esta unidad');
+        setUnitError('No finished work orders found for this client and unit');
         setUnitWOs([]);
         setUnitStats(null);
         return;
@@ -449,25 +536,55 @@ const FinishedWorkOrdersSearch: React.FC = () => {
         }
       });
     } catch (err) {
-      setUnitError('Error cargando datos de la unidad');
+      setUnitError('Error loading unit report data');
       setUnitWOs([]);
       setUnitStats(null);
     }
+  };
+
+  const handleRetryReferenceLoad = () => {
+    void loadFinishedReferenceData(true);
   };
   
   // View PDF
   const handleViewPDF = async (wo: WorkOrder) => {
     try {
+      // For PDF links we need the full parts from the work-order-parts table.
+      // If the WO was loaded without detailed parts (e.g. from the unit report list),
+      // fetch them now so invoice links are available.
+      let resolvedParts: any[] = wo.parts || [];
+      if (!wo._partsLoaded) {
+        try {
+          const partsRes = await axios.get(`${API_URL}/work-order-parts/${wo.id}`).catch(() => ({ data: [] }));
+          if (Array.isArray(partsRes.data) && partsRes.data.length > 0) {
+            resolvedParts = partsRes.data;
+          }
+        } catch { /* keep existing parts */ }
+      }
+
       let workOrderParts: any[] = [];
-      if (wo.parts && Array.isArray(wo.parts)) {
-        workOrderParts = wo.parts.map((part: any, index: number) => ({
-          sku: part.sku || '',
-          part_name: part.part || part.description || '',
-          um: part.um || 'EA',
-          qty_used: Number(part.qty) || 0,
-          cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
-          invoiceLink: part.invoiceLink || part.invoice_link || null
-        }));
+      if (resolvedParts.length > 0) {
+        workOrderParts = resolvedParts.map((part: any) => {
+          const sku = String(part.sku || '').trim();
+          const inventoryItem = inventory.find((item: any) =>
+            String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
+          );
+          // Prefer invoiceLink from work_order_parts row; fall back to inventory
+          const invoiceLink =
+            part.invoiceLink ||
+            part.invoice_link ||
+            inventoryItem?.invoiceLink ||
+            inventoryItem?.invoice_link ||
+            null;
+          return {
+            sku,
+            part_name: part.part || part.part_name || part.description || '',
+            um: part.um || inventoryItem?.um || inventoryItem?.uom || 'EA',
+            qty_used: Number(part.qty_used ?? part.qty) || 0,
+            cost: Number(String(part.cost).replace(/[^0-9.]/g, '')) || 0,
+            invoiceLink
+          };
+        });
       }
       
       let mechanicsString = '';
@@ -509,7 +626,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       const pdf = await generateWorkOrderPDF(pdfData as any);
       openPDFInNewTab(pdf, `work_order_${pdfData.idClassic}_finished.pdf`);
     } catch (error) {
-      alert('Error generando PDF');
+      alert('Error generating PDF');
     }
   };
   
@@ -554,18 +671,20 @@ const FinishedWorkOrdersSearch: React.FC = () => {
             setSelectedWO(null);
           }}
         >
-          🔍 Buscar por W.O ID
+          🔍 Search by W.O ID
         </button>
         <button
           className={searchMode === 'by-unit' ? 'active' : ''}
           onClick={() => {
             setSearchMode('by-unit');
             setUnitError('');
+            setClientSearchInput('');
+            setUnitSearchInput('');
             setUnitWOs([]);
             setUnitStats(null);
           }}
         >
-          🚛 Buscar por Unidad
+          🚛 Search by Unit
         </button>
       </SearchModeToggle>
 
@@ -573,16 +692,16 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       {searchMode === 'by-wo' && (
         <>
           <SearchContainer>
-            <SearchLabel>ID de Orden de Trabajo</SearchLabel>
+            <SearchLabel>Work Order ID</SearchLabel>
             <SearchInput
               type="number"
-              placeholder="Ej: 12345"
+              placeholder="Example: 12345"
               value={woSearchInput}
               onChange={(e) => setWoSearchInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearchWO()}
             />
             <SearchButton onClick={handleSearchWO} disabled={woLoading}>
-              {woLoading ? 'Buscando...' : 'Buscar'}
+              {woLoading ? 'Searching...' : 'Search'}
             </SearchButton>
           </SearchContainer>
 
@@ -591,7 +710,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
           {selectedWO && (
             <ResultsContainer>
               <DetailPanel>
-                <DetailTitle>Detalles de Orden #{selectedWO.idClassic || selectedWO.id}</DetailTitle>
+                <DetailTitle>Work Order Details #{selectedWO.idClassic || selectedWO.id}</DetailTitle>
 
                 <DetailGrid>
                   <DetailField>
@@ -599,27 +718,27 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                     <div>{selectedWO.id}</div>
                   </DetailField>
                   <DetailField>
-                    <label>Cliente</label>
+                    <label>Client</label>
                     <div>{selectedWO.billToCo || 'N/A'}</div>
                   </DetailField>
                   <DetailField>
-                    <label>Unidad</label>
+                    <label>Unit</label>
                     <div>{selectedWO.trailer || 'N/A'}</div>
                   </DetailField>
                   <DetailField>
-                    <label>Fecha</label>
+                    <label>Date</label>
                     <div>{formatDate(selectedWO.date)}</div>
                   </DetailField>
                   <DetailField>
-                    <label>Mecánico(s)</label>
+                    <label>Mechanic(s)</label>
                     <div>{selectedWO.mechanic || selectedWO.mechanics?.map((m: any) => `${m.name}`).join(', ') || 'N/A'}</div>
                   </DetailField>
                   <DetailField>
-                    <label>Total Horas</label>
+                    <label>Total Hours</label>
                     <div>{Number(selectedWO.totalHrs || 0).toFixed(2)}h</div>
                   </DetailField>
                   <DetailField>
-                    <label>Mano de Obra</label>
+                    <label>Labor</label>
                     <div>{formatCurrency((Number(selectedWO.totalHrs || 0) * 60))}</div>
                   </DetailField>
                   <DetailField>
@@ -632,21 +751,21 @@ const FinishedWorkOrdersSearch: React.FC = () => {
 
                 {selectedWO.description && (
                   <DetailField>
-                    <label>Descripción</label>
+                    <label>Description</label>
                     <div>{selectedWO.description}</div>
                   </DetailField>
                 )}
 
                 {selectedWO.parts && selectedWO.parts.length > 0 && (
                   <PartsSection>
-                    <DetailTitle>Partes Utilizadas</DetailTitle>
+                    <DetailTitle>Used Parts</DetailTitle>
                     <PartsTable>
                       <thead>
                         <tr>
                           <th>SKU</th>
-                          <th>Descripción</th>
-                          <th>Cantidad</th>
-                          <th>Costo Unit.</th>
+                          <th>Description</th>
+                          <th>Qty</th>
+                          <th>Unit Cost</th>
                           <th>Total</th>
                         </tr>
                       </thead>
@@ -667,7 +786,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
 
                 <ActionButtons>
                   <button className="primary" onClick={() => handleViewPDF(selectedWO)}>
-                    📄 Ver PDF
+                    📄 View PDF
                   </button>
                   <button className="primary" onClick={handleOpenHourmeter}>
                     ⏱️ Hourmeter
@@ -683,16 +802,43 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       {searchMode === 'by-unit' && (
         <>
           <SearchContainer>
-            <SearchLabel>Selecciona una Unidad (Trailer/TRK)</SearchLabel>
+            <SearchLabel>Select Client</SearchLabel>
             {unitsLoading ? (
-              <LoadingText>Cargando unidades...</LoadingText>
+              <LoadingText>Loading clients and units...</LoadingText>
             ) : (
               <>
+                {unitReferenceError && (
+                  <>
+                    <ErrorText>{unitReferenceError}</ErrorText>
+                    <SearchButton onClick={handleRetryReferenceLoad}>Retry Loading List</SearchButton>
+                  </>
+                )}
+
+                <SearchSelect
+                  value={clientSearchInput}
+                  onChange={(e) => {
+                    setClientSearchInput(e.target.value);
+                    setUnitSearchInput('');
+                    setUnitWOs([]);
+                    setUnitStats(null);
+                    setUnitError('');
+                  }}
+                >
+                  <option value="">-- Select a client --</option>
+                  {availableClients.map((client) => (
+                    <option key={client} value={client}>
+                      {client}
+                    </option>
+                  ))}
+                </SearchSelect>
+
+                <SearchLabel style={{ marginTop: '15px' }}>Select Unit (Trailer/TRK)</SearchLabel>
                 <SearchSelect
                   value={unitSearchInput}
                   onChange={(e) => setUnitSearchInput(e.target.value)}
+                  disabled={!clientSearchInput}
                 >
-                  <option value="">-- Selecciona una unidad --</option>
+                  <option value="">-- Select a unit --</option>
                   {availableUnits.map((unit) => (
                     <option key={unit} value={unit}>
                       {unit}
@@ -701,9 +847,9 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                 </SearchSelect>
                 <SearchButton
                   onClick={handleSearchUnit}
-                  disabled={!unitSearchInput}
+                  disabled={!clientSearchInput || !unitSearchInput}
                 >
-                  Buscar W.O de esta Unidad
+                  Search Work Orders for This Unit
                 </SearchButton>
               </>
             )}
@@ -714,45 +860,45 @@ const FinishedWorkOrdersSearch: React.FC = () => {
           {unitStats && unitWOs.length > 0 && (
             <ResultsContainer>
               <DetailPanel>
-                <DetailTitle>Reporte de Unidad: {unitSearchInput}</DetailTitle>
+                <DetailTitle>Unit Report: {clientSearchInput} / {unitSearchInput}</DetailTitle>
 
                 <ReportStats>
                   <div className="stat-card">
-                    <div className="stat-label">Total de W.O</div>
+                    <div className="stat-label">Total Work Orders</div>
                     <div className="stat-value">{unitStats.totalWOs}</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Total de Ingresos</div>
+                    <div className="stat-label">Total Revenue</div>
                     <div className="stat-value">{formatCurrency(unitStats.totalRevenue)}</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Total de Horas</div>
+                    <div className="stat-label">Total Hours</div>
                     <div className="stat-value">{unitStats.totalHours.toFixed(2)}h</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Promedio por W.O</div>
+                    <div className="stat-label">Average per W.O</div>
                     <div className="stat-value">{formatCurrency(unitStats.averageRevenuePerWO)}</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Periodo</div>
+                    <div className="stat-label">Period</div>
                     <div className="stat-value" style={{ fontSize: '12px' }}>
-                      {unitStats.dateRange.earliest} a {unitStats.dateRange.latest}
+                      {unitStats.dateRange.earliest} to {unitStats.dateRange.latest}
                     </div>
                   </div>
                 </ReportStats>
 
                 <ReportSection>
-                  <DetailTitle>Todas las Órdenes de esta Unidad</DetailTitle>
+                  <DetailTitle>All Work Orders for This Unit</DetailTitle>
                   <ReportTable>
                     <thead>
                       <tr>
                         <th>ID</th>
-                        <th>Cliente</th>
-                        <th>Fecha</th>
-                        <th>Mecánico(s)</th>
-                        <th>Horas</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Mechanic(s)</th>
+                        <th>Hours</th>
                         <th>Total</th>
-                        <th>Acciones</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -794,7 +940,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
 
                 <ActionButtons>
                   <button className="primary" onClick={handleOpenHourmeterUnit}>
-                    ⏱️ Hourmeter de esta Unidad
+                    ⏱️ Unit Hourmeter
                   </button>
                 </ActionButtons>
               </DetailPanel>

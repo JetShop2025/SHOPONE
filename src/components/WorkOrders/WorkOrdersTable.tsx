@@ -1282,6 +1282,15 @@ const WorkOrdersTable: React.FC = () => {
   const handleAddWorkOrder = async (datosOrden: any) => {
     setLoading(true);
     try {
+      // 0. Warn if no vehicle/unit selected
+      if (!datosOrden.trailer || String(datosOrden.trailer).trim() === '') {
+        const proceed = window.confirm('No Vehicle Selected. Do you want to continue?');
+        if (!proceed) {
+          setLoading(false);
+          return;
+        }
+      }
+
       // 0a. Validate ID Classic is required when status is FINISHED
       if (datosOrden.status === 'FINISHED') {
         if (!datosOrden.idClassic || datosOrden.idClassic.trim() === '') {
