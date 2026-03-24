@@ -466,7 +466,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   }, [searchMode, allFinishedWOs.length, loadFinishedReferenceData]);
   
   // Load W.O details
-  const loadWorkOrderDetails = useCallback(async (orderId: number) => {
+  const loadWorkOrderDetails = useCallback(async (orderId: number): Promise<boolean> => {
     try {
       setWoLoading(true);
       setWoError('');
@@ -512,53 +512,70 @@ const FinishedWorkOrdersSearch: React.FC = () => {
         parts: normalizedParts,
         _partsLoaded: true
       });
+      return true;
     } catch (err) {
       setWoError('Work order not found');
       setSelectedWO(null);
+      return false;
     } finally {
       setWoLoading(false);
     }
   }, []);
   
   // Search by ID Classic (non-numeric input)
-  const loadWorkOrderDetailsByClassic = useCallback(async (idClassic: string) => {
+  const loadWorkOrderDetailsByClassic = useCallback(async (idClassic: string): Promise<boolean> => {
     setWoLoading(true);
     setWoError('');
     try {
       const res = await axios.get(`${API_URL}/work-orders`, {
-        params: { searchIdClassic: idClassic }
+        params: { searchIdClassic: idClassic, pageSize: 500 }
       });
-      const results = Array.isArray(res.data) ? res.data : [];
+      const responseRows = Array.isArray(res.data)
+        ? res.data
+        : (Array.isArray(res.data?.data) ? res.data.data : []);
+      const normalizedClassic = String(idClassic).trim().toLowerCase();
+
+      // Some API deployments ignore searchIdClassic and return a generic list.
+      // Filter client-side to guarantee exact ID Classic matching.
+      const results = responseRows.filter((wo: any) =>
+        String(wo?.idClassic || '').trim().toLowerCase() === normalizedClassic
+      );
+
       if (results.length === 0) {
         setWoError('Work order not found');
         setSelectedWO(null);
         setWoLoading(false);
-        return;
+        return false;
       }
       // Prefer FINISHED; otherwise take the most recent match
       const match = results.find((wo: any) => wo.status === 'FINISHED') || results[0];
       // Delegate to normal loader — it will manage loading state
-      await loadWorkOrderDetails(match.id);
+      return await loadWorkOrderDetails(match.id);
     } catch {
       setWoError('Work order not found');
       setSelectedWO(null);
       setWoLoading(false);
+      return false;
     }
   }, [loadWorkOrderDetails]);
 
   // Search by W.O ID
-  const handleSearchWO = () => {
+  const handleSearchWO = async () => {
     const searchId = woSearchInput.trim();
     if (!searchId) {
       setWoError('Enter a W.O # or ID Classic');
       return;
     }
 
-    // Pure number → search by system ID; anything else → search by ID Classic
+    // Pure number: first try system ID, then fallback to ID Classic.
+    // This covers numeric ID Classic values like "21570".
     if (/^\d+$/.test(searchId)) {
-      loadWorkOrderDetails(Number(searchId));
+      const foundBySystemId = await loadWorkOrderDetails(Number(searchId));
+      if (!foundBySystemId) {
+        await loadWorkOrderDetailsByClassic(searchId);
+      }
     } else {
-      loadWorkOrderDetailsByClassic(searchId);
+      await loadWorkOrderDetailsByClassic(searchId);
     }
   };
   

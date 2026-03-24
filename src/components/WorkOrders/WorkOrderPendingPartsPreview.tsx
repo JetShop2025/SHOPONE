@@ -60,6 +60,9 @@ const WorkOrderPendingPartsPreview: React.FC<WorkOrderPendingPartsPreviewProps> 
         {pendingParts.map((part) => {
           const availableQty = part.qty !== undefined ? Number(part.qty) : (part.qty_remaining !== undefined ? Number(part.qty_remaining) : 0);
           const hasQtyAvailable = availableQty > 0;
+          const rawCost = parseFloat(String(part.costTax ?? '')) || 0;
+          const priceWithMarkup = rawCost > 0 ? rawCost * 1.10 : null;
+          const providerName = part.provider ? String(part.provider).trim() : null;
           return (
             <div key={part.id} style={{
               background: hasQtyAvailable ? 'white' : '#f5f5f5',
@@ -74,10 +77,24 @@ const WorkOrderPendingPartsPreview: React.FC<WorkOrderPendingPartsPreviewProps> 
               <div style={{ fontWeight: 'bold', color: hasQtyAvailable ? '#2e7d32' : '#666' }}>
                 {part.sku} - {part.item}
               </div>
-              <div style={{ fontSize: 14, color: '#666' }}>
-                Available Qty: <strong style={{ color: hasQtyAvailable ? '#2e7d32' : '#f44336' }}>
-                  {availableQty} {hasQtyAvailable ? '' : '(Out of Stock)'}
-                </strong>
+              <div style={{ fontSize: 13, color: '#555', display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+                <span>
+                  Available Qty: <strong style={{ color: hasQtyAvailable ? '#2e7d32' : '#f44336' }}>
+                    {availableQty} {hasQtyAvailable ? '' : '(Out of Stock)'}
+                  </strong>
+                </span>
+                {priceWithMarkup !== null && (
+                  <span>
+                    Price (+10%): <strong style={{ color: '#0a3854' }}>
+                      ${priceWithMarkup.toFixed(2)}
+                    </strong>
+                  </span>
+                )}
+                {providerName && (
+                  <span>
+                    Provider: <strong style={{ color: '#6a1b9a' }}>{providerName}</strong>
+                  </span>
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input

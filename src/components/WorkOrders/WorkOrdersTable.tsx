@@ -1897,11 +1897,12 @@ const WorkOrdersTable: React.FC = () => {
     }
     
     // Crear nueva parte para agregar
+    const costWithMarkup = cost > 0 ? cost * 1.10 : 0;
     const newPart = {
       sku: pendingPart.sku,
       part: pendingPart.item || pendingPart.part || inventoryPart?.part || inventoryPart?.description || '',
       qty: qtyToUse.toString(),
-      cost: cost > 0 ? cost.toFixed(2) : '0.00',
+      cost: costWithMarkup > 0 ? costWithMarkup.toFixed(2) : '0.00',
       _pendingPartId: pendingPart.id // Guardar referencia para el procesamiento posterior
     };
       console.log('✅ Nueva parte creada:', newPart);
