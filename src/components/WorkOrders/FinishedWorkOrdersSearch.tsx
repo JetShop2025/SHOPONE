@@ -527,19 +527,36 @@ const FinishedWorkOrdersSearch: React.FC = () => {
     setWoLoading(true);
     setWoError('');
     try {
+      const normalizedClassic = String(idClassic).trim().toLowerCase();
+
       const res = await axios.get(`${API_URL}/work-orders`, {
         params: { searchIdClassic: idClassic, pageSize: 500 }
       });
       const responseRows = Array.isArray(res.data)
         ? res.data
         : (Array.isArray(res.data?.data) ? res.data.data : []);
-      const normalizedClassic = String(idClassic).trim().toLowerCase();
 
       // Some API deployments ignore searchIdClassic and return a generic list.
       // Filter client-side to guarantee exact ID Classic matching.
-      const results = responseRows.filter((wo: any) =>
+      let results = responseRows.filter((wo: any) =>
         String(wo?.idClassic || '').trim().toLowerCase() === normalizedClassic
       );
+
+      // Fallback: if searchIdClassic query returns empty (or backend behaves inconsistently),
+      // load finished WOs and match locally by idClassic.
+      if (results.length === 0) {
+        const fallbackRes = await axios.get(`${API_URL}/work-orders`, {
+          params: { status: 'FINISHED', pageSize: 10000 },
+          timeout: 30000,
+        });
+        const fallbackRows = Array.isArray(fallbackRes.data)
+          ? fallbackRes.data
+          : (Array.isArray(fallbackRes.data?.data) ? fallbackRes.data.data : []);
+
+        results = fallbackRows.filter((wo: any) =>
+          String(wo?.idClassic || '').trim().toLowerCase() === normalizedClassic
+        );
+      }
 
       if (results.length === 0) {
         setWoError('Work order not found');
@@ -567,12 +584,12 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       return;
     }
 
-    // Pure number: first try system ID, then fallback to ID Classic.
-    // This covers numeric ID Classic values like "21570".
+    // Pure number: first try ID Classic, then fallback to system ID.
+    // This avoids false negatives/noise when users type numeric ID Classic values.
     if (/^\d+$/.test(searchId)) {
-      const foundBySystemId = await loadWorkOrderDetails(Number(searchId));
-      if (!foundBySystemId) {
-        await loadWorkOrderDetailsByClassic(searchId);
+      const foundByClassic = await loadWorkOrderDetailsByClassic(searchId);
+      if (!foundByClassic) {
+        await loadWorkOrderDetails(Number(searchId));
       }
     } else {
       await loadWorkOrderDetailsByClassic(searchId);

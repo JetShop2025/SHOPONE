@@ -256,16 +256,20 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
     // TABLA DE PARTES - CENTRADA Y SIN DESBORDAMIENTO
   // Ajustar posición de tabla según altura de la descripción
   const tableStartY = descY + 7 + descriptionHeight;
-  const tableData = workOrderData.parts.map((part, index) => [
-    String(index + 1),
-    String(part.sku || '').replace(/\s+/g, '').substring(0, 20), // SKU limpio (sin saltos)
-    String(part.description || '').replace(/\s+/g, ' ').trim(), // Descripción limpia
-    String((part as any).um || (part as any).uom || (part as any).unit || 'EA'),
-    String(part.qty || 0),
-    `$${(part.unitCost || 0).toFixed(2)}`,
-    `$${(part.total || 0).toFixed(2)}`,
-    part.invoiceLink ? 'LINK' : '' // Clickeable si hay invoiceLink
-  ]);
+  const tableData = workOrderData.parts.map((part, index) => {
+    const safeUnitCost = Number(String((part as any).unitCost ?? 0).replace(/[^0-9.-]/g, '')) || 0;
+    const safeTotal = Number(String((part as any).total ?? 0).replace(/[^0-9.-]/g, '')) || 0;
+    return [
+      String(index + 1),
+      String(part.sku || '').replace(/\s+/g, '').substring(0, 20), // SKU limpio (sin saltos)
+      String(part.description || '').replace(/\s+/g, ' ').trim(), // Descripción limpia
+      String((part as any).um || (part as any).uom || (part as any).unit || 'EA'),
+      String(part.qty || 0),
+      `$${safeUnitCost.toFixed(2)}`,
+      `$${safeTotal.toFixed(2)}`,
+      part.invoiceLink ? 'LINK' : '' // Clickeable si hay invoiceLink
+    ];
+  });
   autoTable(pdf, {
     startY: tableStartY,
     head: [['#', 'SKU', 'DESCRIPTION', 'U/M', 'QTY', 'UNIT $', 'TOTAL', 'LINK']],

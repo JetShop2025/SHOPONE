@@ -206,13 +206,30 @@ const WorkOrdersTable: React.FC = () => {
 
       const latestOrder = workOrderRes?.data || order;
       const partRows = Array.isArray(partsRes?.data) ? partsRes.data : [];
-      const normalizedParts = partRows.map((part: any) => ({
-        sku: part.sku || '',
-        part: part.part || part.part_name || part.description || '',
-        qty: part.qty_used ?? part.qty ?? 0,
-        cost: part.cost ?? 0,
-        invoiceLink: part.invoiceLink || part.invoice_link || null,
-      }));
+      const dedupeSignatures = new Set<string>();
+      const normalizedParts = partRows
+        .map((part: any) => ({
+          sku: part.sku || '',
+          part: part.part || part.part_name || part.description || '',
+          qty: part.qty_used ?? part.qty ?? 0,
+          cost: part.cost ?? 0,
+          invoiceLink: part.invoiceLink || part.invoice_link || null,
+        }))
+        .filter((part: any) => {
+          // Avoid duplicated rows created by repeated sync saves while preserving
+          // genuinely different rows (e.g. same SKU but different invoice).
+          const signature = [
+            String(part.sku || '').trim().toLowerCase(),
+            String(part.part || '').trim().toLowerCase(),
+            String(part.qty ?? '').trim(),
+            String(part.cost ?? '').trim(),
+            String(part.invoiceLink || '').trim(),
+          ].join('|');
+
+          if (dedupeSignatures.has(signature)) return false;
+          dedupeSignatures.add(signature);
+          return true;
+        });
 
       setDetailOrder({
         ...latestOrder,
