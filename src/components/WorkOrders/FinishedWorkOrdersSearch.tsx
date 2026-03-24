@@ -520,15 +520,46 @@ const FinishedWorkOrdersSearch: React.FC = () => {
     }
   }, []);
   
+  // Search by ID Classic (non-numeric input)
+  const loadWorkOrderDetailsByClassic = useCallback(async (idClassic: string) => {
+    setWoLoading(true);
+    setWoError('');
+    try {
+      const res = await axios.get(`${API_URL}/work-orders`, {
+        params: { searchIdClassic: idClassic }
+      });
+      const results = Array.isArray(res.data) ? res.data : [];
+      if (results.length === 0) {
+        setWoError('Work order not found');
+        setSelectedWO(null);
+        setWoLoading(false);
+        return;
+      }
+      // Prefer FINISHED; otherwise take the most recent match
+      const match = results.find((wo: any) => wo.status === 'FINISHED') || results[0];
+      // Delegate to normal loader — it will manage loading state
+      await loadWorkOrderDetails(match.id);
+    } catch {
+      setWoError('Work order not found');
+      setSelectedWO(null);
+      setWoLoading(false);
+    }
+  }, [loadWorkOrderDetails]);
+
   // Search by W.O ID
   const handleSearchWO = () => {
     const searchId = woSearchInput.trim();
     if (!searchId) {
-      setWoError('Enter a work order ID');
+      setWoError('Enter a W.O # or ID Classic');
       return;
     }
-    
-    loadWorkOrderDetails(Number(searchId));
+
+    // Pure number → search by system ID; anything else → search by ID Classic
+    if (/^\d+$/.test(searchId)) {
+      loadWorkOrderDetails(Number(searchId));
+    } else {
+      loadWorkOrderDetailsByClassic(searchId);
+    }
   };
   
   // Search by Unit/Trailer
@@ -863,10 +894,10 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       {searchMode === 'by-wo' && (
         <>
           <SearchContainer>
-            <SearchLabel>Work Order ID</SearchLabel>
+            <SearchLabel>W.O # or ID Classic</SearchLabel>
             <SearchInput
-              type="number"
-              placeholder="Example: 12345"
+              type="text"
+              placeholder="Example: 758 or 1138"
               value={woSearchInput}
               onChange={(e) => setWoSearchInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearchWO()}
@@ -1010,19 +1041,21 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                   ))}
                 </SearchSelect>
 
-                <SearchLabel style={{ marginTop: '15px' }}>Select Unit (Trailer/TRK)</SearchLabel>
-                <SearchSelect
+                <SearchLabel style={{ marginTop: '15px' }}>Unit (Trailer / TRK) — select or type</SearchLabel>
+                <SearchInput
+                  type="text"
+                  list="unit-options"
+                  placeholder={clientSearchInput ? 'Select or type unit...' : 'Select a client first'}
                   value={unitSearchInput}
                   onChange={(e) => setUnitSearchInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearchUnit()}
                   disabled={!clientSearchInput}
-                >
-                  <option value="">-- Select a unit --</option>
+                />
+                <datalist id="unit-options">
                   {availableUnits.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
+                    <option key={unit} value={unit} />
                   ))}
-                </SearchSelect>
+                </datalist>
                 <SearchButton
                   onClick={handleSearchUnit}
                   disabled={!clientSearchInput || !unitSearchInput}

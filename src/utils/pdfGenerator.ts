@@ -428,7 +428,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.text('TOTAL LAB & PARTS:', totalsStartX, currentY);
   const storedTotalRaw = workOrderData.totalLabAndParts ?? workOrderData.totalCost;
   const storedTotal = Number(storedTotalRaw);
-  const hasStoredTotal = Number.isFinite(storedTotal) && storedTotal > 0;
+  // Usar el total guardado aunque sea $0.00 — solo recalcular si nunca fue provisto
+  const hasStoredTotal = storedTotalRaw != null && Number.isFinite(storedTotal);
   const pdfTotal = hasStoredTotal
     ? parseFloat(storedTotal.toFixed(2))
     : parseFloat((subtotal + miscAmount + weldAmount).toFixed(2));

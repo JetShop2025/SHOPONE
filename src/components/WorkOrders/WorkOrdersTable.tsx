@@ -1864,17 +1864,18 @@ const WorkOrdersTable: React.FC = () => {
     
     console.log('📋 Parte encontrada en inventario:', inventoryPart);
     
-    // Determinar el costo usando EXACTAMENTE la misma lógica que WorkOrderForm
+    // Determinar el costo: PRIMERO usar costTax del receive (precio real de esa compra),
+    // luego caer al precio maestro del inventario si costTax no está disponible.
     let cost = 0;
-    if (inventoryPart) {
-      console.log('🔍 Campos de precio disponibles:', {
+    if (pendingPart.costTax !== undefined && pendingPart.costTax !== null && pendingPart.costTax !== '') {
+      cost = parseFloat(String(pendingPart.costTax)) || 0;
+      console.log('💰 Usando costTax del receive (precio de esa recepción):', pendingPart.costTax, '→', cost);
+    } else if (inventoryPart) {
+      console.log('🔍 costTax no disponible, usando precio del inventario maestro:', {
         precio: inventoryPart.precio,
         cost: inventoryPart.cost,
         price: inventoryPart.price,
-        allKeys: Object.keys(inventoryPart)
       });
-      
-      // PRIORIDAD AL CAMPO 'precio' de la tabla inventory (igual que en WorkOrderForm)
       if (inventoryPart.precio !== undefined && inventoryPart.precio !== null && inventoryPart.precio !== '') {
         cost = parseFloat(String(inventoryPart.precio)) || 0;
         console.log('💰 Usando campo "precio":', inventoryPart.precio, '→', cost);
@@ -1892,12 +1893,6 @@ const WorkOrdersTable: React.FC = () => {
         console.log('💰 Usando campo "unit_cost":', inventoryPart.unit_cost, '→', cost);
       } else {
         console.log('❌ No se encontró ningún campo de precio válido');
-      }
-    } else {
-      // Si no se encuentra en inventario, usar el costo de la parte pendiente
-      if (pendingPart.costTax) {
-        cost = parseFloat(String(pendingPart.costTax)) || 0;
-        console.log('💰 Usando costTax de parte pendiente:', pendingPart.costTax, '→', cost);
       }
     }
     
