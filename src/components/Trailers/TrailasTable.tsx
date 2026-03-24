@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { generateWorkOrderPDF, openInvoiceLinks, openPDFInNewTab } from '../../utils/pdfGenerator';
+import TrailerRentalModal from './TrailerRentalModal';
+import TrailerHistoryModal from './TrailerHistoryModal';
+import TrailerWorkOrderModal from './TrailerWorkOrderModal';
+import TrailerAvailableModal from './TrailerAvailableModal';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shipone-onrender.com/api';
 
@@ -1107,524 +1111,52 @@ const TrailasTable: React.FC = () => {
 
       {/* Rental Modal */}
       {showRentalModal && selectedTraila && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '32px',
-            borderRadius: '16px',
-            width: '90%',
-            maxWidth: '500px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Rentar Trailer: {selectedTraila.nombre}
-            </h2>
-              <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Cliente *
-              </label>
-              <input
-                type="text"
-                value={rentalForm.cliente}
-                onChange={(e) => setRentalForm({...rentalForm, cliente: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-                placeholder="Enter customer name..."
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Fecha de Renta *
-              </label>
-              <input
-                type="date"
-                value={rentalForm.fecha_renta}
-                onChange={(e) => setRentalForm({...rentalForm, fecha_renta: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Fecha de Devolución Estimada
-              </label>
-              <input
-                type="date"
-                value={rentalForm.fecha_devolucion}
-                onChange={(e) => setRentalForm({...rentalForm, fecha_devolucion: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Observaciones
-              </label>
-              <textarea
-                value={rentalForm.observaciones}
-                onChange={(e) => setRentalForm({...rentalForm, observaciones: e.target.value})}
-                placeholder="Additional observations..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minHeight: '80px',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowRentalModal(false)}
-                style={{
-                  padding: '12px 24px',
-                  background: '#f5f5f5',
-                  color: '#666',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleRental}
-                style={{
-                  padding: '12px 24px',
-                  background: '#4caf50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Confirmar Renta
-              </button>
-            </div>
-          </div>
-        </div>
+        <TrailerRentalModal
+          trailerName={selectedTraila.nombre}
+          rentalForm={rentalForm}
+          setRentalForm={setRentalForm}
+          onClose={() => setShowRentalModal(false)}
+          onConfirm={handleRental}
+        />
       )}
 
       {/* History Modal */}
       {showHistoryModal && selectedTraila && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '32px',
-            borderRadius: '16px',
-            width: '90%',
-            maxWidth: '800px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Historial de Rentas: {selectedTraila.nombre}
-            </h2>
-            
-            {rentalHistory.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f5f5f5' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Cliente</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha Renta</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha Devolución</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rentalHistory.map((rental, index) => (
-                      <tr key={index}>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.cliente}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_renta}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.fecha_devolucion || 'No devuelto'}</td>
-                        <td style={{ padding: '12px', border: '1px solid #ddd' }}>{rental.observaciones || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                <p>No hay historial de rentas para este trailer</p>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowHistoryModal(false)}
-                style={{
-                  padding: '12px 24px',
-                  background: '#1976d2',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <TrailerHistoryModal
+          trailerName={selectedTraila.nombre}
+          rentalHistory={rentalHistory}
+          onClose={() => setShowHistoryModal(false)}
+        />
       )}
 
       {/* Work Order Modal */}
       {showWorkOrderModal && selectedTraila && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '32px',
-            borderRadius: '16px',
-            width: '90%',
-            maxWidth: '800px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>            <h2 style={{ color: '#1976d2', marginBottom: '24px' }}>
-              Historial de Work Orders: {selectedTraila.nombre}
-            </h2>
-
-            {/* Filtro por mes */}
-            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <label htmlFor="monthFilter" style={{ fontWeight: '600', color: '#333' }}>
-                Filtrar por mes:
-              </label>
-              <select
-                id="monthFilter"
-                value={workOrderMonthFilter}
-                onChange={(e) => setWorkOrderMonthFilter(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  border: '2px solid #1976d2',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: '#fff'
-                }}
-              >
-                <option value="ALL">Todos los meses</option>
-                <option value="2025-01">Enero 2025</option>
-                <option value="2025-02">Febrero 2025</option>
-                <option value="2025-03">Marzo 2025</option>
-                <option value="2025-04">Abril 2025</option>
-                <option value="2025-05">Mayo 2025</option>
-                <option value="2025-06">Junio 2025</option>
-                <option value="2025-07">Julio 2025</option>
-                <option value="2025-08">Agosto 2025</option>
-                <option value="2025-09">Septiembre 2025</option>
-                <option value="2025-10">Octubre 2025</option>
-                <option value="2025-11">Noviembre 2025</option>
-                <option value="2025-12">Diciembre 2025</option>
-                <option value="2024-12">Diciembre 2024</option>
-                <option value="2024-11">Noviembre 2024</option>
-                <option value="2024-10">Octubre 2024</option>
-              </select>
-              {workOrderMonthFilter !== 'ALL' && (
-                <span style={{ color: '#666', fontSize: '14px' }}>
-                  ({(() => {
-                    const filtered = workOrderHistory.filter(wo => {
-                      if (!wo.date) return false;
-                      const woMonth = wo.date.slice(0, 7); // YYYY-MM
-                      return woMonth === workOrderMonthFilter;
-                    });
-                    return filtered.length;
-                  })()} de {workOrderHistory.length} work orders)
-                </span>
-              )}
-            </div>
-
-              {workOrderHistory.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f5f5f5' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID Classic</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Mecánico</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Descripción</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Total</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Status</th>
-                      <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>PDF</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      // Filtrar work orders por mes
-                      const filteredWorkOrders = workOrderMonthFilter === 'ALL' 
-                        ? workOrderHistory 
-                        : workOrderHistory.filter(wo => {
-                            if (!wo.date) return false;
-                            const woMonth = wo.date.slice(0, 7); // YYYY-MM
-                            return woMonth === workOrderMonthFilter;
-                          });
-                      
-                      return filteredWorkOrders.length > 0 ? (
-                        filteredWorkOrders.map((wo, index) => (
-                          <tr key={index}>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.id}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.idClassic || '-'}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.date ? wo.date.slice(0, 10) : '-'}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                              {Array.isArray(wo.mechanics) && wo.mechanics.length > 0
-                                ? wo.mechanics.map((m: any) => m.name).join(', ')
-                                : wo.mechanic || '-'}
-                            </td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd', maxWidth: '200px' }}>{wo.description || '-'}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
-                              {wo.totalLabAndParts ? `$${Number(wo.totalLabAndParts).toFixed(2)}` : '$0.00'}
-                            </td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{wo.status}</td>
-                            <td style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'center' }}>
-                              <button
-                                onClick={() => handleViewWorkOrderPDF(wo)}
-                                style={{
-                                  padding: '4px 8px',
-                                  background: '#f44336',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: '600'
-                                }}
-                                title="Ver PDF de la Work Order"
-                              >
-                                📄 PDF
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={8} style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                            {workOrderMonthFilter === 'ALL' 
-                              ? 'No hay work orders para este trailer'
-                              : `No hay work orders para ${workOrderMonthFilter.split('-')[1]}/${workOrderMonthFilter.split('-')[0]}`
-                            }
-                          </td>
-                        </tr>
-                      );
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                <p>No hay work orders para este trailer</p>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>              <button
-                onClick={() => {
-                  setShowWorkOrderModal(false);
-                  setWorkOrderMonthFilter('ALL'); // Reset filter when closing modal
-                }}
-                style={{
-                  padding: '12px 24px',
-                  background: '#1976d2',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>      )}
+        <TrailerWorkOrderModal
+          trailerName={selectedTraila.nombre}
+          workOrderHistory={workOrderHistory}
+          workOrderMonthFilter={workOrderMonthFilter}
+          setWorkOrderMonthFilter={setWorkOrderMonthFilter}
+          onClose={() => setShowWorkOrderModal(false)}
+          onViewPDF={handleViewWorkOrderPDF}
+        />
+      )}
 
       {/* Mark as Available Modal */}
       {showAvailableModal && selectedTraila && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '32px',
-            borderRadius: '16px',
-            width: '90%',
-            maxWidth: '500px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <h2 style={{ color: '#2e7d32', marginBottom: '24px' }}>
-              ✅ Marcar como Disponible: {selectedTraila.nombre}
-            </h2>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Fecha de Disponibilidad *
-              </label>
-              <input
-                type="date"
-                value={availableForm.fecha_disponible}
-                onChange={(e) => setAvailableForm({...availableForm, fecha_disponible: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-                required
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Motivo
-              </label>
-              <select
-                value={availableForm.motivo}
-                onChange={(e) => setAvailableForm({...availableForm, motivo: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-              >
-                <option value="">Seleccione un motivo</option>
-                <option value="MANTENIMIENTO_COMPLETADO">Mantenimiento Completado</option>
-                <option value="REPARACION_COMPLETADA">Reparación Completada</option>
-                <option value="INSPECCION_COMPLETADA">Inspección Completada</option>
-                <option value="DEVOLUCION_CLIENTE">Devolución de Cliente</option>
-                <option value="OTROS">Otros</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                Observaciones
-              </label>
-              <textarea
-                value={availableForm.observaciones}
-                onChange={(e) => setAvailableForm({...availableForm, observaciones: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minHeight: '80px',
-                  resize: 'vertical'
-                }}
-                placeholder="Additional status change details..."
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setShowAvailableModal(false);
-                  setAvailableForm({
-                    fecha_disponible: new Date().toISOString().split('T')[0],
-                    observaciones: '',
-                    motivo: ''
-                  });
-                }}
-                style={{
-                  padding: '12px 24px',
-                  background: '#9e9e9e',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleMarkAsAvailable}
-                disabled={!availableForm.fecha_disponible}
-                style={{
-                  padding: '12px 24px',
-                  background: availableForm.fecha_disponible ? '#2e7d32' : '#cccccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: availableForm.fecha_disponible ? 'pointer' : 'not-allowed',
-                  fontWeight: '600'
-                }}
-              >
-                ✅ Marcar Disponible
-              </button>
-            </div>
-          </div>
-        </div>
+        <TrailerAvailableModal
+          trailerName={selectedTraila.nombre}
+          availableForm={availableForm}
+          setAvailableForm={setAvailableForm}
+          onClose={() => {
+            setShowAvailableModal(false);
+            setAvailableForm({
+              fecha_disponible: new Date().toISOString().split('T')[0],
+              observaciones: '',
+              motivo: ''
+            });
+          }}
+          onConfirm={handleMarkAsAvailable}
+        />
       )}
 
       {/* CSS for loading animation */}
