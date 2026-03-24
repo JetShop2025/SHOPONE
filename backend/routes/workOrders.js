@@ -6,9 +6,9 @@ const router = express.Router();
 router.use(express.json());
 
 // Función auxiliar para registrar partes en FIFO directamente
-async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario, pendingPartId = null) {
+async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, usuario, pendingPartId = null, um = null) {
   const fifoId = `FIFO_${work_order_id}_${sku}_${Date.now()}`;
-  console.log(`🔄 [${fifoId}] Iniciando registro FIFO - SKU: ${sku}, Qty: ${qty_used}, PendingPartId: ${pendingPartId}`);
+  console.log(`🔄 [${fifoId}] Iniciando registro FIFO - SKU: ${sku}, Qty: ${qty_used}, UM: ${um || 'EA'}, PendingPartId: ${pendingPartId}`);
   
   let qtyToDeduct = Number(qty_used);
   const cleanCost = typeof cost === 'string' ? Number(cost.replace(/[^0-9.-]+/g, '')) : cost;
@@ -74,7 +74,7 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
       // Registra en work_order_parts
       await db.query(
         'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, um, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, 'EA', usuario]
+        [work_order_id, sku, part_name, deductQty, cleanCost, receive.invoice, receive.invoiceLink, um || 'EA', usuario]
       );
       console.log(`✓ [${fifoId}] Parte registrada en work_order_parts`);
 
@@ -102,7 +102,7 @@ async function registerPartFifo(work_order_id, sku, part_name, qty_used, cost, u
         // Registrar en work_order_parts (sin invoice/invoiceLink)
         await db.query(
           'INSERT INTO work_order_parts (work_order_id, sku, part_name, qty_used, cost, invoice, invoiceLink, um, usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, 'EA', usuario]
+          [work_order_id, sku, part_name, qtyToDeduct, cleanCost, null, null, um || 'EA', usuario]
         );
         // (Opcional) Registrar en log/auditoría
         if (db.logAuditEvent) {
@@ -1316,14 +1316,25 @@ router.post('/', async (req, res) => {
             console.log(`🔧 [${fifoId}] Procesando parte ${i + 1}/${partsArr.length}: ${part.sku}`);
             
             if (part.sku && part.qty && Number(part.qty) > 0) {
-              try {                const result = await registerPartFifo(
+              try {
+                // Get UM from part or inventory
+                let partUm = part.um || null;
+                if (!partUm) {
+                  const [invRows] = await db.query(
+                    'SELECT um FROM inventory WHERE sku = ?',
+                    [part.sku]
+                  );
+                  partUm = invRows && invRows.length > 0 ? invRows[0].um : 'EA';
+                }
+                const result = await registerPartFifo(
                   id,
                   part.sku,
                   part.part || part.description || '',
                   part.qty,
                   part.cost,
                   fields.usuario || 'SYSTEM',
-                  part._pendingPartId || null // Pasar el ID de la parte pendiente si existe
+                  part._pendingPartId || null, // Pasar el ID de la parte pendiente si existe
+                  partUm // Pasar el UM
                 );
                 if (result.success) {
                   console.log(`✓ [${fifoId}] Parte ${part.sku} registrada en FIFO`);
@@ -1741,14 +1752,25 @@ router.put('/:id', async (req, res) => {
             console.log(`🔧 [${fifoId}] Actualizando parte ${i + 1}/${partsArr.length}: ${part.sku}`);
             
             if (part.sku && part.qty && Number(part.qty) > 0) {
-              try {                const result = await registerPartFifo(
+              try {
+                // Get UM from part or inventory
+                let partUm = part.um || null;
+                if (!partUm) {
+                  const [invRows] = await db.query(
+                    'SELECT um FROM inventory WHERE sku = ?',
+                    [part.sku]
+                  );
+                  partUm = invRows && invRows.length > 0 ? invRows[0].um : 'EA';
+                }
+                const result = await registerPartFifo(
                   id,
                   part.sku,
                   part.part || part.description || '',
                   part.qty,
                   part.cost,
                   fields.usuario || 'SYSTEM',
-                  part._pendingPartId || null // Pasar el ID de la parte pendiente si existe
+                  part._pendingPartId || null, // Pasar el ID de la parte pendiente si existe
+                  partUm // Pasar el UM
                 );
                 if (result.success) {
                   console.log(`✓ [${fifoId}] Parte ${part.sku} actualizada en FIFO`);

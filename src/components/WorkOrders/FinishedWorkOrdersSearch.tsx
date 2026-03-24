@@ -2,11 +2,44 @@ import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
 import HourmeterModal from './HourmeterModal';
+import WorkOrderForm from './WorkOrderForm';
 import { generateWorkOrderPDF, openPDFInNewTab } from '../../utils/pdfGenerator';
 import dayjs from 'dayjs';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://shopone.onrender.com/api';
 const FINISHED_WO_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// All available clients (same as in WorkOrdersTable)
+const billToCoOptions = [
+  "JETSHO","PRIGRE","GABGRE","GALGRE","RAN100","JCGLOG","JGTBAK","VIDBAK","JETGRE","ALLSAN","AGMGRE","TAYRET","TRUSAL","BRAGON","FRESAL","SEBSOL","LFLCOR","GARGRE","MCCGRE","LAZGRE","MEJADE","CHUSAL"
+];
+
+// Get trailer options by client (same as in WorkOrdersTable)
+function getTrailerOptions(billToCo: string): string[] {
+  if (billToCo === "GALGRE") {
+    const especiales = [
+      "1-100 TRK",
+      "1-103 TRK",
+      "1-101 TRK",
+      "1-102 TRK",
+      "1-105 TRK",
+      "1-106 TRK",
+      "1-107 TRK",
+      "1-111 TRK"
+    ];
+    const normales = Array.from({length: 54}, (_, i) => `1-${100+i}`);
+    return [...especiales, ...normales];
+  }
+  if (billToCo === "JETGRE") {
+    const especiales = ["2-01 TRK"];
+    const normales = Array.from({length: 16}, (_, i) => `2-${(i+1).toString().padStart(3, '0')}`);
+    return [...especiales, ...normales];
+  }
+  if (billToCo === "PRIGRE") return Array.from({length: 24}, (_, i) => `3-${(300+i).toString()}`);
+  if (billToCo === "RAN100") return Array.from({length: 20}, (_, i) => `4-${(400+i).toString()}`);
+  if (billToCo === "GABGRE") return Array.from({length: 30}, (_, i) => `5-${(500+i).toString()}`);
+  return [];
+}
 
 // Styled Components
 const Container = styled.div`
@@ -294,6 +327,30 @@ const SuccessText = styled.div`
   margin-bottom: 20px;
 `;
 
+const EditModalOverlay = styled.div<{ show?: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: ${props => props.show ? 'flex' : 'none'};
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const EditModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 95%;
+  padding: 30px;
+`;
+
 interface WorkOrder {
   id: number;
   idClassic?: string;
@@ -347,6 +404,13 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   const [showHourmeter, setShowHourmeter] = useState(false);
   const [hourmeterWOs, setHourmeterWOs] = useState<WorkOrder[]>([]);
 
+  // Edit mode state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingWO, setEditingWO] = useState<WorkOrder | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editSuccess, setEditSuccess] = useState('');
+
   // Load inventory once for invoice-link resolution in PDFs
   useEffect(() => {
     axios.get(`${API_URL}/inventory`, { timeout: 15000 })
@@ -354,34 +418,11 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       .catch(() => setInventory([]));
   }, []);
   
-  const availableClients = React.useMemo(() => {
-    const uniqueClients = Array.from(
-      new Set(
-        allFinishedWOs
-          .map((wo: WorkOrder) => String(wo.billToCo || '').trim())
-          .filter(Boolean)
-      )
-    ) as string[];
-
-    return uniqueClients.sort();
-  }, [allFinishedWOs]);
-
+  const availableClients = billToCoOptions;
+  
   const availableUnits = React.useMemo(() => {
-    const filteredByClient = allFinishedWOs.filter((wo: WorkOrder) => {
-      if (!clientSearchInput) return true;
-      return String(wo.billToCo || '').trim() === clientSearchInput;
-    });
-
-    const uniqueUnits = Array.from(
-      new Set(
-        filteredByClient
-          .map((wo: WorkOrder) => String(wo.trailer || '').trim())
-          .filter(Boolean)
-      )
-    ) as string[];
-
-    return uniqueUnits.sort();
-  }, [allFinishedWOs, clientSearchInput]);
+    return clientSearchInput ? getTrailerOptions(clientSearchInput) : [];
+  }, [clientSearchInput]);
 
   const loadFinishedReferenceData = useCallback(async (forceRefresh = false): Promise<WorkOrder[]> => {
     if (!forceRefresh) {
@@ -578,10 +619,15 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       // Unify qty field: work_order_parts uses qty_used; embedded JSON uses qty
       const qty = Number(part.qty_used ?? part.qty) || 0;
       const cost = Number(String(part.cost ?? 0).replace(/[^0-9.]/g, '')) || 0;
+      // U/M priority: preserve what was saved in work_order_parts.um; ONLY use inventory if not saved; NEVER force 'EA' unless truly needed
+      const savedUm = String(part.um || '').trim();
+      const inventoryUm = String(inventoryItem?.um || inventoryItem?.uom || '').trim();
+      // Only use savedUm if it has actual content; otherwise fall through chain
+      const um = (savedUm.length > 0) ? savedUm : (inventoryUm.length > 0 ? inventoryUm : 'EA');
       return {
         sku,
         part: part.part || part.part_name || part.description || '',
-        um: part.um || inventoryItem?.um || inventoryItem?.uom || 'EA',
+        um,
         qty,
         cost,
         invoiceLink,
@@ -680,6 +726,96 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       setShowHourmeter(true);
     }
   };
+
+  // Request Level 3 password and open edit modal
+  const handleEditWithPassword = (wo: WorkOrder) => {
+    const pwd = window.prompt('Enter password (Level 3) to edit this Work Order:');
+    if (pwd === '6214') {
+      setEditingWO({
+        ...wo,
+        date: wo.date ? wo.date.slice(0, 10) : '',
+        parts: Array.isArray(wo.parts) ? wo.parts : [],
+        mechanics: Array.isArray(wo.mechanics) ? wo.mechanics : [],
+      });
+      setEditError('');
+      setEditSuccess('');
+      setShowEditModal(true);
+    } else if (pwd !== null) {
+      alert('Incorrect password. Edit cancelled.');
+    }
+  };
+
+  // Handle changes in edit form
+  const handleEditChange = (e: React.ChangeEvent<any>, index?: number, field?: string) => {
+    if (!editingWO) return;
+
+    const { name, value } = e.target;
+    
+    if (index !== undefined && field && editingWO.parts) {
+      // Part field change
+      const updatedParts = [...editingWO.parts];
+      updatedParts[index] = { ...updatedParts[index], [field]: value };
+      setEditingWO({ ...editingWO, parts: updatedParts });
+    } else {
+      // Main WO field change
+      setEditingWO({ ...editingWO, [name]: value });
+    }
+  };
+
+  // Handle edit form submission
+  const handleEditSubmit = async () => {
+    if (!editingWO) return;
+    
+    setEditLoading(true);
+    setEditError('');
+    setEditSuccess('');
+    
+    try {
+      const payload = {
+        billToCo: editingWO.billToCo,
+        trailer: editingWO.trailer,
+        date: editingWO.date,
+        description: editingWO.description,
+        mechanic: editingWO.mechanic,
+        mechanics: editingWO.mechanics || [],
+        totalHrs: editingWO.totalHrs,
+        status: editingWO.status,
+        parts: editingWO.parts || [],
+        totalLabAndParts: editingWO.totalLabAndParts,
+        miscellaneousPercent: editingWO.miscellaneousPercent,
+        weldPercent: editingWO.weldPercent,
+        miscellaneousFixed: editingWO.miscellaneousFixed,
+        weldFixed: editingWO.weldFixed,
+        extraOptions: editingWO.extraOptions,
+      };
+
+      await axios.put(`${API_URL}/work-orders/${editingWO.id}`, payload);
+      
+      setEditSuccess('Work Order updated successfully!');
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowEditModal(false);
+        setEditingWO(null);
+        // Refresh the selected WO
+        if (selectedWO && selectedWO.id === editingWO.id) {
+          setSelectedWO(editingWO);
+        }
+      }, 2000);
+    } catch (error: any) {
+      setEditError(error.response?.data?.error || 'Error updating Work Order');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Cancel edit
+  const handleEditCancel = () => {
+    setShowEditModal(false);
+    setEditingWO(null);
+    setEditError('');
+    setEditSuccess('');
+  };
   
   const formatCurrency = (value: any) => {
     const num = Number(value) || 0;
@@ -745,11 +881,15 @@ const FinishedWorkOrdersSearch: React.FC = () => {
           {selectedWO && (
             <ResultsContainer>
               <DetailPanel>
-                <DetailTitle>Work Order Details #{selectedWO.idClassic || selectedWO.id}</DetailTitle>
+                <DetailTitle>Work Order Details #{selectedWO.idClassic || selectedWO.id} (System ID: {selectedWO.id})</DetailTitle>
 
                 <DetailGrid>
                   <DetailField>
-                    <label>ID</label>
+                    <label>W.O ID</label>
+                    <div>{selectedWO.idClassic || 'N/A'}</div>
+                  </DetailField>
+                  <DetailField>
+                    <label>System ID</label>
                     <div>{selectedWO.id}</div>
                   </DetailField>
                   <DetailField>
@@ -825,6 +965,9 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                   </button>
                   <button className="primary" onClick={handleOpenHourmeter}>
                     ⏱️ Hourmeter
+                  </button>
+                  <button className="primary" onClick={() => handleEditWithPassword(selectedWO)}>
+                    ✏️ Edit (Level 3)
                   </button>
                 </ActionButtons>
               </DetailPanel>
@@ -927,7 +1070,8 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                   <ReportTable>
                     <thead>
                       <tr>
-                        <th>ID</th>
+                        <th>W.O ID</th>
+                        <th>System ID</th>
                         <th>Client</th>
                         <th>Date</th>
                         <th>Mechanic(s)</th>
@@ -939,7 +1083,8 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                     <tbody>
                       {unitWOs.map((wo: WorkOrder) => (
                         <tr key={wo.id}>
-                          <td><strong>{wo.idClassic || wo.id}</strong></td>
+                          <td><strong>{wo.idClassic || 'N/A'}</strong></td>
+                          <td><strong>{wo.id}</strong></td>
                           <td>{wo.billToCo || 'N/A'}</td>
                           <td>{formatDate(wo.date || '')}</td>
                           <td>
@@ -960,11 +1105,26 @@ const FinishedWorkOrdersSearch: React.FC = () => {
                                 cursor: 'pointer',
                                 border: '1px solid #ccc',
                                 background: 'white',
-                                borderRadius: '4px'
+                                borderRadius: '4px',
+                                marginRight: '5px'
                               }}
                               onClick={() => handleViewPDF(wo)}
                             >
                               PDF
+                            </button>
+                            <button
+                              className="secondary"
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                border: '1px solid #ccc',
+                                background: 'white',
+                                borderRadius: '4px'
+                              }}
+                              onClick={() => handleEditWithPassword(wo)}
+                            >
+                              Edit
                             </button>
                           </td>
                         </tr>
@@ -983,6 +1143,36 @@ const FinishedWorkOrdersSearch: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Edit Modal */}
+      <EditModalOverlay show={showEditModal}>
+        <EditModalContent onClick={(e) => e.stopPropagation()}>
+          {editingWO && (
+            <>
+              {editError && <ErrorText>{editError}</ErrorText>}
+              {editSuccess && <SuccessText>{editSuccess}</SuccessText>}
+              <WorkOrderForm
+                workOrder={editingWO}
+                workOrderNumber={editingWO.idClassic || editingWO.id}
+                onChange={handleEditChange}
+                onPartChange={(idx, field, value) => {
+                  const updated = [...(editingWO.parts || [])];
+                  updated[idx] = { ...updated[idx], [field]: value };
+                  setEditingWO({ ...editingWO, parts: updated });
+                }}
+                onSubmit={handleEditSubmit}
+                onCancel={handleEditCancel}
+                title={`Edit Work Order #${editingWO.idClassic || editingWO.id}`}
+                billToCoOptions={[editingWO.billToCo || '']}
+                getTrailerOptions={() => [editingWO.trailer || '']}
+                inventory={inventory}
+                loading={editLoading}
+                setLoading={setEditLoading}
+              />
+            </>
+          )}
+        </EditModalContent>
+      </EditModalOverlay>
 
       {/* Hourmeter Modal */}
       <HourmeterModal
