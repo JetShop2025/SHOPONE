@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
+import WorkOrdersHeaderBar from './WorkOrdersHeaderBar';
+import WorkOrdersPaginationControls from './WorkOrdersPaginationControls';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -2184,6 +2186,24 @@ const WorkOrdersTable: React.FC = () => {
       alert(`Error al generar PDF: ${error.message}`);
     }
   };
+
+  const handleReconnectServer = async () => {
+    setRetryCount(0);
+    setServerStatus('waking');
+    setReconnecting(true);
+
+    try {
+      await keepAliveService.manualPing();
+    } catch {
+      // Ignore ping failure and continue with fetch fallback.
+    }
+
+    setTimeout(() => {
+      fetchWorkOrders();
+      setReconnecting(false);
+    }, 3000);
+  };
+
   // Función para eliminar una parte
   const deletePart = (index: number) => {
     if (showEditForm && editWorkOrder) {
@@ -2681,322 +2701,51 @@ const WorkOrdersTable: React.FC = () => {
           maxWidth: 1800,
           margin: '4px auto'
         }}
-      ><div className="wo-header">
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
-  <div
-    style={{
-      width: 48,
-      height: 48,
-      borderRadius: '50%',
-      background: '#1976d2',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    }}
-  >
-    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: 22 }}>✓</span>
-  </div>
-  <span
-    style={{
-      fontSize: 28,
-      fontWeight: 700,
-      color: '#0A3854',
-      fontFamily: 'Courier New, Courier, monospace',
-      letterSpacing: 2,
-      textShadow: '1px 1px 2px rgba(10,56,84,0.15)',
-    }}
-  >
-    W.O ENTRY
-    {searchIdClassic && (
-      <span style={{
-        marginLeft: '16px',
-        fontSize: '16px',
-        fontWeight: '600',
-        color: '#ff9800',
-        backgroundColor: '#fff3e0',
-        padding: '4px 12px',
-        borderRadius: '12px',
-        border: '1px solid #ff9800'
-      }}>
-        🔍 Searching: "{searchIdClassic}"
-      </span>
-    )}
-  </span>
-  
-  {/* Contador de W.O. pequeño debajo del título */}
-  <div style={{ 
-    marginTop: '4px', 
-    fontSize: '13px', 
-    color: '#0A3854',
-    fontWeight: '600'
-  }}>
-    📋 Total: {filteredOrders.length} Work Orders
-  </div>
-  {/* Indicador de estado del servidor */}
-  <div style={{ 
-    marginLeft: 'auto',
-    display: 'flex',
-    alignItems: 'center',
-    padding: '8px 16px',
-    borderRadius: '20px',
-    background: serverStatus === 'online' ? '#e8f5e8' : 
-                serverStatus === 'waking' ? '#fff3e0' : '#ffebee',
-    border: `1px solid ${serverStatus === 'online' ? '#4caf50' : 
-                         serverStatus === 'waking' ? '#ff9800' : '#f44336'}`
-  }}>
-    <div style={{
-      width: 8,
-      height: 8,
-      borderRadius: '50%',
-      background: serverStatus === 'online' ? '#4caf50' : 
-                  serverStatus === 'waking' ? '#ff9800' : '#f44336',
-      marginRight: 8,
-      animation: serverStatus === 'waking' ? 'pulse 1.5s infinite' : 'none'
-    }} />
-    <span style={{
-      fontSize: 12,
-      fontWeight: 600,
-      color: serverStatus === 'online' ? '#2e7d32' : 
-             serverStatus === 'waking' ? '#ef6c00' : '#c62828'
-    }}>    {serverStatus === 'online' ? 'Online' : 
-     serverStatus === 'waking' ? 'Waking up...' : 'Offline'}
-    </span>    {serverStatus === 'offline' && (      <button 
-        className="reconnect-btn"
-        onClick={async () => {
-          setRetryCount(0);
-          setServerStatus('waking');
-          setReconnecting(true);
-          
-          // Intentar despertar con keep-alive primero
-          try {
-            await keepAliveService.manualPing();
-          } catch (e) {
-            console.log('Manual ping failed, proceeding with fetch...');
-          }
-          
-          // Esperar un poco y luego intentar fetch
-          setTimeout(() => {
-            fetchWorkOrders();
-            setReconnecting(false);
-          }, 3000);
-        }}
-        disabled={reconnecting}
       >
-        {reconnecting ? 'Reconnecting...' : 'Reconnect'}
-      </button>
-    )}
-    {fetchingData && (
-      <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>
-        Loading...
-      </span>
-    )}
-  </div>
-</div>
-        </div>
-        {/* FILTRO: ID Classic (sin consulta al servidor) */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginBottom: 8, marginTop: -8 }}>
-          <label className="wo-filter-label">
-            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>🔍 Search ID Classic:</span>&nbsp;
-            <input
-              type="text"
-              value={searchIdClassic}
-              onChange={e => setSearchIdClassic(e.target.value)}
-              className="wo-filter-input"
-              style={{ 
-                minWidth: 160, 
-                backgroundColor: searchIdClassic ? '#e3f2fd' : 'white',
-                border: searchIdClassic ? '2px solid #1976d2' : '1px solid #ddd'
-              }}
-              placeholder="W.O. 19417"
-            />
-            {searchIdClassic && (
-              <button
-                onClick={() => setSearchIdClassic('')}
-                style={{ 
-                  marginLeft: '5px', 
-                  padding: '2px 6px', 
-                  fontSize: '12px', 
-                  backgroundColor: '#f44336', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '3px',
-                  cursor: 'pointer'
-                }}
-                title="Clear search and show all work orders"
-              >
-                ✕
-              </button>
-            )}
-          </label>
-          
-          {/* Botón de acceso directo a Final W.O - DEBAJO del search */}
-          <button
-            onClick={() => navigate('/finished-work-orders')}
-            style={{
-              marginTop: '12px',
-              padding: '10px 24px',
-              background: '#e65100',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              boxShadow: '0 3px 10px rgba(230,81,0,0.4)',
-              transition: 'all 0.2s ease',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#d84315';
-              e.currentTarget.style.transform = 'scale(1.05)';
-              e.currentTarget.style.boxShadow = '0 4px 14px rgba(216,67,21,0.5)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#e65100';
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = '0 3px 10px rgba(230,81,0,0.4)';
-            }}
-          >
-            ➡️ Go to FINAL W.O
-          </button>
-        </div>
+        <WorkOrdersHeaderBar
+          searchIdClassic={searchIdClassic}
+          totalWorkOrders={filteredOrders.length}
+          serverStatus={serverStatus}
+          reconnecting={reconnecting}
+          fetchingData={fetchingData}
+          onSearchIdChange={setSearchIdClassic}
+          onClearSearch={() => setSearchIdClassic('')}
+          onReconnect={handleReconnectServer}
+          onGoToFinalWO={() => navigate('/finished-work-orders')}
+        />
         
         {/* Controles de Paginación */}
         {!searchIdClassic && totalPages > 1 && (
-          <div style={{ 
-            margin: '16px 0', 
-            padding: '12px 16px', 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            border: '1px solid #dee2e6'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: '#495057' }}>
-                📄 Página {currentPageData} de {totalPages}
-              </span>
-              <span style={{ fontSize: '12px', color: '#6c757d' }}>
-                Total: {totalRecords.toLocaleString()} W.O. | Mostrando 1000 por página
-              </span>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Botón Primera Página */}
-              <button
-                onClick={() => {
-                  setCurrentPageData(1);
-                  fetchWorkOrders(false, 1);
-                }}
-                disabled={!hasPreviousPage || fetchingData}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
-                }}
-              >
-                « Primera
-              </button>
-              
-              {/* Botón Anterior */}
-              <button
-                onClick={() => {
-                  const prevPage = currentPageData - 1;
-                  setCurrentPageData(prevPage);
-                  fetchWorkOrders(false, prevPage);
-                }}
-                disabled={!hasPreviousPage || fetchingData}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  backgroundColor: hasPreviousPage && !fetchingData ? '#1976d2' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: hasPreviousPage && !fetchingData ? 'pointer' : 'not-allowed'
-                }}
-              >
-                ← Anterior
-              </button>
-              
-              {/* Selector de página rápido */}
-              <select
-                value={currentPageData}
-                onChange={(e) => {
-                  const targetPage = parseInt(e.target.value);
-                  setCurrentPageData(targetPage);
-                  fetchWorkOrders(false, targetPage);
-                }}
-                disabled={fetchingData}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  backgroundColor: 'white'
-                }}
-              >
-                {Array.from({ length: Math.min(totalPages, 20) }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Página {i + 1}
-                  </option>
-                ))}
-                {totalPages > 20 && currentPageData > 20 && (
-                  <option value={currentPageData}>
-                    Página {currentPageData}
-                  </option>
-                )}
-              </select>
-              
-              {/* Botón Siguiente */}
-              <button
-                onClick={() => {
-                  const nextPage = currentPageData + 1;
-                  setCurrentPageData(nextPage);
-                  fetchWorkOrders(false, nextPage);
-                }}
-                disabled={!hasNextPage || fetchingData}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
-                }}
-              >
-                Siguiente →
-              </button>
-              
-              {/* Botón Última Página */}
-              <button
-                onClick={() => {
-                  setCurrentPageData(totalPages);
-                  fetchWorkOrders(false, totalPages);
-                }}
-                disabled={!hasNextPage || fetchingData}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  backgroundColor: hasNextPage && !fetchingData ? '#1976d2' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: hasNextPage && !fetchingData ? 'pointer' : 'not-allowed'
-                }}
-              >
-                Última »
-              </button>
-            </div>
-          </div>
+          <WorkOrdersPaginationControls
+            currentPageData={currentPageData}
+            totalPages={totalPages}
+            totalRecords={totalRecords}
+            hasNextPage={hasNextPage}
+            hasPreviousPage={hasPreviousPage}
+            fetchingData={fetchingData}
+            onGoFirst={() => {
+              setCurrentPageData(1);
+              fetchWorkOrders(false, 1);
+            }}
+            onGoPrev={() => {
+              const prevPage = currentPageData - 1;
+              setCurrentPageData(prevPage);
+              fetchWorkOrders(false, prevPage);
+            }}
+            onGoPage={(targetPage) => {
+              setCurrentPageData(targetPage);
+              fetchWorkOrders(false, targetPage);
+            }}
+            onGoNext={() => {
+              const nextPage = currentPageData + 1;
+              setCurrentPageData(nextPage);
+              fetchWorkOrders(false, nextPage);
+            }}
+            onGoLast={() => {
+              setCurrentPageData(totalPages);
+              fetchWorkOrders(false, totalPages);
+            }}
+          />
         )}{/* --- BOTONES ARRIBA --- */}
         <div style={{ margin: '8px 0 8px 0' }}>
           <button
