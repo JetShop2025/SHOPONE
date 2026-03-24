@@ -4,6 +4,8 @@ import axios from 'axios';
 import WorkOrderForm from './WorkOrderForm';
 import WorkOrdersHeaderBar from './WorkOrdersHeaderBar';
 import WorkOrdersPaginationControls from './WorkOrdersPaginationControls';
+import WorkOrdersActionButtons from './WorkOrdersActionButtons';
+import WorkOrdersCreateModal from './WorkOrdersCreateModal';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -2746,91 +2748,64 @@ const WorkOrdersTable: React.FC = () => {
               fetchWorkOrders(false, totalPages);
             }}
           />
-        )}{/* --- BOTONES ARRIBA --- */}
-        <div style={{ margin: '8px 0 8px 0' }}>
-          <button
-            className="wo-btn"
-            style={primaryBtn}            onClick={() => {
-              // RESETEAR COMPLETAMENTE EL FORMULARIO ANTES DE ABRIR
-              console.log('🔄 Abriendo formulario de nueva Work Order - Limpiando formulario completamente');
-              resetNewWorkOrder(); 
-              setExtraOptions([]);
-              setPendingPartsQty({});
-              // También resetear cualquier selección de partes pendientes
-              setSelectedPendingParts([]);
-              // Limpiar el error del ID Classic
-              setIdClassicError('');
-              
-              // Pequeño delay para asegurar que el reset se complete antes de mostrar el formulario
-              setTimeout(() => {
-                setShowForm(true);
-              }, 10);
-            }}>
-            New Work Order
-          </button>
-          {/* Botón Edit */}
-          <button
-            className="wo-btn"
-            style={secondaryBtn}
-            onClick={handleEdit}
-            disabled={selectedRow === null}
-          >
-            Edit
-          </button>
-          {/* Botón Delete */}
-          <button
-            className="wo-btn"
-            style={dangerBtn}
-            onClick={() => selectedRow !== null && handleDelete(selectedRow)}
-            disabled={selectedRow === null}
-          >
-            Delete
-          </button>
-          <button
-            className="wo-btn"
-            style={secondaryBtn}
-            onClick={() => setShowHourmeter(true)}
-          >
-            Hourmeter
-          </button>
-        </div>
+        )}
+        {/* --- BOTONES ARRIBA --- */}
+        <WorkOrdersActionButtons
+          selectedRow={selectedRow}
+          primaryBtn={primaryBtn}
+          secondaryBtn={secondaryBtn}
+          dangerBtn={dangerBtn}
+          onNewWorkOrder={() => {
+            // RESETEAR COMPLETAMENTE EL FORMULARIO ANTES DE ABRIR
+            console.log('🔄 Abriendo formulario de nueva Work Order - Limpiando formulario completamente');
+            resetNewWorkOrder();
+            setExtraOptions([]);
+            setPendingPartsQty({});
+            setSelectedPendingParts([]);
+            setIdClassicError('');
+
+            // Pequeño delay para asegurar que el reset se complete antes de mostrar el formulario
+            setTimeout(() => {
+              setShowForm(true);
+            }, 10);
+          }}
+          onEdit={handleEdit}
+          onDelete={() => selectedRow !== null && handleDelete(selectedRow)}
+          onHourmeter={() => setShowHourmeter(true)}
+        />
 
         {/* --- FORMULARIO NUEVA ORDEN --- */}
-        {showForm && (
-          <div style={modalStyle}>
-            <div style={modalContentStyle}>
-              <WorkOrderForm
-                workOrder={newWorkOrder}
-                workOrderNumber={nextWorkOrderNumber}
-                onChange={handleWorkOrderChange}
-                onPartChange={handlePartChange}
-                onSubmit={(data) => handleAddWorkOrder(data || newWorkOrder)}
-                onCancel={() => {
-                  resetNewWorkOrder();
-                  setExtraOptions([]);
-                  setPendingPartsQty({});
-                  setSelectedPendingParts([]);
-                  setIdClassicError('');
-                  setShowForm(false);
-                }}
-                title="New Work Order"
-                billToCoOptions={billToCoOptions}
-                getTrailerOptions={billToCo => getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)}
-                inventory={inventory}
-                trailersWithPendingParts={trailersWithPendingParts}
-                pendingParts={pendingParts}
-                pendingPartsQty={pendingPartsQty}
-                setPendingPartsQty={setPendingPartsQty}
-                onAddPendingPart={(part, qty) => addPendingPart(part, qty || part.qty || 1)}
-                onAddEmptyPart={addEmptyPart}
-                onDeletePart={deletePart}
-                loading={loading}
-                setLoading={setLoading}
-                idClassicError={idClassicError}
-              />
-            </div>
-          </div>
-        )}
+        <WorkOrdersCreateModal
+          showForm={showForm}
+          modalStyle={modalStyle}
+          modalContentStyle={modalContentStyle}
+          newWorkOrder={newWorkOrder}
+          nextWorkOrderNumber={nextWorkOrderNumber}
+          handleWorkOrderChange={handleWorkOrderChange}
+          handlePartChange={handlePartChange}
+          handleAddWorkOrder={handleAddWorkOrder}
+          resetNewWorkOrder={resetNewWorkOrder}
+          setExtraOptions={setExtraOptions}
+          setPendingPartsQty={setPendingPartsQty}
+          setSelectedPendingParts={setSelectedPendingParts}
+          setIdClassicError={setIdClassicError}
+          setShowForm={setShowForm}
+          billToCoOptions={billToCoOptions}
+          getTrailerOptionsWithPendingIndicator={(billToCo) =>
+            getTrailerOptionsWithPendingIndicator(billToCo, trailersWithPendingParts)
+          }
+          inventory={inventory}
+          trailersWithPendingParts={trailersWithPendingParts}
+          pendingParts={pendingParts}
+          pendingPartsQty={pendingPartsQty}
+          setPendingPartsQtyState={setPendingPartsQty}
+          addPendingPart={addPendingPart}
+          addEmptyPart={addEmptyPart}
+          deletePart={deletePart}
+          loading={loading}
+          setLoading={setLoading}
+          idClassicError={idClassicError}
+        />
         {/* --- FORMULARIO MODIFICAR ORDEN --- */}
         {showEditForm && (
           <div style={modalStyle}>
