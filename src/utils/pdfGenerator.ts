@@ -58,6 +58,116 @@ const toSafeHttpUrl = (raw?: string): string | null => {
   }
 };
 
+const blobToDataUrl = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to convert blob to data URL'));
+    reader.readAsDataURL(blob);
+  });
+};
+
+const detectImageFormat = (dataUrl: string): 'PNG' | 'JPEG' | 'WEBP' => {
+  if (dataUrl.startsWith('data:image/png')) return 'PNG';
+  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  return 'JPEG';
+};
+
+const appendWorkOrderImagesPages = async (pdf: jsPDF, workOrderId: number) => {
+  if (!Number.isFinite(workOrderId) || workOrderId <= 0) return;
+
+  try {
+    const listRes = await fetch(`/api/work-orders/${workOrderId}/images`);
+    if (!listRes.ok) return;
+
+    const listJson = await listRes.json();
+    const images = Array.isArray(listJson?.images) ? listJson.images : [];
+    if (images.length === 0) return;
+
+    const loadedImages: Array<{ dataUrl: string; fileName: string; phase: 'BEFORE' | 'AFTER' | 'EVIDENCE' }> = [];
+    for (const image of images) {
+      const url = toSafeHttpUrl(image?.url);
+      if (!url) continue;
+
+      try {
+        const imageRes = await fetch(url);
+        if (!imageRes.ok) continue;
+        const imageBlob = await imageRes.blob();
+        if (!imageBlob.type.startsWith('image/')) continue;
+        const dataUrl = await blobToDataUrl(imageBlob);
+        if (!dataUrl.startsWith('data:image')) continue;
+        const rawPhase = String(image?.phase || '').toUpperCase();
+        const phase: 'BEFORE' | 'AFTER' | 'EVIDENCE' =
+          rawPhase === 'BEFORE' || rawPhase === 'AFTER' ? rawPhase : 'EVIDENCE';
+        loadedImages.push({ dataUrl, fileName: String(image?.fileName || 'Image'), phase });
+      } catch {
+        // Skip broken image and continue with next
+      }
+    }
+
+    if (loadedImages.length === 0) return;
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const pageMargin = 12;
+    const titleY = 14;
+    const gap = 6;
+    const slotWidth = pageWidth - pageMargin * 2;
+    const slotHeight = (pageHeight - 45 - gap) / 2;
+
+    const groupedImages: Array<{ title: string; color: [number, number, number]; items: typeof loadedImages }> = [
+      {
+        title: `BEFORE REPAIR - #${workOrderId}`,
+        color: [176, 90, 0],
+        items: loadedImages.filter((img) => img.phase === 'BEFORE'),
+      },
+      {
+        title: `AFTER REPAIR - #${workOrderId}`,
+        color: [0, 120, 60],
+        items: loadedImages.filter((img) => img.phase === 'AFTER'),
+      },
+      {
+        title: `EVIDENCE - #${workOrderId}`,
+        color: [10, 56, 84],
+        items: loadedImages.filter((img) => img.phase === 'EVIDENCE'),
+      },
+    ];
+
+    groupedImages.forEach((group) => {
+      for (let i = 0; i < group.items.length; i += 2) {
+        pdf.addPage();
+        pdf.setFont('courier', 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(group.color[0], group.color[1], group.color[2]);
+        pdf.text(group.title, pageMargin, titleY);
+
+        const chunk = group.items.slice(i, i + 2);
+        chunk.forEach((img, idx) => {
+          const top = 22 + idx * (slotHeight + gap);
+          const bottom = top + slotHeight;
+
+          pdf.setDrawColor(180, 190, 200);
+          pdf.rect(pageMargin, top, slotWidth, slotHeight);
+
+          const format = detectImageFormat(img.dataUrl);
+          const renderX = pageMargin + 2;
+          const renderY = top + 2;
+          const renderW = slotWidth - 4;
+          const renderH = slotHeight - 8;
+          pdf.addImage(img.dataUrl, format, renderX, renderY, renderW, renderH, undefined, 'FAST');
+
+          pdf.setFont('courier', 'normal');
+          pdf.setFontSize(8);
+          pdf.setTextColor(90, 90, 90);
+          pdf.text(img.fileName, pageMargin + 2, bottom - 1);
+        });
+      }
+    });
+  } catch (error) {
+    console.warn('No se pudieron anexar imágenes al PDF:', error);
+  }
+};
+
 // First implementation removed - keeping the improved second implementation
 
 export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
@@ -482,6 +592,8 @@ export const generateWorkOrderPDF = async (workOrderData: WorkOrderData) => {
   pdf.setTextColor(10, 56, 84);
   pdf.setFont('helvetica', 'italic');
   pdf.text('Thanks for your business!', pageWidth / 2, footerY, { align: 'center' });
+
+  await appendWorkOrderImagesPages(pdf, Number(workOrderData.id));
   
   return pdf;
 };

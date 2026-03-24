@@ -206,8 +206,27 @@ const WorkOrdersTable: React.FC = () => {
 
       const latestOrder = workOrderRes?.data || order;
       const partRows = Array.isArray(partsRes?.data) ? partsRes.data : [];
+
+      const embeddedPartsRaw = (() => {
+        if (Array.isArray(latestOrder?.parts)) return latestOrder.parts;
+        if (typeof latestOrder?.parts === 'string') {
+          try { return JSON.parse(latestOrder.parts); } catch { return []; }
+        }
+        return [];
+      })();
+
+      const normalizedEmbeddedParts = (Array.isArray(embeddedPartsRaw) ? embeddedPartsRaw : [])
+        .map((part: any) => ({
+          sku: part.sku || '',
+          part: part.part || part.part_name || part.description || '',
+          qty: part.qty_used ?? part.qty ?? 0,
+          cost: part.cost ?? part.unitCost ?? part.unit_cost ?? 0,
+          invoiceLink: part.invoiceLink || part.invoice_link || null,
+        }))
+        .filter((part: any) => part && String(part.sku || '').trim() !== '');
+
       const dedupeSignatures = new Set<string>();
-      const normalizedParts = partRows
+      const normalizedRows = partRows
         .map((part: any) => ({
           sku: part.sku || '',
           part: part.part || part.part_name || part.description || '',
@@ -216,8 +235,6 @@ const WorkOrdersTable: React.FC = () => {
           invoiceLink: part.invoiceLink || part.invoice_link || null,
         }))
         .filter((part: any) => {
-          // Avoid duplicated rows created by repeated sync saves while preserving
-          // genuinely different rows (e.g. same SKU but different invoice).
           const signature = [
             String(part.sku || '').trim().toLowerCase(),
             String(part.part || '').trim().toLowerCase(),
@@ -231,9 +248,13 @@ const WorkOrdersTable: React.FC = () => {
           return true;
         });
 
+      // Source of truth for detail modal: embedded work order parts.
+      // This prevents duplicated historical rows in work_order_parts from inflating the UI.
+      const normalizedParts = normalizedEmbeddedParts.length > 0 ? normalizedEmbeddedParts : normalizedRows;
+
       setDetailOrder({
         ...latestOrder,
-        parts: normalizedParts.length > 0 ? normalizedParts : (Array.isArray(latestOrder?.parts) ? latestOrder.parts : []),
+        parts: normalizedParts,
       });
     } catch (error) {
       console.warn('Error loading detailed parts for W.O:', error);
@@ -244,6 +265,11 @@ const WorkOrdersTable: React.FC = () => {
   const handleEditWorkOrderSubmit = async (data: any) => {
       // Validar y limpiar campos obligatorios antes de enviar
       const safeData = { ...data };
+      const {
+        woImagesBefore: _woImagesBeforeForState,
+        woImagesAfter: _woImagesAfterForState,
+        ...safeDataWithoutImages
+      } = safeData as any;
       // Si mechanic es array, usar el primero como string para compatibilidad
       if (Array.isArray(safeData.mechanics) && safeData.mechanics.length > 0) {
         safeData.mechanic = safeData.mechanics[0]?.name || '';
@@ -312,12 +338,21 @@ const WorkOrdersTable: React.FC = () => {
         miscellaneous: miscToSend,
         weldPercent: weldToSend
       };
+
+      const beforeImageFiles: File[] = Array.isArray((dataToSend as any).woImagesBefore) ? (dataToSend as any).woImagesBefore : [];
+      const afterImageFiles: File[] = Array.isArray((dataToSend as any).woImagesAfter) ? (dataToSend as any).woImagesAfter : [];
+      delete (dataToSend as any).woImagesBefore;
+      delete (dataToSend as any).woImagesAfter;
       
       // CRITICAL: Remove pdf_file to avoid sending 3.4MB in PUT request
       delete (dataToSend as any).pdf_file;
       
       // OPTIMIZATION: Run critical updates in parallel and defer PDF generation
       await axios.put(`${API_URL}/work-orders/${editWorkOrder.id}`, dataToSend);
+
+      await uploadWorkOrderImages(editWorkOrder.id, beforeImageFiles, afterImageFiles).catch((error) => {
+        console.warn('⚠️ Error uploading W.O images in edit:', error);
+      });
       
       // Mark pending parts as used in parallel
       const partesConPendingId = currentParts.filter((p: any) => p._pendingPartId);
@@ -335,7 +370,7 @@ const WorkOrdersTable: React.FC = () => {
       setWorkOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === editWorkOrder.id
-            ? { ...order, ...editWorkOrder, ...data,
+            ? { ...order, ...editWorkOrder, ...safeDataWithoutImages,
                 totalLabAndParts: !isNaN(Number(dataToSend.totalLabAndParts)) ? Number(dataToSend.totalLabAndParts) : 0,
                 date: dataToSend.date || editWorkOrder.date || '',
                 startDate: dataToSend.startDate || editWorkOrder.startDate || editWorkOrder.date || '',
@@ -1299,12 +1334,46 @@ const WorkOrdersTable: React.FC = () => {
     }
   };
 
+  const uploadWorkOrderImages = async (
+    workOrderId: number,
+    beforeFiles: File[],
+    afterFiles: File[]
+  ) => {
+    if (!Number.isFinite(workOrderId) || workOrderId <= 0) return;
+
+    const validBeforeFiles = (Array.isArray(beforeFiles) ? beforeFiles : []).filter(
+      (file) => file && file.type.startsWith('image/')
+    );
+    const validAfterFiles = (Array.isArray(afterFiles) ? afterFiles : []).filter(
+      (file) => file && file.type.startsWith('image/')
+    );
+
+    if (validBeforeFiles.length === 0 && validAfterFiles.length === 0) return;
+
+    const formData = new FormData();
+    validBeforeFiles.forEach((file) => formData.append('beforeImages', file));
+    validAfterFiles.forEach((file) => formData.append('afterImages', file));
+
+    await axios.post(`${API_URL}/work-orders/${workOrderId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+  };
+
   // Guardar nueva orden
   const handleAddWorkOrder = async (datosOrden: any) => {
     setLoading(true);
     try {
+      const beforeImageFiles: File[] = Array.isArray(datosOrden?.woImagesBefore) ? datosOrden.woImagesBefore : [];
+      const afterImageFiles: File[] = Array.isArray(datosOrden?.woImagesAfter) ? datosOrden.woImagesAfter : [];
+      const {
+        woImagesBefore: _woImagesBefore,
+        woImagesAfter: _woImagesAfter,
+        ...datosOrdenSinImagenes
+      } = datosOrden;
+
       // 0. Warn if no vehicle/unit selected
-      if (!datosOrden.trailer || String(datosOrden.trailer).trim() === '') {
+      if (!datosOrdenSinImagenes.trailer || String(datosOrdenSinImagenes.trailer).trim() === '') {
         const proceed = window.confirm('No Vehicle Selected. Do you want to continue?');
         if (!proceed) {
           setLoading(false);
@@ -1313,8 +1382,8 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       // 0a. Validate ID Classic is required when status is FINISHED
-      if (datosOrden.status === 'FINISHED') {
-        if (!datosOrden.idClassic || datosOrden.idClassic.trim() === '') {
+      if (datosOrdenSinImagenes.status === 'FINISHED') {
+        if (!datosOrdenSinImagenes.idClassic || datosOrdenSinImagenes.idClassic.trim() === '') {
           setIdClassicError('⚠️ ID Classic is required when status is FINISHED!');
           alert('Error: ID Classic is required when status is FINISHED. Please enter an ID Classic.');
           setLoading(false);
@@ -1323,15 +1392,15 @@ const WorkOrdersTable: React.FC = () => {
       }
 
       // 0b. Validate ID Classic doesn't already exist (when provided)
-      if (datosOrden.idClassic && checkIdClassicExists(datosOrden.idClassic)) {
-        setIdClassicError(`⚠️ Work Order with ID Classic "${datosOrden.idClassic}" already exists!`);
-        alert(`Error: Work Order with ID Classic "${datosOrden.idClassic}" already exists. Please use a different ID.`);
+      if (datosOrdenSinImagenes.idClassic && checkIdClassicExists(datosOrdenSinImagenes.idClassic)) {
+        setIdClassicError(`⚠️ Work Order with ID Classic "${datosOrdenSinImagenes.idClassic}" already exists!`);
+        alert(`Error: Work Order with ID Classic "${datosOrdenSinImagenes.idClassic}" already exists. Please use a different ID.`);
         setLoading(false);
         return;
       }
 
       // 0c. Validar que no exista una W.O. activa (PROCESSING o APPROVED) para la misma traila
-      const trailerToCheck = datosOrden.trailer?.trim();
+      const trailerToCheck = datosOrdenSinImagenes.trailer?.trim();
       if (trailerToCheck) {
         const duplicateWO = workOrders.find(
           wo => wo.trailer && wo.trailer.toString().trim().toLowerCase() === trailerToCheck.toLowerCase() &&
@@ -1351,7 +1420,7 @@ const WorkOrdersTable: React.FC = () => {
       // 1. Prepara partes para guardar en la orden
       // NOTE: Deducción CENTRALIZADA en backend ahora (no en frontend)
       let fifoResult: any = null;
-      const partesParaGuardar = datosOrden.parts
+      const partesParaGuardar = datosOrdenSinImagenes.parts
         .filter((p: any) => p.sku && String(p.sku).trim() !== '') // Solo partes con SKU
         .map((p: any) => ({
           sku: p.sku,
@@ -1360,13 +1429,13 @@ const WorkOrdersTable: React.FC = () => {
           cost: Number(String(p.cost).replace(/[^0-9.]/g, ''))
         }));
 
-      const startDateToSend = normalizeOrderDate(datosOrden.startDate) || normalizeOrderDate(datosOrden.date);
-      const endDateToSend = normalizeOrderDate(datosOrden.endDate);
+      const startDateToSend = normalizeOrderDate(datosOrdenSinImagenes.startDate) || normalizeOrderDate(datosOrdenSinImagenes.date);
+      const endDateToSend = normalizeOrderDate(datosOrdenSinImagenes.endDate);
 
       // LIMPIA EL TOTAL ANTES DE ENVIAR
-      const totalLabAndPartsLimpio = Number(String(datosOrden.totalLabAndParts).replace(/[^0-9.]/g, ''));
+      const totalLabAndPartsLimpio = Number(String(datosOrdenSinImagenes.totalLabAndParts).replace(/[^0-9.]/g, ''));
       const res = await axios.post(`${API_URL}/work-orders`, {
-        ...datosOrden,
+        ...datosOrdenSinImagenes,
         date: startDateToSend,
         startDate: startDateToSend,
         endDate: endDateToSend || '',
@@ -1379,7 +1448,7 @@ const WorkOrdersTable: React.FC = () => {
       const newWorkOrderId = data.id;
       
       // 🚀 OPTIMIZACIÓN: Paralelizar operaciones críticas
-      const partesConPendingId = datosOrden.parts.filter((p: any) => p._pendingPartId);
+      const partesConPendingId = datosOrdenSinImagenes.parts.filter((p: any) => p._pendingPartId);
       
       // REGISTRA PARTES USADAS EN work_order_parts - PARALELO
       const workOrderPartsPromises = partesParaGuardar.map((part: any) => {
@@ -1413,8 +1482,13 @@ const WorkOrdersTable: React.FC = () => {
         })
       );
       
+      const uploadImagesPromise = uploadWorkOrderImages(newWorkOrderId, beforeImageFiles, afterImageFiles).catch((error) => {
+        console.warn('⚠️ Error uploading W.O images:', error);
+        return null;
+      });
+
       // Ejecutar TODAS las operaciones críticas en PARALELO
-      await Promise.all([...workOrderPartsPromises, ...markUsedPromises]);
+      await Promise.all([...workOrderPartsPromises, ...markUsedPromises, uploadImagesPromise]);
       
       // ✅ CERRAR FORMULARIO INMEDIATAMENTE (operaciones críticas completadas)
       setShowForm(false);
@@ -1431,7 +1505,7 @@ const WorkOrdersTable: React.FC = () => {
       // 🎯 OPTIMISTIC UPDATE: Agregar nueva WO al estado local SIN esperar fetch
       const newWO = {
         id: newWorkOrderId,
-        ...datosOrden,
+        ...datosOrdenSinImagenes,
         date: startDateToSend,
         startDate: startDateToSend,
         endDate: endDateToSend || '',

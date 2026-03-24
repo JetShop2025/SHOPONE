@@ -210,6 +210,39 @@ async function ensureWorkOrderPartsTableHasUmColumn() {
   }
 }
 
+async function ensureWorkOrderImagesTableExists() {
+  try {
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS work_order_images (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        work_order_id INT NOT NULL,
+        phase ENUM('BEFORE','AFTER','EVIDENCE') NOT NULL DEFAULT 'EVIDENCE',
+        filename VARCHAR(255) NOT NULL,
+        mime_type VARCHAR(100) NOT NULL,
+        image_data LONGBLOB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_work_order_images_work_order_id (work_order_id),
+        CONSTRAINT fk_work_order_images_work_order
+          FOREIGN KEY (work_order_id) REFERENCES work_orders(id)
+          ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    const [phaseColumns] = await connection.execute("SHOW COLUMNS FROM work_order_images LIKE 'phase'");
+    if (!phaseColumns || phaseColumns.length === 0) {
+      console.log('[DB] Adding phase column to work_order_images table...');
+      await connection.execute(
+        "ALTER TABLE work_order_images ADD COLUMN phase ENUM('BEFORE','AFTER','EVIDENCE') NOT NULL DEFAULT 'EVIDENCE' AFTER work_order_id"
+      );
+      console.log('[DB] Column phase added to work_order_images table.');
+    }
+
+    console.log('[DB] work_order_images table ensured.');
+  } catch (err) {
+    console.error('[DB] Error ensuring work_order_images table:', err.message);
+  }
+}
+
 async function ensureAuditTableExists() {
   try {
     // Primero verificar si la tabla existe
@@ -284,6 +317,7 @@ testConnection().then(() => {
   ensureWorkOrdersTableHasStartEndDates();
   ensureWorkOrdersTableHasPreWoLink();
   ensureWorkOrderPartsTableHasUmColumn();
+  ensureWorkOrderImagesTableExists();
 });
 
 // Trailers functions

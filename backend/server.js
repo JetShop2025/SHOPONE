@@ -1350,6 +1350,145 @@ app.post('/api/work-orders/:id/pdf', upload.single('pdf'), async (req, res) => {
   }
 });
 
+const workOrderImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 12,
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Only image files are allowed'));
+  },
+});
+
+app.post('/api/work-orders/:id/images', workOrderImageUpload.fields([
+  { name: 'beforeImages', maxCount: 12 },
+  { name: 'afterImages', maxCount: 12 },
+  { name: 'images', maxCount: 12 },
+]), async (req, res) => {
+  try {
+    const workOrderId = Number(req.params.id);
+    if (!Number.isFinite(workOrderId) || workOrderId <= 0) {
+      return res.status(400).json({ error: 'Invalid work order id' });
+    }
+
+    const filesByField = req.files || {};
+    const beforeFiles = Array.isArray(filesByField.beforeImages) ? filesByField.beforeImages : [];
+    const afterFiles = Array.isArray(filesByField.afterImages) ? filesByField.afterImages : [];
+    const genericFiles = Array.isArray(filesByField.images) ? filesByField.images : [];
+    const taggedFiles = [
+      ...beforeFiles.map((file) => ({ file, phase: 'BEFORE' })),
+      ...afterFiles.map((file) => ({ file, phase: 'AFTER' })),
+      ...genericFiles.map((file) => ({ file, phase: 'EVIDENCE' })),
+    ];
+
+    if (taggedFiles.length === 0) {
+      return res.status(400).json({ error: 'No image files provided' });
+    }
+
+    const [woRows] = await connection.execute('SELECT id FROM work_orders WHERE id = ? LIMIT 1', [workOrderId]);
+    if (!Array.isArray(woRows) || woRows.length === 0) {
+      return res.status(404).json({ error: 'Work order not found' });
+    }
+
+    const insertedIds = [];
+    for (const tagged of taggedFiles) {
+      const file = tagged.file;
+      const [result] = await connection.execute(
+        'INSERT INTO work_order_images (work_order_id, phase, filename, mime_type, image_data) VALUES (?, ?, ?, ?, ?)',
+        [workOrderId, tagged.phase, file.originalname || 'image', file.mimetype || 'application/octet-stream', file.buffer]
+      );
+      insertedIds.push(result.insertId);
+    }
+
+    return res.json({ success: true, uploaded: insertedIds.length, imageIds: insertedIds });
+  } catch (error) {
+    console.error('[ERROR] POST /api/work-orders/:id/images:', error);
+    return res.status(500).json({ error: 'Failed to upload images' });
+  }
+});
+
+app.get('/api/work-orders/:id/images', async (req, res) => {
+  try {
+    const workOrderId = Number(req.params.id);
+    if (!Number.isFinite(workOrderId) || workOrderId <= 0) {
+      return res.status(400).json({ error: 'Invalid work order id' });
+    }
+
+    const [rows] = await connection.execute(
+      "SELECT id, phase, filename, mime_type, created_at FROM work_order_images WHERE work_order_id = ? ORDER BY FIELD(phase, 'BEFORE', 'AFTER', 'EVIDENCE'), id ASC",
+      [workOrderId]
+    );
+
+    const images = (Array.isArray(rows) ? rows : []).map((row) => ({
+      id: row.id,
+      phase: row.phase,
+      fileName: row.filename,
+      mimeType: row.mime_type,
+      createdAt: row.created_at,
+      url: `/api/work-orders/${workOrderId}/images/${row.id}`,
+    }));
+
+    return res.json({ images });
+  } catch (error) {
+    console.error('[ERROR] GET /api/work-orders/:id/images:', error);
+    return res.status(500).json({ error: 'Failed to fetch images' });
+  }
+});
+
+app.get('/api/work-orders/:id/images/:imageId', async (req, res) => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const imageId = Number(req.params.imageId);
+
+    if (!Number.isFinite(workOrderId) || workOrderId <= 0 || !Number.isFinite(imageId) || imageId <= 0) {
+      return res.status(400).json({ error: 'Invalid ids' });
+    }
+
+    const [rows] = await connection.execute(
+      'SELECT phase, filename, mime_type, image_data FROM work_order_images WHERE id = ? AND work_order_id = ? LIMIT 1',
+      [imageId, workOrderId]
+    );
+
+    const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    if (!row) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    res.setHeader('Content-Type', row.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${row.filename || `wo_${workOrderId}_img_${imageId}`}"`);
+    return res.send(row.image_data);
+  } catch (error) {
+    console.error('[ERROR] GET /api/work-orders/:id/images/:imageId:', error);
+    return res.status(500).json({ error: 'Failed to fetch image' });
+  }
+});
+
+app.delete('/api/work-orders/:id/images/:imageId', async (req, res) => {
+  try {
+    const workOrderId = Number(req.params.id);
+    const imageId = Number(req.params.imageId);
+
+    if (!Number.isFinite(workOrderId) || workOrderId <= 0 || !Number.isFinite(imageId) || imageId <= 0) {
+      return res.status(400).json({ error: 'Invalid ids' });
+    }
+
+    const [result] = await connection.execute(
+      'DELETE FROM work_order_images WHERE id = ? AND work_order_id = ?',
+      [imageId, workOrderId]
+    );
+
+    return res.json({ success: true, deleted: result.affectedRows || 0 });
+  } catch (error) {
+    console.error('[ERROR] DELETE /api/work-orders/:id/images/:imageId:', error);
+    return res.status(500).json({ error: 'Failed to delete image' });
+  }
+});
+
 // Serve assets (logo) - DEBE IR ANTES DEL CATCH-ALL
 app.get('/api/assets/logo.png', (req, res) => {
   console.log('[ASSETS] Serving logo.png');

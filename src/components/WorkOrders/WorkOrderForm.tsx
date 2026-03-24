@@ -84,6 +84,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [manualTotalOverride, setManualTotalOverride] = React.useState(false);
   const [autoDescription, setAutoDescription] = React.useState(true);
+  const selectedBeforeImages: File[] = Array.isArray(workOrder?.woImagesBefore) ? workOrder.woImagesBefore : [];
+  const selectedAfterImages: File[] = Array.isArray(workOrder?.woImagesAfter) ? workOrder.woImagesAfter : [];
   const isEditingMode = Boolean(workOrder?.id && Number(workOrder.id) > 0) || /edit/i.test(String(title || ''));
   
   // Function to hide tooltip
@@ -117,8 +119,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       
       // PRIORITY 2: If no custom description, use the inventory one
       const partName = customPartName || partInfo.part || partInfo.description || partInfo.name || 'Sin nombre';
-      
-      // PRIORITY 2: If no custom cost, use the inventory one
+
       const precio = customCost || partInfo.precio || partInfo.cost || partInfo.price || 0;
       
       setTooltip({
@@ -362,6 +363,26 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     if (onPartChange) {
       onPartChange(index, field, value);
     }
+  };
+
+  const handleImageFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
+    onChange({ target: { name: 'woImagesBefore', value: files } } as any);
+  };
+
+  const handleAfterImageFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
+    onChange({ target: { name: 'woImagesAfter', value: files } } as any);
+  };
+
+  const removeSelectedBeforeImage = (indexToRemove: number) => {
+    const updatedFiles = selectedBeforeImages.filter((_, index) => index !== indexToRemove);
+    onChange({ target: { name: 'woImagesBefore', value: updatedFiles } } as any);
+  };
+
+  const removeSelectedAfterImage = (indexToRemove: number) => {
+    const updatedFiles = selectedAfterImages.filter((_, index) => index !== indexToRemove);
+    onChange({ target: { name: 'woImagesAfter', value: updatedFiles } } as any);
   };
 
   // Calcular horas totales automáticamente
@@ -662,7 +683,9 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         forceUpdate: true,
         date: startDateToSend,
         startDate: startDateToSend,
-        endDate: endDateToSend || ''
+        endDate: endDateToSend || '',
+        woImagesBefore: selectedBeforeImages,
+        woImagesAfter: selectedAfterImages,
       };
 
       await onSubmit(dataToSend);
@@ -985,6 +1008,89 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           handleDateFieldChange={handleDateFieldChange}
           DateInputWithCalendar={DateInputWithCalendar}
         />
+
+        <label style={{ gridColumn: '1 / -1' }}>
+          BEFORE Images (optional)
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageFilesChange}
+            style={{ width: '100%', marginTop: 6 }}
+          />
+          {selectedBeforeImages.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {selectedBeforeImages.map((file, index) => (
+                <div
+                  key={`before-${file.name}-${index}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 8px',
+                    border: '1px solid #b0bec5',
+                    borderRadius: 999,
+                    background: '#fff8e1',
+                    fontSize: 12,
+                  }}
+                >
+                  <span>{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedBeforeImage(index)}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#c62828' }}
+                    aria-label={`Remove BEFORE ${file.name}`}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </label>
+
+        <label style={{ gridColumn: '1 / -1' }}>
+          AFTER Images (optional)
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleAfterImageFilesChange}
+            style={{ width: '100%', marginTop: 6 }}
+          />
+          <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+            Images are uploaded from your PC and added to extra PDF pages separated as BEFORE and AFTER.
+          </div>
+          {selectedAfterImages.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {selectedAfterImages.map((file, index) => (
+                <div
+                  key={`after-${file.name}-${index}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 8px',
+                    border: '1px solid #b0bec5',
+                    borderRadius: 999,
+                    background: '#e8f5e9',
+                    fontSize: 12,
+                  }}
+                >
+                  <span>{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedAfterImage(index)}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#c62828' }}
+                    aria-label={`Remove AFTER ${file.name}`}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </label>
 
         {/* Previsualizador de Partes Pendientes */}
         {pendingParts && pendingParts.length > 0 && setPendingPartsQty && onAddPendingPart && (

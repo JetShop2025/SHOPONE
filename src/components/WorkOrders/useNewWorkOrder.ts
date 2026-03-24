@@ -14,6 +14,8 @@ export interface WorkOrder {
   status: string;
   idClassic?: string;
   preWoLink?: string;
+  woImagesBefore?: File[];
+  woImagesAfter?: File[];
   mechanics?: any[];
   extraOptions?: string[];
   miscellaneousFixed?: string;
@@ -39,6 +41,8 @@ const EMPTY_WORK_ORDER: WorkOrder = {
   status: '',
   idClassic: '',
   preWoLink: '',
+  woImagesBefore: [],
+  woImagesAfter: [],
   miscellaneousFixed: '0',
   weldFixed: '0',
 };
@@ -72,6 +76,8 @@ export function useNewWorkOrder(): [
       status: '',
       idClassic: '',
       preWoLink: '',
+      woImagesBefore: [],
+      woImagesAfter: [],
       miscellaneousFixed: '0',
       weldFixed: '0',
       mechanics: [],
