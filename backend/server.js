@@ -644,12 +644,18 @@ app.get('/api/work-orders', async (req, res) => {
     // Si hay búsqueda específica por ID Classic, buscar en toda la base de datos
     if (searchIdClassic) {
       console.log(`[GET] /api/work-orders - Searching for ID Classic: ${searchIdClassic}`);
-      const [searchResults] = await db.connection.execute(
-        `SELECT * FROM work_orders 
-         WHERE idClassic LIKE ? OR id = ?
-         ORDER BY id DESC`,
-        [`%${searchIdClassic}%`, searchIdClassic]
-      );
+      let searchQuery = `SELECT * FROM work_orders WHERE (idClassic LIKE ? OR id = ?)`;
+      const searchParams = [`%${searchIdClassic}%`, searchIdClassic];
+      
+      // Respect status filter if provided (e.g., FINISHED only)
+      if (statusFilter) {
+        searchQuery += ` AND UPPER(TRIM(COALESCE(status, ''))) = ?`;
+        searchParams.push(statusFilter);
+      }
+      
+      searchQuery += ` ORDER BY id DESC`;
+      
+      const [searchResults] = await db.connection.execute(searchQuery, searchParams);
       
       const parsedResults = searchResults.map(order => {
         let parts = [], mechanics = [], extraOptions = [];
