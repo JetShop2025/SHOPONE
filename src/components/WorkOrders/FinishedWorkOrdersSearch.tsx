@@ -530,7 +530,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       const normalizedClassic = String(idClassic).trim().toLowerCase();
 
       const res = await axios.get(`${API_URL}/work-orders`, {
-        params: { searchIdClassic: idClassic, pageSize: 500 }
+        params: { searchIdClassic: idClassic, status: 'FINISHED', pageSize: 500 }
       });
       const responseRows = Array.isArray(res.data)
         ? res.data
@@ -584,16 +584,9 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       return;
     }
 
-    // Pure number: first try ID Classic, then fallback to system ID.
-    // This avoids false negatives/noise when users type numeric ID Classic values.
-    if (/^\d+$/.test(searchId)) {
-      const foundByClassic = await loadWorkOrderDetailsByClassic(searchId);
-      if (!foundByClassic) {
-        await loadWorkOrderDetails(Number(searchId));
-      }
-    } else {
-      await loadWorkOrderDetailsByClassic(searchId);
-    }
+    // ALWAYS search by ID Classic first (numeric or non-numeric)
+    // This is the Finished W.O Search — only FINISHED WOs should be found
+    await loadWorkOrderDetailsByClassic(searchId);
   };
   
   // Search by Unit/Trailer
