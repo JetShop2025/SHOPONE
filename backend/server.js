@@ -638,14 +638,25 @@ app.get('/api/work-orders', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 1000; // 1000 registros por página por defecto
     const searchIdClassic = req.query.searchIdClassic || '';
+    const normalizedSearchIdClassic = String(searchIdClassic || '').trim();
     const includeArchived = req.query.includeArchived === 'true';
     const statusFilter = String(req.query.status || '').trim().toUpperCase();
     
     // Si hay búsqueda específica por ID Classic, buscar en toda la base de datos
-    if (searchIdClassic) {
-      console.log(`[GET] /api/work-orders - Searching for ID Classic: ${searchIdClassic}`);
-      let searchQuery = `SELECT * FROM work_orders WHERE (idClassic LIKE ? OR id = ?)`;
-      const searchParams = [`%${searchIdClassic}%`, searchIdClassic];
+    if (normalizedSearchIdClassic) {
+      console.log(`[GET] /api/work-orders - Searching for ID Classic: ${normalizedSearchIdClassic}`);
+      let searchQuery = `
+        SELECT * FROM work_orders
+        WHERE (
+          TRIM(CAST(COALESCE(idClassic, '') AS CHAR)) = ?
+          OR TRIM(CAST(COALESCE(idClassic, '') AS CHAR)) LIKE ?
+          OR CAST(id AS CHAR) = ?
+        )`;
+      const searchParams = [
+        normalizedSearchIdClassic,
+        `%${normalizedSearchIdClassic}%`,
+        normalizedSearchIdClassic,
+      ];
       
       // Respect status filter if provided (e.g., FINISHED only)
       if (statusFilter) {
