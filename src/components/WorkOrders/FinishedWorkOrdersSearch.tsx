@@ -477,36 +477,55 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       ]);
       
       const wo = woRes.data || {};
-      // Prefer relational work_order_parts rows; fall back to embedded JSON parts on the WO
+      // Prefer embedded JSON parts on FINISHED W.O. to avoid repeated historical rows
+      // in work_order_parts. Fallback to relational rows if embedded parts are missing.
       const rawParts = Array.isArray(partsRes.data) ? partsRes.data : [];
       const embeddedParts = (() => {
         if (Array.isArray(wo.parts)) return wo.parts;
         if (typeof wo.parts === 'string') { try { return JSON.parse(wo.parts); } catch { return []; } }
         return [];
       })();
-      const sourceParts = rawParts.length > 0 ? rawParts : embeddedParts;
-      // Normalize: unify qty/qty_used and part/part_name field variants
-      const normalizedParts = sourceParts.map((part: any) => {
-        const sku = String(part.sku || '').trim();
-        const inventoryItem = inventory.find((item: any) =>
-          String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
-        );
-        const invoiceLink =
-          part.invoiceLink || part.invoice_link ||
-          inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null;
-        const qty = Number(part.qty_used ?? part.qty) || 0;
-        return {
-          ...part,
-          sku,
-          part: part.part || part.part_name || part.description || '',
-          part_name: part.part_name || part.part || part.description || '',
-          qty,
-          qty_used: qty,
-          cost: Number(String(part.cost ?? 0).replace(/[^0-9.]/g, '')) || 0,
-          invoiceLink,
-          invoice_link: invoiceLink,
-        };
-      });
+      const normalizeAndDedupeParts = (sourceParts: any[]) => {
+        const seen = new Set<string>();
+        return sourceParts
+          .map((part: any) => {
+            const sku = String(part.sku || '').trim();
+            const inventoryItem = inventory.find((item: any) =>
+              String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
+            );
+            const invoiceLink =
+              part.invoiceLink || part.invoice_link ||
+              inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null;
+            const qty = Number(part.qty_used ?? part.qty) || 0;
+            const normalized = {
+              ...part,
+              sku,
+              part: part.part || part.part_name || part.description || '',
+              part_name: part.part_name || part.part || part.description || '',
+              qty,
+              qty_used: qty,
+              cost: Number(String(part.cost ?? 0).replace(/[^0-9.]/g, '')) || 0,
+              invoiceLink,
+              invoice_link: invoiceLink,
+            };
+            const signature = [
+              String(normalized.sku || '').trim().toLowerCase(),
+              String(normalized.part || '').trim().toLowerCase(),
+              String(normalized.qty ?? '').trim(),
+              String(normalized.cost ?? '').trim(),
+              String(normalized.invoiceLink || '').trim(),
+            ].join('|');
+            if (seen.has(signature)) return null;
+            seen.add(signature);
+            return normalized;
+          })
+          .filter(Boolean) as any[];
+      };
+
+      const normalizedEmbedded = normalizeAndDedupeParts(Array.isArray(embeddedParts) ? embeddedParts : []);
+      const normalizedRows = normalizeAndDedupeParts(rawParts);
+      const normalizedParts = normalizedEmbedded.length > 0 ? normalizedEmbedded : normalizedRows;
+
       setSelectedWO({
         ...wo,
         parts: normalizedParts,
@@ -576,7 +595,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
     }
   }, [loadWorkOrderDetails]);
 
-  // Search by W.O ID
+  // Search by W.O ID — Hybrid search: ID Classic or System ID
   const handleSearchWO = async () => {
     const searchId = woSearchInput.trim();
     if (!searchId) {
@@ -584,9 +603,36 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       return;
     }
 
-    // ALWAYS search by ID Classic first (numeric or non-numeric)
-    // This is the Finished W.O Search — only FINISHED WOs should be found
-    await loadWorkOrderDetailsByClassic(searchId);
+    setWoLoading(true);
+    setWoError('');
+    
+    try {
+      // STEP 1: Try ID Classic search first
+      const foundByClassic = await loadWorkOrderDetailsByClassic(searchId);
+      if (foundByClassic) {
+        setWoLoading(false);
+        return;
+      }
+
+      // STEP 2: If not found by ID Classic, try System ID search
+      const systemId = Number(searchId);
+      if (Number.isFinite(systemId) && systemId > 0) {
+        const found = await loadWorkOrderDetails(systemId);
+        if (found) {
+          setWoLoading(false);
+          return;
+        }
+      }
+
+      // STEP 3: No results in either field
+      setWoError('Work order not found by ID Classic or System ID');
+      setSelectedWO(null);
+    } catch (error) {
+      setWoError('Error searching work orders');
+      setSelectedWO(null);
+    } finally {
+      setWoLoading(false);
+    }
   };
   
   // Search by Unit/Trailer
@@ -665,8 +711,11 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   };
   
   // Normalize parts from any source (work_order_parts rows or embedded JSON)
+  // and remove exact duplicates caused by historical repeated sync saves.
   const normalizeParts = useCallback((rawParts: any[]) => {
-    return rawParts.map((part: any) => {
+    const seen = new Set<string>();
+    return rawParts
+    .map((part: any) => {
       const sku = String(part.sku || '').trim();
       const inventoryItem = inventory.find((item: any) =>
         String(item.sku || '').trim().toLowerCase() === sku.toLowerCase()
@@ -682,7 +731,7 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       const inventoryUm = String(inventoryItem?.um || inventoryItem?.uom || '').trim();
       // Only use savedUm if it has actual content; otherwise fall through chain
       const um = (savedUm.length > 0) ? savedUm : (inventoryUm.length > 0 ? inventoryUm : 'EA');
-      return {
+      const normalized = {
         sku,
         part: part.part || part.part_name || part.description || '',
         um,
@@ -690,7 +739,19 @@ const FinishedWorkOrdersSearch: React.FC = () => {
         cost,
         invoiceLink,
       };
-    });
+      const signature = [
+        String(normalized.sku || '').trim().toLowerCase(),
+        String(normalized.part || '').trim().toLowerCase(),
+        String(normalized.um || '').trim().toLowerCase(),
+        String(normalized.qty ?? '').trim(),
+        String(normalized.cost ?? '').trim(),
+        String(normalized.invoiceLink || '').trim(),
+      ].join('|');
+      if (seen.has(signature)) return null;
+      seen.add(signature);
+      return normalized;
+    })
+    .filter(Boolean) as any[];
   }, [inventory]);
 
   // View PDF — uses ONLY stored values from DB; NEVER recalculates the final total
@@ -921,10 +982,10 @@ const FinishedWorkOrdersSearch: React.FC = () => {
       {searchMode === 'by-wo' && (
         <>
           <SearchContainer>
-            <SearchLabel>W.O # or ID Classic</SearchLabel>
+            <SearchLabel>W.O # or ID Classic (Hybrid Search)</SearchLabel>
             <SearchInput
               type="text"
-              placeholder="Example: 758 or 1138"
+              placeholder="Example: 760 (System ID) or 21578 (ID Classic)"
               value={woSearchInput}
               onChange={(e) => setWoSearchInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearchWO()}

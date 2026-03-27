@@ -216,24 +216,36 @@ const WorkOrdersTable: React.FC = () => {
       })();
 
       const normalizedEmbeddedParts = (Array.isArray(embeddedPartsRaw) ? embeddedPartsRaw : [])
-        .map((part: any) => ({
-          sku: part.sku || '',
-          part: part.part || part.part_name || part.description || '',
-          qty: part.qty_used ?? part.qty ?? 0,
-          cost: part.cost ?? part.unitCost ?? part.unit_cost ?? 0,
-          invoiceLink: part.invoiceLink || part.invoice_link || null,
-        }))
+        .map((part: any) => {
+          const invoiceLink = part.invoiceLink || part.invoice_link || part.invoice || null;
+          const inventoryItem = inventory.length > 0 
+            ? inventory.find((item: any) => String(item.sku || '').trim().toLowerCase() === String(part.sku || '').trim().toLowerCase())
+            : null;
+          return {
+            sku: part.sku || '',
+            part: part.part || part.part_name || part.description || '',
+            qty: part.qty_used ?? part.qty ?? 0,
+            cost: part.cost ?? part.unitCost ?? part.unit_cost ?? 0,
+            invoiceLink: invoiceLink || inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null,
+          };
+        })
         .filter((part: any) => part && String(part.sku || '').trim() !== '');
 
       const dedupeSignatures = new Set<string>();
       const normalizedRows = partRows
-        .map((part: any) => ({
-          sku: part.sku || '',
-          part: part.part || part.part_name || part.description || '',
-          qty: part.qty_used ?? part.qty ?? 0,
-          cost: part.cost ?? 0,
-          invoiceLink: part.invoiceLink || part.invoice_link || null,
-        }))
+        .map((part: any) => {
+          const invoiceLink = part.invoiceLink || part.invoice_link || part.invoice || null;
+          const inventoryItem = inventory.length > 0
+            ? inventory.find((item: any) => String(item.sku || '').trim().toLowerCase() === String(part.sku || '').trim().toLowerCase())
+            : null;
+          return {
+            sku: part.sku || '',
+            part: part.part || part.part_name || part.description || '',
+            qty: part.qty_used ?? part.qty ?? 0,
+            cost: part.cost ?? 0,
+            invoiceLink: invoiceLink || inventoryItem?.invoiceLink || inventoryItem?.invoice_link || null,
+          };
+        })
         .filter((part: any) => {
           const signature = [
             String(part.sku || '').trim().toLowerCase(),
@@ -2982,10 +2994,13 @@ const WorkOrdersTable: React.FC = () => {
                       transition: 'opacity 0.3s'
                     }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0A3854', marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0A3854', marginBottom: 4 }}>
                       W.O #{item.order.id}
                     </div>
-                    <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, color: '#c62828', fontWeight: 600, marginBottom: 4 }}>
+                      ID: {item.order.idClassic || 'N/A'}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#666', marginBottom: 4 }}>
                       {item.order.billToCo || 'N/C'}
                     </div>
                     <div style={{ fontSize: 9, color: '#0A3854', fontWeight: 600 }}>
@@ -3267,9 +3282,9 @@ const WorkOrdersTable: React.FC = () => {
 
         return (
         <div style={modalStyle} onClick={() => setDetailOrder(null)}>
-          <div style={{ ...modalContentStyle, maxWidth: 1120, width: '96vw' }} onClick={event => event.stopPropagation()}>
+          <div style={{ ...modalContentStyle, maxWidth: 1120, width: '96vw', background: '#f0f5fb' }} onClick={event => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ margin: 0, color: '#1976d2' }}>
+              <h2 style={{ margin: 0, color: '#0A3854' }}>
                 W.O #{detailOrder.id} {detailOrder.idClassic ? `• ${detailOrder.idClassic}` : ''}
               </h2>
               <button
@@ -3297,7 +3312,7 @@ const WorkOrdersTable: React.FC = () => {
               <div><strong>Start Date:</strong> {formatDateSafely(getOrderStartDate(detailOrder) || '')}</div>
               <div><strong>End Date:</strong> {getOrderEndDate(detailOrder) ? formatDateSafely(getOrderEndDate(detailOrder)) : 'Pending'}</div>
               <div><strong>Mechanic:</strong> {detailMechanics.length > 0
-                ? detailMechanics.map((mechanic: any) => mechanic.name).join(', ')
+                ? Array.from(new Set(detailMechanics.map((mechanic: any) => mechanic.name))).join(', ')
                 : (detailOrder.mechanic || 'N/A')}</div>
               <div><strong style={{ fontSize: 14 }}>Total HRS:</strong> {totalHrsValue.toFixed(2)}</div>
             </div>
