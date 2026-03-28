@@ -909,7 +909,7 @@ const WorkOrdersTable: React.FC = () => {
     const normalized = String(status || '').trim().toUpperCase();
     if (normalized === 'APPROVED') return '#43a047'; // Green
     if (normalized === 'FINISHED') return '#fb8c00'; // Orange
-    return '#1976d2'; // Blue for PROCESSING
+    return '#0A3854'; // Blue for PROCESSING
   };
 
   const sortedBoardOrders = filteredOrders
@@ -3363,7 +3363,7 @@ const WorkOrdersTable: React.FC = () => {
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     style={{ 
-                                      color: '#1976d2', 
+                                      color: '#0A3854', 
                                       textDecoration: 'none',
                                       fontWeight: 600,
                                       fontSize: 11
@@ -3406,7 +3406,7 @@ const WorkOrdersTable: React.FC = () => {
                         <div style={{ fontWeight: 600, fontSize: 13, color: '#37474f', marginBottom: 6 }}>
                           {mechanic.name}
                         </div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: '#1976d2' }}>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#0A3854' }}>
                           {mechanic.totalHrs.toFixed(2)} <span style={{ fontSize: 11, color: '#546e7a' }}>h</span>
                         </div>
                       </div>

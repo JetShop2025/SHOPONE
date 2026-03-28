@@ -14,7 +14,7 @@ const Inventory: React.FC = () => {
         activeElement?.tagName === 'INPUT' ||
         activeElement?.tagName === 'TEXTAREA' ||
         activeElement?.contentEditable === 'true';
-      
+
       if (isEditableElement) return;
 
       if (event.key === '1') {
@@ -43,7 +43,7 @@ const Inventory: React.FC = () => {
         padding: 40,
         background: 'linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%)',
         borderRadius: 16,
-        boxShadow: '0 4px 24px rgba(25, 118, 210, 0.10)',
+        boxShadow: '0 4px 24px rgba(10, 56, 84, 0.10)',
         maxWidth: 600,
         margin: '48px auto',
         textAlign: 'center'
@@ -51,7 +51,7 @@ const Inventory: React.FC = () => {
     >
       <h1
         style={{
-          color: '#1976d2',
+          color: '#0A3854',
           fontWeight: 800,
           letterSpacing: 2,
           fontSize: 36,
@@ -67,7 +67,7 @@ const Inventory: React.FC = () => {
         <button
           onClick={() => setView('master')}
           style={{
-            background: '#1976d2',
+            background: '#0A3854',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
@@ -76,11 +76,11 @@ const Inventory: React.FC = () => {
             fontSize: 20,
             marginRight: 16,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(25,118,210,0.10)',
+            boxShadow: '0 2px 8px rgba(10,56,84,0.10)',
             transition: 'background 0.2s'
           }}
           onMouseOver={e => (e.currentTarget.style.background = '#062838')}
-          onMouseOut={e => (e.currentTarget.style.background = '#1976d2')}
+          onMouseOut={e => (e.currentTarget.style.background = '#0A3854')}
         >
           <span style={{ marginRight: 8 }}>1.</span> MASTER
         </button>
@@ -88,23 +88,23 @@ const Inventory: React.FC = () => {
           onClick={() => setView('receive')}
           style={{
             background: '#fff',
-            color: '#1976d2',
-            border: '2px solid #1976d2',
+            color: '#0A3854',
+            border: '2px solid #0A3854',
             borderRadius: 8,
             padding: '18px 48px',
             fontWeight: 700,
             fontSize: 20,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(25,118,210,0.10)',
+            boxShadow: '0 2px 8px rgba(10,56,84,0.10)',
             transition: 'background 0.2s, color 0.2s'
           }}
           onMouseOver={e => {
-            e.currentTarget.style.background = '#1976d2';
+            e.currentTarget.style.background = '#0A3854';
             e.currentTarget.style.color = '#fff';
           }}
           onMouseOut={e => {
             e.currentTarget.style.background = '#fff';
-            e.currentTarget.style.color = '#1976d2';
+            e.currentTarget.style.color = '#0A3854';
           }}
         >
           <span style={{ marginRight: 8 }}>2.</span> RECEIVE

@@ -60,7 +60,7 @@ const modalContentStyle: React.CSSProperties = {
   maxWidth: 520,
   maxHeight: '80vh',
   overflowY: 'auto',
-  boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
+  boxShadow: '0 4px 24px rgba(10,56,84,0.10)'
 };
 
 const ReceiveInventory: React.FC = () => {
@@ -299,13 +299,13 @@ const ReceiveInventory: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1200, margin: '32px auto', background: '#f5faff', borderRadius: 16, padding: 32 }}>
-      <h1 style={{ color: '#1976d2', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>
+      <h1 style={{ color: '#0A3854', fontWeight: 800, fontSize: 32, marginBottom: 24 }}>
         Inventory Receives
       </h1>
       <div style={{ marginBottom: 24 }}>
         <button
           style={{
-            background: '#1976d2',
+            background: '#0A3854',
             color: '#fff',
             border: 'none',
             borderRadius: 6,
@@ -314,7 +314,7 @@ const ReceiveInventory: React.FC = () => {
             fontSize: 16,
             marginRight: 8,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+            boxShadow: '0 2px 8px rgba(10,56,84,0.10)'
           }}          onClick={() => {
             // Actualizar fecha cuando se abre el formulario
             const todayDate = getLocalDate();
@@ -349,14 +349,14 @@ const ReceiveInventory: React.FC = () => {
         <button
           style={{
             background: '#fff',
-            color: '#1976d2',
-            border: '1px solid #1976d2',
+            color: '#0A3854',
+            border: '1px solid #0A3854',
             borderRadius: 6,
             padding: '10px 28px',
             fontWeight: 600,
             fontSize: 16,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+            boxShadow: '0 2px 8px rgba(10,56,84,0.10)'
           }}
           disabled={selectedRow === null}
           onClick={handleEdit}
@@ -399,7 +399,7 @@ const ReceiveInventory: React.FC = () => {
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
               <h2 style={{
-                color: '#0d47a1',
+                color: '#0A3854',
                 fontWeight: 800,
                 fontSize: 26,
                 marginBottom: 20,
@@ -556,7 +556,7 @@ const ReceiveInventory: React.FC = () => {
                 setReceives(res.data as any[]);
               }} style={{ maxWidth: 520 }}>
                 <h2 style={{
-                  color: '#1976d2',
+                  color: '#0A3854',
                   fontWeight: 800,
                   fontSize: 26,
                   marginBottom: 20,
@@ -660,12 +660,12 @@ const ReceiveInventory: React.FC = () => {
           background: '#fff',
           borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: '0 2px 12px rgba(25,118,210,0.07)',
+          boxShadow: '0 2px 12px rgba(10,56,84,0.07)',
           marginTop: 24,
         }}
       >
         <thead>
-          <tr style={{ background: '#1976d2', color: '#fff' }}>
+          <tr style={{ background: '#0A3854', color: '#fff' }}>
             <th style={{ padding: '10px 8px', borderRight: '1px solid #e3eaf2' }}>ID</th>
             <th style={{ padding: '10px 8px', borderRight: '1px solid #e3eaf2' }}>Date</th>
             <th style={{ padding: '10px 8px', borderRight: '1px solid #e3eaf2' }}>SKU</th>
@@ -732,7 +732,7 @@ const ReceiveInventory: React.FC = () => {
                     href={r.invoiceLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: '#1976d2', textDecoration: 'underline' }}
+                    style={{ color: '#0A3854', textDecoration: 'underline' }}
                   >
                     {r.invoice}
                   </a>
@@ -778,14 +778,14 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: 6,
-  border: '1.5px solid #1976d2',
+  border: '1.5px solid #0A3854',
   fontSize: 15,
   marginBottom: 8,
   background: '#f5faff',
   boxSizing: 'border-box'
 };
 const primaryBtn: React.CSSProperties = {
-  background: '#1976d2',
+  background: '#0A3854',
   color: '#fff',
   border: 'none',
   borderRadius: 6,
@@ -793,12 +793,12 @@ const primaryBtn: React.CSSProperties = {
   fontWeight: 600,
   fontSize: 16,
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+  boxShadow: '0 2px 8px rgba(10,56,84,0.10)'
 };
 const secondaryBtn: React.CSSProperties = {
   background: '#fff',
-  color: '#1976d2',
-  border: '1.5px solid #1976d2',
+  color: '#0A3854',
+  border: '1.5px solid #0A3854',
   borderRadius: 6,
   padding: '10px 28px',
   fontWeight: 600,

@@ -29,8 +29,7 @@ const connection = mysql.createPool({
   password: process.env.MYSQL_PASSWORD,
   port: process.env.MYSQL_PORT,
   connectionLimit: 10,
-  acquireTimeout: 60000,
-  timeout: 60000
+  connectTimeout: 15000
 });
 
 // Realtime SSE state
@@ -633,6 +632,12 @@ app.delete('/api/inventory/:id', async (req, res) => {
 app.get('/api/work-orders', async (req, res) => {
   try {
     console.log('[GET] /api/work-orders - Fetching from database');
+    const WORK_ORDER_SELECT_COLUMNS = [
+      'id', 'billToCo', 'trailer', 'mechanic', 'date', 'description', 'parts',
+      'totalHrs', 'totalLabAndParts', 'status', 'mechanics', 'idClassic', 'extraOptions',
+      'employeeWrittenHours', 'miscellaneous', 'weldPercent', 'startDate', 'endDate',
+      'preWoLink', 'miscellaneousFixed', 'weldFixed'
+    ].join(', ');
     
     // Parámetros de paginación
     const page = parseInt(req.query.page) || 1;
@@ -646,7 +651,7 @@ app.get('/api/work-orders', async (req, res) => {
     if (normalizedSearchIdClassic) {
       console.log(`[GET] /api/work-orders - Searching for ID Classic: ${normalizedSearchIdClassic}`);
       let searchQuery = `
-        SELECT * FROM work_orders
+        SELECT ${WORK_ORDER_SELECT_COLUMNS} FROM work_orders
         WHERE (
           TRIM(CAST(COALESCE(idClassic, '') AS CHAR)) = ?
           OR TRIM(CAST(COALESCE(idClassic, '') AS CHAR)) LIKE ?
@@ -701,7 +706,7 @@ app.get('/api/work-orders', async (req, res) => {
     }
 
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
-    const query = `SELECT * FROM work_orders${whereClause} ORDER BY id DESC LIMIT ${pageSize} OFFSET ${offset}`;
+    const query = `SELECT ${WORK_ORDER_SELECT_COLUMNS} FROM work_orders${whereClause} ORDER BY id DESC LIMIT ${pageSize} OFFSET ${offset}`;
 
     console.log(`[GET] /api/work-orders - Executing query: ${query}`);
     console.log('[GET] /api/work-orders - Query params:', queryParams);
@@ -765,12 +770,18 @@ app.get('/api/work-orders/trailer/:trailerId', async (req, res) => {
 app.get('/api/work-orders/:id', async (req, res) => {
   try {
     console.log('[GET] /api/work-orders/:id - Fetching from database:', req.params.id);
-    const order = await db.getOrderById(req.params.id);
+    const includePdf = String(req.query.includePdf || '').toLowerCase() === 'true';
+    const order = await db.getOrderById(req.params.id, { includePdf });
     if (!order) {
       console.log('[GET] /api/work-orders/:id - Work order not found:', req.params.id);
       return res.status(404).json({ error: 'Work order not found' });
     }
-    console.log('[GET] /api/work-orders/:id - Found work order:', order);
+    console.log('[GET] /api/work-orders/:id - Found work order:', {
+      id: order.id,
+      status: order.status,
+      hasPdf: Boolean(order.pdf_file),
+      partsCount: Array.isArray(order.parts) ? order.parts.length : 0,
+    });
     res.json(order);
   } catch (error) {
     console.error('[ERROR] GET /api/work-orders/:id:', error);

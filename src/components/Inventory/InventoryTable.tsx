@@ -69,20 +69,20 @@ const modalContentStyle: React.CSSProperties = {
   maxWidth: 420,
   maxHeight: '80vh',
   overflowY: 'auto',
-  boxShadow: '0 4px 24px rgba(25,118,210,0.10)'
+  boxShadow: '0 4px 24px rgba(10,56,84,0.10)'
 };
 const inputStyle: React.CSSProperties = {
   flex: '1 1 120px',
   padding: '10px 12px',
   borderRadius: 6,
-  border: '1.5px solid #1976d2',
+  border: '1.5px solid #0A3854',
   fontSize: 15,
   marginBottom: 8,
   background: '#f5faff',
   boxSizing: 'border-box'
 };
 const primaryBtn: React.CSSProperties = {
-  background: '#1976d2',
+  background: '#0A3854',
   color: '#fff',
   border: 'none',
   borderRadius: 6,
@@ -90,12 +90,12 @@ const primaryBtn: React.CSSProperties = {
   fontWeight: 600,
   fontSize: 16,
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+  boxShadow: '0 2px 8px rgba(10,56,84,0.10)'
 };
 const secondaryBtn: React.CSSProperties = {
   background: '#fff',
-  color: '#1976d2',
-  border: '1.5px solid #1976d2',
+  color: '#0A3854',
+  border: '1.5px solid #0A3854',
   borderRadius: 6,
   padding: '10px 28px',
   fontWeight: 600,
@@ -166,7 +166,6 @@ const InventoryTable: React.FC = () => {
     }
     setAddError('');
 
-    // Ajusta los nombres de los campos según tu backend/BD
     const data = {
       sku: newPart.sku,
       barCodes: newPart.barCodes,
@@ -176,16 +175,18 @@ const InventoryTable: React.FC = () => {
       brand: newPart.brand,
       um: newPart.um,
       area: newPart.area,
-      // Cambia los nombres aquí si tu backend espera otros nombres
       onHand: newPart.onHand ? Number(newPart.onHand) : 0,
       imagen: newPart.imagen || '', // o imageLink si tu backend espera ese nombre
       precio: newPart.precio ? Number(newPart.precio) : 0,
       usuario: localStorage.getItem('username') || '',
       invoiceLink: newPart.invoiceLink || ''
-    };    try {
+    };
+
+    try {
       await axios.post(`${API_URL}/inventory`, data);
       setShowForm(false);
       setNewPart({ ...emptyPart });
+      setAddPassword('');
       const res = await axios.get(`${API_URL}/inventory`);
       const inventoryData = Array.isArray(res.data) ? res.data : [];
       setInventory(inventoryData);
@@ -273,7 +274,7 @@ const InventoryTable: React.FC = () => {
       padding: 32
     }}>
       <h1 style={{
-        color: '#1976d2',
+        color: '#0A3854',
         fontWeight: 800,
         letterSpacing: 2,
         fontSize: 36,
@@ -283,7 +284,7 @@ const InventoryTable: React.FC = () => {
       }}>
         <span style={{
           display: 'inline-block',
-          background: '#1976d2',
+          background: '#0A3854',
           color: '#fff',
           borderRadius: '50%',
           width: 48,
@@ -358,7 +359,7 @@ const InventoryTable: React.FC = () => {
           style={{
             padding: 8,
             borderRadius: 6,
-            border: '1.5px solid #1976d2',
+            border: '1.5px solid #0A3854',
             fontSize: 15,
             minWidth: 220
           }}
@@ -369,7 +370,7 @@ const InventoryTable: React.FC = () => {
       {showForm && (
         <div style={modalStyle} onClick={() => setShowForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Add New Part</h3>
+            <h3 style={{ color: '#0A3854', marginBottom: 16 }}>Add New Part</h3>
             <form onSubmit={handleAddPart} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               <input name="sku" value={newPart.sku} onChange={handleChange} placeholder="SKU" required style={inputStyle} />
               <input name="barCodes" value={newPart.barCodes} onChange={handleChange} placeholder="Bar Code" style={inputStyle} />
@@ -489,7 +490,7 @@ const InventoryTable: React.FC = () => {
       {showEditForm && (
         <div style={modalStyle} onClick={() => setShowEditForm(false)}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#1976d2', marginBottom: 16 }}>Edit Part</h3>
+            <h3 style={{ color: '#0A3854', marginBottom: 16 }}>Edit Part</h3>
             <form onSubmit={handleEditPart} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               <input name="sku" value={editPart.sku} onChange={handleEditChange} placeholder="SKU" required style={inputStyle} disabled />
               <input name="barCodes" value={editPart.barCodes} onChange={handleEditChange} placeholder="Bar Codes" style={inputStyle} />
@@ -553,15 +554,15 @@ const InventoryTable: React.FC = () => {
           background: '#fff',
           borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: '0 2px 12px rgba(25,118,210,0.07)'
+          boxShadow: '0 2px 12px rgba(10,56,84,0.07)'
         }}>
           <thead>
             <tr>
               {columns.map(col => (
                 <th key={col} style={{
-                  border: '1px solid #1976d2',
+                  border: '1px solid #0A3854',
                   padding: 8,
-                  background: '#1976d2',
+                  background: '#0A3854',
                   color: '#fff',
                   fontWeight: 700,
                   fontSize: 13, // más pequeño
@@ -644,7 +645,7 @@ const InventoryTable: React.FC = () => {
                         href={item.imagen}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: 12 }}
+                        style={{ color: '#0A3854', textDecoration: 'underline', cursor: 'pointer', fontSize: 12 }}
                       >
                         IMG
                       </a>
@@ -657,7 +658,7 @@ const InventoryTable: React.FC = () => {
                   </td>
                   <td style={{ border: '1px solid #b0c4de', padding: 6, textAlign: 'center', maxWidth: 120, wordBreak: 'break-all' }}>
                     {item.invoiceLink ? (
-                      <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline', fontSize: 12 }}>
+                      <a href={item.invoiceLink} target="_blank" rel="noopener noreferrer" style={{ color: '#0A3854', textDecoration: 'underline', fontSize: 12 }}>
                         Invoice
                       </a>
                     ) : ''}

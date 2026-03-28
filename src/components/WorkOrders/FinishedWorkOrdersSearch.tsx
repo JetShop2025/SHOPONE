@@ -757,24 +757,26 @@ const FinishedWorkOrdersSearch: React.FC = () => {
   // View PDF — uses ONLY stored values from DB; NEVER recalculates the final total
   const handleViewPDF = async (wo: WorkOrder) => {
     try {
-      // Always fetch fresh from work_order_parts (authoritative relational data)
-      // for accurate invoice links and quantities as originally saved.
       let partsForPDF: any[] = [];
-      try {
-        const partsRes = await axios.get(`${API_URL}/work-order-parts/${wo.id}`, { timeout: 10000 });
-        if (Array.isArray(partsRes.data) && partsRes.data.length > 0) {
-          partsForPDF = normalizeParts(partsRes.data);
-        }
-      } catch { /* 404 or network — fallback below */ }
 
-      // Fallback: use parts already in state (normalized at load time)
-      if (partsForPDF.length === 0) {
-        const embedded = (() => {
-          if (Array.isArray(wo.parts)) return wo.parts;
-          if (typeof wo.parts === 'string') { try { return JSON.parse(wo.parts as any); } catch { return []; } }
-          return [];
-        })();
+      // PRIORITY 1: embedded parts JSON saved on the W.O record at finalization time.
+      // These are authoritative and never contain historical duplicates.
+      const embedded = (() => {
+        if (Array.isArray(wo.parts)) return wo.parts;
+        if (typeof wo.parts === 'string') { try { return JSON.parse(wo.parts as any); } catch { return []; } }
+        return [];
+      })();
+
+      if (embedded.length > 0) {
         partsForPDF = normalizeParts(embedded);
+      } else {
+        // Fallback: fetch from work_order_parts table (older W.O.s may not have embedded parts)
+        try {
+          const partsRes = await axios.get(`${API_URL}/work-order-parts/${wo.id}`, { timeout: 10000 });
+          if (Array.isArray(partsRes.data) && partsRes.data.length > 0) {
+            partsForPDF = normalizeParts(partsRes.data);
+          }
+        } catch { /* 404 or network error */ }
       }
 
       // Build mechanics string from stored data
