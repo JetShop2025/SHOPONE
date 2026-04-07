@@ -109,7 +109,7 @@ const WorkOrderCostSummarySection: React.FC<WorkOrderCostSummarySectionProps> = 
             />
           </label>
           <span style={{ color: '#0A3854', fontWeight: 700, whiteSpace: 'nowrap', background: '#f0f4f8', border: '1px solid #b0c4de', borderRadius: 6, padding: '6px 10px' }}>
-            Cargo extra: ${weldAmount.toFixed(2)}
+            Extra charge: ${weldAmount.toFixed(2)}
           </span>
         </div>
       </div>
@@ -164,11 +164,11 @@ const WorkOrderCostSummarySection: React.FC<WorkOrderCostSummarySectionProps> = 
               cursor: 'pointer',
             }}
           >
-            Calcular Auto
+            Auto Calculate
           </button>
         </div>
         <div style={{ fontSize: '12px', color: '#666', marginTop: 4, maxWidth: 620 }}>
-          Cálculo sugerido: Labor (${laborTotal.toFixed(2)}) + Partes (${partsTotal.toFixed(2)}) + Miscellaneous (${miscAmount.toFixed(2)}) + Welding Supplies (${weldAmount.toFixed(2)}) = ${(subtotal + miscAmount + weldAmount).toFixed(2)}
+          Suggested calculation: Labor (${laborTotal.toFixed(2)}) + Parts (${partsTotal.toFixed(2)}) + Miscellaneous (${miscAmount.toFixed(2)}) + Welding Supplies (${weldAmount.toFixed(2)}) = ${(subtotal + miscAmount + weldAmount).toFixed(2)}
         </div>
       </div>
 
@@ -187,7 +187,7 @@ const WorkOrderCostSummarySection: React.FC<WorkOrderCostSummarySectionProps> = 
             cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
-          {loading ? 'Procesando...' : 'Save'}
+          {loading ? 'Processing...' : 'Save'}
         </button>
         <button
           type="button"

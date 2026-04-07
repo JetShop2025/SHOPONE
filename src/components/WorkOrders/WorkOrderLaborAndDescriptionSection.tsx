@@ -132,7 +132,7 @@ const WorkOrderLaborAndDescriptionSection: React.FC<WorkOrderLaborAndDescription
       <div style={{ marginBottom: 0, gridColumn: '1 / -1', minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <label style={{ width: '100%', fontSize: '14px', fontWeight: '600' }}>
-            Descripción / Invoice Notes<span style={{ color: 'red' }}>*</span>
+            Description / Invoice Notes<span style={{ color: 'red' }}>*</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, whiteSpace: 'nowrap' }}>
             <input
@@ -156,7 +156,7 @@ const WorkOrderLaborAndDescriptionSection: React.FC<WorkOrderLaborAndDescription
           required
         />
         <div style={{ marginTop: 4, fontSize: 10, color: '#546e7a' }}>
-          Tip: Use labor rows to generate clear lines by date/mecanic/hours automatically.
+          Tip: Use labor rows to generate clear lines by date/mechanic/hours automatically.
         </div>
       </div>
     </>

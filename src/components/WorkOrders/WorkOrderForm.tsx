@@ -84,6 +84,8 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
   const [tooltip, setTooltip] = React.useState<{ visible: boolean, x: number, y: number, info: any }>({ visible: false, x: 0, y: 0, info: null });
   const [manualTotalOverride, setManualTotalOverride] = React.useState(false);
   const [autoDescription, setAutoDescription] = React.useState(true);
+  const beforeImagesInputRef = React.useRef<HTMLInputElement>(null);
+  const afterImagesInputRef = React.useRef<HTMLInputElement>(null);
   const selectedBeforeImages: File[] = Array.isArray(workOrder?.woImagesBefore) ? workOrder.woImagesBefore : [];
   const selectedAfterImages: File[] = Array.isArray(workOrder?.woImagesAfter) ? workOrder.woImagesAfter : [];
   const isEditingMode = Boolean(workOrder?.id && Number(workOrder.id) > 0) || /edit/i.test(String(title || ''));
@@ -118,7 +120,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       }
       
       // PRIORITY 2: If no custom description, use the inventory one
-      const partName = customPartName || partInfo.part || partInfo.description || partInfo.name || 'Sin nombre';
+      const partName = customPartName || partInfo.part || partInfo.description || partInfo.name || 'Unnamed part';
 
       const precio = customCost || partInfo.precio || partInfo.cost || partInfo.price || 0;
       
@@ -375,6 +377,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
     onChange({ target: { name: 'woImagesAfter', value: files } } as any);
   };
 
+  const openBeforeImagePicker = () => {
+    beforeImagesInputRef.current?.click();
+  };
+
+  const openAfterImagePicker = () => {
+    afterImagesInputRef.current?.click();
+  };
+
   const removeSelectedBeforeImage = (indexToRemove: number) => {
     const updatedFiles = selectedBeforeImages.filter((_, index) => index !== indexToRemove);
     onChange({ target: { name: 'woImagesBefore', value: updatedFiles } } as any);
@@ -628,14 +638,14 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
         return qtyNum !== undefined && qtyNum !== null && !isNaN(qtyNum) && qtyNum <= 0;
       });
       if (hasInvalidQty) {
-        window.alert('Hay partes con cantidad inválida.');
+        window.alert('There are parts with invalid quantity.');
         setLoading(false);
         return;
       }
 
       // Validar ID Classic si status es FINISHED
       if (workOrder.status === 'FINISHED' && (!workOrder.idClassic || workOrder.idClassic.trim() === '')) {
-        window.alert('ID Classic es requerido para órdenes con status FINISHED.');
+        window.alert('ID Classic is required for work orders with FINISHED status.');
         setLoading(false);
         return;
       }
@@ -693,7 +703,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
       // Notify dashboard to refresh immediately
       window.dispatchEvent(new Event('workOrderUpdated'));
       
-      setSuccessMsg('¡Orden creada exitosamente!');
+      setSuccessMsg('Work order created successfully!');
       setLoading(false);
     } catch (err: any) {
       setLoading(false);
@@ -1009,15 +1019,31 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           DateInputWithCalendar={DateInputWithCalendar}
         />
 
-        <label style={{ gridColumn: '1 / -1' }}>
-          BEFORE Images (optional)
+        <div style={{ gridColumn: '1 / -1' }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>BEFORE Images (optional)</div>
           <input
+            ref={beforeImagesInputRef}
             type="file"
             accept="image/*"
             multiple
             onChange={handleImageFilesChange}
-            style={{ width: '100%', marginTop: 6 }}
+            style={{ display: 'none' }}
           />
+          <button
+            type="button"
+            onClick={openBeforeImagePicker}
+            style={{
+              padding: '8px 12px',
+              background: '#0A3854',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            Select BEFORE Images
+          </button>
           {selectedBeforeImages.length > 0 && (
             <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {selectedBeforeImages.map((file, index) => (
@@ -1047,17 +1073,33 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               ))}
             </div>
           )}
-        </label>
+        </div>
 
-        <label style={{ gridColumn: '1 / -1' }}>
-          AFTER Images (optional)
+        <div style={{ gridColumn: '1 / -1' }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>AFTER Images (optional)</div>
           <input
+            ref={afterImagesInputRef}
             type="file"
             accept="image/*"
             multiple
             onChange={handleAfterImageFilesChange}
-            style={{ width: '100%', marginTop: 6 }}
+            style={{ display: 'none' }}
           />
+          <button
+            type="button"
+            onClick={openAfterImagePicker}
+            style={{
+              padding: '8px 12px',
+              background: '#0A3854',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            Select AFTER Images
+          </button>
           <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
             Images are uploaded from your PC and added to extra PDF pages separated as BEFORE and AFTER.
           </div>
@@ -1090,7 +1132,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
               ))}
             </div>
           )}
-        </label>
+        </div>
 
         {/* Previsualizador de Partes Pendientes */}
         {pendingParts && pendingParts.length > 0 && setPendingPartsQty && onAddPendingPart && (
@@ -1163,7 +1205,7 @@ const WorkOrderForm: React.FC<WorkOrderFormProps> = ({
           <div><b>Part Name:</b> {tooltip.info.part}</div>
           <div><b>Price:</b> {tooltip.info.precio ? Number(tooltip.info.precio).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00'}</div>
           <div><b>On Hand:</b> {tooltip.info.onHand}</div>
-          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click para cerrar)</div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>(Click to close)</div>
         </div>
       )}
       </div>

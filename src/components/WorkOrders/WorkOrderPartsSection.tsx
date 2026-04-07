@@ -37,14 +37,14 @@ const WorkOrderPartsSection: React.FC<WorkOrderPartsSectionProps> = ({
                 cursor: 'pointer',
               }}
             >
-              + Agregar Parte
+              + Add Part
             </button>
           )}
         </div>
       </div>
 
       <div style={{ fontSize: 11, color: '#5f7387', marginBottom: 10 }}>
-        Vista en lista por tarjetas con 2+ columnas y scroll interno para evitar desbordes.
+        Card-based list view with 2+ columns and internal scroll to prevent overflow.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, alignItems: 'start' }}>
@@ -118,7 +118,7 @@ const WorkOrderPartsSection: React.FC<WorkOrderPartsSectionProps> = ({
               <datalist id={`inventory-${index}`}>
                 {inventory.map((item: any) => {
                   const cost = item.precio || item.cost || item.price || item.unitCost || item.unit_cost || 0;
-                  const name = item.part || item.description || item.name || 'Sin nombre';
+                  const name = item.part || item.description || item.name || 'Unnamed part';
                   return (
                     <option key={item.sku} value={item.sku}>
                       {name} - ${typeof cost === 'number' ? cost.toFixed(2) : parseFloat(String(cost)).toFixed(2)}
